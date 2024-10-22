@@ -1,0 +1,15 @@
+# Generated from lib/waru.rb with RBS::Inline
+
+module Waru
+  module BinaryLoader
+    # @rbs buf: IO::Buffer
+    # @rbs return: Instance
+    def self.load_from_buffer: (IO::Buffer buf) -> Instance
+  end
+
+  class Instance
+  end
+
+  class Error < StandardError
+  end
+end
