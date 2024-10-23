@@ -8,8 +8,14 @@ class WaruTest < Test::Unit::TestCase
       ::Waru.const_defined?(:VERSION)
     end
   end
+end
 
-  test "something useful" do
-    assert_equal("expected", "actual")
+class WaruBinaryLoaderTest < Test::Unit::TestCase
+  test "Waru::BinaryLoader" do
+    bytes = IO.read(File.expand_path("../add.wasm", __FILE__))
+    wasm = ::StringIO.new(bytes)
+    assert do
+      ::Waru::BinaryLoader.load_from_buffer(wasm)
+    end
   end
 end

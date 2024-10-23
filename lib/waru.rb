@@ -5,6 +5,8 @@ require_relative "waru/version"
 require_relative "waru/leb128"
 require_relative "waru/const"
 
+require "stringio"
+
 module Waru
   class Section
     attr_accessor :name
@@ -62,17 +64,48 @@ module Waru
 
     # @rbs return: []Section
     def self.sections
-      code = @buf.read(1).unpack("C")[0]
       sections = []
 
-      section = case code
-        when Waru::SectionType
-          type_section
-        else
-          raise LoadError, "unknown code: #{code}(\"#{code.to_s 16}\")"
+      loop do
+        byte = @buf.read(1)
+        if byte == nil
+          break
         end
+        code = byte.unpack("C")[0]
 
-      sections << section
+        section = case code
+          when Waru::SectionType
+            type_section
+          when Waru::SectionImport
+            unimplemented_skip_section(code)
+          when Waru::SectionFunction
+            unimplemented_skip_section(code)
+          when Waru::SectionTable
+            unimplemented_skip_section(code)
+          when Waru::SectionMemory
+            unimplemented_skip_section(code)
+          when Waru::SectionGlobal
+            unimplemented_skip_section(code)
+          when Waru::SectionExport
+            unimplemented_skip_section(code)
+          when Waru::SectionStart
+            unimplemented_skip_section(code)
+          when Waru::SectionElement
+            unimplemented_skip_section(code)
+          when Waru::SectionCode
+            unimplemented_skip_section(code)
+          when Waru::SectionData
+            unimplemented_skip_section(code)
+          when Waru::SectionCustom
+            unimplemented_skip_section(code)
+          else
+            raise LoadError, "unknown code: #{code}(\"#{code.to_s 16}\")"
+          end
+
+        if section
+          sections << section
+        end
+      end
       sections
     end
 
@@ -122,6 +155,15 @@ module Waru
 
       pp dest
       dest
+    end
+
+    # @rbs code: Integer
+    # @rbs return: nil
+    def self.unimplemented_skip_section(code)
+      $stderr.puts "warning: unimplemented section: #{code.to_s(16).inspect}"
+      size = @buf.read(1).unpack("C")[0]
+      @buf.read(size)
+      nil
     end
 
     # @rbs sbuf: StringIO
