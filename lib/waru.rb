@@ -30,6 +30,54 @@ module Waru
     end
   end
 
+  class FunctionSection < Section
+    attr_accessor :func_indices
+
+    def initialize
+      self.name = "Function"
+      self.code = 0x3
+
+      @func_indices = []
+    end
+  end
+
+  class CodeSection < Section
+    attr_accessor :func_codes
+
+    def initialize
+      self.name = "Code"
+      self.code = 0xa
+
+      @func_codes = []
+    end
+  end
+
+  class ExportSection < Section
+    class ExportDesc
+      attr_accessor :name
+      
+      attr_accessor :kind
+
+      attr_accessor :func_index
+    end
+
+    # @rbs @exports: Hash[String, ExportDesc]
+    attr_accessor :exports
+
+    def initialize
+      self.name = "Export"
+      self.code = 0x7
+
+      @exports = {}
+    end
+
+    def add_desc(&blk)
+      desc = ExportDesc.new
+      blk.call(desc)
+      self.exports[desc.name] = desc
+    end
+  end
+
   module BinaryLoader
     extend Waru::Leb128Helpers
 
@@ -79,7 +127,7 @@ module Waru
           when Waru::SectionImport
             unimplemented_skip_section(code)
           when Waru::SectionFunction
-            unimplemented_skip_section(code)
+            function_section
           when Waru::SectionTable
             unimplemented_skip_section(code)
           when Waru::SectionMemory
@@ -87,13 +135,13 @@ module Waru
           when Waru::SectionGlobal
             unimplemented_skip_section(code)
           when Waru::SectionExport
-            unimplemented_skip_section(code)
+            export_section
           when Waru::SectionStart
             unimplemented_skip_section(code)
           when Waru::SectionElement
             unimplemented_skip_section(code)
           when Waru::SectionCode
-            unimplemented_skip_section(code)
+            code_section
           when Waru::SectionData
             unimplemented_skip_section(code)
           when Waru::SectionCustom
@@ -106,6 +154,7 @@ module Waru
           sections << section
         end
       end
+      pp sections
       sections
     end
 
@@ -113,18 +162,18 @@ module Waru
     def self.type_section
       dest = TypeSection.new
 
-      size = @buf.read(1).unpack("C")[0]
+      size = fetch_uleb128(@buf)
       dest.size = size
       sbuf = StringIO.new(@buf.read(size))
 
-      len = assert_read(sbuf, 1).unpack("C")[0]
+      len = fetch_uleb128(sbuf)
       len.times do |i|
         fncode = assert_read(sbuf, 1)
         if fncode != "\x60"
           raise LoadError, "not a function definition"
         end
 
-        arglen = assert_read(sbuf, 1).unpack("C")[0]
+        arglen = fetch_uleb128(sbuf)
         arg = []
         arglen.times do
           case ty = assert_read(sbuf, 1).unpack("C")[0]
@@ -138,7 +187,7 @@ module Waru
         end
         dest.defined_types << arg
 
-        retlen = assert_read(sbuf, 1).unpack("C")[0]
+        retlen = fetch_uleb128(sbuf)
         ret = []
         retlen.times do
           case ty = assert_read(sbuf, 1).unpack("C")[0]
@@ -153,14 +202,71 @@ module Waru
         dest.defined_results << ret
       end
 
-      pp dest
+      dest
+    end
+
+    # @rbs return: FunctionSection
+    def self.function_section
+      dest = FunctionSection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      sbuf = StringIO.new(@buf.read(size))
+
+      len = fetch_uleb128(sbuf)
+      len.times do |i|
+        index = fetch_uleb128(sbuf)
+        dest.func_indices << index
+      end
+      dest
+    end
+
+    # @rbs return: CodeSection
+    def self.code_section
+      dest = CodeSection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      sbuf = StringIO.new(@buf.read(size))
+
+      len = fetch_uleb128(sbuf)
+      len.times do |i|
+        ilen = fetch_uleb128(sbuf)
+        code = assert_read(sbuf, ilen).unpack("C*")
+        if code[-1] != 0x0b
+          $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{code[-1].to_s(16)}" 
+        end
+        dest.func_codes << code
+      end
+
+      dest
+    end
+
+    # @rbs return: ExportSection
+    def self.export_section
+      dest = ExportSection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      sbuf = StringIO.new(@buf.read(size))
+
+      len = fetch_uleb128(sbuf)
+      len.times do |i|
+        nlen = fetch_uleb128(sbuf)
+        name = assert_read(sbuf, nlen)
+        kind = assert_read(sbuf, 1).unpack("C")[0]
+        index = fetch_uleb128(sbuf)
+        dest.add_desc do |desc|
+          desc.name = name
+          desc.kind = kind
+          desc.func_index = index
+        end
+      end
+
       dest
     end
 
     # @rbs code: Integer
     # @rbs return: nil
     def self.unimplemented_skip_section(code)
-      $stderr.puts "warning: unimplemented section: #{code.to_s(16).inspect}"
+      $stderr.puts "warning: unimplemented section: 0x0#{code.to_s(16)}"
       size = @buf.read(1).unpack("C")[0]
       @buf.read(size)
       nil

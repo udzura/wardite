@@ -6,7 +6,12 @@ module Waru
       dest = 0
       level = 0
       while b = buf.read(1)
-        upper, lower = (b >> 7), (b & (1 << 7) - 1)
+        if b == nil
+          raise LoadError, "buffer too short"
+        end
+        c = b.ord
+
+        upper, lower = (c >> 7), (c & (1 << 7) - 1)
         dest |= lower << (7 * level)
         if upper == 0
           return dest
@@ -27,7 +32,12 @@ module Waru
       dest = 0
       level = 0
       while b = buf.read(1)
-        upper, lower = (b >> 7), (b & (1 << 7) - 1)
+        if b == nil
+          raise LoadError, "buffer too short"
+        end
+        c = b.ord
+
+        upper, lower = (c >> 7), (c & (1 << 7) - 1)
         dest |= lower << (7 * level)
         if upper == 0
           break
