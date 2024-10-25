@@ -1,0 +1,22 @@
+# Generated from lib/waru/instruction.rb with RBS::Inline
+
+# rbs_inline: enabled
+module Waru
+  class Op
+    attr_accessor code: Symbol
+
+    attr_accessor operand: Array[Object]
+
+    # @rbs code: Symbol
+    # @rbs operand: Array[Object]
+    def initialize: (Symbol code, Array[Object] operand) -> untyped
+
+    # @rbs chr: String
+    # @rbs return: Symbol
+    def self.to_sym: (String chr) -> Symbol
+
+    # @rbs chr: Symbol
+    # @rbs return: Array[Symbol]
+    def self.operand_of: (untyped code) -> Array[Symbol]
+  end
+end

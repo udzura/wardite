@@ -1,15 +1,254 @@
 # Generated from lib/waru.rb with RBS::Inline
 
 module Waru
+  class Section
+    attr_accessor name: String
+
+    attr_accessor code: Integer
+
+    attr_accessor size: Integer
+  end
+
+  class TypeSection < Section
+    attr_accessor defined_types: Array[Array[Symbol]]
+
+    attr_accessor defined_results: Array[Array[Symbol]]
+
+    # @rbs return: void
+    def initialize: () -> void
+  end
+
+  class FunctionSection < Section
+    attr_accessor func_indices: Array[Integer]
+
+    # @rbs return: void
+    def initialize: () -> void
+  end
+
+  class CodeSection < Section
+    class CodeBody
+      attr_accessor locals_count: Array[Integer]
+
+      attr_accessor locals_type: Array[Symbol]
+
+      attr_accessor body: Array[Op]
+
+      # @rbs &blk: (CodeBody) -> void
+      # @rbs return: void
+      def initialize: () { (CodeBody) -> void } -> void
+    end
+
+    attr_accessor func_codes: Array[CodeBody]
+
+    # @rbs return: void
+    def initialize: () -> void
+  end
+
+  class ExportSection < Section
+    class ExportDesc
+      attr_accessor name: String
+
+      attr_accessor kind: Integer
+
+      attr_accessor func_index: Integer
+    end
+
+    # @rbs @exports: Hash[String, ExportDesc]
+    attr_accessor exports: untyped
+
+    def initialize: () -> void
+
+    # @rbs &blk: (ExportDesc) -> void
+    def add_desc: () { (ExportDesc) -> void } -> untyped
+  end
+
   module BinaryLoader
-    # @rbs buf: IO::Buffer
+    extend Waru::Leb128Helpers
+
+    # @rbs buf: File|StringIO
     # @rbs return: Instance
-    def self.load_from_buffer: (IO::Buffer buf) -> Instance
+    def self.load_from_buffer: (File | StringIO buf) -> Instance
+
+    # @rbs return: Integer
+    def self.preamble: () -> Integer
+
+    # @rbs return: Array[Section]
+    def self.sections: () -> Array[Section]
+
+    # @rbs return: TypeSection
+    def self.type_section: () -> TypeSection
+
+    # @rbs return: FunctionSection
+    def self.function_section: () -> FunctionSection
+
+    # @rbs return: CodeSection
+    def self.code_section: () -> CodeSection
+
+    # @rbs buf: StringIO
+    # @rbs return: Array[::Waru::Op]
+    def self.code_body: (StringIO buf) -> Array[::Waru::Op]
+
+    # @rbs return: ExportSection
+    def self.export_section: () -> ExportSection
+
+    # @rbs code: Integer
+    # @rbs return: nil
+    def self.unimplemented_skip_section: (Integer code) -> nil
+
+    # @rbs sbuf: StringIO
+    # @rbs n: Integer
+    # @rbs return: String
+    def self.assert_read: (StringIO sbuf, Integer n) -> String
   end
 
   class Instance
+    attr_accessor version: Integer
+
+    attr_accessor sections: Array[Section]
+
+    attr_accessor runtime: Runtime
+
+    attr_accessor store: Store
+
+    attr_accessor exports: Exports
+
+    # @rbs &blk: (Instance) -> void
+    def initialize: () { (Instance) -> void } -> untyped
+
+    # @rbs return: TypeSection
+    def type_section: () -> TypeSection
+
+    # @rbs return: FunctionSection
+    def function_section: () -> FunctionSection
+
+    # @rbs return: CodeSection
+    def code_section: () -> CodeSection
+
+    # @rbs return: ExportSection
+    def export_section: () -> ExportSection
   end
 
-  class Error < StandardError
+  class Runtime
+    attr_accessor stack: Array[Object]
+
+    attr_accessor call_stack: Array[Frame]
+
+    # @rbs inst: Instance
+    def initialize: (Instance inst) -> untyped
+
+    # @rbs name: String|Symbol
+    # @rbs return: bool
+    def callable?: (String | Symbol name) -> bool
+
+    # @rbs name: String|Symbol
+    # @rbs args: Array[Object]
+    # @rbs return: Object|nil
+    def call: (String | Symbol name, Array[Object] args) -> (Object | nil)
+
+    # @rbs idx: Integer
+    # @rbs args: Array[Object]
+    # @rbs return: Object|nil
+    def call_index: (Integer idx, Array[Object] args) -> (Object | nil)
+
+    # @rbs fn: WasmFunction
+    # @rbs return: Object|nil
+    def invoke_internal: (WasmFunction fn) -> (Object | nil)
+
+    # @rbs return: void
+    def execute!: () -> void
+
+    # @rbs frame: Frame
+    # @rbs insn: Op
+    # @rbs return: void
+    def eval_insn: (Frame frame, Op insn) -> void
+
+    # @rbs finish: Integer
+    # @rbs return: Array[Object]
+    def drained_stack: (Integer finish) -> Array[Object]
+
+    # @rbs name: Symbol
+    # @rbs args: Array[Object]
+    # @rbs return: untyped
+    def method_missing: (Symbol name, *untyped args) -> untyped
+
+    # @rbs name: String|Symbol
+    # @rbs return: bool
+    def respond_to?: (String | Symbol name) -> bool
+  end
+
+  class Frame
+    attr_accessor pc: Integer
+
+    attr_accessor sp: Integer
+
+    attr_accessor body: Array[Op]
+
+    attr_accessor arity: Integer
+
+    attr_accessor locals: Array[Object]
+
+    # @rbs pc: Integer
+    # @rbs sp: Integer
+    # @rbs body: Array[Op]
+    # @rbs arity: Integer
+    # @rbs locals: Array[Object]
+    # @rbs returb: void
+    def initialize: (Integer pc, Integer sp, Array[Op] body, Integer arity, Array[Object] locals) -> untyped
+  end
+
+  class Store
+    attr_accessor funcs: Array[WasmFunction]
+
+    # @rbs inst: Instance
+    # @rbs return: void
+    def initialize: (Instance inst) -> void
+
+    # @rbs idx: Integer
+    def []: (Integer idx) -> untyped
+  end
+
+  class Exports
+    attr_accessor mappings: Hash[String, [ Integer, WasmFunction ]]
+
+    # @rbs export_section: ExportSection
+    # @rbs store: Store
+    # @rbs return: void
+    def initialize: (ExportSection export_section, Store store) -> void
+
+    # @rbs name: String
+    # @rbs return: [Integer, WasmFunction]
+    def []: (String name) -> [ Integer, WasmFunction ]
+  end
+
+  class WasmFunction
+    attr_accessor callsig: Array[Symbol]
+
+    attr_accessor retsig: Array[Symbol]
+
+    attr_accessor code_body: CodeSection::CodeBody
+
+    # @rbs callsig: Array[Symbol]
+    # @rbs retsig: Array[Symbol]
+    # @rbs code_body: CodeSection::CodeBody
+    # @rbs return: void
+    def initialize: (Array[Symbol] callsig, Array[Symbol] retsig, CodeSection::CodeBody code_body) -> void
+
+    # @rbs return: Array[Op]
+    def body: () -> Array[Op]
+
+    # @rbs return: Array[Symbol]
+    def locals_type: () -> Array[Symbol]
+
+    # @rbs return: Array[Integer]
+    def locals_count: () -> Array[Integer]
+  end
+
+  class LoadError < StandardError
+  end
+
+  class ArgumentError < StandardError
+  end
+
+  class EvalError < StandardError
   end
 end

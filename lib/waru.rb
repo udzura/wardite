@@ -10,18 +10,19 @@ require "stringio"
 
 module Waru
   class Section
-    attr_accessor :name
-   
-    attr_accessor :code
+    attr_accessor :name #: String
+  
+    attr_accessor :code #: Integer
 
-    attr_accessor :size
+    attr_accessor :size #: Integer
   end
 
   class TypeSection < Section
-    attr_accessor :defined_types
+    attr_accessor :defined_types #: Array[Array[Symbol]]
 
-    attr_accessor :defined_results
+    attr_accessor :defined_results #: Array[Array[Symbol]]
 
+    # @rbs return: void
     def initialize
       self.name = "Type"
       self.code = 0x1
@@ -32,8 +33,9 @@ module Waru
   end
 
   class FunctionSection < Section
-    attr_accessor :func_indices
+    attr_accessor :func_indices #: Array[Integer]
 
+    # @rbs return: void
     def initialize
       self.name = "Function"
       self.code = 0x3
@@ -44,19 +46,22 @@ module Waru
 
   class CodeSection < Section
     class CodeBody
-      # @rbs locals: Array[Integer]
-      attr_accessor :locals_count
-      # @rbs locals: Array[Integer]
-      attr_accessor :locals_type
-      # @rbs body: Array[Integer]
-      attr_accessor :body
+      attr_accessor :locals_count #: Array[Integer]
+
+      attr_accessor :locals_type #: Array[Symbol]
+
+      attr_accessor :body #: Array[Op]
+
+      # @rbs &blk: (CodeBody) -> void
+      # @rbs return: void
       def initialize(&blk)
         blk.call(self)
       end
     end
-    # @rbs func_codes: Array[CodeBody]
-    attr_accessor :func_codes
 
+    attr_accessor :func_codes #:Array[CodeBody]
+
+    # @rbs return: void
     def initialize
       self.name = "Code"
       self.code = 0xa
@@ -67,23 +72,24 @@ module Waru
 
   class ExportSection < Section
     class ExportDesc
-      attr_accessor :name
+      attr_accessor :name #: String
       
-      attr_accessor :kind
+      attr_accessor :kind #: Integer
 
-      attr_accessor :func_index
+      attr_accessor :func_index #: Integer
     end
 
     # @rbs @exports: Hash[String, ExportDesc]
     attr_accessor :exports
 
-    def initialize
+    def initialize #: void
       self.name = "Export"
       self.code = 0x7
 
       @exports = {}
     end
 
+    # @rbs &blk: (ExportDesc) -> void
     def add_desc(&blk)
       desc = ExportDesc.new
       blk.call(desc)
@@ -126,7 +132,7 @@ module Waru
       version
     end
 
-    # @rbs return: []Section
+    # @rbs return: Array[Section]
     def self.sections
       sections = []
 
@@ -197,7 +203,7 @@ module Waru
           when 0x7e
             arg << :i64
           else
-            raise NotImplementedError, "unsupported for now: #{ty.to_s(16).inspect}"
+            raise NotImplementedError, "unsupported for now: #{ty.inspect}"
           end
         end
         dest.defined_types << arg
@@ -211,7 +217,7 @@ module Waru
           when 0x7e
             ret << :i64
           else
-            raise NotImplementedError, "unsupported for now: #{ty.to_s(16).inspect}"
+            raise NotImplementedError, "unsupported for now: #{ty.inspect}"
           end
         end
         dest.defined_results << ret
@@ -246,8 +252,12 @@ module Waru
       len.times do |i|
         ilen = fetch_uleb128(sbuf)
         code = assert_read(sbuf, ilen)
-        if code[-1].ord != 0x0b
-          $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{code[-1].ord.to_s(16)}" 
+        last_code = code[-1]
+        if ! last_code
+          raise "[BUG] empty code fetched" # guard for steep check
+        end
+        if last_code.ord != 0x0b
+          $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{last_code.ord}" 
         end
         cbuf = StringIO.new(code)
         locals_count = []
@@ -306,7 +316,12 @@ module Waru
       len.times do |i|
         nlen = fetch_uleb128(sbuf)
         name = assert_read(sbuf, nlen)
-        kind = assert_read(sbuf, 1).unpack("C")[0]
+        kind_ = assert_read(sbuf, 1).unpack("C")
+        if kind_.size == 0
+          raise "[BUG] empty unpacked string" # guard rbs
+        end
+        kind = kind_[0]
+
         index = fetch_uleb128(sbuf)
         dest.add_desc do |desc|
           desc.name = name
@@ -321,7 +336,7 @@ module Waru
     # @rbs code: Integer
     # @rbs return: nil
     def self.unimplemented_skip_section(code)
-      $stderr.puts "warning: unimplemented section: 0x0#{code.to_s(16)}"
+      $stderr.puts "warning: unimplemented section: 0x0#{code}"
       size = @buf.read(1).unpack("C")[0]
       @buf.read(size)
       nil
@@ -340,18 +355,17 @@ module Waru
   end
 
   class Instance
-    # @rbs @version: Integer
-    attr_accessor :version
+    attr_accessor :version #: Integer
 
-    # @rbs @sections: Array[Section]
-    attr_accessor :sections
+    attr_accessor :sections #:Array[Section]
 
-    attr_accessor :runtime
+    attr_accessor :runtime #: Runtime
 
-    attr_accessor :store
+    attr_accessor :store #: Store
 
-    attr_accessor :exports
+    attr_accessor :exports #: Exports
 
+    # @rbs &blk: (Instance) -> void
     def initialize(&blk)
       blk.call(self)
 
@@ -360,45 +374,55 @@ module Waru
       @runtime = Runtime.new(self)
     end
 
+    # @rbs return: TypeSection
     def type_section
       @sections.find{|s| s.code == Waru::Const::SectionType }
     end
 
+    # @rbs return: FunctionSection
     def function_section
       @sections.find{|s| s.code == Const::SectionFunction }
     end
 
+    # @rbs return: CodeSection
     def code_section
       @sections.find{|s| s.code == Const::SectionCode }
     end
 
+    # @rbs return: ExportSection
     def export_section
       @sections.find{|s| s.code == Const::SectionExport }
     end
   end
 
   class Runtime
-    attr_accessor :stack
+    attr_accessor :stack #: Array[Object]
 
-    attr_accessor :call_stack
+    attr_accessor :call_stack #: Array[Frame]
 
+    # @rbs inst: Instance
     def initialize(inst)
       @stack = []
       @call_stack = []
       @instance = inst
     end
 
+    # @rbs name: String|Symbol
+    # @rbs return: bool
     def callable?(name)
       !! @instance.exports[name.to_s]
     end
 
+    # @rbs name: String|Symbol
+    # @rbs args: Array[Object]
+    # @rbs return: Object|nil
     def call(name, args)
       if !callable?(name)
-        raise NoMethodError "function #{name} not found"
+        raise ::NoMethodError "function #{name} not found"
       end
       kind, fn = @instance.exports[name.to_s]
       if kind != 0
-        raise NoMethodError "#{name} is not a function"
+        raise ::NoMethodError "#{name} is not a function"
       end
       if fn.callsig.size != args.size
         raise ArgumentError, "unmatch arg size"
@@ -410,11 +434,14 @@ module Waru
       invoke_internal(fn)
     end
 
+    # @rbs idx: Integer
+    # @rbs args: Array[Object]
+    # @rbs return: Object|nil
     def call_index(idx, args)
       fn = @instance.store[idx]
       if !fn
         # TODO: own error NoFunctionError
-        raise NoMethodError, "func #{idx} not found"
+        raise ::NoMethodError, "func #{idx} not found"
       end
       if fn.callsig.size != args.size
         raise ArgumentError, "unmatch arg size"
@@ -426,10 +453,15 @@ module Waru
       invoke_internal(fn)
     end
 
+    # @rbs fn: WasmFunction
+    # @rbs return: Object|nil
     def invoke_internal(fn)
       local_start = stack.size - fn.callsig.size
       locals = stack[local_start..]
-      self.stack = stack[0...local_start]
+      if !locals
+        raise LoadError, "stack too short"
+      end
+      self.stack = drained_stack(local_start)
 
       fn.locals_type.each_with_index do |typ, i|
         case typ
@@ -462,6 +494,7 @@ module Waru
       return nil
     end
 
+    # @rbs return: void
     def execute!
       loop do
         cur_frame = self.call_stack.last #: Frame
@@ -477,10 +510,19 @@ module Waru
       end
     end
 
+    # @rbs frame: Frame
+    # @rbs insn: Op
+    # @rbs return: void
     def eval_insn(frame, insn)
       case insn.code
       when :local_get
         idx = insn.operand[0]
+        if !idx
+          raise EvalError, "[BUG] local operand not found"
+        end
+        if ! idx.is_a?(Integer)
+          raise EvalError, "[BUG] invalid type of operand"
+        end
         local = frame.locals[idx]
         if !local
           raise EvalError, "local not found"
@@ -488,7 +530,7 @@ module Waru
         stack.push(local)
       when :i32_add
         right, left = stack.pop, stack.pop
-        if !right || !left
+        if !right.is_a?(Integer) || !left.is_a?(Integer)
           raise EvalError, "maybe empty stack"
         end
         stack.push(left + right)
@@ -508,14 +550,28 @@ module Waru
           if !value
             raise EvalError, "cannot obtain return value"
           end
-          self.stack = stack[0...old_frame.sp]
+          self.stack = drained_stack(old_frame.sp)
           stack.push value
         else
-          self.stack = stack[0...old_frame.sp]
+          self.stack = drained_stack(old_frame.sp)
         end
       end
     end
 
+    # @rbs finish: Integer
+    # @rbs return: Array[Object]
+    def drained_stack(finish)
+      drained = stack[0...finish]
+      if ! drained
+        $stderr.puts "warning: state of stack: #{stack.inspect}"
+        raise EvalError, "stack too short"
+      end
+      return drained
+    end
+
+    # @rbs name: Symbol
+    # @rbs args: Array[Object]
+    # @rbs return: untyped
     def method_missing(name, *args)
       if callable? name
         call(name, args)
@@ -524,20 +580,29 @@ module Waru
       end
     end
 
+    # @rbs name: String|Symbol
+    # @rbs return: bool
     def respond_to? name
       callable?(name) || super
     end
   end
 
   class Frame
-    attr_accessor :pc, :sp
+    attr_accessor :pc #: Integer
+    attr_accessor :sp #: Integer
 
-    attr_accessor :body
+    attr_accessor :body #: Array[Op]
 
-    attr_accessor :arity
+    attr_accessor :arity #: Integer
 
-    attr_accessor :locals
+    attr_accessor :locals #: Array[Object]
 
+    # @rbs pc: Integer
+    # @rbs sp: Integer
+    # @rbs body: Array[Op]
+    # @rbs arity: Integer
+    # @rbs locals: Array[Object]
+    # @rbs returb: void
     def initialize(pc, sp, body, arity, locals)
       @pc = pc
       @sp = sp
@@ -548,7 +613,10 @@ module Waru
   end
 
   class Store
-    attr_accessor :funcs
+    attr_accessor :funcs #: Array[WasmFunction]
+
+    # @rbs inst: Instance
+    # @rbs return: void
     def initialize(inst)
       type_section = inst.type_section
       func_section = inst.function_section
@@ -564,14 +632,18 @@ module Waru
       end
     end
 
+    # @rbs idx: Integer
     def [](idx)
       @funcs[idx]
     end
   end
 
   class Exports
-    # @rbs mappings: Hash[String, WasmFunction]
-    attr_accessor :mappings
+    attr_accessor :mappings #: Hash[String, [Integer, WasmFunction]]
+
+    # @rbs export_section: ExportSection
+    # @rbs store: Store
+    # @rbs return: void
     def initialize(export_section, store)
       @mappings = {}
       export_section.exports.each_pair do |name, desc|
@@ -580,26 +652,24 @@ module Waru
       end
     end
 
+    # @rbs name: String
+    # @rbs return: [Integer, WasmFunction]
     def [](name)
       @mappings[name]
-    end
-
-    def method_missing(name, *args)
-      if fn = @mappings[name]
-        fn       
-      else
-        super
-      end
     end
   end
 
   class WasmFunction
-    attr_accessor :callsig
+    attr_accessor :callsig #: Array[Symbol]
 
-    attr_accessor :retsig
+    attr_accessor :retsig #: Array[Symbol]
 
-    attr_accessor :code_body
+    attr_accessor :code_body #: CodeSection::CodeBody
 
+    # @rbs callsig: Array[Symbol]
+    # @rbs retsig: Array[Symbol]
+    # @rbs code_body: CodeSection::CodeBody
+    # @rbs return: void
     def initialize(callsig, retsig, code_body)
       @callsig = callsig
       @retsig = retsig
@@ -607,14 +677,17 @@ module Waru
       @code_body = code_body
     end
 
+    # @rbs return: Array[Op]
     def body
       code_body.body
     end
 
+    # @rbs return: Array[Symbol]
     def locals_type
       code_body.locals_type
     end    
 
+    # @rbs return: Array[Integer]
     def locals_count
       code_body.locals_count
     end    

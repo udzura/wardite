@@ -1,6 +1,7 @@
+# rbs_inline: enabled
 module Waru
   module Leb128Helpers
-    # @rbs buf: File|IO::Buffer
+    # @rbs buf: File|StringIO
     # @rbs return: Integer
     def fetch_uleb128(buf)
       dest = 0
@@ -26,7 +27,7 @@ module Waru
       raise "unreachable! debug: dest = #{dest} level = #{level}"
     end
 
-    # @rbs buf: File|IO::Buffer
+    # @rbs buf: File|StringIO
     # @rbs return: Integer
     def fetch_sleb128(buf)
       dest = 0

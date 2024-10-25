@@ -1,17 +1,19 @@
+# rbs_inline: enabled
 module Waru
   class Op
-    # TODO: enumerize
+    attr_accessor :code #: Symbol
+
+    attr_accessor :operand #: Array[Object]
+
     # @rbs code: Symbol
-    attr_accessor :code
-
-    # @rbs Array[any]
-    attr_accessor :operand
-
+    # @rbs operand: Array[Object]
     def initialize(code, operand)
       @code = code
       @operand = operand
     end
 
+    # @rbs chr: String
+    # @rbs return: Symbol
     def self.to_sym(chr)
       case chr
       when "\u000b"
@@ -21,10 +23,12 @@ module Waru
       when "\u006a"
         :i32_add
       else
-        raise NotImplementedError, "unimplemented: 0x0#{chr.to_s(16)}"
+        raise NotImplementedError, "unimplemented: #{chr.inspect}"
       end
     end
 
+    # @rbs chr: Symbol
+    # @rbs return: Array[Symbol]
     def self.operand_of(code)
       case code
       when :local_get

@@ -1,0 +1,34 @@
+# Generated from lib/waru/const.rb with RBS::Inline
+
+# rbs_inline: enabled
+module Waru
+  module Const
+    # Section Code
+    # @see https://www.w3.org/TR/wasm-core-1/#sections%E2%91%A0
+    SectionCustom: Integer
+
+    SectionType: Integer
+
+    SectionImport: Integer
+
+    SectionFunction: Integer
+
+    SectionTable: Integer
+
+    SectionMemory: Integer
+
+    SectionGlobal: Integer
+
+    SectionExport: Integer
+
+    SectionStart: Integer
+
+    SectionElement: Integer
+
+    SectionCode: Integer
+
+    SectionData: Integer
+  end
+
+  include Const
+end
