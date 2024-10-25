@@ -103,11 +103,10 @@ module Waru
     # @rbs buf: File|StringIO
     # @rbs return: Instance
     def self.load_from_buffer(buf)
-      @buf = buf #: File
+      @buf = buf
 
       version = preamble
       sections_ = sections
-      # TBA...
 
       return Instance.new do |i|
         i.version = version
@@ -118,12 +117,18 @@ module Waru
     # @rbs return: Integer
     def self.preamble
       asm = @buf.read 4
+      if !asm
+        raise LoadError, "buffer too short"
+      end
       if asm != "\u0000asm"
         raise LoadError, "invalid preamble"
       end
 
-      version = @buf.read(4)
-        .to_enum(:chars)
+      vstr = @buf.read(4)
+      if !vstr
+        raise LoadError, "buffer too short"
+      end
+      version = vstr.to_enum(:chars)
         .with_index
         .inject(0) {|dest, (c, i)| dest | (c.ord << i*8) }
       if version != 1
@@ -134,14 +139,14 @@ module Waru
 
     # @rbs return: Array[Section]
     def self.sections
-      sections = []
+      sections = [] #: Array[Section]
 
       loop do
         byte = @buf.read(1)
-        if byte == nil
+        if !byte
           break
         end
-        code = byte.unpack("C")[0]
+        code = byte.ord
 
         section = case code
           when Waru::SectionType
@@ -185,7 +190,7 @@ module Waru
 
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size))
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
@@ -197,7 +202,7 @@ module Waru
         arglen = fetch_uleb128(sbuf)
         arg = []
         arglen.times do
-          case ty = assert_read(sbuf, 1).unpack("C")[0]
+          case ty = assert_read(sbuf, 1)&.ord
           when 0x7f
             arg << :i32
           when 0x7e
@@ -211,7 +216,7 @@ module Waru
         retlen = fetch_uleb128(sbuf)
         ret = []
         retlen.times do
-          case ty = assert_read(sbuf, 1).unpack("C")[0]
+          case ty = assert_read(sbuf, 1)&.ord
           when 0x7f
             ret << :i32
           when 0x7e
@@ -231,7 +236,7 @@ module Waru
       dest = FunctionSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size))
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
@@ -246,7 +251,7 @@ module Waru
       dest = CodeSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size))
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
@@ -266,7 +271,7 @@ module Waru
         locals_len.times do
           type_count = fetch_uleb128(cbuf)
           locals_count << type_count
-          value_type = assert_read(cbuf, 1).unpack("C*")[0]
+          value_type = assert_read(cbuf, 1)&.ord
           locals_type << value_type
         end
         body = code_body(cbuf)
@@ -310,7 +315,7 @@ module Waru
       dest = ExportSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size))
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
@@ -337,7 +342,7 @@ module Waru
     # @rbs return: nil
     def self.unimplemented_skip_section(code)
       $stderr.puts "warning: unimplemented section: 0x0#{code}"
-      size = @buf.read(1).unpack("C")[0]
+      size = @buf.read(1)&.ord
       @buf.read(size)
       nil
     end
@@ -360,7 +365,7 @@ module Waru
   class Instance
     attr_accessor :version #: Integer
 
-    attr_accessor :sections #:Array[Section]
+    attr_accessor :sections #: Array[Section]
 
     attr_accessor :runtime #: Runtime
 
