@@ -472,17 +472,17 @@ module Waru
       invoke_internal(fn)
     end
 
-    # @rbs fn: WasmFunction
+    # @rbs wasm_function: WasmFunction
     # @rbs return: Object|nil
-    def invoke_internal(fn)
-      local_start = stack.size - fn.callsig.size
+    def invoke_internal(wasm_function)
+      local_start = stack.size - wasm_function.callsig.size
       locals = stack[local_start..]
       if !locals
         raise LoadError, "stack too short"
       end
       self.stack = drained_stack(local_start)
 
-      fn.locals_type.each_with_index do |typ, i|
+      wasm_function.locals_type.each_with_index do |typ, i|
         case typ
         when :i32, :u32
           # locals.push Local::I32(typ, 0)...
@@ -493,8 +493,8 @@ module Waru
         end
       end
 
-      arity = fn.retsig.size
-      frame = Frame.new(-1, stack.size, fn.body, arity, locals)
+      arity = wasm_function.retsig.size
+      frame = Frame.new(-1, stack.size, wasm_function.body, arity, locals)
       self.call_stack.push(frame)
 
       execute!
@@ -646,8 +646,8 @@ module Waru
         callsig = type_section.defined_types[sigindex]
         retsig = type_section.defined_results[sigindex]
         codes = code_section.func_codes[findex]
-        fn = WasmFunction.new(callsig, retsig, codes)
-        self.funcs << fn
+        wasm_function = WasmFunction.new(callsig, retsig, codes)
+        self.funcs << wasm_function
       end
     end
 

@@ -150,9 +150,9 @@ module Waru
     # @rbs return: Object|nil
     def call_index: (Integer idx, Array[Object] args) -> (Object | nil)
 
-    # @rbs fn: WasmFunction
+    # @rbs wasm_function: WasmFunction
     # @rbs return: Object|nil
-    def invoke_internal: (WasmFunction fn) -> (Object | nil)
+    def invoke_internal: (WasmFunction wasm_function) -> (Object | nil)
 
     # @rbs return: void
     def execute!: () -> void
