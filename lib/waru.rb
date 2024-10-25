@@ -419,6 +419,8 @@ module Waru
 
     attr_accessor :call_stack #: Array[Frame]
 
+    attr_reader :instance #: Instance
+
     # @rbs inst: Instance
     def initialize(inst)
       @stack = []
