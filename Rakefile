@@ -9,4 +9,11 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList["test/**/*_test.rb"]
 end
 
-task default: :test
+desc "Run rbs-inline and steep"
+task :check do
+  sh "bundle exec rbs-inline --output lib/"
+  sh "bundle exec steep check"
+end
+
+task default: %i[test check]
+
