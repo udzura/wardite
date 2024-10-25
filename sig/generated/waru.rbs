@@ -243,6 +243,9 @@ module Waru
     def locals_count: () -> Array[Integer]
   end
 
+  class GenericError < StandardError
+  end
+
   class LoadError < StandardError
   end
 

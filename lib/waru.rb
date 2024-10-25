@@ -316,11 +316,11 @@ module Waru
       len.times do |i|
         nlen = fetch_uleb128(sbuf)
         name = assert_read(sbuf, nlen)
-        kind_ = assert_read(sbuf, 1).unpack("C")
-        if kind_.size == 0
+        kind_ = assert_read(sbuf, 1)
+        kind = kind_[0]&.ord
+        if !kind
           raise "[BUG] empty unpacked string" # guard rbs
         end
-        kind = kind_[0]
 
         index = fetch_uleb128(sbuf)
         dest.add_desc do |desc|
@@ -347,7 +347,10 @@ module Waru
     # @rbs return: String
     def self.assert_read(sbuf, n)
       ret = sbuf.read n
-      if ret == nil || ret.size != n
+      if !ret
+        raise LoadError, "too short section size"
+      end
+      if ret.size != n
         raise LoadError, "too short section size"
       end
       ret
@@ -376,22 +379,38 @@ module Waru
 
     # @rbs return: TypeSection
     def type_section
-      @sections.find{|s| s.code == Waru::Const::SectionType }
+      sec = @sections.find{|s| s.code == Waru::Const::SectionType }
+      if !sec.is_a?(TypeSection)
+        raise(GenericError, "instance doesn't have required section")
+      end
+      sec
     end
 
     # @rbs return: FunctionSection
     def function_section
-      @sections.find{|s| s.code == Const::SectionFunction }
+      sec = @sections.find{|s| s.code == Const::SectionFunction }
+      if !sec.is_a?(FunctionSection)
+        raise(GenericError, "instance doesn't have required section")
+      end
+      sec
     end
 
     # @rbs return: CodeSection
     def code_section
-      @sections.find{|s| s.code == Const::SectionCode }
+      sec = @sections.find{|s| s.code == Const::SectionCode }
+      if !sec.is_a?(CodeSection)
+        raise(GenericError, "instance doesn't have required section")
+      end
+      sec
     end
 
     # @rbs return: ExportSection
     def export_section
-      @sections.find{|s| s.code == Const::SectionExport }
+      sec = @sections.find{|s| s.code == Const::SectionExport }
+      if !sec.is_a?(ExportSection)
+        raise(GenericError, "instance doesn't have required section")
+      end
+      sec
     end
   end
 
@@ -418,11 +437,11 @@ module Waru
     # @rbs return: Object|nil
     def call(name, args)
       if !callable?(name)
-        raise ::NoMethodError "function #{name} not found"
+        raise ::NoMethodError, "function #{name} not found"
       end
       kind, fn = @instance.exports[name.to_s]
       if kind != 0
-        raise ::NoMethodError "#{name} is not a function"
+        raise ::NoMethodError, "#{name} is not a function"
       end
       if fn.callsig.size != args.size
         raise ArgumentError, "unmatch arg size"
@@ -693,6 +712,7 @@ module Waru
     end    
   end
 
+  class GenericError < StandardError; end
   class LoadError < StandardError; end
   class ArgumentError < StandardError; end
   class EvalError < StandardError; end
