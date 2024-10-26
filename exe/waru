@@ -1,3 +1,15 @@
 #!/usr/bin/env ruby
 
-puts "Dummy"
+require "waru"
+
+path = ARGV[0]
+method = ARGV[1]
+args = ARGV[2..-1] || []
+
+f = File.open(path)
+instance = Waru::BinaryLoader::load_from_buffer(f);
+if !method && instance.runtime.respond_to?(:_start)
+  instance.runtime._start
+else
+  instance.runtime.call(method, args)
+end
