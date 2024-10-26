@@ -1,0 +1,24 @@
+# Generated from lib/waru/wasi.rb with RBS::Inline
+
+# rbs_inline: enabled
+module Waru
+  class WasiSnapshotPreview1
+    attr_accessor fd_table: Array[IO]
+
+    def initialize: () -> untyped
+
+    # @rbs store: Store
+    # @rbs args: Array[Object]
+    # @rbs return: Object
+    def fd_write: (Store store, Array[Object] args) -> Object
+
+    # @rbs return: Hash[Symbol, Proc]
+    def to_module: () -> Hash[Symbol, Proc]
+
+    private
+
+    # @rbs buf: String|nil
+    # @rbs retrun: Integer
+    def unpack_le_int: (String | nil buf) -> untyped
+  end
+end

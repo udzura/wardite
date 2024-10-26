@@ -5,6 +5,7 @@ require_relative "waru/version"
 require_relative "waru/leb128"
 require_relative "waru/const"
 require_relative "waru/instruction"
+require_relative "waru/wasi"
 
 require "stringio"
 
@@ -167,12 +168,18 @@ module Waru
 
     # @rbs buf: File|StringIO
     # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
+    # @rbs enable_wasi: boolish
     # @rbs return: Instance
-    def self.load_from_buffer(buf, import_object: {})
+    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true)
       @buf = buf
 
       version = preamble
       sections_ = sections
+
+      if enable_wasi
+        wasi_env = Waru::WasiSnapshotPreview1.new       
+        import_object[:wasi_snapshot_preview1] = wasi_env.to_module
+      end
 
       return Instance.new(import_object) do |i|
         i.version = version
@@ -725,8 +732,7 @@ module Waru
       when WasmFunction
         invoke_internal(fn)
       when ExternalFunction
-        # invoke_external(fn)
-        nil
+        invoke_external(fn)
       else
         raise GenericError, "registered pointer is not to a function"
       end
@@ -784,13 +790,13 @@ module Waru
     def invoke_external(external_function)
       local_start = stack.size - external_function.callsig.size
       args = stack[local_start..]
-      if args
+      if !args
         raise LoadError, "stack too short"
       end
       self.stack = drained_stack(local_start)
 
       proc = external_function.callable
-      proc.call(self.instance.store, args)
+      proc[self.instance.store, args]
     end
 
     # @rbs return: void

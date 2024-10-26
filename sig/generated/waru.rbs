@@ -111,8 +111,9 @@ module Waru
 
     # @rbs buf: File|StringIO
     # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
+    # @rbs enable_wasi: boolish
     # @rbs return: Instance
-    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, Hash[Symbol, Proc]]) -> Instance
+    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, Hash[Symbol, Proc]], ?enable_wasi: boolish) -> Instance
 
     # @rbs return: Integer
     def self.preamble: () -> Integer
