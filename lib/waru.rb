@@ -331,7 +331,7 @@ module Waru
           type_count = fetch_uleb128(cbuf)
           locals_count << type_count
           value_type = assert_read(cbuf, 1)&.ord
-          locals_type << value_type
+          locals_type << Op.i2type(value_type || -1)
         end
         body = code_body(cbuf)
         dest.func_codes << CodeSection::CodeBody.new do |b|
@@ -659,12 +659,29 @@ module Waru
           raise EvalError, "local not found"
         end
         stack.push(local)
+      when :local_set
+        idx = insn.operand[0]
+        if !idx.is_a?(Integer)
+          raise EvalError, "[BUG] invalid type of operand"
+        end
+        value = stack.pop
+        if !value
+          raise EvalError, "value should be pushed"
+        end
+        frame.locals[idx] = value
+
       when :i32_add
         right, left = stack.pop, stack.pop
         if !right.is_a?(Integer) || !left.is_a?(Integer)
           raise EvalError, "maybe empty stack"
         end
         stack.push(left + right)
+      when :i32_const
+        const = insn.operand[0]
+        if !const.is_a?(Integer)
+          raise EvalError, "[BUG] invalid type of operand"
+        end
+        stack.push(const)
 
       when :call
         idx = insn.operand[0]
