@@ -534,8 +534,7 @@ module Waru
       when WasmFunction
         invoke_internal(fn)
       when ExternalFunction
-        # invoke_external(fn)
-        nil
+        invoke_external(fn)
       else
         raise GenericError, "registered pointer is not to a function"
       end
@@ -615,6 +614,20 @@ module Waru
       return nil
     end
 
+    # @rbs external_function: ExternalFunction
+    # @rbs return: Object|nil
+    def invoke_external(external_function)
+      local_start = stack.size - external_function.callsig.size
+      args = stack[local_start..]
+      if args
+        raise LoadError, "stack too short"
+      end
+      self.stack = drained_stack(local_start)
+
+      proc = external_function.callable
+      proc.call(self.instance.store, args)
+    end
+
     # @rbs return: void
     def execute!
       loop do
@@ -661,8 +674,8 @@ module Waru
         when WasmFunction
           push_frame(fn)
         when ExternalFunction
-          # invoke_external(fn)
-          raise "todo!"
+          ret = invoke_external(fn)
+          self.stack.push ret if ret
         else
           raise GenericError, "got a non-function pointer"
         end
@@ -770,7 +783,6 @@ module Waru
         end
         
         ext_function = ExternalFunction.new(callsig, retsig, imported_proc)
-        pp "added", ext_function
         self.funcs << ext_function
       end
 
@@ -779,7 +791,6 @@ module Waru
         retsig = type_section.defined_results[sigindex]
         codes = code_section.func_codes[findex]
         wasm_function = WasmFunction.new(callsig, retsig, codes)
-        pp "added", wasm_function
         self.funcs << wasm_function
       end
     end

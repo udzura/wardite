@@ -188,6 +188,10 @@ module Waru
     # @rbs return: Object|nil
     def invoke_internal: (WasmFunction wasm_function) -> (Object | nil)
 
+    # @rbs external_function: ExternalFunction
+    # @rbs return: Object|nil
+    def invoke_external: (ExternalFunction external_function) -> (Object | nil)
+
     # @rbs return: void
     def execute!: () -> void
 
