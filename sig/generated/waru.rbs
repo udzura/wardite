@@ -302,6 +302,8 @@ module Waru
     # @rbs max: Integer|nil
     # @rbs return: void
     def initialize: (Integer min, Integer | nil max) -> void
+
+    def inspect: () -> untyped
   end
 
   class WasmData

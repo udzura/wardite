@@ -862,7 +862,6 @@ module Waru
         data_end = at + 4 # sizeof(i32)
         memory = self.instance.store.memories[0] || raise("[BUG] no memory")
         memory.data[at...data_end] = [value].pack("I")
-        pp memory.data[at...data_end]
 
       when :call
         idx = insn.operand[0]
@@ -1019,8 +1018,7 @@ module Waru
               raise GenericError, "data too large for memory"
             end
 
-            memory.data[data_start..data_end] = segment.data
-            pp memory.data
+            memory.data[data_start...data_end] = segment.data
           end
         end
       end
@@ -1043,6 +1041,10 @@ module Waru
     def initialize(min, max)
       @data = String.new("\0" * (min * 64 * 1024), capacity: min * 64 * 1024)
       @max = max
+    end
+
+    def inspect
+      "#<Waru::Memory initial=#{@data.size.inspect} max=#{@max.inspect} @data=#{@data[0...64].inspect}...>"
     end
   end
 
