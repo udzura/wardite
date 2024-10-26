@@ -79,8 +79,7 @@ module Waru
       attr_accessor :func_index #: Integer
     end
 
-    # @rbs @exports: Hash[String, ExportDesc]
-    attr_accessor :exports
+    attr_accessor :exports #: Hash[String, ExportDesc]
 
     def initialize #: void
       self.name = "Export"
@@ -97,18 +96,47 @@ module Waru
     end
   end
 
+  class ImportSection < Section
+    class ImportDesc
+      attr_accessor :module_name #: String
+
+      attr_accessor :name #: String
+      
+      attr_accessor :kind #: Integer
+
+      attr_accessor :sig_index #: Integer
+    end
+
+    attr_accessor :imports #: Array[ImportDesc]
+
+    def initialize #: void
+      self.name = "Import"
+      self.code = 0x2
+
+      @imports = []
+    end
+
+    # @rbs &blk: (ImportDesc) -> void
+    def add_desc(&blk)
+      desc = ImportDesc.new
+      blk.call(desc) if blk
+      self.imports << desc
+    end
+  end
+
   module BinaryLoader
     extend Waru::Leb128Helpers
 
     # @rbs buf: File|StringIO
+    # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
     # @rbs return: Instance
-    def self.load_from_buffer(buf)
+    def self.load_from_buffer(buf, import_object: {})
       @buf = buf
 
       version = preamble
       sections_ = sections
 
-      return Instance.new do |i|
+      return Instance.new(import_object) do |i|
         i.version = version
         i.sections = sections_
       end
@@ -152,7 +180,7 @@ module Waru
           when Waru::SectionType
             type_section
           when Waru::SectionImport
-            unimplemented_skip_section(code)
+            import_section
           when Waru::SectionFunction
             function_section
           when Waru::SectionTable
@@ -226,6 +254,37 @@ module Waru
           end
         end
         dest.defined_results << ret
+      end
+
+      dest
+    end
+
+    # @rbs return: ImportSection
+    def self.import_section
+      dest = ImportSection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+
+      len = fetch_uleb128(sbuf)
+      len.times do |i|
+        mlen = fetch_uleb128(sbuf)
+        module_name = assert_read(sbuf, mlen)
+        nlen = fetch_uleb128(sbuf)
+        name = assert_read(sbuf, nlen)
+        kind_ = assert_read(sbuf, 1)
+        kind = kind_[0]&.ord
+        if !kind
+          raise "[BUG] empty unpacked string" # guard rbs
+        end
+
+        index = fetch_uleb128(sbuf)
+        dest.add_desc do |desc|
+          desc.module_name = module_name
+          desc.name = name
+          desc.kind = kind
+          desc.sig_index = index
+        end
       end
 
       dest
@@ -373,13 +432,27 @@ module Waru
 
     attr_accessor :exports #: Exports
 
+    attr_reader :import_object #: Hash[Symbol, Hash[Symbol, Proc]]
+
+    # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
     # @rbs &blk: (Instance) -> void
-    def initialize(&blk)
+    def initialize(import_object, &blk)
       blk.call(self)
+      @import_object = import_object
 
       @store = Store.new(self)
       @exports = Exports.new(self.export_section, store)
       @runtime = Runtime.new(self)
+    end
+
+    # @rbs return: ImportSection
+    def import_section
+      sec = @sections.find{|s| s.code == Const::SectionImport }
+      if !sec.is_a?(ImportSection)
+        # returns dummy empty section
+        return ImportSection.new
+      end
+      sec
     end
 
     # @rbs return: TypeSection
@@ -457,14 +530,22 @@ module Waru
         stack.push arg
       end
 
-      invoke_internal(fn)
+      case fn
+      when WasmFunction
+        invoke_internal(fn)
+      when ExternalFunction
+        # invoke_external(fn)
+        nil
+      else
+        raise GenericError, "registered pointer is not to a function"
+      end
     end
 
     # @rbs idx: Integer
     # @rbs args: Array[Object]
     # @rbs return: Object|nil
     def call_index(idx, args)
-      fn = @instance.store[idx]
+      fn = self.instance.store[idx]
       if !fn
         # TODO: own error NoFunctionError
         raise ::NoMethodError, "func #{idx} not found"
@@ -476,12 +557,20 @@ module Waru
         stack.push arg
       end
 
-      invoke_internal(fn)
+      case fn
+      when WasmFunction
+        invoke_internal(fn)
+      when ExternalFunction
+        # invoke_external(fn)
+        nil
+      else
+        raise GenericError, "registered pointer is not to a function"
+      end
     end
 
     # @rbs wasm_function: WasmFunction
-    # @rbs return: Object|nil
-    def invoke_internal(wasm_function)
+    # @rbs return: void
+    def push_frame(wasm_function)
       local_start = stack.size - wasm_function.callsig.size
       locals = stack[local_start..]
       if !locals
@@ -503,7 +592,13 @@ module Waru
       arity = wasm_function.retsig.size
       frame = Frame.new(-1, stack.size, wasm_function.body, arity, locals)
       self.call_stack.push(frame)
+    end
 
+    # @rbs wasm_function: WasmFunction
+    # @rbs return: Object|nil
+    def invoke_internal(wasm_function)
+      arity = wasm_function.retsig.size
+      push_frame(wasm_function)
       execute!
 
       if arity > 0
@@ -543,10 +638,7 @@ module Waru
       case insn.code
       when :local_get
         idx = insn.operand[0]
-        if !idx
-          raise EvalError, "[BUG] local operand not found"
-        end
-        if ! idx.is_a?(Integer)
+        if !idx.is_a?(Integer)
           raise EvalError, "[BUG] invalid type of operand"
         end
         local = frame.locals[idx]
@@ -560,6 +652,20 @@ module Waru
           raise EvalError, "maybe empty stack"
         end
         stack.push(left + right)
+
+      when :call
+        idx = insn.operand[0]
+        raise EvalError, "[BUG] local operand not found" if !idx.is_a?(Integer)
+        fn = self.instance.store.funcs[idx]
+        case fn
+        when WasmFunction
+          push_frame(fn)
+        when ExternalFunction
+          # invoke_external(fn)
+          raise "todo!"
+        else
+          raise GenericError, "got a non-function pointer"
+        end
 
       when :end
         old_frame = call_stack.pop
@@ -639,7 +745,7 @@ module Waru
   end
 
   class Store
-    attr_accessor :funcs #: Array[WasmFunction]
+    attr_accessor :funcs #: Array[WasmFunction|ExternalFunction]
 
     # @rbs inst: Instance
     # @rbs return: void
@@ -647,13 +753,33 @@ module Waru
       type_section = inst.type_section
       func_section = inst.function_section
       code_section = inst.code_section
+
+      import_section = inst.import_section
       @funcs = []
 
-      func_section.func_indices.each_with_index do |findex, sigindex|
+      import_section.imports.each do |desc|
+        callsig = type_section.defined_types[desc.sig_index]
+        retsig = type_section.defined_results[desc.sig_index]
+        imported_module = inst.import_object[desc.module_name.to_sym]
+        if !imported_module
+          raise ::NameError, "module #{desc.module_name} not found"
+        end
+        imported_proc = imported_module[desc.name.to_sym]
+        if !imported_proc
+          raise ::NameError, "function #{desc.module_name}.#{desc.name} not found"
+        end
+        
+        ext_function = ExternalFunction.new(callsig, retsig, imported_proc)
+        pp "added", ext_function
+        self.funcs << ext_function
+      end
+
+      func_section.func_indices.each_with_index do |sigindex, findex|
         callsig = type_section.defined_types[sigindex]
         retsig = type_section.defined_results[sigindex]
         codes = code_section.func_codes[findex]
         wasm_function = WasmFunction.new(callsig, retsig, codes)
+        pp "added", wasm_function
         self.funcs << wasm_function
       end
     end
@@ -665,7 +791,7 @@ module Waru
   end
 
   class Exports
-    attr_accessor :mappings #: Hash[String, [Integer, WasmFunction]]
+    attr_accessor :mappings #: Hash[String, [Integer, WasmFunction|ExternalFunction]]
 
     # @rbs export_section: ExportSection
     # @rbs store: Store
@@ -679,12 +805,13 @@ module Waru
     end
 
     # @rbs name: String
-    # @rbs return: [Integer, WasmFunction]
+    # @rbs return: [Integer, WasmFunction|ExternalFunction]
     def [](name)
       @mappings[name]
     end
   end
 
+  # TODO: common interface btw. WasmFunction and ExternalFunction?
   class WasmFunction
     attr_accessor :callsig #: Array[Symbol]
 
@@ -717,6 +844,24 @@ module Waru
     def locals_count
       code_body.locals_count
     end    
+  end
+
+  class ExternalFunction
+    attr_accessor :callsig #: Array[Symbol]
+
+    attr_accessor :retsig #: Array[Symbol]
+
+    attr_accessor :callable #: Proc
+
+    # @rbs callsig: Array[Symbol]
+    # @rbs retsig: Array[Symbol]
+    # @rbs callable: Proc
+    # @rbs return: void
+    def initialize(callsig, retsig, callable)
+      @callsig = callsig
+      @retsig = retsig
+      @callable = callable
+    end
   end
 
   class GenericError < StandardError; end

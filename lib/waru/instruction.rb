@@ -18,6 +18,8 @@ module Waru
       case chr
       when "\u000b"
         :end
+      when "\u0010"
+        :call
       when "\u0020"
         :local_get
       when "\u006a"
@@ -31,7 +33,7 @@ module Waru
     # @rbs return: Array[Symbol]
     def self.operand_of(code)
       case code
-      when :local_get
+      when :local_get, :call
         [:u32]
       else
         []

@@ -53,8 +53,7 @@ module Waru
       attr_accessor func_index: Integer
     end
 
-    # @rbs @exports: Hash[String, ExportDesc]
-    attr_accessor exports: untyped
+    attr_accessor exports: Hash[String, ExportDesc]
 
     def initialize: () -> void
 
@@ -62,12 +61,32 @@ module Waru
     def add_desc: () { (ExportDesc) -> void } -> untyped
   end
 
+  class ImportSection < Section
+    class ImportDesc
+      attr_accessor module_name: String
+
+      attr_accessor name: String
+
+      attr_accessor kind: Integer
+
+      attr_accessor sig_index: Integer
+    end
+
+    attr_accessor imports: Array[ImportDesc]
+
+    def initialize: () -> void
+
+    # @rbs &blk: (ImportDesc) -> void
+    def add_desc: () { (ImportDesc) -> void } -> untyped
+  end
+
   module BinaryLoader
     extend Waru::Leb128Helpers
 
     # @rbs buf: File|StringIO
+    # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
     # @rbs return: Instance
-    def self.load_from_buffer: (File | StringIO buf) -> Instance
+    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, Hash[Symbol, Proc]]) -> Instance
 
     # @rbs return: Integer
     def self.preamble: () -> Integer
@@ -77,6 +96,9 @@ module Waru
 
     # @rbs return: TypeSection
     def self.type_section: () -> TypeSection
+
+    # @rbs return: ImportSection
+    def self.import_section: () -> ImportSection
 
     # @rbs return: FunctionSection
     def self.function_section: () -> FunctionSection
@@ -112,8 +134,14 @@ module Waru
 
     attr_accessor exports: Exports
 
+    attr_reader import_object: Hash[Symbol, Hash[Symbol, Proc]]
+
+    # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
     # @rbs &blk: (Instance) -> void
-    def initialize: () { (Instance) -> void } -> untyped
+    def initialize: (Hash[Symbol, Hash[Symbol, Proc]] import_object) { (Instance) -> void } -> untyped
+
+    # @rbs return: ImportSection
+    def import_section: () -> ImportSection
 
     # @rbs return: TypeSection
     def type_section: () -> TypeSection
@@ -151,6 +179,10 @@ module Waru
     # @rbs args: Array[Object]
     # @rbs return: Object|nil
     def call_index: (Integer idx, Array[Object] args) -> (Object | nil)
+
+    # @rbs wasm_function: WasmFunction
+    # @rbs return: void
+    def push_frame: (WasmFunction wasm_function) -> void
 
     # @rbs wasm_function: WasmFunction
     # @rbs return: Object|nil
@@ -199,7 +231,7 @@ module Waru
   end
 
   class Store
-    attr_accessor funcs: Array[WasmFunction]
+    attr_accessor funcs: Array[WasmFunction | ExternalFunction]
 
     # @rbs inst: Instance
     # @rbs return: void
@@ -210,7 +242,7 @@ module Waru
   end
 
   class Exports
-    attr_accessor mappings: Hash[String, [ Integer, WasmFunction ]]
+    attr_accessor mappings: Hash[String, [ Integer, WasmFunction | ExternalFunction ]]
 
     # @rbs export_section: ExportSection
     # @rbs store: Store
@@ -218,10 +250,11 @@ module Waru
     def initialize: (ExportSection export_section, Store store) -> void
 
     # @rbs name: String
-    # @rbs return: [Integer, WasmFunction]
-    def []: (String name) -> [ Integer, WasmFunction ]
+    # @rbs return: [Integer, WasmFunction|ExternalFunction]
+    def []: (String name) -> [ Integer, WasmFunction | ExternalFunction ]
   end
 
+  # TODO: common interface btw. WasmFunction and ExternalFunction?
   class WasmFunction
     attr_accessor callsig: Array[Symbol]
 
@@ -243,6 +276,20 @@ module Waru
 
     # @rbs return: Array[Integer]
     def locals_count: () -> Array[Integer]
+  end
+
+  class ExternalFunction
+    attr_accessor callsig: Array[Symbol]
+
+    attr_accessor retsig: Array[Symbol]
+
+    attr_accessor callable: Proc
+
+    # @rbs callsig: Array[Symbol]
+    # @rbs retsig: Array[Symbol]
+    # @rbs callable: Proc
+    # @rbs return: void
+    def initialize: (Array[Symbol] callsig, Array[Symbol] retsig, Proc callable) -> void
   end
 
   class GenericError < StandardError
