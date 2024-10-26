@@ -52,7 +52,7 @@ module Waru
 
     private
     # @rbs buf: String|nil
-    # @rbs retrun: Integer
+    # @rbs return: Integer
     def unpack_le_int(buf)
       if !buf
         raise "empty buffer"

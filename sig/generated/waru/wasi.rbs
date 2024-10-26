@@ -18,7 +18,7 @@ module Waru
     private
 
     # @rbs buf: String|nil
-    # @rbs retrun: Integer
-    def unpack_le_int: (String | nil buf) -> untyped
+    # @rbs return: Integer
+    def unpack_le_int: (String | nil buf) -> Integer
   end
 end
