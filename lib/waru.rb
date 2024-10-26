@@ -848,10 +848,21 @@ module Waru
         end
         stack.push(const)
       when :i32_store
-        align = insn.operand[0]
-        raise EvalError, "[BUG] invalid type of operand" if !align.is_a?(Integer)
+        _align = insn.operand[0] # TODO: alignment support?
         offset = insn.operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
+
+        value = stack.pop
+        addr = stack.pop
+        if !value.is_a?(Integer) || !addr.is_a?(Integer)
+          raise EvalError, "maybe stack too short"
+        end
+
+        at = addr + offset
+        data_end = at + 4 # sizeof(i32)
+        memory = self.instance.store.memories[0] || raise("[BUG] no memory")
+        memory.data[at...data_end] = [value].pack("I")
+        pp memory.data[at...data_end]
 
       when :call
         idx = insn.operand[0]
