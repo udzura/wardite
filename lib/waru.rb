@@ -44,6 +44,18 @@ module Waru
     end
   end
 
+  class MemorySection < Section
+    attr_accessor :limits #: Array[[Integer, Integer|nil]]
+
+    # @rbs return: void
+    def initialize
+      self.name = "Memory"
+      self.code = 0x5
+
+      @limits = []
+    end
+  end
+
   class CodeSection < Section
     class CodeBody
       attr_accessor :locals_count #: Array[Integer]
@@ -67,6 +79,32 @@ module Waru
       self.code = 0xa
 
       @func_codes = []
+    end
+  end
+
+  class DataSection < Section
+    class Segment
+      attr_accessor :flags #: Integer
+      
+      attr_accessor :offset #: Integer
+
+      attr_accessor :data #: String
+
+      # @rbs &blk: (Segment) -> void
+      # @rbs return: void
+      def initialize(&blk)
+        blk.call(self)
+      end
+    end
+
+    attr_accessor :segments #: Array[Segment]
+
+    # @rbs return: void
+    def initialize
+      self.name = "Data"
+      self.code = 0xb
+
+      @segments = []
     end
   end
 
@@ -186,7 +224,7 @@ module Waru
           when Waru::SectionTable
             unimplemented_skip_section(code)
           when Waru::SectionMemory
-            unimplemented_skip_section(code)
+            memory_section
           when Waru::SectionGlobal
             unimplemented_skip_section(code)
           when Waru::SectionExport
@@ -198,7 +236,7 @@ module Waru
           when Waru::SectionCode
             code_section
           when Waru::SectionData
-            unimplemented_skip_section(code)
+            data_section
           when Waru::SectionCustom
             unimplemented_skip_section(code)
           else
@@ -290,6 +328,30 @@ module Waru
       dest
     end
 
+    # @rbs return: MemorySection
+    def self.memory_section
+      dest = MemorySection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+
+      len = fetch_uleb128(sbuf)
+      if len != 1
+        raise LoadError, "memory section has invalid size: #{len}"
+      end
+      len.times do |i|
+        flags = fetch_uleb128(sbuf)
+        min = fetch_uleb128(sbuf)
+
+        max = nil
+        if flags != 0
+          max = fetch_uleb128(sbuf)
+        end
+        dest.limits << [min, max]
+      end
+      dest
+    end
+    
     # @rbs return: FunctionSection
     def self.function_section
       dest = FunctionSection.new
@@ -367,6 +429,73 @@ module Waru
       end
 
       dest
+    end
+
+    # @rbs return: DataSection
+    def self.data_section
+      dest = DataSection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+
+      len = fetch_uleb128(sbuf)
+      len.times do |i|
+        mem_index = fetch_uleb128(sbuf)
+        code = fetch_insn_while_end(sbuf)
+        ops = code_body(StringIO.new(code))
+        offset = decode_expr(ops)
+
+        len = fetch_uleb128(sbuf)
+        data = sbuf.read len
+        if !data
+          raise LoadError, "buffer too short"
+        end
+
+        segment = DataSection::Segment.new do |seg|
+          seg.flags = mem_index
+          seg.offset = offset
+          seg.data = data
+        end
+        dest.segments << segment
+      end
+      dest
+    end
+
+    # @rbs sbuf: StringIO
+    # @rbs return: String
+    def self.fetch_insn_while_end(sbuf)
+      code = String.new("")
+      loop {
+        c = sbuf.read 1
+        if !c
+          break
+        end
+        code << c
+        if c == "\u000b" # :end
+          break
+        end
+      }
+      code
+    end
+
+    # @rbs ops: Array[Op]
+    # @rbs return: Integer
+    def self.decode_expr(ops)
+      # sees first opcode
+      op = ops.first
+      if !op
+        raise LoadError, "empty opcodes"
+      end
+      case op.code
+      when :i32_const
+        arg = op.operand[0]
+        if !arg.is_a?(Integer)
+          raise "Invalid definition of operand"
+        end
+        return arg
+      else
+        raise "Unimplemented offset op: #{op.code.inspect}"
+      end
     end
 
     # @rbs return: ExportSection
@@ -455,27 +584,60 @@ module Waru
       sec
     end
 
-    # @rbs return: TypeSection
+    # @rbs return: TypeSection|nil
     def type_section
       sec = @sections.find{|s| s.code == Waru::Const::SectionType }
+      if !sec
+        return nil
+      end
       if !sec.is_a?(TypeSection)
         raise(GenericError, "instance doesn't have required section")
       end
       sec
     end
 
-    # @rbs return: FunctionSection
+    # @rbs return: MemorySection|nil
+    def memory_section
+      sec = @sections.find{|s| s.code == Const::SectionMemory }
+      if !sec
+        return nil
+      end
+      if !sec.is_a?(MemorySection)
+        raise(GenericError, "[BUG] found invalid memory section")
+      end
+      sec
+    end
+
+    # @rbs return: DataSection|nil
+    def data_section
+      sec = @sections.find{|s| s.code == Const::SectionData }
+      if !sec
+        return nil
+      end
+      if !sec.is_a?(DataSection)
+        raise(GenericError, "[BUG] found invalid data section")
+      end
+      sec
+    end
+
+    # @rbs return: FunctionSection|nil
     def function_section
       sec = @sections.find{|s| s.code == Const::SectionFunction }
+      if !sec
+        return nil
+      end
       if !sec.is_a?(FunctionSection)
         raise(GenericError, "instance doesn't have required section")
       end
       sec
     end
 
-    # @rbs return: CodeSection
+    # @rbs return: CodeSection|nil
     def code_section
       sec = @sections.find{|s| s.code == Const::SectionCode }
+      if !sec
+        return nil
+      end
       if !sec.is_a?(CodeSection)
         raise(GenericError, "instance doesn't have required section")
       end
@@ -485,6 +647,9 @@ module Waru
     # @rbs return: ExportSection
     def export_section
       sec = @sections.find{|s| s.code == Const::SectionExport }
+      if !sec
+        return ExportSection.new
+      end
       if !sec.is_a?(ExportSection)
         raise(GenericError, "instance doesn't have required section")
       end
@@ -682,6 +847,11 @@ module Waru
           raise EvalError, "[BUG] invalid type of operand"
         end
         stack.push(const)
+      when :i32_store
+        align = insn.operand[0]
+        raise EvalError, "[BUG] invalid type of operand" if !align.is_a?(Integer)
+        offset = insn.operand[1]
+        raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
       when :call
         idx = insn.operand[0]
@@ -777,6 +947,10 @@ module Waru
   class Store
     attr_accessor :funcs #: Array[WasmFunction|ExternalFunction]
 
+    # FIXME: attr_accessor :modules
+     
+    attr_accessor :memories #: Array[Memory]
+
     # @rbs inst: Instance
     # @rbs return: void
     def initialize(inst)
@@ -787,34 +961,91 @@ module Waru
       import_section = inst.import_section
       @funcs = []
 
-      import_section.imports.each do |desc|
-        callsig = type_section.defined_types[desc.sig_index]
-        retsig = type_section.defined_results[desc.sig_index]
-        imported_module = inst.import_object[desc.module_name.to_sym]
-        if !imported_module
-          raise ::NameError, "module #{desc.module_name} not found"
+      if type_section && func_section && code_section
+        import_section.imports.each do |desc|
+          callsig = type_section.defined_types[desc.sig_index]
+          retsig = type_section.defined_results[desc.sig_index]
+          imported_module = inst.import_object[desc.module_name.to_sym]
+          if !imported_module
+            raise ::NameError, "module #{desc.module_name} not found"
+          end
+          imported_proc = imported_module[desc.name.to_sym]
+          if !imported_proc
+            raise ::NameError, "function #{desc.module_name}.#{desc.name} not found"
+          end
+          
+          ext_function = ExternalFunction.new(callsig, retsig, imported_proc)
+          self.funcs << ext_function
         end
-        imported_proc = imported_module[desc.name.to_sym]
-        if !imported_proc
-          raise ::NameError, "function #{desc.module_name}.#{desc.name} not found"
+
+        func_section.func_indices.each_with_index do |sigindex, findex|
+          callsig = type_section.defined_types[sigindex]
+          retsig = type_section.defined_results[sigindex]
+          codes = code_section.func_codes[findex]
+          wasm_function = WasmFunction.new(callsig, retsig, codes)
+          self.funcs << wasm_function
         end
-        
-        ext_function = ExternalFunction.new(callsig, retsig, imported_proc)
-        self.funcs << ext_function
       end
 
-      func_section.func_indices.each_with_index do |sigindex, findex|
-        callsig = type_section.defined_types[sigindex]
-        retsig = type_section.defined_results[sigindex]
-        codes = code_section.func_codes[findex]
-        wasm_function = WasmFunction.new(callsig, retsig, codes)
-        self.funcs << wasm_function
+      @memories = []
+      memory_section = inst.memory_section
+      if memory_section
+        memory_section.limits.each do |(min, max)|
+          self.memories << Memory.new(min, max)
+        end
+
+        data_section = inst.data_section
+        if data_section
+          data_section.segments.each do |segment|
+            memory = self.memories[segment.flags]
+            if !memory
+              raise GenericError, "invalid memory index: #{segment.flags}"
+            end
+
+            data_start = segment.offset
+            data_end = segment.offset + segment.data.size
+            if data_end > memory.data.size
+              raise GenericError, "data too large for memory"
+            end
+
+            memory.data[data_start..data_end] = segment.data
+            pp memory.data
+          end
+        end
       end
     end
 
     # @rbs idx: Integer
     def [](idx)
       @funcs[idx]
+    end
+  end
+
+  class Memory
+    attr_accessor :data #: String
+
+    attr_accessor :max #: Integer|nil
+
+    # @rbs min: Integer
+    # @rbs max: Integer|nil
+    # @rbs return: void
+    def initialize(min, max)
+      @data = String.new("\0" * (min * 64 * 1024), capacity: min * 64 * 1024)
+      @max = max
+    end
+  end
+
+  class WasmData
+    attr_accessor :memory_index #: Integer
+
+    attr_accessor :offset #: Integer
+
+    attr_accessor :init #: String
+
+    # @rbs &blk: (WasmData) -> void
+    # @rbs return: void
+    def initialize(&blk)
+      blk.call(self)
     end
   end
 

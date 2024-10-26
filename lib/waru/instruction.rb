@@ -24,6 +24,8 @@ module Waru
         :local_get
       when "\u0021"
         :local_set
+      when "\u0036"
+        :i32_store
       when "\u0041"
         :i32_const
       when "\u006a"
@@ -41,6 +43,8 @@ module Waru
         [:u32]
       when :i32_const
         [:i32]
+      when :i32_store
+        [:u32, :u32]
       else
         []
       end

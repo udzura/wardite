@@ -25,6 +25,13 @@ module Waru
     def initialize: () -> void
   end
 
+  class MemorySection < Section
+    attr_accessor limits: Array[[ Integer, Integer | nil ]]
+
+    # @rbs return: void
+    def initialize: () -> void
+  end
+
   class CodeSection < Section
     class CodeBody
       attr_accessor locals_count: Array[Integer]
@@ -39,6 +46,25 @@ module Waru
     end
 
     attr_accessor func_codes: Array[CodeBody]
+
+    # @rbs return: void
+    def initialize: () -> void
+  end
+
+  class DataSection < Section
+    class Segment
+      attr_accessor flags: Integer
+
+      attr_accessor offset: Integer
+
+      attr_accessor data: String
+
+      # @rbs &blk: (Segment) -> void
+      # @rbs return: void
+      def initialize: () { (Segment) -> void } -> void
+    end
+
+    attr_accessor segments: Array[Segment]
 
     # @rbs return: void
     def initialize: () -> void
@@ -100,6 +126,9 @@ module Waru
     # @rbs return: ImportSection
     def self.import_section: () -> ImportSection
 
+    # @rbs return: MemorySection
+    def self.memory_section: () -> MemorySection
+
     # @rbs return: FunctionSection
     def self.function_section: () -> FunctionSection
 
@@ -109,6 +138,17 @@ module Waru
     # @rbs buf: StringIO
     # @rbs return: Array[::Waru::Op]
     def self.code_body: (StringIO buf) -> Array[::Waru::Op]
+
+    # @rbs return: DataSection
+    def self.data_section: () -> DataSection
+
+    # @rbs sbuf: StringIO
+    # @rbs return: String
+    def self.fetch_insn_while_end: (StringIO sbuf) -> String
+
+    # @rbs ops: Array[Op]
+    # @rbs return: Integer
+    def self.decode_expr: (Array[Op] ops) -> Integer
 
     # @rbs return: ExportSection
     def self.export_section: () -> ExportSection
@@ -143,14 +183,20 @@ module Waru
     # @rbs return: ImportSection
     def import_section: () -> ImportSection
 
-    # @rbs return: TypeSection
-    def type_section: () -> TypeSection
+    # @rbs return: TypeSection|nil
+    def type_section: () -> (TypeSection | nil)
 
-    # @rbs return: FunctionSection
-    def function_section: () -> FunctionSection
+    # @rbs return: MemorySection|nil
+    def memory_section: () -> (MemorySection | nil)
 
-    # @rbs return: CodeSection
-    def code_section: () -> CodeSection
+    # @rbs return: DataSection|nil
+    def data_section: () -> (DataSection | nil)
+
+    # @rbs return: FunctionSection|nil
+    def function_section: () -> (FunctionSection | nil)
+
+    # @rbs return: CodeSection|nil
+    def code_section: () -> (CodeSection | nil)
 
     # @rbs return: ExportSection
     def export_section: () -> ExportSection
@@ -237,12 +283,37 @@ module Waru
   class Store
     attr_accessor funcs: Array[WasmFunction | ExternalFunction]
 
+    attr_accessor memories: Array[Memory]
+
     # @rbs inst: Instance
     # @rbs return: void
     def initialize: (Instance inst) -> void
 
     # @rbs idx: Integer
     def []: (Integer idx) -> untyped
+  end
+
+  class Memory
+    attr_accessor data: String
+
+    attr_accessor max: Integer | nil
+
+    # @rbs min: Integer
+    # @rbs max: Integer|nil
+    # @rbs return: void
+    def initialize: (Integer min, Integer | nil max) -> void
+  end
+
+  class WasmData
+    attr_accessor memory_index: Integer
+
+    attr_accessor offset: Integer
+
+    attr_accessor init: String
+
+    # @rbs &blk: (WasmData) -> void
+    # @rbs return: void
+    def initialize: () { (WasmData) -> void } -> void
   end
 
   class Exports
