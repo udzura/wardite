@@ -61,3 +61,4 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/udzura
 - https://github.com/skanehira/chibiwasm
   - Small and consise implementation in Rust
   - Wardite was first built upon [its development tutorial](https://skanehira.github.io/writing-a-wasm-runtime-in-rust/). Thanks!
+  - Many of test wat files under [`examples/`](./examples/) are borrowed from chibiwasm project
