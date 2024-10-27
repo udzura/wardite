@@ -883,6 +883,14 @@ module Wardite
           raise GenericError, "got a non-function pointer"
         end
 
+      when :return
+        old_frame = call_stack.pop
+        if !old_frame
+          raise EvalError, "maybe empty call stack"
+        end
+
+        stack_unwind(old_frame.sp, old_frame.arity)
+
       when :end
         old_frame = call_stack.pop
         if !old_frame
@@ -890,19 +898,27 @@ module Wardite
         end
 
         # unwind the stacks
-        if old_frame.arity > 0
-          if old_frame.arity > 1
-            raise ::NotImplementedError, "return artiy >= 2 not yet supported ;;"
-          end
-          value = stack.pop
-          if !value
-            raise EvalError, "cannot obtain return value"
-          end
-          self.stack = drained_stack(old_frame.sp)
-          stack.push value
-        else
-          self.stack = drained_stack(old_frame.sp)
+        stack_unwind(old_frame.sp, old_frame.arity)
+      end
+    end
+
+    # unwind the stack and put return value if exists
+    # @rbs sp: Integer
+    # @rbs arity: Integer
+    # @rbs return: void
+    def stack_unwind(sp, arity)
+      if arity > 0
+        if arity > 1
+          raise ::NotImplementedError, "return artiy >= 2 not yet supported ;;"
         end
+        value = stack.pop
+        if !value
+          raise EvalError, "cannot obtain return value"
+        end
+        self.stack = drained_stack(sp)
+        stack.push value
+      else
+        self.stack = drained_stack(sp)
       end
     end
 

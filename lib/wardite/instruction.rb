@@ -18,6 +18,8 @@ module Wardite
       case chr
       when "\u000b"
         :end
+      when "\u000f"
+        :return
       when "\u0010"
         :call
       when "\u0020"

@@ -247,6 +247,11 @@ module Wardite
     # @rbs return: void
     def eval_insn: (Frame frame, Op insn) -> void
 
+    # @rbs sp: Integer
+    # @rbs arity: Integer
+    # @rbs return: void
+    def stack_unwind: (Integer sp, Integer arity) -> void
+
     # @rbs finish: Integer
     # @rbs return: Array[Object]
     def drained_stack: (Integer finish) -> Array[Object]
