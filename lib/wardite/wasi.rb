@@ -34,6 +34,7 @@ module Wardite
         iovs += 4
         slen = unpack_le_int(memory.data[iovs...(iovs+4)])
         iovs += 4
+        # TODO: parallel write?
         nwritten += file.write(memory.data[start...(start+slen)])
       end
 
@@ -41,7 +42,6 @@ module Wardite
 
       0
     end
-
 
     # @rbs return: Hash[Symbol, Proc]
     def to_module
