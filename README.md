@@ -4,19 +4,40 @@ A pure-ruby webassembly runtime.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
-
 Install the gem and add to the application's Gemfile by executing:
 
-    $ bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+    $ bundle add wardite
 
 If bundler is not being used to manage dependencies, install the gem by executing:
 
-    $ gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+    $ gem install wardite
 
 ## Usage
 
-TODO: Write usage instructions here
+- In your ruby code, instanciate Wardite runtime:
+
+```ruby
+require "wardite"
+
+path = ARGV[0]
+method = ARGV[1]
+args = ARGV[2..-1] || []
+
+f = File.open(path)
+instance = Wardite::BinaryLoader::load_from_buffer(f);
+if !method && instance.runtime.respond_to?(:_start)
+  instance.runtime._start
+else
+  instance.runtime.call(method, args)
+end
+```
+
+- Wardite bundles `wardite` cli command:
+
+```console
+$ wardite examples/test.wasm
+#=> Test!
+```
 
 ## Development
 
@@ -33,3 +54,6 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/udzura
 - https://github.com/technohippy/wasmrb?tab=readme-ov-file
   - Referencial implementation but no support with WASI
   - Wardite aims to support full WASI (previwe 1)
+- https://github.com/skanehira/chibiwasm
+  - Small and consise implementation in Rust
+  - Wardite was first built upon [its development tutorial](https://skanehira.github.io/writing-a-wasm-runtime-in-rust/). Thanks!
