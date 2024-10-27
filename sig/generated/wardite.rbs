@@ -1,6 +1,6 @@
-# Generated from lib/waru.rb with RBS::Inline
+# Generated from lib/wardite.rb with RBS::Inline
 
-module Waru
+module Wardite
   class Section
     attr_accessor name: String
 
@@ -107,7 +107,7 @@ module Waru
   end
 
   module BinaryLoader
-    extend Waru::Leb128Helpers
+    extend Wardite::Leb128Helpers
 
     # @rbs buf: File|StringIO
     # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
@@ -137,8 +137,8 @@ module Waru
     def self.code_section: () -> CodeSection
 
     # @rbs buf: StringIO
-    # @rbs return: Array[::Waru::Op]
-    def self.code_body: (StringIO buf) -> Array[::Waru::Op]
+    # @rbs return: Array[::Wardite::Op]
+    def self.code_body: (StringIO buf) -> Array[::Wardite::Op]
 
     # @rbs return: DataSection
     def self.data_section: () -> DataSection

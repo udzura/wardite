@@ -1,7 +1,7 @@
-# Generated from lib/waru/instruction.rb with RBS::Inline
+# Generated from lib/wardite/instruction.rb with RBS::Inline
 
 # rbs_inline: enabled
-module Waru
+module Wardite
   class Op
     attr_accessor code: Symbol
 

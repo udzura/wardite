@@ -1,5 +1,0 @@
-# Generated from lib/waru/version.rb with RBS::Inline
-
-module Waru
-  VERSION: String
-end

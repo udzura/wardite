@@ -1,5 +1,5 @@
 # rbs_inline: enabled
-module Waru
+module Wardite
   module Const
     # Section Code
     # @see https://www.w3.org/TR/wasm-core-1/#sections%E2%91%A0

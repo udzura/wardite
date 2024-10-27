@@ -1,7 +1,7 @@
-# Generated from lib/waru/wasi.rb with RBS::Inline
+# Generated from lib/wardite/wasi.rb with RBS::Inline
 
 # rbs_inline: enabled
-module Waru
+module Wardite
   class WasiSnapshotPreview1
     attr_accessor fd_table: Array[IO]
 

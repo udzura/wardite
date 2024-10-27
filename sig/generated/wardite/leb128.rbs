@@ -1,7 +1,7 @@
-# Generated from lib/waru/leb128.rb with RBS::Inline
+# Generated from lib/wardite/leb128.rb with RBS::Inline
 
 # rbs_inline: enabled
-module Waru
+module Wardite
   module Leb128Helpers
     # @rbs buf: File|StringIO
     # @rbs return: Integer

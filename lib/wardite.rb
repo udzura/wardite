@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 # rbs_inline: enabled
 
-require_relative "waru/version"
-require_relative "waru/leb128"
-require_relative "waru/const"
-require_relative "waru/instruction"
-require_relative "waru/wasi"
+require_relative "wardite/version"
+require_relative "wardite/leb128"
+require_relative "wardite/const"
+require_relative "wardite/instruction"
+require_relative "wardite/wasi"
 
 require "stringio"
 
-module Waru
+module Wardite
   class Section
     attr_accessor :name #: String
   
@@ -164,7 +164,7 @@ module Waru
   end
 
   module BinaryLoader
-    extend Waru::Leb128Helpers
+    extend Wardite::Leb128Helpers
 
     # @rbs buf: File|StringIO
     # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
@@ -177,7 +177,7 @@ module Waru
       sections_ = sections
 
       if enable_wasi
-        wasi_env = Waru::WasiSnapshotPreview1.new       
+        wasi_env = Wardite::WasiSnapshotPreview1.new       
         import_object[:wasi_snapshot_preview1] = wasi_env.to_module
       end
 
@@ -222,29 +222,29 @@ module Waru
         code = byte.ord
 
         section = case code
-          when Waru::SectionType
+          when Wardite::SectionType
             type_section
-          when Waru::SectionImport
+          when Wardite::SectionImport
             import_section
-          when Waru::SectionFunction
+          when Wardite::SectionFunction
             function_section
-          when Waru::SectionTable
+          when Wardite::SectionTable
             unimplemented_skip_section(code)
-          when Waru::SectionMemory
+          when Wardite::SectionMemory
             memory_section
-          when Waru::SectionGlobal
+          when Wardite::SectionGlobal
             unimplemented_skip_section(code)
-          when Waru::SectionExport
+          when Wardite::SectionExport
             export_section
-          when Waru::SectionStart
+          when Wardite::SectionStart
             unimplemented_skip_section(code)
-          when Waru::SectionElement
+          when Wardite::SectionElement
             unimplemented_skip_section(code)
-          when Waru::SectionCode
+          when Wardite::SectionCode
             code_section
-          when Waru::SectionData
+          when Wardite::SectionData
             data_section
-          when Waru::SectionCustom
+          when Wardite::SectionCustom
             unimplemented_skip_section(code)
           else
             raise LoadError, "unknown code: #{code}(\"#{code.to_s 16}\")"
@@ -413,7 +413,7 @@ module Waru
     end
 
     # @rbs buf: StringIO
-    # @rbs return: Array[::Waru::Op]
+    # @rbs return: Array[::Wardite::Op]
     def self.code_body(buf)
       dest = []
       while c = buf.read(1)
@@ -593,7 +593,7 @@ module Waru
 
     # @rbs return: TypeSection|nil
     def type_section
-      sec = @sections.find{|s| s.code == Waru::Const::SectionType }
+      sec = @sections.find{|s| s.code == Wardite::Const::SectionType }
       if !sec
         return nil
       end
@@ -1050,7 +1050,7 @@ module Waru
     end
 
     def inspect
-      "#<Waru::Memory initial=#{@data.size.inspect} max=#{@max.inspect} @data=#{@data[0...64].inspect}...>"
+      "#<Wardite::Memory initial=#{@data.size.inspect} max=#{@max.inspect} @data=#{@data[0...64].inspect}...>"
     end
   end
 

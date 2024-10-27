@@ -1,4 +1,4 @@
-module Waru
+module Wardite
   # definitions that cannot cover by rbs-inline
   module BinaryLoader
     self.@buf: File|StringIO

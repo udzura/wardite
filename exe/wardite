@@ -1,13 +1,13 @@
 #!/usr/bin/env ruby
 
-require "waru"
+require "wardite"
 
 path = ARGV[0]
 method = ARGV[1]
 args = ARGV[2..-1] || []
 
 f = File.open(path)
-instance = Waru::BinaryLoader::load_from_buffer(f);
+instance = Wardite::BinaryLoader::load_from_buffer(f);
 if !method && instance.runtime.respond_to?(:_start)
   instance.runtime._start
 else

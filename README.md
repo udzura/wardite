@@ -1,4 +1,4 @@
-# Waru
+# Wardite
 
 A pure-ruby webassembly runtime.
 
@@ -26,10 +26,10 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/udzura/waru.
+Bug reports and pull requests are welcome on GitHub at https://github.com/udzura/wardite.
 
 ## See also
 
 - https://github.com/technohippy/wasmrb?tab=readme-ov-file
   - Referencial implementation but no support with WASI
-  - Waru aims to support full WASI (previwe 1)
+  - Wardite aims to support full WASI (previwe 1)

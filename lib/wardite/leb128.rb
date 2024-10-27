@@ -1,5 +1,5 @@
 # rbs_inline: enabled
-module Waru
+module Wardite
   module Leb128Helpers
     # @rbs buf: File|StringIO
     # @rbs return: Integer

@@ -1,7 +1,7 @@
-# Generated from lib/waru/const.rb with RBS::Inline
+# Generated from lib/wardite/const.rb with RBS::Inline
 
 # rbs_inline: enabled
-module Waru
+module Wardite
   module Const
     # Section Code
     # @see https://www.w3.org/TR/wasm-core-1/#sections%E2%91%A0

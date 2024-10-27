@@ -1,20 +1,20 @@
 # frozen_string_literal: true
 
-require_relative "lib/waru/version"
+require_relative "lib/wardite/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "waru"
-  spec.version = Waru::VERSION
+  spec.name = "wardite"
+  spec.version = Wardite::VERSION
   spec.authors = ["Uchio Kondo"]
   spec.email = ["udzura@udzura.jp"]
 
   spec.summary = "A pure-ruby webassembly runtime"
   spec.description = "A pure-ruby webassembly runtime"
-  spec.homepage = "https://github.com/udzura/waru"
+  spec.homepage = "https://github.com/udzura/wardite"
   spec.required_ruby_version = ">= 3.0.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/udzura/waru"
+  spec.metadata["source_code_uri"] = "https://github.com/udzura/wardite"
   # spec.metadata["changelog_uri"] = "..."
 
   # Specify which files should be added to the gem when it is released.

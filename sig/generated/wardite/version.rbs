@@ -1,0 +1,5 @@
+# Generated from lib/wardite/version.rb with RBS::Inline
+
+module Wardite
+  VERSION: String
+end

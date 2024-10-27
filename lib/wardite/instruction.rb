@@ -1,5 +1,5 @@
 # rbs_inline: enabled
-module Waru
+module Wardite
   class Op
     attr_accessor :code #: Symbol
 

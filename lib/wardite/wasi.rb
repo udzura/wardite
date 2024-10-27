@@ -1,5 +1,5 @@
 # rbs_inline: enabled
-module Waru
+module Wardite
   class WasiSnapshotPreview1
     attr_accessor :fd_table #: Array[IO]
 
@@ -19,12 +19,12 @@ module Waru
         if elm.is_a?(Integer)
           elm
         else
-          raise Waru::ArgumentError, "invalid type of args: #{args.inspect}"
+          raise Wardite::ArgumentError, "invalid type of args: #{args.inspect}"
         end
       end #: Array[Integer]
       fd, iovs, iovs_len, rp = *iargs
       if !fd || !iovs || !iovs_len || !rp
-        raise Waru::ArgumentError, "args too short"
+        raise Wardite::ArgumentError, "args too short"
       end
       file = self.fd_table[fd]
       memory = store.memories[0]
