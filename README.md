@@ -28,8 +28,7 @@ path = ARGV[0]
 method = ARGV[1]
 args = ARGV[2..-1] || []
 
-f = File.open(path)
-instance = Wardite::BinaryLoader::load_from_buffer(f);
+instance = Wardite::new(path: path);
 if !method && instance.runtime.respond_to?(:_start)
   instance.runtime._start
 else

@@ -381,4 +381,10 @@ module Wardite
 
   class EvalError < StandardError
   end
+
+  # @rbs path: String|nil
+  # @rbs buffer: File|StringIO|nil
+  # @rbs **options: Hash[Symbol, Object]
+  # @rbs return: Instance
+  def self.new: (?path: String | nil, ?buffer: File | StringIO | nil, **Hash[Symbol, Object] options) -> Instance
 end

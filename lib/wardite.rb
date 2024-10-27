@@ -1146,4 +1146,18 @@ module Wardite
   class LoadError < StandardError; end
   class ArgumentError < StandardError; end
   class EvalError < StandardError; end
+
+  # @rbs path: String|nil
+  # @rbs buffer: File|StringIO|nil
+  # @rbs **options: Hash[Symbol, Object]
+  # @rbs return: Instance
+  def self.new(path: nil, buffer: nil, **options)
+    if path
+      buffer = File.open(path)
+    end
+    if !buffer
+      raise ::ArgumentError, "nil buffer passed"
+    end
+    Wardite::BinaryLoader::load_from_buffer(buffer, **options);
+  end
 end
