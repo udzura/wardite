@@ -1,6 +1,11 @@
 # Wardite
 
+[![workflow](https://github.com/udzura/wardite/actions/workflows/main.yml/badge.svg)](https://github.com/udzura/wardite/actions) [![gem version](https://badge.fury.io/rb/wardite.svg)](https://rubygems.org/gems/wardite)
+
 A pure-ruby webassembly runtime.
+
+- [x] Fully typed by RBS (with the aid of [rbs-inline](https://github.com/soutaro/rbs-inline))
+- [ ] WASI (p1) support
 
 ## Installation
 
@@ -41,9 +46,9 @@ $ wardite examples/test.wasm
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test-unit` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install dependencies. Then, run `bundle exec rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+Additionaly, you can run `bundle exec rake check` to generate rbs files from annotations and run `steep check`.
 
 ## Contributing
 
