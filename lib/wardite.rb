@@ -419,13 +419,23 @@ module Wardite
       while c = buf.read(1)
         code = Op.to_sym(c)
         operand_types = Op.operand_of(code)
-        operand = []
+        operand = [] #: Array[Object]
         operand_types.each do |typ|
           case typ
           when :u32
             operand << fetch_uleb128(buf)
           when :i32
             operand << fetch_sleb128(buf)
+          when :u8_block # :if specific
+            block_ope = buf.read 1
+            if ! block_ope
+              raise "buffer too short for if"
+            end
+            if block_ope.ord == 0x40
+              operand << Block.void
+            else
+              operand << Block.new([block_ope.ord])
+            end
           else
             $stderr.puts "warning: unknown type #{typ.inspect}. defaulting to u32"
             operand << fetch_uleb128(buf)
@@ -820,6 +830,19 @@ module Wardite
     # @rbs return: void
     def eval_insn(frame, insn)
       case insn.code
+      when :if
+        block = insn.operand[0]
+        raise EvalError, "if op without block" if !block.is_a?(Block)
+        cond = stack.pop 
+        raise EvalError, "cond not found" if !cond.is_a?(Integer)
+        next_pc = fetch_ops_while_end(frame.body, frame.pc)
+        if cond.zero?
+          frame.pc = next_pc
+        end
+
+        label = Label.new(:if, next_pc, stack.size, block.result_size)
+        frame.labels.push(label)
+        
       when :local_get
         idx = insn.operand[0]
         if !idx.is_a?(Integer)
@@ -841,12 +864,32 @@ module Wardite
         end
         frame.locals[idx] = value
 
+      when :i32_lts
+        right, left = stack.pop, stack.pop
+        if !right.is_a?(Integer) || !left.is_a?(Integer)
+          raise EvalError, "maybe empty stack"
+        end
+        value = (left < right) ? 1 : 0
+        stack.push(value)
+      when :i32_leu
+        right, left = stack.pop, stack.pop
+        if !right.is_a?(Integer) || !left.is_a?(Integer)
+          raise EvalError, "maybe empty stack"
+        end
+        value = (left >= right) ? 1 : 0
+        stack.push(value)
       when :i32_add
         right, left = stack.pop, stack.pop
         if !right.is_a?(Integer) || !left.is_a?(Integer)
           raise EvalError, "maybe empty stack"
         end
         stack.push(left + right)
+      when :i32_sub
+        right, left = stack.pop, stack.pop
+        if !right.is_a?(Integer) || !left.is_a?(Integer)
+          raise EvalError, "maybe empty stack"
+        end
+        stack.push(left - right)
       when :i32_const
         const = insn.operand[0]
         if !const.is_a?(Integer)
@@ -892,14 +935,44 @@ module Wardite
         stack_unwind(old_frame.sp, old_frame.arity)
 
       when :end
-        old_frame = call_stack.pop
-        if !old_frame
-          raise EvalError, "maybe empty call stack"
+        if old_label = frame.labels.pop
+          frame.pc = old_label.pc
+          stack_unwind(old_label.sp, old_label.arity)
+        else
+          old_frame = call_stack.pop
+          if !old_frame
+            raise EvalError, "maybe empty call stack"
+          end
+          stack_unwind(old_frame.sp, old_frame.arity)
         end
-
-        # unwind the stacks
-        stack_unwind(old_frame.sp, old_frame.arity)
       end
+    end
+
+    # @rbs ops: Array[Op]
+    # @rbs pc_start: Integer
+    # @rbs return: Integer
+    def fetch_ops_while_end(ops, pc_start)
+      cursor = pc_start
+      depth = 0
+      loop {
+        cursor += 1
+        inst = ops[cursor]
+        case inst&.code
+        when nil
+          raise EvalError, "end op not found"
+        when :i
+          depth += 1
+        when :end
+          if depth == 0
+            return cursor
+          else
+            depth -= 1
+          end
+        else
+          # nop
+        end
+      }
+      raise "[BUG] unreachable"
     end
 
     # unwind the stack and put return value if exists
@@ -959,6 +1032,8 @@ module Wardite
 
     attr_accessor :arity #: Integer
 
+    attr_accessor :labels #: Array[Label]
+
     attr_accessor :locals #: Array[Object]
 
     # @rbs pc: Integer
@@ -973,6 +1048,28 @@ module Wardite
       @body = body
       @arity = arity
       @locals = locals
+      @labels = []
+    end
+  end
+
+  class Label
+    attr_accessor :kind #: (:if|:loop|:block)
+
+    attr_accessor :pc #: Integer
+    attr_accessor :sp #: Integer
+
+    attr_accessor :arity #: Integer
+
+    # @rbs kind: (:if|:loop|:block)
+    # @rbs pc: Integer
+    # @rbs sp: Integer
+    # @rbs arity: Integer
+    # @rbs returb: void
+    def initialize(kind, pc, sp, arity)
+      @kind = kind
+      @pc = pc
+      @sp = sp
+      @arity = arity
     end
   end
 
@@ -1081,6 +1178,37 @@ module Wardite
     # @rbs return: void
     def initialize(&blk)
       blk.call(self)
+    end
+  end
+
+  class Block
+    VOID = nil #: nil
+
+    attr_accessor :block_types #: nil|Array[Integer]
+
+    # @rbs return: Block
+    def self.void
+      new(VOID)
+    end
+
+    # @rbs block_types: nil|Array[Integer]
+    # @rbs return: void
+    def initialize(block_types=VOID)
+      @block_types = block_types
+    end
+
+    # @rbs return: bool
+    def void?
+      !!block_types
+    end
+
+    # @rbs return: Integer
+    def result_size
+      if block_types # !void?
+        block_types.size
+      else
+        0
+      end
     end
   end
 

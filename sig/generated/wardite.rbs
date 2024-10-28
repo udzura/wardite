@@ -247,6 +247,12 @@ module Wardite
     # @rbs return: void
     def eval_insn: (Frame frame, Op insn) -> void
 
+    # @rbs ops: Array[Op]
+    # @rbs pc_start: Integer
+    # @rbs return: Integer
+    def fetch_ops_while_end: (Array[Op] ops, Integer pc_start) -> Integer
+
+    # unwind the stack and put return value if exists
     # @rbs sp: Integer
     # @rbs arity: Integer
     # @rbs return: void
@@ -275,6 +281,8 @@ module Wardite
 
     attr_accessor arity: Integer
 
+    attr_accessor labels: Array[Label]
+
     attr_accessor locals: Array[Object]
 
     # @rbs pc: Integer
@@ -284,6 +292,23 @@ module Wardite
     # @rbs locals: Array[Object]
     # @rbs returb: void
     def initialize: (Integer pc, Integer sp, Array[Op] body, Integer arity, Array[Object] locals) -> untyped
+  end
+
+  class Label
+    attr_accessor kind: :if | :loop | :block
+
+    attr_accessor pc: Integer
+
+    attr_accessor sp: Integer
+
+    attr_accessor arity: Integer
+
+    # @rbs kind: (:if|:loop|:block)
+    # @rbs pc: Integer
+    # @rbs sp: Integer
+    # @rbs arity: Integer
+    # @rbs returb: void
+    def initialize: (:if | :loop | :block kind, Integer pc, Integer sp, Integer arity) -> untyped
   end
 
   class Store
@@ -322,6 +347,25 @@ module Wardite
     # @rbs &blk: (WasmData) -> void
     # @rbs return: void
     def initialize: () { (WasmData) -> void } -> void
+  end
+
+  class Block
+    VOID: nil
+
+    attr_accessor block_types: nil | Array[Integer]
+
+    # @rbs return: Block
+    def self.void: () -> Block
+
+    # @rbs block_types: nil|Array[Integer]
+    # @rbs return: void
+    def initialize: (?nil | Array[Integer] block_types) -> void
+
+    # @rbs return: bool
+    def void?: () -> bool
+
+    # @rbs return: Integer
+    def result_size: () -> Integer
   end
 
   class Exports

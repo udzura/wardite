@@ -16,6 +16,8 @@ module Wardite
     # @rbs return: Symbol
     def self.to_sym(chr)
       case chr
+      when "\u0004"
+        :if
       when "\u000b"
         :end
       when "\u000f"
@@ -30,10 +32,16 @@ module Wardite
         :i32_store
       when "\u0041"
         :i32_const
+      when "\u0048"
+        :i32_lts
+      when "\u004d"
+        :i32_leu
       when "\u006a"
         :i32_add
+      when "\u006b"
+        :i32_sub
       else
-        raise NotImplementedError, "unimplemented: #{chr.inspect}"
+        raise NotImplementedError, "unimplemented: #{"%04x" % chr.ord}"
       end
     end
 
@@ -47,6 +55,8 @@ module Wardite
         [:i32]
       when :i32_store
         [:u32, :u32]
+      when :if
+        [:u8_block]
       else
         []
       end
