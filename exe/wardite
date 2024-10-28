@@ -11,6 +11,13 @@ instance = Wardite::BinaryLoader::load_from_buffer(f);
 if !method && instance.runtime.respond_to?(:_start)
   instance.runtime._start
 else
+  args = args.map do|a|
+    if a.include? "."
+      a.to_f
+    else
+      a.to_i
+    end
+  end
   ret = instance.runtime.call(method, args)
   $stderr.puts "return value: #{ret.inspect}"
 end
