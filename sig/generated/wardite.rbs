@@ -215,7 +215,7 @@ module Wardite
     include ValueHelper
 
     # TODO: add types of class that the stack accomodates
-    attr_accessor stack: Array[I32 | I64 | F32 | F64 | Block]
+    attr_accessor stack: Array[I32 | I64 | F32 | F64]
 
     attr_accessor call_stack: Array[Frame]
 
@@ -265,8 +265,8 @@ module Wardite
     def stack_unwind: (Integer sp, Integer arity) -> void
 
     # @rbs finish: Integer
-    # @rbs return: Array[I32|I64|F32|F64|Block]
-    def drained_stack: (Integer finish) -> Array[I32 | I64 | F32 | F64 | Block]
+    # @rbs return: Array[I32|I64|F32|F64]
+    def drained_stack: (Integer finish) -> Array[I32 | I64 | F32 | F64]
 
     # @rbs name: Symbol
     # @rbs args: Array[Object]

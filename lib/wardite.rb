@@ -688,7 +688,7 @@ module Wardite
     include ValueHelper
 
     # TODO: add types of class that the stack accomodates
-    attr_accessor :stack #: Array[I32|I64|F32|F64|Block]
+    attr_accessor :stack #: Array[I32|I64|F32|F64]
 
     attr_accessor :call_stack #: Array[Frame]
 
@@ -886,58 +886,7 @@ module Wardite
         if !value
           raise EvalError, "value should be pushed"
         end
-        if value.is_a?(Block)
-          raise EvalError, "block value detected"
-        end
         frame.locals[idx] = value
-
-      # when :i32_lts
-      #   right, left = stack.pop, stack.pop
-      #   if !right.is_a?(Integer) || !left.is_a?(Integer)
-      #     raise EvalError, "maybe empty stack"
-      #   end
-      #   value = (left < right) ? 1 : 0
-      #   stack.push(value)
-      # when :i32_leu
-      #   right, left = stack.pop, stack.pop
-      #   if !right.is_a?(Integer) || !left.is_a?(Integer)
-      #     raise EvalError, "maybe empty stack"
-      #   end
-      #   value = (left >= right) ? 1 : 0
-      #   stack.push(value)
-      # when :i32_add
-      #   right, left = stack.pop, stack.pop
-      #   if !right.is_a?(Integer) || !left.is_a?(Integer)
-      #     raise EvalError, "maybe empty stack"
-      #   end
-      #   stack.push(left + right)
-      # when :i32_sub
-      #   right, left = stack.pop, stack.pop
-      #   if !right.is_a?(Integer) || !left.is_a?(Integer)
-      #     raise EvalError, "maybe empty stack"
-      #   end
-      #   stack.push(left - right)
-      # when :i32_const
-      #   const = insn.operand[0]
-      #   if !const.is_a?(Integer)
-      #     raise EvalError, "[BUG] invalid type of operand"
-      #   end
-      #   stack.push(const)
-      # when :i32_store
-      #   _align = insn.operand[0] # TODO: alignment support?
-      #   offset = insn.operand[1]
-      #   raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
-
-      #   value = stack.pop
-      #   addr = stack.pop
-      #   if !value.is_a?(Integer) || !addr.is_a?(Integer)
-      #     raise EvalError, "maybe stack too short"
-      #   end
-
-      #   at = addr + offset
-      #   data_end = at + 4 # sizeof(i32)
-      #   memory = self.instance.store.memories[0] || raise("[BUG] no memory")
-      #   memory.data[at...data_end] = [value].pack("I")
 
       when :call
         idx = insn.operand[0]
@@ -1023,7 +972,7 @@ module Wardite
     end
 
     # @rbs finish: Integer
-    # @rbs return: Array[I32|I64|F32|F64|Block]
+    # @rbs return: Array[I32|I64|F32|F64]
     def drained_stack(finish)
       drained = stack[0...finish]
       if ! drained
