@@ -15,5 +15,20 @@ task :check do
   sh "bundle exec steep check"
 end
 
+desc "Generate codes"
+task :generate do
+  require_relative "scripts/gen_alu"
+  libdir = File.expand_path("../lib", __FILE__)
+
+  GenAlu.execute(libdir + "/wardite/alu_i32.generated.rb", prefix: "i32", defined_ops: [
+    :lts,
+    :leu,
+    :add,
+    :sub,
+    :const,
+    :store,
+  ])
+end
+
 task default: %i[test check]
 

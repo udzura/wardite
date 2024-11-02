@@ -1,19 +1,22 @@
 # Generated from lib/wardite/instruction.rb with RBS::Inline
 
-# rbs_inline: enabled
 module Wardite
   class Op
+    attr_accessor namespace: Symbol
+
     attr_accessor code: Symbol
 
-    attr_accessor operand: Array[Object]
+    # TODO: add types of potential operands
+    attr_accessor operand: Array[Integer | Float | Block]
 
+    # @rbs namespace: Symbol
     # @rbs code: Symbol
-    # @rbs operand: Array[Object]
-    def initialize: (Symbol code, Array[Object] operand) -> untyped
+    # @rbs operand: Array[Integer|Float|Block]
+    def initialize: (Symbol namespace, Symbol code, Array[Integer | Float | Block] operand) -> untyped
 
     # @rbs chr: String
-    # @rbs return: Symbol
-    def self.to_sym: (String chr) -> Symbol
+    # @rbs return: [Symbol, Symbol]
+    def self.to_sym: (String chr) -> [ Symbol, Symbol ]
 
     # @rbs chr: Symbol
     # @rbs return: Array[Symbol]

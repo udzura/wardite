@@ -1,0 +1,18 @@
+# rbs_inline: enabled
+require_relative "value"
+
+module Wardite
+  module Evaluator
+    # @rbs runtime: Runtime
+    # @rbs frame: Frame
+    # @rbs insn: Op
+    # @rbs return: void 
+    def self.${PREFIX}_eval_insn(runtime, frame, insn)
+      case insn.code
+${DEFS}
+      else
+        raise "Unknown opcode for namespace #{insn.namespace}: #{insn.code}"
+      end
+    end
+  end
+end

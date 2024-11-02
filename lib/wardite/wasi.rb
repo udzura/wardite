@@ -1,6 +1,8 @@
 # rbs_inline: enabled
 module Wardite
   class WasiSnapshotPreview1
+    include ValueHelper
+
     attr_accessor :fd_table #: Array[IO]
 
     def initialize
@@ -12,12 +14,12 @@ module Wardite
     end
 
     # @rbs store: Store
-    # @rbs args: Array[Object]
+    # @rbs args: Array[I32|I64|F32|F64]
     # @rbs return: Object
     def fd_write(store, args)
       iargs = args.map do |elm|
-        if elm.is_a?(Integer)
-          elm
+        if elm.is_a?(I32)
+          elm.value
         else
           raise Wardite::ArgumentError, "invalid type of args: #{args.inspect}"
         end

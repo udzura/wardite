@@ -1,6 +1,12 @@
 # Generated from lib/wardite.rb with RBS::Inline
 
 module Wardite
+  module Evaluator
+    extend Wardite::ValueHelper
+  end
+end
+
+module Wardite
   class Section
     attr_accessor name: String
 
@@ -107,7 +113,9 @@ module Wardite
   end
 
   module BinaryLoader
-    extend Wardite::Leb128Helpers
+    extend Wardite::Leb128Helper
+
+    extend Wardite::ValueHelper
 
     # @rbs buf: File|StringIO
     # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
@@ -204,7 +212,10 @@ module Wardite
   end
 
   class Runtime
-    attr_accessor stack: Array[Object]
+    include ValueHelper
+
+    # TODO: add types of class that the stack accomodates
+    attr_accessor stack: Array[I32 | I64 | F32 | F64 | Block]
 
     attr_accessor call_stack: Array[Frame]
 
@@ -222,11 +233,6 @@ module Wardite
     # @rbs return: Object|nil
     def call: (String | Symbol name, Array[Object] args) -> (Object | nil)
 
-    # @rbs idx: Integer
-    # @rbs args: Array[Object]
-    # @rbs return: Object|nil
-    def call_index: (Integer idx, Array[Object] args) -> (Object | nil)
-
     # @rbs wasm_function: WasmFunction
     # @rbs return: void
     def push_frame: (WasmFunction wasm_function) -> void
@@ -236,8 +242,8 @@ module Wardite
     def invoke_internal: (WasmFunction wasm_function) -> (Object | nil)
 
     # @rbs external_function: ExternalFunction
-    # @rbs return: Object|nil
-    def invoke_external: (ExternalFunction external_function) -> (Object | nil)
+    # @rbs return: I32|I64|F32|F64|nil
+    def invoke_external: (ExternalFunction external_function) -> (I32 | I64 | F32 | F64 | nil)
 
     # @rbs return: void
     def execute!: () -> void
@@ -259,8 +265,8 @@ module Wardite
     def stack_unwind: (Integer sp, Integer arity) -> void
 
     # @rbs finish: Integer
-    # @rbs return: Array[Object]
-    def drained_stack: (Integer finish) -> Array[Object]
+    # @rbs return: Array[I32|I64|F32|F64|Block]
+    def drained_stack: (Integer finish) -> Array[I32 | I64 | F32 | F64 | Block]
 
     # @rbs name: Symbol
     # @rbs args: Array[Object]
@@ -283,7 +289,7 @@ module Wardite
 
     attr_accessor labels: Array[Label]
 
-    attr_accessor locals: Array[Object]
+    attr_accessor locals: Array[I32 | I64 | F32 | F64]
 
     # @rbs pc: Integer
     # @rbs sp: Integer

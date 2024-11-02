@@ -1,0 +1,11 @@
+# Generated from lib/wardite/alu_i32.generated.rb with RBS::Inline
+
+module Wardite
+  module Evaluator
+    # @rbs runtime: Runtime
+    # @rbs frame: Frame
+    # @rbs insn: Op
+    # @rbs return: void 
+    def self.i32_eval_insn: (Runtime runtime, Frame frame, Op insn) -> void
+  end
+end

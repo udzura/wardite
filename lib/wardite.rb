@@ -5,6 +5,15 @@ require_relative "wardite/version"
 require_relative "wardite/leb128"
 require_relative "wardite/const"
 require_relative "wardite/instruction"
+require_relative "wardite/value"
+
+module Wardite
+  module Evaluator
+    extend Wardite::ValueHelper
+  end
+end
+require_relative "wardite/alu_i32.generated"
+
 require_relative "wardite/wasi"
 
 require "stringio"
@@ -164,7 +173,8 @@ module Wardite
   end
 
   module BinaryLoader
-    extend Wardite::Leb128Helpers
+    extend Wardite::Leb128Helper
+    extend Wardite::ValueHelper
 
     # @rbs buf: File|StringIO
     # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
@@ -417,9 +427,9 @@ module Wardite
     def self.code_body(buf)
       dest = []
       while c = buf.read(1)
-        code = Op.to_sym(c)
+        namespace, code = Op.to_sym(c)
         operand_types = Op.operand_of(code)
-        operand = [] #: Array[Object]
+        operand = [] #: Array[Integer|Float|Block]
         operand_types.each do |typ|
           case typ
           when :u32
@@ -442,7 +452,7 @@ module Wardite
           end         
         end
 
-        dest << Op.new(code, operand)
+        dest << Op.new(namespace, code, operand)
       end
 
       dest
@@ -675,7 +685,10 @@ module Wardite
   end
 
   class Runtime
-    attr_accessor :stack #: Array[Object]
+    include ValueHelper
+
+    # TODO: add types of class that the stack accomodates
+    attr_accessor :stack #: Array[I32|I64|F32|F64|Block]
 
     attr_accessor :call_stack #: Array[Frame]
 
@@ -708,34 +721,14 @@ module Wardite
       if fn.callsig.size != args.size
         raise ArgumentError, "unmatch arg size"
       end
-      args.each do |arg|
-        stack.push arg
-      end
-
-      case fn
-      when WasmFunction
-        invoke_internal(fn)
-      when ExternalFunction
-        invoke_external(fn)
-      else
-        raise GenericError, "registered pointer is not to a function"
-      end
-    end
-
-    # @rbs idx: Integer
-    # @rbs args: Array[Object]
-    # @rbs return: Object|nil
-    def call_index(idx, args)
-      fn = self.instance.store[idx]
-      if !fn
-        # TODO: own error NoFunctionError
-        raise ::NoMethodError, "func #{idx} not found"
-      end
-      if fn.callsig.size != args.size
-        raise ArgumentError, "unmatch arg size"
-      end
-      args.each do |arg|
-        stack.push arg
+      args.each_with_index do |arg, idx|
+        case fn.callsig[idx]
+        when :i32
+          raise "type mismatch: i32(#{arg})" unless arg.is_a?(Integer)
+          stack.push I32(arg)
+        else
+          raise "TODO: add me"
+        end
       end
 
       case fn
@@ -761,11 +754,12 @@ module Wardite
       wasm_function.locals_type.each_with_index do |typ, i|
         case typ
         when :i32, :u32
-          # locals.push Local::I32(typ, 0)...
-          locals.push 0
+          locals.push I32(0)
+        when :i64, :u64
+          locals.push I64(0)
         else
-          $stderr.puts "warning: unknown type #{typ.inspect}. default to Object"
-          locals.push Object.new
+          $stderr.puts "warning: unknown type #{typ.inspect}. default to I32"
+          locals.push I32(0)
         end
       end
 
@@ -796,7 +790,7 @@ module Wardite
     end
 
     # @rbs external_function: ExternalFunction
-    # @rbs return: Object|nil
+    # @rbs return: I32|I64|F32|F64|nil
     def invoke_external(external_function)
       local_start = stack.size - external_function.callsig.size
       args = stack[local_start..]
@@ -806,7 +800,31 @@ module Wardite
       self.stack = drained_stack(local_start)
 
       proc = external_function.callable
-      proc[self.instance.store, args]
+      val = proc[self.instance.store, args]
+      if !val
+        return
+      end
+
+      case val
+      when I32, I64, F32, F64
+        return val
+      when Integer
+        case external_function.retsig[0]
+        when :i32
+          return I32(val)
+        when :i64
+          return I64(val)
+        end
+      when Float
+        case external_function.retsig[0]
+        when :f32
+          return F32(val)
+        when :f64
+          return F64(val)
+        end
+      end
+
+      raise "invalid type of value returned in proc. val: #{val.inspect}"
     end
 
     # @rbs return: void
@@ -829,14 +847,20 @@ module Wardite
     # @rbs insn: Op
     # @rbs return: void
     def eval_insn(frame, insn)
+      case insn.namespace
+      when :i32
+        return Evaluator.i32_eval_insn(self, frame, insn)
+      end
+
+      # unmached namespace...
       case insn.code
       when :if
         block = insn.operand[0]
         raise EvalError, "if op without block" if !block.is_a?(Block)
         cond = stack.pop 
-        raise EvalError, "cond not found" if !cond.is_a?(Integer)
+        raise EvalError, "cond not found" if !cond.is_a?(I32)
         next_pc = fetch_ops_while_end(frame.body, frame.pc)
-        if cond.zero?
+        if cond.value.zero?
           frame.pc = next_pc
         end
 
@@ -862,55 +886,58 @@ module Wardite
         if !value
           raise EvalError, "value should be pushed"
         end
+        if value.is_a?(Block)
+          raise EvalError, "block value detected"
+        end
         frame.locals[idx] = value
 
-      when :i32_lts
-        right, left = stack.pop, stack.pop
-        if !right.is_a?(Integer) || !left.is_a?(Integer)
-          raise EvalError, "maybe empty stack"
-        end
-        value = (left < right) ? 1 : 0
-        stack.push(value)
-      when :i32_leu
-        right, left = stack.pop, stack.pop
-        if !right.is_a?(Integer) || !left.is_a?(Integer)
-          raise EvalError, "maybe empty stack"
-        end
-        value = (left >= right) ? 1 : 0
-        stack.push(value)
-      when :i32_add
-        right, left = stack.pop, stack.pop
-        if !right.is_a?(Integer) || !left.is_a?(Integer)
-          raise EvalError, "maybe empty stack"
-        end
-        stack.push(left + right)
-      when :i32_sub
-        right, left = stack.pop, stack.pop
-        if !right.is_a?(Integer) || !left.is_a?(Integer)
-          raise EvalError, "maybe empty stack"
-        end
-        stack.push(left - right)
-      when :i32_const
-        const = insn.operand[0]
-        if !const.is_a?(Integer)
-          raise EvalError, "[BUG] invalid type of operand"
-        end
-        stack.push(const)
-      when :i32_store
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
-        raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
+      # when :i32_lts
+      #   right, left = stack.pop, stack.pop
+      #   if !right.is_a?(Integer) || !left.is_a?(Integer)
+      #     raise EvalError, "maybe empty stack"
+      #   end
+      #   value = (left < right) ? 1 : 0
+      #   stack.push(value)
+      # when :i32_leu
+      #   right, left = stack.pop, stack.pop
+      #   if !right.is_a?(Integer) || !left.is_a?(Integer)
+      #     raise EvalError, "maybe empty stack"
+      #   end
+      #   value = (left >= right) ? 1 : 0
+      #   stack.push(value)
+      # when :i32_add
+      #   right, left = stack.pop, stack.pop
+      #   if !right.is_a?(Integer) || !left.is_a?(Integer)
+      #     raise EvalError, "maybe empty stack"
+      #   end
+      #   stack.push(left + right)
+      # when :i32_sub
+      #   right, left = stack.pop, stack.pop
+      #   if !right.is_a?(Integer) || !left.is_a?(Integer)
+      #     raise EvalError, "maybe empty stack"
+      #   end
+      #   stack.push(left - right)
+      # when :i32_const
+      #   const = insn.operand[0]
+      #   if !const.is_a?(Integer)
+      #     raise EvalError, "[BUG] invalid type of operand"
+      #   end
+      #   stack.push(const)
+      # when :i32_store
+      #   _align = insn.operand[0] # TODO: alignment support?
+      #   offset = insn.operand[1]
+      #   raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
-        value = stack.pop
-        addr = stack.pop
-        if !value.is_a?(Integer) || !addr.is_a?(Integer)
-          raise EvalError, "maybe stack too short"
-        end
+      #   value = stack.pop
+      #   addr = stack.pop
+      #   if !value.is_a?(Integer) || !addr.is_a?(Integer)
+      #     raise EvalError, "maybe stack too short"
+      #   end
 
-        at = addr + offset
-        data_end = at + 4 # sizeof(i32)
-        memory = self.instance.store.memories[0] || raise("[BUG] no memory")
-        memory.data[at...data_end] = [value].pack("I")
+      #   at = addr + offset
+      #   data_end = at + 4 # sizeof(i32)
+      #   memory = self.instance.store.memories[0] || raise("[BUG] no memory")
+      #   memory.data[at...data_end] = [value].pack("I")
 
       when :call
         idx = insn.operand[0]
@@ -996,7 +1023,7 @@ module Wardite
     end
 
     # @rbs finish: Integer
-    # @rbs return: Array[Object]
+    # @rbs return: Array[I32|I64|F32|F64|Block]
     def drained_stack(finish)
       drained = stack[0...finish]
       if ! drained
@@ -1034,7 +1061,7 @@ module Wardite
 
     attr_accessor :labels #: Array[Label]
 
-    attr_accessor :locals #: Array[Object]
+    attr_accessor :locals #: Array[I32|I64|F32|F64]
 
     # @rbs pc: Integer
     # @rbs sp: Integer

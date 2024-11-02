@@ -28,14 +28,14 @@ class WarditeInstanceTest < Test::Unit::TestCase
       wasm = ::StringIO.new(bytes)
       instance = ::Wardite::BinaryLoader.load_from_buffer(wasm)
       ret = instance.runtime.call(:add, [100, 200])
-      ret == 300
+      ret.value == 300
     end
 
     assert do
       wasm = ::StringIO.new(bytes)
       instance = ::Wardite::BinaryLoader.load_from_buffer(wasm)
       ret = instance.runtime.add(200, 300)
-      ret == 500
+      ret.value == 500
     end
   end
 end

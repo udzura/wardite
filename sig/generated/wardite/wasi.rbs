@@ -3,14 +3,16 @@
 # rbs_inline: enabled
 module Wardite
   class WasiSnapshotPreview1
+    include ValueHelper
+
     attr_accessor fd_table: Array[IO]
 
     def initialize: () -> untyped
 
     # @rbs store: Store
-    # @rbs args: Array[Object]
+    # @rbs args: Array[I32|I64|F32|F64]
     # @rbs return: Object
-    def fd_write: (Store store, Array[Object] args) -> Object
+    def fd_write: (Store store, Array[I32 | I64 | F32 | F64] args) -> Object
 
     # @rbs return: Hash[Symbol, Proc]
     def to_module: () -> Hash[Symbol, Proc]

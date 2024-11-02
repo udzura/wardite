@@ -1,6 +1,6 @@
 # rbs_inline: enabled
 module Wardite
-  module Leb128Helpers
+  module Leb128Helper
     # @rbs buf: File|StringIO
     # @rbs return: Integer
     def fetch_uleb128(buf)

@@ -1,0 +1,58 @@
+# Generated from lib/wardite/value.rb with RBS::Inline
+
+module Wardite
+  class I32
+    attr_accessor value: Integer
+
+    # TODO: eliminate use of pack, to support mruby - in this file!
+    # @rbs return: String
+    def packed: () -> String
+
+    def inspect: () -> untyped
+  end
+
+  class I64
+    attr_accessor value: Integer
+
+    # @rbs return: String
+    def packed: () -> String
+
+    def inspect: () -> untyped
+  end
+
+  class F32
+    attr_accessor value: Float
+
+    # @rbs return: String
+    def packed: () -> String
+
+    def inspect: () -> untyped
+  end
+
+  class F64
+    attr_accessor value: Float
+
+    # @rbs return: String
+    def packed: () -> String
+
+    def inspect: () -> untyped
+  end
+
+  module ValueHelper
+    # @rbs value: Integer
+    # @rbs return: I32
+    def I32: (Integer value) -> I32
+
+    # @rbs value: Integer
+    # @rbs return: I64
+    def I64: (Integer value) -> I64
+
+    # @rbs value: Float
+    # @rbs return: F32
+    def F32: (Float value) -> F32
+
+    # @rbs value: Float
+    # @rbs return: F64
+    def F64: (Float value) -> F64
+  end
+end
