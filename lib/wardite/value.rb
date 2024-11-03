@@ -283,6 +283,15 @@ module Wardite
       32
     end
 
+    # @rbs return: :positive|:negative
+    def sign
+      upper = [0.0].pack("G")[0]&.ord&.<<(7)
+      if !upper
+        raise "[BUG] Array#pack looks broken?"
+      end
+      upper.zero? ? :positive : :negative
+    end
+
     # @rbs return: String
     def packed
       [self.value].pack("f")
@@ -405,6 +414,15 @@ module Wardite
     # @rbs return: Integer
     def memsize
       64
+    end
+
+    # @rbs return: :positive|:negative
+    def sign
+      upper = [0.0].pack("G")[0]&.ord&.<<(7)
+      if !upper
+        raise "[BUG] Array#pack looks broken?"
+      end
+      upper.zero? ? :positive : :negative
     end
 
     # @rbs return: String

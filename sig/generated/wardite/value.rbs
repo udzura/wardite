@@ -162,6 +162,9 @@ module Wardite
     # @rbs return: Integer
     def memsize: () -> Integer
 
+    # @rbs return: :positive|:negative
+    def sign: () -> (:positive | :negative)
+
     # @rbs return: String
     def packed: () -> String
 
@@ -218,6 +221,9 @@ module Wardite
 
     # @rbs return: Integer
     def memsize: () -> Integer
+
+    # @rbs return: :positive|:negative
+    def sign: () -> (:positive | :negative)
 
     # @rbs return: String
     def packed: () -> String

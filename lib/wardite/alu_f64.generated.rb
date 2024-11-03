@@ -103,31 +103,59 @@ module Wardite
 
 
       when :f64_abs
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F64(x.value.abs))
 
 
       when :f64_neg
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F64(-(x.value)))
 
 
       when :f64_ceil
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F64(x.value.ceil.to_f))
 
 
       when :f64_floor
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F64(x.value.floor.to_f))
 
 
       when :f64_trunc
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F64(x.value.to_i.to_f))
 
 
       when :f64_nearest
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F64(x.value.round.to_f))
 
 
       when :f64_sqrt
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F64(x.value ** 0.5))
 
 
       when :f64_add
@@ -163,15 +191,39 @@ module Wardite
 
 
       when :f64_min
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F64) || !left.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        if right.value.nan? || left.value.nan?
+          runtime.stack.push(F64(Float::NAN))
+          return
+        end
+        runtime.stack.push(F64([left.value, right.value].min))
 
 
       when :f64_max
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F64) || !left.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        if right.value.nan? || left.value.nan?
+          runtime.stack.push(F64(Float::NAN))
+          return
+        end
+        runtime.stack.push(F64([left.value, right.value].max))
 
 
       when :f64_copysign
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F64) || !left.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        if left.sign == right.sign
+          runtime.stack.push(F64(left.value))
+        else
+          runtime.stack.push(F64(-left.value))
+        end
 
 
       else

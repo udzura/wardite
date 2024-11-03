@@ -103,31 +103,59 @@ module Wardite
 
 
       when :f32_abs
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F32(x.value.abs))
 
 
       when :f32_neg
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F32(-(x.value)))
 
 
       when :f32_ceil
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F32(x.value.ceil.to_f))
 
 
       when :f32_floor
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F32(x.value.floor.to_f))
 
 
       when :f32_trunc
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F32(x.value.to_i.to_f))
 
 
       when :f32_nearest
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F32(x.value.round.to_f))
 
 
       when :f32_sqrt
-        raise "TODO! unsupported #{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F32(x.value ** 0.5))
 
 
       when :f32_add
@@ -163,15 +191,39 @@ module Wardite
 
 
       when :f32_min
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F32) || !left.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        if right.value.nan? || left.value.nan?
+          runtime.stack.push(F32(Float::NAN))
+          return
+        end
+        runtime.stack.push(F32([left.value, right.value].min))
 
 
       when :f32_max
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F32) || !left.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        if right.value.nan? || left.value.nan?
+          runtime.stack.push(F32(Float::NAN))
+          return
+        end
+        runtime.stack.push(F32([left.value, right.value].max))
 
 
       when :f32_copysign
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F32) || !left.is_a?(F32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        if left.sign == right.sign
+          runtime.stack.push(F32(left.value))
+        else
+          runtime.stack.push(F32(-left.value))
+        end
 
 
       else

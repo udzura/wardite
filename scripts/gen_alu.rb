@@ -494,52 +494,104 @@ module GenAlu
     # instructions for float
     abs: <<~RUBY,
       when :${PREFIX}_abs
-        raise "TODO! unsupported \#{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(x.value.abs))
     RUBY
 
     neg: <<~RUBY,
       when :${PREFIX}_neg
-        raise "TODO! unsupported \#{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(-(x.value)))
     RUBY
 
     ceil: <<~RUBY,
       when :${PREFIX}_ceil
-        raise "TODO! unsupported \#{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(x.value.ceil.to_f))
     RUBY
 
     floor: <<~RUBY,
       when :${PREFIX}_floor
-        raise "TODO! unsupported \#{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(x.value.floor.to_f))
     RUBY
 
     trunc: <<~RUBY,
       when :${PREFIX}_trunc
-        raise "TODO! unsupported \#{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(x.value.to_i.to_f))
     RUBY
 
     nearest: <<~RUBY,
       when :${PREFIX}_nearest
-        raise "TODO! unsupported \#{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(x.value.round.to_f))
     RUBY
 
     sqrt: <<~RUBY,
       when :${PREFIX}_sqrt
-        raise "TODO! unsupported \#{insn.inspect}"
+        x = runtime.stack.pop
+        if !x.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(x.value ** 0.5))
     RUBY
 
     min: <<~RUBY,
       when :${PREFIX}_min
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        if right.value.nan? || left.value.nan?
+          runtime.stack.push(${CLASS}(Float::NAN))
+          return
+        end
+        runtime.stack.push(${CLASS}([left.value, right.value].min))
     RUBY
 
     max: <<~RUBY,
       when :${PREFIX}_max
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        if right.value.nan? || left.value.nan?
+          runtime.stack.push(${CLASS}(Float::NAN))
+          return
+        end
+        runtime.stack.push(${CLASS}([left.value, right.value].max))
     RUBY
 
     copysign: <<~RUBY,
       when :${PREFIX}_copysign
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        if left.sign == right.sign
+          runtime.stack.push(${CLASS}(left.value))
+        else
+          runtime.stack.push(${CLASS}(-left.value))
+        end
     RUBY
 
     # ...end generative ops
