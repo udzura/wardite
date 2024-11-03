@@ -83,7 +83,11 @@ module GenConv
 
     trunc__u: <<~RUBY,
       when :${TO}_trunc_${FROM}_u
-        raise "TODO! unsupported \#{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(${FROM_CLASS})
+        to = from.trunc_u(to: :${TO})
+        raise EvalError, "failed to convert type" if !to.is_a?(${TO_CLASS})
+        runtime.stack.push(to)
     RUBY
 
     extend: <<~RUBY,

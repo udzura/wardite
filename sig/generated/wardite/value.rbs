@@ -148,10 +148,13 @@ module Wardite
     # @rbs return: I32|I64|F32|F64
     def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
+    # @todo need more testcase...
+    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
     def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
+    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-u-mathrm-trunc-mathsf-u-m-n-z
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
     def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
@@ -191,10 +194,12 @@ module Wardite
     # @rbs return: I32|I64|F32|F64
     def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
+    # @see the same as F32
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
     def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
+    # @see the same as F32
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
     def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)

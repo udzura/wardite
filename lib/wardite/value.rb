@@ -232,16 +232,56 @@ module Wardite
       
     end
 
+    # @todo need more testcase...
+    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
     def trunc_s(to:)
-      raise EvalError, "unsupported operation"
+      v = value.to_i
+      case to
+      when :i32
+        if v >= 0
+          I32(v & (I32::I32_MAX >> 1))
+        else
+          v = v & I32::I32_MAX
+          if (v >> 31).zero?
+            raise EvalError, "[undefined behavior] detected overflow: #{value}"
+          end
+          I32(v)
+        end
+      when :i64
+        if v >= 0
+          I64(v & (I64::I64_MAX >> 1))
+        else
+          v = v & I64::I64_MAX
+          if (v >> 31).zero?
+            raise EvalError, "[undefined behavior] detected overflow: #{value}"
+          end
+          I64(v)
+        end
+      else
+        raise EvalError, "unsupported operation to: #{to}"
+      end
     end
 
+    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-u-mathrm-trunc-mathsf-u-m-n-z
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
     def trunc_u(to:)
-      raise EvalError, "unsupported operation"      
+      v = value.to_i
+      if v < 0
+        raise EvalError, "[undefined behavior] unexpected negative value"
+      end
+      case to
+      when :i32
+        v = v & I32::I32_MAX
+        I32(v)
+      when :i64
+        v = v & I64::I64_MAX
+        I64(v)
+      else
+        raise EvalError, "unsupported operation to: #{to}"
+      end
     end
 
     # @rbs to: Symbol
@@ -301,16 +341,55 @@ module Wardite
       
     end
 
+    # @see the same as F32
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
     def trunc_s(to:)
-      raise EvalError, "unsupported operation"
+      v = value.to_i
+      case to
+      when :i32
+        if v >= 0
+          I32(v & (I32::I32_MAX >> 1))
+        else
+          v = v & I32::I32_MAX
+          if (v >> 31).zero?
+            raise EvalError, "[undefined behavior] detected overflow: #{value}"
+          end
+          I32(v)
+        end
+      when :i64
+        if v >= 0
+          I64(v & (I64::I64_MAX >> 1))
+        else
+          v = v & I64::I64_MAX
+          if (v >> 31).zero?
+            raise EvalError, "[undefined behavior] detected overflow: #{value}"
+          end
+          I64(v)
+        end
+      else
+        raise EvalError, "unsupported operation to: #{to}"
+      end
     end
 
+    # @see the same as F32
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
     def trunc_u(to:)
-      raise EvalError, "unsupported operation"      
+      v = value.to_i
+      if v < 0
+        raise EvalError, "[undefined behavior] unexpected negative value"
+      end
+      case to
+      when :i32
+        v = v & I32::I32_MAX
+        I32(v)
+      when :i64
+        v = v & I64::I64_MAX
+        I64(v)
+      else
+        raise EvalError, "unsupported operation to: #{to}"
+      end
     end
 
     # @rbs to: Symbol
