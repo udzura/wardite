@@ -18,6 +18,7 @@ end
 desc "Generate codes"
 task :generate do
   require_relative "scripts/gen_alu"
+  require_relative "scripts/gen_conv"
   libdir = File.expand_path("../lib", __FILE__)
 
   GenAlu.execute(libdir + "/wardite/alu_i32.generated.rb", prefix: "i32", defined_ops: [
@@ -155,6 +156,29 @@ task :generate do
     :max,
     :copysign,
   ])
+
+  GenConv.execute(libdir + "/wardite/convert.generated.rb", defined_ops: {
+    i32: {
+      wrap: [:i64],
+      trunc: [:f32_s, :f32_u, :f64_s, :f64_u],
+      reinterpret: [:f32],
+    },
+    i64: {
+      extend: [:i32_s, :i32_u],
+      trunc: [:f32_s, :f32_u, :f64_s, :f64_u],
+      reinterpret: [:f64],
+    },
+    f32: {
+      convert: [:i32_s, :i32_u, :i64_s, :i64_u],
+      demote: [:f64],
+      reinterpret: [:i32],
+    },
+    f64: {
+      convert: [:i32_s, :i32_u, :i64_s, :i64_u],
+      promote: [:f32],
+      reinterpret: [:i64],
+    },
+  })
 end
 
 task default: %i[test check]

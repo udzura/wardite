@@ -848,6 +848,8 @@ module Wardite
     # @rbs return: void
     def eval_insn(frame, insn)
       case insn.namespace
+      when :convert
+        return Evaluator.convert_eval_insn(self, frame, insn)
       when :i32
         return Evaluator.i32_eval_insn(self, frame, insn)
       when :i64
