@@ -135,17 +135,32 @@ module GenAlu
 
     eqz: <<~RUBY,
       when :${PREFIX}_eqz
-        raise "TODO! unsupported \#{insn.inspect}"
+        target = runtime.stack.pop
+        if !target.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = target.value.zero? ? 1 : 0
+        runtime.stack.push(I32(value))
     RUBY
 
     eq: <<~RUBY,
       when :${PREFIX}_eq
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = (left.value == right.value) ? 1 : 0
+        runtime.stack.push(I32(value))
     RUBY
 
     ne: <<~RUBY,
       when :${PREFIX}_ne
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = (left.value != right.value) ? 1 : 0
+        runtime.stack.push(I32(value))
     RUBY
 
     lts: <<~RUBY,
@@ -270,17 +285,55 @@ module GenAlu
 
     clz: <<~RUBY,
       when :${PREFIX}_clz
-        raise "TODO! unsupported \#{insn.inspect}"
+        target = runtime.stack.pop
+        if !target.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        start = target.memsize - 1
+        count = 0
+        while start > -1
+          if (target.value >> start).zero?
+            count += 1
+            start -= 1
+          else
+            break
+          end
+        end
+        runtime.stack.push(${CLASS}(count))
     RUBY
 
     ctz: <<~RUBY,
       when :${PREFIX}_ctz
-        raise "TODO! unsupported \#{insn.inspect}"
+        target = runtime.stack.pop
+        if !target.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        finish = target.memsize
+        count = 0
+        while count < finish
+          if (target.value & (1 << count)).zero?
+            count += 1
+          else
+            break
+          end
+        end
+        runtime.stack.push(${CLASS}(count))
     RUBY
 
     popcnt: <<~RUBY,
       when :${PREFIX}_popcnt
-        raise "TODO! unsupported \#{insn.inspect}"
+        target = runtime.stack.pop
+        if !target.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        digits = target.memsize
+        count = 0
+        digits.times do |i|
+          if (target.value & (1 << i)).zero?
+            count += 1
+          end
+        end
+        runtime.stack.push(${CLASS}(count))
     RUBY
 
     add: <<~RUBY,
@@ -303,72 +356,139 @@ module GenAlu
 
     mul: <<~RUBY,
       when :${PREFIX}_mul
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(left.value * right.value))
     RUBY
 
     div_s: <<~RUBY,
       when :${PREFIX}_div_s
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(left.value_s / right.value_s))
     RUBY
 
     div_u: <<~RUBY,
       when :${PREFIX}_div_u
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(left.value / right.value))
     RUBY
 
     div: <<~RUBY,
       when :${PREFIX}_div
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(left.value / right.value))
     RUBY
 
     rem_s: <<~RUBY,
       when :${PREFIX}_rem_s
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(left.value_s % right.value_s))
     RUBY
 
     rem_u: <<~RUBY,
       when :${PREFIX}_rem_u
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(left.value % right.value))
     RUBY
 
     and: <<~RUBY,
       when :${PREFIX}_and
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(left.value & right.value))
     RUBY
 
     or: <<~RUBY,
       when :${PREFIX}_or
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(left.value | right.value))
     RUBY
 
     xor: <<~RUBY,
       when :${PREFIX}_xor
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(${CLASS}(left.value ^ right.value))
     RUBY
 
     shl: <<~RUBY,
       when :${PREFIX}_shl
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = left.value << right.value
+        value %= (1 << right.memsize) 
+
+        runtime.stack.push(${CLASS}(value))
     RUBY
 
     shr_s: <<~RUBY,
       when :${PREFIX}_shr_s
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = left.value_s >> right.value
+        runtime.stack.push(${CLASS}(value))
     RUBY
 
     shr_u: <<~RUBY,
       when :${PREFIX}_shr_u
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = left.value >> right.value
+        runtime.stack.push(${CLASS}(value))
     RUBY
 
     rotl: <<~RUBY,
       when :${PREFIX}_rotl
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        rotated = left.value << right.value
+        rest = left.value & (${CLASS}::${CLASS}_MAX << (right.memsize - right.value))
+        value = rotated | (rest >> (right.memsize - right.value))
+        runtime.stack.push(${CLASS}(value))
     RUBY
 
     rotr: <<~RUBY,
       when :${PREFIX}_rotr
-        raise "TODO! unsupported \#{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        rotated = left.value >> right.value
+        rest = left.value & (${CLASS}::${CLASS}_MAX >> (right.memsize - right.value))
+        value = rotated | (rest << (right.memsize - right.value))
+        runtime.stack.push(${CLASS}(value))
     RUBY
 
     # instructions for float

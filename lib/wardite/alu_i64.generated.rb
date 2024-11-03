@@ -76,15 +76,30 @@ module Wardite
 
 
       when :i64_eqz
-        raise "TODO! unsupported #{insn.inspect}"
+        target = runtime.stack.pop
+        if !target.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = target.value.zero? ? 1 : 0
+        runtime.stack.push(I32(value))
 
 
       when :i64_eq
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = (left.value == right.value) ? 1 : 0
+        runtime.stack.push(I32(value))
 
 
       when :i64_ne
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = (left.value != right.value) ? 1 : 0
+        runtime.stack.push(I32(value))
 
 
       when :i64_lts
@@ -160,15 +175,53 @@ module Wardite
 
 
       when :i64_clz
-        raise "TODO! unsupported #{insn.inspect}"
+        target = runtime.stack.pop
+        if !target.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        start = target.memsize - 1
+        count = 0
+        while start > -1
+          if (target.value >> start).zero?
+            count += 1
+            start -= 1
+          else
+            break
+          end
+        end
+        runtime.stack.push(I64(count))
 
 
       when :i64_ctz
-        raise "TODO! unsupported #{insn.inspect}"
+        target = runtime.stack.pop
+        if !target.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        finish = target.memsize
+        count = 0
+        while count < finish
+          if (target.value & (1 << count)).zero?
+            count += 1
+          else
+            break
+          end
+        end
+        runtime.stack.push(I64(count))
 
 
       when :i64_popcnt
-        raise "TODO! unsupported #{insn.inspect}"
+        target = runtime.stack.pop
+        if !target.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        digits = target.memsize
+        count = 0
+        digits.times do |i|
+          if (target.value & (1 << i)).zero?
+            count += 1
+          end
+        end
+        runtime.stack.push(I64(count))
 
 
       when :i64_add
@@ -188,55 +241,118 @@ module Wardite
 
 
       when :i64_mul
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(I64(left.value * right.value))
 
 
       when :i64_div_s
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(I64(left.value_s / right.value_s))
 
 
       when :i64_div_u
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(I64(left.value / right.value))
 
 
       when :i64_rem_s
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(I64(left.value_s % right.value_s))
 
 
       when :i64_rem_u
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(I64(left.value % right.value))
 
 
       when :i64_and
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(I64(left.value & right.value))
 
 
       when :i64_or
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(I64(left.value | right.value))
 
 
       when :i64_xor
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(I64(left.value ^ right.value))
 
 
       when :i64_shl
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = left.value << right.value
+        value %= (1 << right.memsize) 
+      
+        runtime.stack.push(I64(value))
 
 
       when :i64_shr_s
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = left.value_s >> right.value
+        runtime.stack.push(I64(value))
 
 
       when :i64_shr_u
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = left.value >> right.value
+        runtime.stack.push(I64(value))
 
 
       when :i64_rotl
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        rotated = left.value << right.value
+        rest = left.value & (I64::I64_MAX << (right.memsize - right.value))
+        value = rotated | (rest >> (right.memsize - right.value))
+        runtime.stack.push(I64(value))
 
 
       when :i64_rotr
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        rotated = left.value >> right.value
+        rest = left.value & (I64::I64_MAX >> (right.memsize - right.value))
+        value = rotated | (rest << (right.memsize - right.value))
+        runtime.stack.push(I64(value))
 
 
       else

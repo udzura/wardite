@@ -56,6 +56,11 @@ module Wardite
     # when we want to access signed value, it'd be done via #value_s
     attr_accessor :value #: Integer
 
+    # @rbs return: Integer
+    def memsize
+      32
+    end
+
     # returns a value interpreted as signed integer
     # @rbs return: Integer
     def value_s
@@ -164,6 +169,11 @@ module Wardite
 
     attr_accessor :value #: Integer
 
+    # @rbs return: Integer
+    def memsize
+      64
+    end
+
     # returns a value interpreted as signed integer
     # @rbs return: Integer
     def value_s
@@ -267,6 +277,11 @@ module Wardite
     include ValueHelper
 
     attr_accessor :value #: Float
+
+    # @rbs return: Integer
+    def memsize
+      32
+    end
 
     # @rbs return: String
     def packed
@@ -386,6 +401,11 @@ module Wardite
     include ValueHelper
 
     attr_accessor :value #: Float
+
+    # @rbs return: Integer
+    def memsize
+      64
+    end
 
     # @rbs return: String
     def packed

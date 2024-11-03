@@ -40,15 +40,30 @@ module Wardite
 
 
       when :f64_eqz
-        raise "TODO! unsupported #{insn.inspect}"
+        target = runtime.stack.pop
+        if !target.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = target.value.zero? ? 1 : 0
+        runtime.stack.push(I32(value))
 
 
       when :f64_eq
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F64) || !left.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = (left.value == right.value) ? 1 : 0
+        runtime.stack.push(I32(value))
 
 
       when :f64_ne
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F64) || !left.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        value = (left.value != right.value) ? 1 : 0
+        runtime.stack.push(I32(value))
 
 
       when :f64_lt
@@ -132,11 +147,19 @@ module Wardite
 
 
       when :f64_mul
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F64) || !left.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F64(left.value * right.value))
 
 
       when :f64_div
-        raise "TODO! unsupported #{insn.inspect}"
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(F64) || !left.is_a?(F64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(F64(left.value / right.value))
 
 
       when :f64_min
