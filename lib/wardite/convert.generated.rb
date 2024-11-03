@@ -11,7 +11,11 @@ module Wardite
       case insn.code
 
       when :i32_wrap_i64
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I64)
+        to = from.wrap(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
 
 
       when :i32_trunc_f32_s
@@ -31,23 +35,59 @@ module Wardite
 
 
       when :i32_trunc_f32_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.trunc_u(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
 
 
       when :i32_trunc_f64_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.trunc_u(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
 
 
       when :i32_reinterpret_f32
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.reinterpret(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
 
 
       when :i64_extend_i32_s
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.extend_s(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_extend_i64_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I64)
+        to = from.extend_s(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
 
 
       when :i64_extend_i32_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.extend_u(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_extend_i64_u
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I64)
+        to = from.extend_u(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
 
 
       when :i64_trunc_f32_s
@@ -67,63 +107,123 @@ module Wardite
 
 
       when :i64_trunc_f32_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.trunc_u(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
 
 
       when :i64_trunc_f64_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.trunc_u(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
 
 
       when :i64_reinterpret_f64
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.reinterpret(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
 
 
       when :f32_convert_i32_s
-        raise "TODO! unsupported #{insn.inspect}"
-
-
-      when :f32_convert_i32_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.convert_s(to: :f32)
+        raise EvalError, "failed to convert type" if !to.is_a?(F32)
+        runtime.stack.push(to)
 
 
       when :f32_convert_i64_s
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I64)
+        to = from.convert_s(to: :f32)
+        raise EvalError, "failed to convert type" if !to.is_a?(F32)
+        runtime.stack.push(to)
+
+
+      when :f32_convert_i32_u
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.convert_u(to: :f32)
+        raise EvalError, "failed to convert type" if !to.is_a?(F32)
+        runtime.stack.push(to)
 
 
       when :f32_convert_i64_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I64)
+        to = from.convert_u(to: :f32)
+        raise EvalError, "failed to convert type" if !to.is_a?(F32)
+        runtime.stack.push(to)
 
 
       when :f32_demote_f64
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.demote(to: :f32)
+        raise EvalError, "failed to convert type" if !to.is_a?(F32)
+        runtime.stack.push(to)
 
 
       when :f32_reinterpret_i32
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.reinterpret(to: :f32)
+        raise EvalError, "failed to convert type" if !to.is_a?(F32)
+        runtime.stack.push(to)
 
 
       when :f64_convert_i32_s
-        raise "TODO! unsupported #{insn.inspect}"
-
-
-      when :f64_convert_i32_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.convert_s(to: :f64)
+        raise EvalError, "failed to convert type" if !to.is_a?(F64)
+        runtime.stack.push(to)
 
 
       when :f64_convert_i64_s
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I64)
+        to = from.convert_s(to: :f64)
+        raise EvalError, "failed to convert type" if !to.is_a?(F64)
+        runtime.stack.push(to)
+
+
+      when :f64_convert_i32_u
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.convert_u(to: :f64)
+        raise EvalError, "failed to convert type" if !to.is_a?(F64)
+        runtime.stack.push(to)
 
 
       when :f64_convert_i64_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I64)
+        to = from.convert_u(to: :f64)
+        raise EvalError, "failed to convert type" if !to.is_a?(F64)
+        runtime.stack.push(to)
 
 
       when :f64_promote_f32
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.promote(to: :f64)
+        raise EvalError, "failed to convert type" if !to.is_a?(F64)
+        runtime.stack.push(to)
 
 
       when :f64_reinterpret_i64
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I64)
+        to = from.reinterpret(to: :f64)
+        raise EvalError, "failed to convert type" if !to.is_a?(F64)
+        runtime.stack.push(to)
 
 
       else

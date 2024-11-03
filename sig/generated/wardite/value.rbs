@@ -52,7 +52,11 @@ module Wardite
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
-    def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    def extend_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def extend_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -64,7 +68,11 @@ module Wardite
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
-    def convert: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    def convert_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def convert_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -102,7 +110,11 @@ module Wardite
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
-    def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    def extend_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def extend_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -114,7 +126,11 @@ module Wardite
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
-    def convert: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    def convert_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def convert_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -146,7 +162,11 @@ module Wardite
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
-    def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    def extend_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def extend_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
     # @todo need more testcase...
     # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
@@ -161,7 +181,11 @@ module Wardite
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
-    def convert: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    def convert_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def convert_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -192,7 +216,11 @@ module Wardite
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
-    def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    def extend_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def extend_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
     # @see the same as F32
     # @rbs to: Symbol
@@ -206,8 +234,13 @@ module Wardite
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
-    def convert: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    def convert_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
 
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def convert_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @todo no loss of digits...
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
     def demote: (to: Symbol) -> (I32 | I64 | F32 | F64)
