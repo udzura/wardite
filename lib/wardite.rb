@@ -850,6 +850,12 @@ module Wardite
       case insn.namespace
       when :i32
         return Evaluator.i32_eval_insn(self, frame, insn)
+      when :i64
+        return Evaluator.i64_eval_insn(self, frame, insn)
+      when :f32
+        return Evaluator.f32_eval_insn(self, frame, insn)
+      when :f64
+        return Evaluator.f64_eval_insn(self, frame, insn)
       end
 
       # unmached namespace...
@@ -921,7 +927,16 @@ module Wardite
           end
           stack_unwind(old_frame.sp, old_frame.arity)
         end
+
+      else
+        raise "TODO! unsupported #{insn.inspect}"
       end
+
+    rescue => e
+      require "pp"
+      $stderr.puts "frame: #{frame.pretty_inspect}"
+      $stderr.puts "stack: #{stack.pretty_inspect}"
+      raise e
     end
 
     # @rbs ops: Array[Op]

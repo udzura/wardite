@@ -2,6 +2,12 @@
 
 module Wardite
   class Op
+    # @see https://pengowray.github.io/wasm-ops/
+    SYMS: Array[Symbol]
+
+    # @rbs return: Hash[Integer, Symbol]
+    def self.table: () -> Hash[Integer, Symbol]
+
     attr_accessor namespace: Symbol
 
     attr_accessor code: Symbol

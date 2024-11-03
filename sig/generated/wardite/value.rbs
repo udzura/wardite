@@ -2,7 +2,15 @@
 
 module Wardite
   class I32
+    I32_MAX: untyped
+
+    # value should be stored as unsigned in I32/I64
+    # when we want to access signed value, it's done via #value_s
     attr_accessor value: Integer
+
+    # returns a value interpreted as signed integer
+    # @rbs return: Integer
+    def value_s: () -> Integer
 
     # TODO: eliminate use of pack, to support mruby - in this file!
     # @rbs return: String
@@ -12,7 +20,13 @@ module Wardite
   end
 
   class I64
+    I64_MAX: untyped
+
     attr_accessor value: Integer
+
+    # returns a value interpreted as signed integer
+    # @rbs return: Integer
+    def value_s: () -> Integer
 
     # @rbs return: String
     def packed: () -> String

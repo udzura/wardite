@@ -3,6 +3,7 @@ target :lib do
   signature "sig"
   check "lib"
 
+  library "pp"
   # configure_code_diagnostics(Steep::Diagnostic::Ruby.strict)
 end
 
