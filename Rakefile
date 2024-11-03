@@ -160,12 +160,14 @@ task :generate do
   GenConv.execute(libdir + "/wardite/convert.generated.rb", defined_ops: {
     i32: {
       wrap: [:i64],
-      trunc: [:f32_s, :f32_u, :f64_s, :f64_u],
+      trunc__s: [:f32, :f64],
+      trunc__u: [:f32, :f64],
       reinterpret: [:f32],
     },
     i64: {
       extend: [:i32_s, :i32_u],
-      trunc: [:f32_s, :f32_u, :f64_s, :f64_u],
+      trunc__s: [:f32, :f64],
+      trunc__u: [:f32, :f64],
       reinterpret: [:f64],
     },
     f32: {

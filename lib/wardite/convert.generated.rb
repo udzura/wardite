@@ -15,14 +15,22 @@ module Wardite
 
 
       when :i32_trunc_f32_s
-        raise "TODO! unsupported #{insn.inspect}"
-
-
-      when :i32_trunc_f32_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.trunc_s(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
 
 
       when :i32_trunc_f64_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.trunc_s(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
+
+
+      when :i32_trunc_f32_u
         raise "TODO! unsupported #{insn.inspect}"
 
 
@@ -43,14 +51,22 @@ module Wardite
 
 
       when :i64_trunc_f32_s
-        raise "TODO! unsupported #{insn.inspect}"
-
-
-      when :i64_trunc_f32_u
-        raise "TODO! unsupported #{insn.inspect}"
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.trunc_s(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
 
 
       when :i64_trunc_f64_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.trunc_s(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_trunc_f32_u
         raise "TODO! unsupported #{insn.inspect}"
 
 

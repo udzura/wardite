@@ -1,57 +1,6 @@
 # Generated from lib/wardite/value.rb with RBS::Inline
 
 module Wardite
-  class I32
-    I32_MAX: untyped
-
-    # value should be stored as unsigned in I32/I64
-    # when we want to access signed value, it's done via #value_s
-    attr_accessor value: Integer
-
-    # returns a value interpreted as signed integer
-    # @rbs return: Integer
-    def value_s: () -> Integer
-
-    # TODO: eliminate use of pack, to support mruby - in this file!
-    # @rbs return: String
-    def packed: () -> String
-
-    def inspect: () -> untyped
-  end
-
-  class I64
-    I64_MAX: untyped
-
-    attr_accessor value: Integer
-
-    # returns a value interpreted as signed integer
-    # @rbs return: Integer
-    def value_s: () -> Integer
-
-    # @rbs return: String
-    def packed: () -> String
-
-    def inspect: () -> untyped
-  end
-
-  class F32
-    attr_accessor value: Float
-
-    # @rbs return: String
-    def packed: () -> String
-
-    def inspect: () -> untyped
-  end
-
-  class F64
-    attr_accessor value: Float
-
-    # @rbs return: String
-    def packed: () -> String
-
-    def inspect: () -> untyped
-  end
-
   module ValueHelper
     # @rbs value: Integer
     # @rbs return: I32
@@ -68,5 +17,204 @@ module Wardite
     # @rbs value: Float
     # @rbs return: F64
     def F64: (Float value) -> F64
+
+    private
+
+    # @rbs value: Integer
+    # @rbs return: Integer
+    def as_u32: (Integer value) -> Integer
+
+    # @rbs value: Integer
+    # @rbs return: Integer
+    def as_u64: (Integer value) -> Integer
+  end
+
+  class I32
+    include ValueHelper
+
+    I32_MAX: untyped
+
+    # value should be stored as unsigned Integer, even in I32/I64
+    # when we want to access signed value, it'd be done via #value_s
+    attr_accessor value: Integer
+
+    # returns a value interpreted as signed integer
+    # @rbs return: Integer
+    def value_s: () -> Integer
+
+    # TODO: eliminate use of pack, to support mruby - in this file!
+    # @rbs return: String
+    def packed: () -> String
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def wrap: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def convert: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def demote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def promote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def reinterpret: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # I32#inspect shows signed value for convinience
+    def inspect: () -> untyped
+  end
+
+  class I64
+    include ValueHelper
+
+    I64_MAX: untyped
+
+    attr_accessor value: Integer
+
+    # returns a value interpreted as signed integer
+    # @rbs return: Integer
+    def value_s: () -> Integer
+
+    # @rbs return: String
+    def packed: () -> String
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def wrap: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def convert: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def demote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def promote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def reinterpret: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # I64#inspect shows signed value
+    def inspect: () -> untyped
+  end
+
+  class F32
+    include ValueHelper
+
+    attr_accessor value: Float
+
+    # @rbs return: String
+    def packed: () -> String
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def wrap: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def convert: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def demote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def promote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def reinterpret: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    def inspect: () -> untyped
+  end
+
+  class F64
+    include ValueHelper
+
+    attr_accessor value: Float
+
+    # @rbs return: String
+    def packed: () -> String
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def wrap: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def extend_: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def convert: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def demote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def promote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    # @rbs to: Symbol
+    # @rbs return: I32|I64|F32|F64
+    def reinterpret: (to: Symbol) -> (I32 | I64 | F32 | F64)
+
+    def inspect: () -> untyped
   end
 end
