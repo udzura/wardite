@@ -93,14 +93,14 @@ module Wardite
     # TODO: eliminate use of pack, to support mruby - in this file!
     # @rbs size: Integer|nil
     # @rbs return: String
-    def packed(size=nil)
+    def packed(size: nil)
       case size
       when nil
         [self.value].pack("I!")
       when 8
-        [self.value].pack("C")
+        [self.value & 0xff].pack("C")
       when 16
-        [self.value].pack("S!")
+        [self.value & 0xffff].pack("S!")
       else
         raise EvalError, "unsupported size #{size}"
       end
@@ -236,16 +236,16 @@ module Wardite
 
     # @rbs size: Integer|nil
     # @rbs return: String
-    def packed(size=nil)
+    def packed(size: nil)
       case size
       when nil
         [self.value].pack("L!")
       when 8
-        [self.value].pack("C")
+        [self.value & 0xff].pack("C")
       when 16
-        [self.value].pack("S!")
+        [self.value & 0xffff].pack("S!")
       when 32
-        [self.value].pack("I!")
+        [self.value & 0xffffffff].pack("I!")
       else
         raise EvalError, "unsupported size #{size}"
       end
@@ -368,7 +368,7 @@ module Wardite
 
     # @rbs size: Integer|nil
     # @rbs return: String
-    def packed(size=nil)
+    def packed(size: nil)
       [self.value].pack("e")
     end
 
@@ -512,7 +512,7 @@ module Wardite
 
     # @rbs size: Integer|nil
     # @rbs return: String
-    def packed(size=nil)
+    def packed(size: nil)
       [self.value].pack("E")
     end
 

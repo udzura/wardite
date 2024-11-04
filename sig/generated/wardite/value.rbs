@@ -56,7 +56,7 @@ module Wardite
     # TODO: eliminate use of pack, to support mruby - in this file!
     # @rbs size: Integer|nil
     # @rbs return: String
-    def packed: (?Integer | nil size) -> String
+    def packed: (?size: Integer | nil) -> String
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -124,7 +124,7 @@ module Wardite
 
     # @rbs size: Integer|nil
     # @rbs return: String
-    def packed: (?Integer | nil size) -> String
+    def packed: (?size: Integer | nil) -> String
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -187,7 +187,7 @@ module Wardite
 
     # @rbs size: Integer|nil
     # @rbs return: String
-    def packed: (?Integer | nil size) -> String
+    def packed: (?size: Integer | nil) -> String
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -252,7 +252,7 @@ module Wardite
 
     # @rbs size: Integer|nil
     # @rbs return: String
-    def packed: (?Integer | nil size) -> String
+    def packed: (?size: Integer | nil) -> String
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64

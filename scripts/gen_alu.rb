@@ -86,7 +86,7 @@ module GenAlu
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(${CLASS}.from_bytes(buf, size: 1, signed: true))
+        runtime.stack.push(${CLASS}.from_bytes(buf, size: 8, signed: true))
     RUBY
 
     load8_u: <<~RUBY,
@@ -107,7 +107,7 @@ module GenAlu
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(${CLASS}.from_bytes(buf, size: 1, signed: false))
+        runtime.stack.push(${CLASS}.from_bytes(buf, size: 8, signed: false))
     RUBY
 
     load16_s: <<~RUBY,
@@ -128,7 +128,7 @@ module GenAlu
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(${CLASS}.from_bytes(buf, size: 2, signed: true))
+        runtime.stack.push(${CLASS}.from_bytes(buf, size: 16, signed: true))
     RUBY
 
     load16_u: <<~RUBY,
@@ -149,7 +149,7 @@ module GenAlu
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(${CLASS}.from_bytes(buf, size: 2, signed: false))
+        runtime.stack.push(${CLASS}.from_bytes(buf, size: 16, signed: false))
     RUBY
 
     load32_s: <<~RUBY,
@@ -170,7 +170,7 @@ module GenAlu
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(${CLASS}.from_bytes(buf, size: 4, signed: true))
+        runtime.stack.push(${CLASS}.from_bytes(buf, size: 32, signed: true))
     RUBY
 
     load32_u: <<~RUBY,
@@ -191,7 +191,7 @@ module GenAlu
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(${CLASS}.from_bytes(buf, size: 4, signed: false))
+        runtime.stack.push(${CLASS}.from_bytes(buf, size: 32, signed: false))
     RUBY
 
     store: <<~RUBY,
@@ -214,17 +214,56 @@ module GenAlu
 
     store8: <<~RUBY,
       when :${PREFIX}_store8
-        raise "TODO! unsupported \#{insn.inspect}"
+        _align = insn.operand[0] # TODO: alignment support?
+        offset = insn.operand[1]
+        raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
+
+        value = runtime.stack.pop
+        addr = runtime.stack.pop
+        if !value.is_a?(${CLASS}) || !addr.is_a?(I32)
+          raise EvalError, "maybe stack too short"
+        end
+
+        at = addr.value + offset
+        data_end = at + 1
+        memory = runtime.instance.store.memories[0] || raise("[BUG] no memory")
+        memory.data[at...data_end] = value.packed(size: 8)
     RUBY
 
     store16: <<~RUBY,
       when :${PREFIX}_store16
-        raise "TODO! unsupported \#{insn.inspect}"
+        _align = insn.operand[0] # TODO: alignment support?
+        offset = insn.operand[1]
+        raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
+
+        value = runtime.stack.pop
+        addr = runtime.stack.pop
+        if !value.is_a?(${CLASS}) || !addr.is_a?(I32)
+          raise EvalError, "maybe stack too short"
+        end
+
+        at = addr.value + offset
+        data_end = at + 2
+        memory = runtime.instance.store.memories[0] || raise("[BUG] no memory")
+        memory.data[at...data_end] = value.packed(size: 16)
     RUBY
 
     store32: <<~RUBY,
       when :${PREFIX}_store32
-        raise "TODO! unsupported \#{insn.inspect}"
+        _align = insn.operand[0] # TODO: alignment support?
+        offset = insn.operand[1]
+        raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
+
+        value = runtime.stack.pop
+        addr = runtime.stack.pop
+        if !value.is_a?(${CLASS}) || !addr.is_a?(I32)
+          raise EvalError, "maybe stack too short"
+        end
+
+        at = addr.value + offset
+        data_end = at + 4
+        memory = runtime.instance.store.memories[0] || raise("[BUG] no memory")
+        memory.data[at...data_end] = value.packed(size: 32)
     RUBY
 
     const: <<~RUBY,

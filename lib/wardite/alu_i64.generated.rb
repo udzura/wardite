@@ -47,7 +47,7 @@ module Wardite
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(I64.from_bytes(buf, size: 1, signed: true))
+        runtime.stack.push(I64.from_bytes(buf, size: 8, signed: true))
 
 
       when :i64_load8_u
@@ -67,7 +67,7 @@ module Wardite
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(I64.from_bytes(buf, size: 1, signed: false))
+        runtime.stack.push(I64.from_bytes(buf, size: 8, signed: false))
 
 
       when :i64_load16_s
@@ -87,7 +87,7 @@ module Wardite
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(I64.from_bytes(buf, size: 2, signed: true))
+        runtime.stack.push(I64.from_bytes(buf, size: 16, signed: true))
 
 
       when :i64_load16_u
@@ -107,7 +107,7 @@ module Wardite
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(I64.from_bytes(buf, size: 2, signed: false))
+        runtime.stack.push(I64.from_bytes(buf, size: 16, signed: false))
 
 
       when :i64_load32_s
@@ -127,7 +127,7 @@ module Wardite
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(I64.from_bytes(buf, size: 4, signed: true))
+        runtime.stack.push(I64.from_bytes(buf, size: 32, signed: true))
 
 
       when :i64_load32_u
@@ -147,7 +147,7 @@ module Wardite
         if !buf
           raise EvalError, "invalid memory range"
         end
-        runtime.stack.push(I64.from_bytes(buf, size: 4, signed: false))
+        runtime.stack.push(I64.from_bytes(buf, size: 32, signed: false))
 
 
       when :i64_store
@@ -168,15 +168,54 @@ module Wardite
 
 
       when :i64_store8
-        raise "TODO! unsupported #{insn.inspect}"
+        _align = insn.operand[0] # TODO: alignment support?
+        offset = insn.operand[1]
+        raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
+      
+        value = runtime.stack.pop
+        addr = runtime.stack.pop
+        if !value.is_a?(I64) || !addr.is_a?(I32)
+          raise EvalError, "maybe stack too short"
+        end
+      
+        at = addr.value + offset
+        data_end = at + 1
+        memory = runtime.instance.store.memories[0] || raise("[BUG] no memory")
+        memory.data[at...data_end] = value.packed(size: 8)
 
 
       when :i64_store16
-        raise "TODO! unsupported #{insn.inspect}"
+        _align = insn.operand[0] # TODO: alignment support?
+        offset = insn.operand[1]
+        raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
+      
+        value = runtime.stack.pop
+        addr = runtime.stack.pop
+        if !value.is_a?(I64) || !addr.is_a?(I32)
+          raise EvalError, "maybe stack too short"
+        end
+      
+        at = addr.value + offset
+        data_end = at + 2
+        memory = runtime.instance.store.memories[0] || raise("[BUG] no memory")
+        memory.data[at...data_end] = value.packed(size: 16)
 
 
       when :i64_store32
-        raise "TODO! unsupported #{insn.inspect}"
+        _align = insn.operand[0] # TODO: alignment support?
+        offset = insn.operand[1]
+        raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
+      
+        value = runtime.stack.pop
+        addr = runtime.stack.pop
+        if !value.is_a?(I64) || !addr.is_a?(I32)
+          raise EvalError, "maybe stack too short"
+        end
+      
+        at = addr.value + offset
+        data_end = at + 4
+        memory = runtime.instance.store.memories[0] || raise("[BUG] no memory")
+        memory.data[at...data_end] = value.packed(size: 32)
 
 
       when :i64_const
