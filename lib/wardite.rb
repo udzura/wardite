@@ -915,27 +915,6 @@ module Wardite
 
         label = Label.new(:if, next_pc, stack.size, block.result_size)
         frame.labels.push(label)
-        
-      when :local_get
-        idx = insn.operand[0]
-        if !idx.is_a?(Integer)
-          raise EvalError, "[BUG] invalid type of operand"
-        end
-        local = frame.locals[idx]
-        if !local
-          raise EvalError, "local not found"
-        end
-        stack.push(local)
-      when :local_set
-        idx = insn.operand[0]
-        if !idx.is_a?(Integer)
-          raise EvalError, "[BUG] invalid type of operand"
-        end
-        value = stack.pop
-        if !value
-          raise EvalError, "value should be pushed"
-        end
-        frame.locals[idx] = value
 
       when :call
         idx = insn.operand[0]
@@ -983,6 +962,40 @@ module Wardite
           raise EvalError, "stack too short"
         end
         stack.push(cond.value != 0 ? left : right)
+
+      when :local_get
+        idx = insn.operand[0]
+        if !idx.is_a?(Integer)
+          raise EvalError, "[BUG] invalid type of operand"
+        end
+        local = frame.locals[idx]
+        if !local
+          raise EvalError, "local not found"
+        end
+        stack.push(local)
+
+      when :local_set
+        idx = insn.operand[0]
+        if !idx.is_a?(Integer)
+          raise EvalError, "[BUG] invalid type of operand"
+        end
+        value = stack.pop
+        if !value
+          raise EvalError, "value should be pushed"
+        end
+        frame.locals[idx] = value
+
+      when :memory_size
+        memory = instance.store.memories[0] || raise("[BUG] no memory")
+        stack.push(I32(memory.current))
+
+      when :memory_grow
+        delta = stack.pop
+        if !delta.is_a?(I32)
+          raise EvalError, "maybe stack too short"
+        end
+        memory = instance.store.memories[0] || raise("[BUG] no memory")
+        stack.push(I32(memory.grow(delta.value)))
 
       else
         raise "TODO! unsupported #{insn.inspect}"
@@ -1199,14 +1212,30 @@ module Wardite
   class Memory
     attr_accessor :data #: String
 
+    attr_accessor :current #: Integer
+
     attr_accessor :max #: Integer|nil
 
     # @rbs min: Integer
     # @rbs max: Integer|nil
     # @rbs return: void
     def initialize(min, max)
-      @data = String.new("\0" * (min * 64 * 1024), capacity: min * 64 * 1024)
+      @data = String.new("\0" * (min * 64 * 1024))
+      @current = min
       @max = max
+    end
+
+    # @rbs delta: Integer
+    # @rbs return: Integer
+    def grow(delta)
+      prev = current
+      newsize = current + delta
+      if max && (newsize > max)
+        return -1
+      end
+      
+      @data += String.new("\0" * (delta * 64 * 1024))
+      prev
     end
 
     def inspect

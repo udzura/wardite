@@ -333,12 +333,18 @@ module Wardite
   class Memory
     attr_accessor data: String
 
+    attr_accessor current: Integer
+
     attr_accessor max: Integer | nil
 
     # @rbs min: Integer
     # @rbs max: Integer|nil
     # @rbs return: void
     def initialize: (Integer min, Integer | nil max) -> void
+
+    # @rbs delta: Integer
+    # @rbs return: Integer
+    def grow: (Integer delta) -> Integer
 
     def inspect: () -> untyped
   end
