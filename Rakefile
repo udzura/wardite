@@ -15,6 +15,13 @@ task :check do
   sh "bundle exec steep check"
 end
 
+desc "Compile wat"
+task :wasm, [:name] do |t, args|
+  Dir.chdir "examples" do
+    sh "wat2wasm #{args.name}.wat"
+  end
+end
+
 desc "Generate codes"
 task :generate do
   require_relative "scripts/gen_alu"

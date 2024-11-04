@@ -86,13 +86,25 @@ module Wardite
     # @rbs return: Array[Symbol]
     def self.operand_of(code)
       case code
-      when :local_get, :local_set, :call
+      when /load/, /store/
+        [:u32, :u32]
+      when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if
         [:u32]
+      when :call_indirect
+        [:u32, :u8]
+      when :br_table
+        [:u32_vec, :u32]
       when :i32_const
         [:i32]
-      when :i32_store
-        [:u32, :u32]
+      when :i64_const
+        [:i64]
+      when :f32_const
+        [:f32]
+      when :f64_const
+        [:f64]
       when :if
+        [:u8_if_block]
+      when :block, :loop
         [:u8_block]
       else
         []

@@ -13,6 +13,10 @@ module Wardite
   end
 end
 require_relative "wardite/alu_i32.generated"
+require_relative "wardite/alu_i64.generated"
+require_relative "wardite/alu_f32.generated"
+require_relative "wardite/alu_f64.generated"
+require_relative "wardite/convert.generated"
 
 require_relative "wardite/wasi"
 
@@ -290,6 +294,10 @@ module Wardite
             arg << :i32
           when 0x7e
             arg << :i64
+          when 0x7d
+            arg << :f32
+          when 0x7c
+            arg << :f64
           else
             raise NotImplementedError, "unsupported for now: #{ty.inspect}"
           end
@@ -304,6 +312,10 @@ module Wardite
             ret << :i32
           when 0x7e
             ret << :i64
+          when 0x7d
+            ret << :f32
+          when 0x7c
+            ret << :f64
           else
             raise NotImplementedError, "unsupported for now: #{ty.inspect}"
           end
@@ -432,14 +444,38 @@ module Wardite
         operand = [] #: Array[Integer|Float|Block]
         operand_types.each do |typ|
           case typ
+          when :u8
+            ope = buf.read 1
+            if ! ope
+              raise LoadError, "buffer too short"
+            end
+            operand << ope.ord
           when :u32
             operand << fetch_uleb128(buf)
           when :i32
             operand << fetch_sleb128(buf)
-          when :u8_block # :if specific
+          when :i64
+            operand << fetch_sleb128(buf)
+          when :f32
+            data = buf.read 4
+            if !data || data.size != 4
+              raise LoadError, "buffer too short"
+            end
+            v = data.unpack("e")[0]
+            raise "String#unpack is broken" if !v.is_a?(Float)
+            operand << v
+          when :f64
+            data = buf.read 8
+            if !data || data.size != 8
+              raise LoadError, "buffer too short"
+            end
+            v = data.unpack("E")[0]
+            raise "String#unpack is broken" if !v.is_a?(Float)
+            operand << v
+          when :u8_if_block # :if specific
             block_ope = buf.read 1
             if ! block_ope
-              raise "buffer too short for if"
+              raise LoadError, "buffer too short for if"
             end
             if block_ope.ord == 0x40
               operand << Block.void
@@ -862,6 +898,11 @@ module Wardite
 
       # unmached namespace...
       case insn.code
+      when :unreachable
+        raise Unreachable, "unreachable op"
+      when :nop
+        return
+
       when :if
         block = insn.operand[0]
         raise EvalError, "if op without block" if !block.is_a?(Block)
@@ -930,14 +971,27 @@ module Wardite
           stack_unwind(old_frame.sp, old_frame.arity)
         end
 
+      when :drop
+        stack.pop
+
+      when :select
+        cond, right, left = stack.pop, stack.pop, stack.pop
+        if !cond.is_a?(I32)
+          raise EvalError, "invalid stack for select"
+        end
+        if !right || !left
+          raise EvalError, "stack too short"
+        end
+        stack.push(cond.value != 0 ? left : right)
+
       else
         raise "TODO! unsupported #{insn.inspect}"
       end
 
     rescue => e
       require "pp"
-      $stderr.puts "frame: #{frame.pretty_inspect}"
-      $stderr.puts "stack: #{stack.pretty_inspect}"
+      $stderr.puts "frame:::\n#{frame.pretty_inspect}"
+      $stderr.puts "stack:::\n#{stack.pretty_inspect}"
       raise e
     end
 
@@ -1283,6 +1337,7 @@ module Wardite
   class LoadError < StandardError; end
   class ArgumentError < StandardError; end
   class EvalError < StandardError; end
+  class Unreachable < StandardError; end
 
   # @rbs path: String|nil
   # @rbs buffer: File|StringIO|nil
