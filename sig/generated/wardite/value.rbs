@@ -29,6 +29,8 @@ module Wardite
     def as_u64: (Integer value) -> Integer
   end
 
+  extend ValueHelper
+
   class I32
     include ValueHelper
 
@@ -38,6 +40,12 @@ module Wardite
     # when we want to access signed value, it'd be done via #value_s
     attr_accessor value: Integer
 
+    # @rbs str: String
+    # @rbs size: Integer|nil
+    # @rbs signed: bool
+    # @rbs return: I32
+    def self.from_bytes: (String str, ?size: Integer | nil, ?signed: bool) -> I32
+
     # @rbs return: Integer
     def memsize: () -> Integer
 
@@ -46,8 +54,9 @@ module Wardite
     def value_s: () -> Integer
 
     # TODO: eliminate use of pack, to support mruby - in this file!
+    # @rbs size: Integer|nil
     # @rbs return: String
-    def packed: () -> String
+    def packed: (?Integer | nil size) -> String
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -100,6 +109,12 @@ module Wardite
 
     attr_accessor value: Integer
 
+    # @rbs str: String
+    # @rbs size: Integer|nil
+    # @rbs signed: bool
+    # @rbs return: I64
+    def self.from_bytes: (String str, ?size: Integer | nil, ?signed: bool) -> I64
+
     # @rbs return: Integer
     def memsize: () -> Integer
 
@@ -107,8 +122,9 @@ module Wardite
     # @rbs return: Integer
     def value_s: () -> Integer
 
+    # @rbs size: Integer|nil
     # @rbs return: String
-    def packed: () -> String
+    def packed: (?Integer | nil size) -> String
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -159,14 +175,19 @@ module Wardite
 
     attr_accessor value: Float
 
+    # @rbs str: String
+    # @rbs return: F32
+    def self.from_bytes: (String str) -> F32
+
     # @rbs return: Integer
     def memsize: () -> Integer
 
     # @rbs return: :positive|:negative
     def sign: () -> (:positive | :negative)
 
+    # @rbs size: Integer|nil
     # @rbs return: String
-    def packed: () -> String
+    def packed: (?Integer | nil size) -> String
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64
@@ -219,14 +240,19 @@ module Wardite
 
     attr_accessor value: Float
 
+    # @rbs str: String
+    # @rbs return: F64
+    def self.from_bytes: (String str) -> F64
+
     # @rbs return: Integer
     def memsize: () -> Integer
 
     # @rbs return: :positive|:negative
     def sign: () -> (:positive | :negative)
 
+    # @rbs size: Integer|nil
     # @rbs return: String
-    def packed: () -> String
+    def packed: (?Integer | nil size) -> String
 
     # @rbs to: Symbol
     # @rbs return: I32|I64|F32|F64

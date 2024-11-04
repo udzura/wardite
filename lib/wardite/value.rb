@@ -48,6 +48,8 @@ module Wardite
     end
   end
 
+  extend ValueHelper
+
   class I32
     include ValueHelper
 
@@ -55,6 +57,25 @@ module Wardite
     # value should be stored as unsigned Integer, even in I32/I64
     # when we want to access signed value, it'd be done via #value_s
     attr_accessor :value #: Integer
+
+    # @rbs str: String
+    # @rbs size: Integer|nil
+    # @rbs signed: bool
+    # @rbs return: I32
+    def self.from_bytes(str, size: nil, signed: false)
+      v = case size
+        when nil
+          str.unpack("I!")[0]
+        when 8
+          signed ? str.unpack("c")[0] : str.unpack("C")[0]
+        when 16
+          signed ? str.unpack("s!")[0] : str.unpack("S!")[0]
+        end
+      if !v.is_a?(Integer)
+        raise "broken string or unsupported size: #{str.inspect} -> #{size}"
+      end
+      Wardite::I32(v)
+    end
 
     # @rbs return: Integer
     def memsize
@@ -70,9 +91,19 @@ module Wardite
     end
 
     # TODO: eliminate use of pack, to support mruby - in this file!
+    # @rbs size: Integer|nil
     # @rbs return: String
-    def packed
-      [self.value].pack("I!")
+    def packed(size=nil)
+      case size
+      when nil
+        [self.value].pack("I!")
+      when 8
+        [self.value].pack("C")
+      when 16
+        [self.value].pack("S!")
+      else
+        raise EvalError, "unsupported size #{size}"
+      end
     end
 
     # @rbs to: Symbol
@@ -169,6 +200,27 @@ module Wardite
 
     attr_accessor :value #: Integer
 
+    # @rbs str: String
+    # @rbs size: Integer|nil
+    # @rbs signed: bool
+    # @rbs return: I64
+    def self.from_bytes(str, size: nil, signed: false)
+      v = case size
+        when nil
+          str.unpack("L!")[0]
+        when 8
+          signed ? str.unpack("c")[0] : str.unpack("C")[0]
+        when 16
+          signed ? str.unpack("s!")[0] : str.unpack("S!")[0]
+        when 32
+          signed ? str.unpack("i!")[0] : str.unpack("I!")[0]
+        end
+      if !v.is_a?(Integer)
+        raise "broken string or unsupported size: #{str.inspect} -> #{size}"
+      end
+      Wardite::I64(v)
+    end
+
     # @rbs return: Integer
     def memsize
       64
@@ -182,9 +234,21 @@ module Wardite
         ((-@value) ^ I64_MAX) + 1
     end
 
+    # @rbs size: Integer|nil
     # @rbs return: String
-    def packed
-      [self.value].pack("L!")
+    def packed(size=nil)
+      case size
+      when nil
+        [self.value].pack("L!")
+      when 8
+        [self.value].pack("C")
+      when 16
+        [self.value].pack("S!")
+      when 32
+        [self.value].pack("I!")
+      else
+        raise EvalError, "unsupported size #{size}"
+      end
     end
 
     # @rbs to: Symbol
@@ -278,6 +342,16 @@ module Wardite
 
     attr_accessor :value #: Float
 
+    # @rbs str: String
+    # @rbs return: F32
+    def self.from_bytes(str)
+      v = str.unpack("e")[0]
+      if !v.is_a?(Float)
+        raise "broken string or unsupported size: #{str.inspect} -> 4"
+      end
+      Wardite::F32(v)
+    end
+
     # @rbs return: Integer
     def memsize
       32
@@ -292,9 +366,10 @@ module Wardite
       upper.zero? ? :positive : :negative
     end
 
+    # @rbs size: Integer|nil
     # @rbs return: String
-    def packed
-      [self.value].pack("f")
+    def packed(size=nil)
+      [self.value].pack("e")
     end
 
     # @rbs to: Symbol
@@ -411,6 +486,16 @@ module Wardite
 
     attr_accessor :value #: Float
 
+    # @rbs str: String
+    # @rbs return: F64
+    def self.from_bytes(str)
+      v = str.unpack("E")[0]
+      if !v.is_a?(Float)
+        raise "broken string or unsupported size: #{str.inspect} -> 8"
+      end
+      Wardite::F64(v)
+    end
+
     # @rbs return: Integer
     def memsize
       64
@@ -425,9 +510,10 @@ module Wardite
       upper.zero? ? :positive : :negative
     end
 
+    # @rbs size: Integer|nil
     # @rbs return: String
-    def packed
-      [self.value].pack("d")
+    def packed(size=nil)
+      [self.value].pack("E")
     end
 
     # @rbs to: Symbol

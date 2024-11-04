@@ -40,7 +40,7 @@ module Wardite
         nwritten += file.write(memory.data[start...(start+slen)])
       end
 
-      memory.data[rp...(rp+4)] = [nwritten].pack("I")
+      memory.data[rp...(rp+4)] = [nwritten].pack("I!")
 
       0
     end
