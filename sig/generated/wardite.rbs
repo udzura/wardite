@@ -94,6 +94,11 @@ module Wardite
     # @rbs ops: Array[Op]
     # @rbs pc_start: Integer
     # @rbs return: Integer
+    def fetch_ops_while_else_or_end: (Array[Op] ops, Integer pc_start) -> Integer
+
+    # @rbs ops: Array[Op]
+    # @rbs pc_start: Integer
+    # @rbs return: Integer
     def fetch_ops_while_end: (Array[Op] ops, Integer pc_start) -> Integer
 
     # unwind the stack and put return value if exists

@@ -332,12 +332,26 @@ module Wardite
         cond = stack.pop 
         raise EvalError, "cond not found" if !cond.is_a?(I32)
         next_pc = fetch_ops_while_end(frame.body, frame.pc)
+
         if cond.value.zero?
-          frame.pc = next_pc
+          frame.pc = fetch_ops_while_else_or_end(frame.body, frame.pc)
+        end
+
+        if frame.pc == next_pc
+          # This means if block has no else instr.
+          return
         end
 
         label = Label.new(:if, next_pc, stack.size, block.result_size)
         frame.labels.push(label)
+
+      when :else
+        if old_label = frame.labels.pop
+          frame.pc = old_label.pc
+          stack_unwind(old_label.sp, old_label.arity)
+        else
+          raise EvalError, "else should be in if block"
+        end
 
       when :call
         idx = insn.operand[0]
@@ -471,6 +485,38 @@ module Wardite
       $stderr.puts "frame:::\n#{frame.pretty_inspect}"
       $stderr.puts "stack:::\n#{stack.pretty_inspect}"
       raise e
+    end
+
+    # @rbs ops: Array[Op]
+    # @rbs pc_start: Integer
+    # @rbs return: Integer
+    def fetch_ops_while_else_or_end(ops, pc_start)
+      cursor = pc_start
+      depth = 0
+      loop {
+        cursor += 1
+        inst = ops[cursor]
+        case inst&.code
+        when nil
+          raise EvalError, "end op not found"
+        when :if
+          depth += 1
+        when :else
+          if depth == 0
+            return cursor
+          end
+          # do not touch depth
+        when :end
+          if depth == 0
+            return cursor
+          else
+            depth -= 1
+          end
+        else
+          # nop
+        end
+      }
+      raise "[BUG] unreachable"
     end
 
     # @rbs ops: Array[Op]
