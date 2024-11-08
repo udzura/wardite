@@ -24,9 +24,9 @@ module Wardite
     # @rbs return: [Symbol, Symbol]
     def self.to_sym: (String chr) -> [ Symbol, Symbol ]
 
-    # @rbs chr: Symbol
+    # @rbs code: Symbol
     # @rbs return: Array[Symbol]
-    def self.operand_of: (untyped code) -> Array[Symbol]
+    def self.operand_of: (Symbol code) -> Array[Symbol]
 
     # @see https://www.w3.org/TR/wasm-core-1/#value-types%E2%91%A2
     # @rbs code: Integer

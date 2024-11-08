@@ -82,7 +82,7 @@ module Wardite
       end
     end
 
-    # @rbs chr: Symbol
+    # @rbs code: Symbol
     # @rbs return: Array[Symbol]
     def self.operand_of(code)
       case code
