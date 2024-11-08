@@ -47,6 +47,35 @@ module Wardite
     end
   end
 
+  class GlobalSection < Section
+    class Global
+      attr_accessor :type #: Symbol
+      
+      attr_accessor :mutable #: bool
+
+      # TODO: unused in wasm 1.0 spec?
+      attr_accessor :shared #: bool
+
+      attr_accessor :value #: I32|I64|F32|F64
+
+      # @rbs &blk: (Global) -> void
+      # @rbs return: void
+      def initialize(&blk)
+        blk.call(self)
+      end
+    end
+
+    attr_accessor :globals #: Array[Global]
+
+    # @rbs return: void
+    def initialize
+      self.name = "Data"
+      self.code = 0x6
+
+      @globals = []
+    end
+  end
+
   class CodeSection < Section
     class CodeBody
       attr_accessor :locals_count #: Array[Integer]
@@ -224,7 +253,7 @@ module Wardite
           when Wardite::SectionMemory
             memory_section
           when Wardite::SectionGlobal
-            unimplemented_skip_section(code)
+            global_section
           when Wardite::SectionExport
             export_section
           when Wardite::SectionStart
@@ -354,6 +383,37 @@ module Wardite
           max = fetch_uleb128(sbuf)
         end
         dest.limits << [min, max]
+      end
+      dest
+    end
+
+    # @rbs return: GlobalSection
+    def self.global_section
+      dest = GlobalSection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+
+      len = fetch_uleb128(sbuf)
+      len.times do |i|
+        typeb = fetch_uleb128(sbuf)
+        gtype = Op.i2type(typeb)
+        mut = sbuf.read 1
+        if !mut
+          raise LoadError, "global section too short"
+        end
+        
+        code = fetch_insn_while_end(sbuf)
+        ops = code_body(StringIO.new(code))
+        value = decode_global_expr(ops)
+
+        global = GlobalSection::Global.new do |g|
+          g.type = gtype
+          g.mutable = (mut.ord == 0x01)
+          g.shared = false # always
+          g.value = value
+        end
+        dest.globals << global
       end
       dest
     end
@@ -533,6 +593,33 @@ module Wardite
           raise "Invalid definition of operand"
         end
         return arg
+      else
+        raise "Unimplemented offset op: #{op.code.inspect}"
+      end
+    end
+
+    # @rbs ops: Array[Op]
+    # @rbs return: I32|I64|F32|F64
+    def self.decode_global_expr(ops)
+      # sees first opcode
+      op = ops.first
+      if !op
+        raise LoadError, "empty opcodes"
+      end
+      case op.code
+      when :i32_const
+        arg = op.operand[0]
+        if !arg.is_a?(Integer)
+          raise "Invalid definition of operand"
+        end
+        return I32(arg)
+      when :i64_const
+        arg = op.operand[0]
+        if !arg.is_a?(Integer)
+          raise "Invalid definition of operand"
+        end
+        return I64(arg)
+      # TODO: floats
       else
         raise "Unimplemented offset op: #{op.code.inspect}"
       end

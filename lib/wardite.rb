@@ -82,6 +82,18 @@ module Wardite
       sec
     end
 
+    # @rbs return: GlobalSection|nil
+    def global_section
+      sec = @sections.find{|s| s.code == Const::SectionGlobal }
+      if !sec
+        return nil
+      end
+      if !sec.is_a?(GlobalSection)
+        raise(GenericError, "instance doesn't have required section")
+      end
+      sec
+    end
+
     # @rbs return: DataSection|nil
     def data_section
       sec = @sections.find{|s| s.code == Const::SectionData }
@@ -396,6 +408,36 @@ module Wardite
         end
         frame.locals[idx] = value
 
+      when :global_get
+        idx = insn.operand[0]
+        if !idx.is_a?(Integer)
+          raise EvalError, "[BUG] invalid type of operand"
+        end
+        global = instance.store.globals[idx]
+        if !global
+          raise EvalError, "global not found"
+        end
+        stack.push(global.value)
+
+      when :global_set
+        idx = insn.operand[0]
+        if !idx.is_a?(Integer)
+          raise EvalError, "[BUG] invalid type of operand"
+        end
+        current_global = instance.store.globals[idx]
+        if !current_global
+          raise EvalError, "global index not valid"
+        end
+        if !current_global.mutable?
+          raise EvalError, "global not mutable"
+        end
+        value = stack.pop
+        if !value
+          raise EvalError, "value should be pushed"
+        end
+        current_global.value = value
+        instance.store.globals[idx] = current_global
+
       when :memory_size
         memory = instance.store.memories[0] || raise("[BUG] no memory")
         stack.push(I32(memory.current))
@@ -548,8 +590,10 @@ module Wardite
     attr_accessor :funcs #: Array[WasmFunction|ExternalFunction]
 
     # FIXME: attr_accessor :modules
-     
+
     attr_accessor :memories #: Array[Memory]
+
+    attr_accessor :globals #: Array[Global]
 
     # @rbs inst: Instance
     # @rbs return: void
@@ -612,6 +656,19 @@ module Wardite
           end
         end
       end
+
+      @globals = []
+      global_section = inst.global_section
+      if global_section
+        global_section.globals.each do |g|
+          @globals << Global.new do |g2|
+            g2.type = g.type
+            g2.mutable = g.mutable
+            g2.shared = g.shared
+            g2.value = g.value
+          end
+        end
+      end
     end
 
     # @rbs idx: Integer
@@ -652,6 +709,26 @@ module Wardite
     def inspect
       "#<Wardite::Memory initial=#{@data.size.inspect} max=#{@max.inspect} @data=#{@data[0...64].inspect}...>"
     end
+  end
+
+  class Global
+    attr_accessor :type #: Symbol
+    
+    attr_accessor :mutable #: bool
+
+    # TODO: unused in wasm 1.0 spec?
+    attr_accessor :shared #: bool
+
+    attr_accessor :value #: I32|I64|F32|F64
+
+    # @rbs &blk: (Global) -> void
+    # @rbs return: void
+    def initialize(&blk)
+      blk.call(self)
+    end
+
+    alias mutable? mutable
+    alias shared? shared
   end
 
   class WasmData

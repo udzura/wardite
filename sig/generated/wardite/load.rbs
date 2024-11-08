@@ -33,6 +33,28 @@ module Wardite
     def initialize: () -> void
   end
 
+  class GlobalSection < Section
+    class Global
+      attr_accessor type: Symbol
+
+      attr_accessor mutable: bool
+
+      # TODO: unused in wasm 1.0 spec?
+      attr_accessor shared: bool
+
+      attr_accessor value: I32 | I64 | F32 | F64
+
+      # @rbs &blk: (Global) -> void
+      # @rbs return: void
+      def initialize: () { (Global) -> void } -> void
+    end
+
+    attr_accessor globals: Array[Global]
+
+    # @rbs return: void
+    def initialize: () -> void
+  end
+
   class CodeSection < Section
     class CodeBody
       attr_accessor locals_count: Array[Integer]
@@ -133,6 +155,9 @@ module Wardite
     # @rbs return: MemorySection
     def self.memory_section: () -> MemorySection
 
+    # @rbs return: GlobalSection
+    def self.global_section: () -> GlobalSection
+
     # @rbs return: FunctionSection
     def self.function_section: () -> FunctionSection
 
@@ -153,6 +178,10 @@ module Wardite
     # @rbs ops: Array[Op]
     # @rbs return: Integer
     def self.decode_expr: (Array[Op] ops) -> Integer
+
+    # @rbs ops: Array[Op]
+    # @rbs return: I32|I64|F32|F64
+    def self.decode_global_expr: (Array[Op] ops) -> (I32 | I64 | F32 | F64)
 
     # @rbs return: ExportSection
     def self.export_section: () -> ExportSection

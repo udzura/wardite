@@ -33,6 +33,9 @@ module Wardite
     # @rbs return: MemorySection|nil
     def memory_section: () -> (MemorySection | nil)
 
+    # @rbs return: GlobalSection|nil
+    def global_section: () -> (GlobalSection | nil)
+
     # @rbs return: DataSection|nil
     def data_section: () -> (DataSection | nil)
 
@@ -157,6 +160,8 @@ module Wardite
 
     attr_accessor memories: Array[Memory]
 
+    attr_accessor globals: Array[Global]
+
     # @rbs inst: Instance
     # @rbs return: void
     def initialize: (Instance inst) -> void
@@ -182,6 +187,25 @@ module Wardite
     def grow: (Integer delta) -> Integer
 
     def inspect: () -> untyped
+  end
+
+  class Global
+    attr_accessor type: Symbol
+
+    attr_accessor mutable: bool
+
+    # TODO: unused in wasm 1.0 spec?
+    attr_accessor shared: bool
+
+    attr_accessor value: I32 | I64 | F32 | F64
+
+    # @rbs &blk: (Global) -> void
+    # @rbs return: void
+    def initialize: () { (Global) -> void } -> void
+
+    alias mutable? mutable
+
+    alias shared? shared
   end
 
   class WasmData
