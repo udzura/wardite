@@ -408,6 +408,18 @@ module Wardite
         end
         frame.locals[idx] = value
 
+      when :local_tee
+        idx = insn.operand[0]
+        if !idx.is_a?(Integer)
+          raise EvalError, "[BUG] invalid type of operand"
+        end
+        value = stack.pop
+        if !value
+          raise EvalError, "value should be pushed"
+        end
+        frame.locals[idx] = value
+        stack.push value
+
       when :global_get
         idx = insn.operand[0]
         if !idx.is_a?(Integer)
