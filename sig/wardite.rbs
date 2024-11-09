@@ -1,6 +1,4 @@
 module Wardite
   # definitions that cannot cover by rbs-inline
-  module BinaryLoader
-    self.@buf: File|StringIO
-  end
+  # but nothing for now
 end

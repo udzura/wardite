@@ -186,6 +186,8 @@ module Wardite
     extend Wardite::Leb128Helper
     extend Wardite::ValueHelper
 
+    # @rbs self.@buf: File|StringIO
+
     # @rbs buf: File|StringIO
     # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
     # @rbs enable_wasi: boolish

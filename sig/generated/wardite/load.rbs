@@ -134,6 +134,8 @@ module Wardite
 
     extend Wardite::ValueHelper
 
+    self.@buf: File | StringIO
+
     # @rbs buf: File|StringIO
     # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
     # @rbs enable_wasi: boolish
