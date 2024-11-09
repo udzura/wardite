@@ -35,15 +35,14 @@ module Wardite
     end
   end
 
-  class MemorySection < Section
-    attr_accessor :limits #: Array[[Integer, Integer|nil]]
+  class StartSection < Section
+    attr_accessor :func_index #: Integer
 
     # @rbs return: void
     def initialize
-      self.name = "Memory"
-      self.code = 0x5
-
-      @limits = []
+      self.name = "Start"
+      self.code = 0x8
+      self.func_index = -1
     end
   end
 
@@ -73,6 +72,18 @@ module Wardite
       self.code = 0x6
 
       @globals = []
+    end
+  end
+
+  class MemorySection < Section
+    attr_accessor :limits #: Array[[Integer, Integer|nil]]
+
+    # @rbs return: void
+    def initialize
+      self.name = "Memory"
+      self.code = 0x5
+
+      @limits = []
     end
   end
 
@@ -259,7 +270,7 @@ module Wardite
           when Wardite::SectionExport
             export_section
           when Wardite::SectionStart
-            unimplemented_skip_section(code)
+            start_section
           when Wardite::SectionElement
             unimplemented_skip_section(code)
           when Wardite::SectionCode
@@ -386,6 +397,17 @@ module Wardite
         end
         dest.limits << [min, max]
       end
+      dest
+    end
+
+    # @rbs return: StartSection
+    def self.start_section
+      dest = StartSection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      # StartSection won't use size
+      func_index = fetch_uleb128(@buf)
+      dest.func_index = func_index
       dest
     end
 

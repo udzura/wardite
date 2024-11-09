@@ -33,6 +33,9 @@ module Wardite
     # @rbs return: MemorySection|nil
     def memory_section: () -> (MemorySection | nil)
 
+    # @rbs return: StartSection|nil
+    def start_section: () -> (StartSection | nil)
+
     # @rbs return: GlobalSection|nil
     def global_section: () -> (GlobalSection | nil)
 
@@ -62,6 +65,9 @@ module Wardite
     # @rbs inst: Instance
     def initialize: (Instance inst) -> untyped
 
+    # @rbs return: void
+    def invoke_start_section: () -> void
+
     # @rbs name: String|Symbol
     # @rbs return: bool
     def callable?: (String | Symbol name) -> bool
@@ -70,6 +76,10 @@ module Wardite
     # @rbs args: Array[Object]
     # @rbs return: Object|nil
     def call: (String | Symbol name, Array[Object] args) -> (Object | nil)
+
+    # @rbs idx: Integer
+    # @rbs return: void
+    def call_by_index: (Integer idx) -> void
 
     # @rbs wasm_function: WasmFunction
     # @rbs return: void

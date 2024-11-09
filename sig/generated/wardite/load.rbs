@@ -26,8 +26,8 @@ module Wardite
     def initialize: () -> void
   end
 
-  class MemorySection < Section
-    attr_accessor limits: Array[[ Integer, Integer | nil ]]
+  class StartSection < Section
+    attr_accessor func_index: Integer
 
     # @rbs return: void
     def initialize: () -> void
@@ -50,6 +50,13 @@ module Wardite
     end
 
     attr_accessor globals: Array[Global]
+
+    # @rbs return: void
+    def initialize: () -> void
+  end
+
+  class MemorySection < Section
+    attr_accessor limits: Array[[ Integer, Integer | nil ]]
 
     # @rbs return: void
     def initialize: () -> void
@@ -156,6 +163,9 @@ module Wardite
 
     # @rbs return: MemorySection
     def self.memory_section: () -> MemorySection
+
+    # @rbs return: StartSection
+    def self.start_section: () -> StartSection
 
     # @rbs return: GlobalSection
     def self.global_section: () -> GlobalSection

@@ -82,6 +82,18 @@ module Wardite
       sec
     end
 
+    # @rbs return: StartSection|nil
+    def start_section
+      sec = @sections.find{|s| s.code == Const::SectionStart }
+      if !sec
+        return nil
+      end
+      if !sec.is_a?(StartSection)
+        raise(GenericError, "[BUG] found invalid start section")
+      end
+      sec
+    end
+
     # @rbs return: GlobalSection|nil
     def global_section
       sec = @sections.find{|s| s.code == Const::SectionGlobal }
@@ -158,8 +170,18 @@ module Wardite
       @stack = []
       @call_stack = []
       @instance = inst
+
+      invoke_start_section
     end
 
+    # @rbs return: void
+    def invoke_start_section
+      start_section = instance.start_section
+      if start_section
+        call_by_index(start_section.func_index)
+      end
+    end
+    
     # @rbs name: String|Symbol
     # @rbs return: bool
     def callable?(name)
@@ -189,6 +211,21 @@ module Wardite
           raise "TODO: add me"
         end
       end
+
+      case fn
+      when WasmFunction
+        invoke_internal(fn)
+      when ExternalFunction
+        invoke_external(fn)
+      else
+        raise GenericError, "registered pointer is not to a function"
+      end
+    end
+
+    # @rbs idx: Integer
+    # @rbs return: void
+    def call_by_index(idx)
+      fn = @instance.store.funcs[idx]
 
       case fn
       when WasmFunction
