@@ -7,6 +7,8 @@ module Wardite
 end
 
 module Wardite
+  type wasmImportableProc = ^(Store, Array[Object]) -> wasmValue
+
   class Instance
     attr_accessor version: Integer
 
@@ -53,7 +55,7 @@ module Wardite
     include ValueHelper
 
     # TODO: add types of class that the stack accomodates
-    attr_accessor stack: Array[I32 | I64 | F32 | F64]
+    attr_accessor stack: Array[wasmValue]
 
     attr_accessor call_stack: Array[Frame]
 
@@ -80,8 +82,8 @@ module Wardite
     def invoke_internal: (WasmFunction wasm_function) -> (Object | nil)
 
     # @rbs external_function: ExternalFunction
-    # @rbs return: I32|I64|F32|F64|nil
-    def invoke_external: (ExternalFunction external_function) -> (I32 | I64 | F32 | F64 | nil)
+    # @rbs return: wasmValue|nil
+    def invoke_external: (ExternalFunction external_function) -> (wasmValue | nil)
 
     # @rbs return: void
     def execute!: () -> void
@@ -108,8 +110,8 @@ module Wardite
     def stack_unwind: (Integer sp, Integer arity) -> void
 
     # @rbs finish: Integer
-    # @rbs return: Array[I32|I64|F32|F64]
-    def drained_stack: (Integer finish) -> Array[I32 | I64 | F32 | F64]
+    # @rbs return: Array[wasmValue]
+    def drained_stack: (Integer finish) -> Array[wasmValue]
 
     # @rbs name: Symbol
     # @rbs args: Array[Object]
@@ -132,7 +134,7 @@ module Wardite
 
     attr_accessor labels: Array[Label]
 
-    attr_accessor locals: Array[I32 | I64 | F32 | F64]
+    attr_accessor locals: Array[wasmValue]
 
     # @rbs pc: Integer
     # @rbs sp: Integer
@@ -202,7 +204,7 @@ module Wardite
     # TODO: unused in wasm 1.0 spec?
     attr_accessor shared: bool
 
-    attr_accessor value: I32 | I64 | F32 | F64
+    attr_accessor value: wasmValue
 
     # @rbs &blk: (Global) -> void
     # @rbs return: void

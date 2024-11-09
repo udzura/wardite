@@ -1,6 +1,9 @@
 # rbs_inline: enabled
 
 module Wardite
+  # @rbs!
+  #   type wasmValue = I32 | I64 | F32 | F64
+
   module ValueHelper
     # @rbs value: Integer
     # @rbs return: I32
@@ -107,39 +110,39 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def wrap(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def extend_s(to:)
       raise EvalError, "unsupported operation" if to != :i64
       I64(value_s)
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def extend_u(to:)
       raise EvalError, "unsupported operation" if to != :i64
       I64(value)
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def trunc_s(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def trunc_u(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def convert_s(to:)
       case to
       when :f32
@@ -152,7 +155,7 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def convert_u(to:)
       case to
       when :f32
@@ -165,21 +168,21 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def demote(to:)
       raise EvalError, "unsupported operation"
 
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def promote(to:)
       raise EvalError, "unsupported operation"
 
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def reinterpret(to:)
       raise EvalError, "unsupported operation" if to != :f32
       v = [value].pack("I!").unpack("f")[0]
@@ -252,7 +255,7 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def wrap(to:)
       if to != :i32
         raise EvalError, "unsupported operation #{to}"
@@ -261,31 +264,31 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def extend_s(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def extend_u(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def trunc_s(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def trunc_u(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def convert_s(to:)
       case to
       when :f32
@@ -298,7 +301,7 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def convert_u(to:)
       case to
       when :f32
@@ -311,19 +314,19 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def demote(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def promote(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def reinterpret(to:)
       raise EvalError, "unsupported operation" if to != :f64
       v = [value].pack("L!").unpack("d")[0]
@@ -373,19 +376,19 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def wrap(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def extend_s(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def extend_u(to:)
       raise EvalError, "unsupported operation"
     end
@@ -393,7 +396,7 @@ module Wardite
     # @todo need more testcase...
     # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def trunc_s(to:)
       v = value.to_i
       case to
@@ -424,7 +427,7 @@ module Wardite
 
     # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-u-mathrm-trunc-mathsf-u-m-n-z
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def trunc_u(to:)
       v = value.to_i
       if v < 0
@@ -443,32 +446,32 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def convert_s(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def convert_u(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def demote(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def promote(to:)
       raise EvalError, "unsupported operation" if to != :f64
       F64(value)
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def reinterpret(to:)
       raise EvalError, "unsupported operation" if to != :i32
       v = [value].pack("f").unpack("I!")[0]
@@ -517,26 +520,26 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def wrap(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def extend_s(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def extend_u(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @see the same as F32
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def trunc_s(to:)
       v = value.to_i
       case to
@@ -567,7 +570,7 @@ module Wardite
 
     # @see the same as F32
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def trunc_u(to:)
       v = value.to_i
       if v < 0
@@ -586,33 +589,33 @@ module Wardite
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def convert_s(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def convert_u(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @todo no loss of digits...
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def demote(to:)
       raise EvalError, "unsupported operation" if to != :f32
       F32(value)
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def promote(to:)
       raise EvalError, "unsupported operation"
     end
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def reinterpret(to:)
       raise EvalError, "unsupported operation" if to != :i64
       v = [value].pack("d").unpack("L!")[0]

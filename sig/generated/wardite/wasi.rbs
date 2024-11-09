@@ -10,9 +10,9 @@ module Wardite
     def initialize: () -> untyped
 
     # @rbs store: Store
-    # @rbs args: Array[I32|I64|F32|F64]
+    # @rbs args: Array[wasmValue]
     # @rbs return: Object
-    def fd_write: (Store store, Array[I32 | I64 | F32 | F64] args) -> Object
+    def fd_write: (Store store, Array[wasmValue] args) -> Object
 
     # @rbs return: Hash[Symbol, Proc]
     def to_module: () -> Hash[Symbol, Proc]

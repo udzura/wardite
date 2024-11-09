@@ -56,7 +56,7 @@ module Wardite
       # TODO: unused in wasm 1.0 spec?
       attr_accessor :shared #: bool
 
-      attr_accessor :value #: I32|I64|F32|F64
+      attr_accessor :value #: wasmValue
 
       # @rbs &blk: (Global) -> void
       # @rbs return: void
@@ -601,7 +601,7 @@ module Wardite
     end
 
     # @rbs ops: Array[Op]
-    # @rbs return: I32|I64|F32|F64
+    # @rbs return: wasmValue
     def self.decode_global_expr(ops)
       # sees first opcode
       op = ops.first

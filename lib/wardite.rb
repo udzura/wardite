@@ -24,6 +24,9 @@ require_relative "wardite/wasi"
 require "stringio"
 
 module Wardite
+  # @rbs!
+  #   type wasmImportableProc = ^(Store, Array[Object]) -> wasmValue
+
   class Instance
     attr_accessor :version #: Integer
 
@@ -147,7 +150,7 @@ module Wardite
     include ValueHelper
 
     # TODO: add types of class that the stack accomodates
-    attr_accessor :stack #: Array[I32|I64|F32|F64]
+    attr_accessor :stack #: Array[wasmValue]
 
     attr_accessor :call_stack #: Array[Frame]
 
@@ -249,7 +252,7 @@ module Wardite
     end
 
     # @rbs external_function: ExternalFunction
-    # @rbs return: I32|I64|F32|F64|nil
+    # @rbs return: wasmValue|nil
     def invoke_external(external_function)
       local_start = stack.size - external_function.callsig.size
       args = stack[local_start..]
@@ -567,7 +570,7 @@ module Wardite
     end
 
     # @rbs finish: Integer
-    # @rbs return: Array[I32|I64|F32|F64]
+    # @rbs return: Array[wasmValue]
     def drained_stack(finish)
       drained = stack[0...finish]
       if ! drained
@@ -605,7 +608,7 @@ module Wardite
 
     attr_accessor :labels #: Array[Label]
 
-    attr_accessor :locals #: Array[I32|I64|F32|F64]
+    attr_accessor :locals #: Array[wasmValue]
 
     # @rbs pc: Integer
     # @rbs sp: Integer
@@ -777,7 +780,7 @@ module Wardite
     # TODO: unused in wasm 1.0 spec?
     attr_accessor :shared #: bool
 
-    attr_accessor :value #: I32|I64|F32|F64
+    attr_accessor :value #: wasmValue
 
     # @rbs &blk: (Global) -> void
     # @rbs return: void

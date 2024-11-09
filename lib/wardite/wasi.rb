@@ -14,7 +14,7 @@ module Wardite
     end
 
     # @rbs store: Store
-    # @rbs args: Array[I32|I64|F32|F64]
+    # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_write(store, args)
       iargs = args.map do |elm|

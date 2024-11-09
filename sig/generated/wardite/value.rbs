@@ -1,6 +1,8 @@
 # Generated from lib/wardite/value.rb with RBS::Inline
 
 module Wardite
+  type wasmValue = I32 | I64 | F32 | F64
+
   module ValueHelper
     # @rbs value: Integer
     # @rbs return: I32
@@ -59,44 +61,44 @@ module Wardite
     def packed: (?size: Integer | nil) -> String
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def wrap: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def wrap: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def extend_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def extend_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def extend_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def extend_u: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def trunc_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def trunc_u: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def convert_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def convert_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def convert_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def convert_u: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def demote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def demote: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def promote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def promote: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def reinterpret: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def reinterpret: (to: Symbol) -> wasmValue
 
     # I32#inspect shows signed value for convinience
     def inspect: () -> untyped
@@ -127,44 +129,44 @@ module Wardite
     def packed: (?size: Integer | nil) -> String
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def wrap: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def wrap: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def extend_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def extend_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def extend_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def extend_u: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def trunc_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def trunc_u: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def convert_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def convert_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def convert_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def convert_u: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def demote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def demote: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def promote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def promote: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def reinterpret: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def reinterpret: (to: Symbol) -> wasmValue
 
     # I64#inspect shows signed value
     def inspect: () -> untyped
@@ -190,47 +192,47 @@ module Wardite
     def packed: (?size: Integer | nil) -> String
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def wrap: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def wrap: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def extend_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def extend_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def extend_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def extend_u: (to: Symbol) -> wasmValue
 
     # @todo need more testcase...
     # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def trunc_s: (to: Symbol) -> wasmValue
 
     # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-u-mathrm-trunc-mathsf-u-m-n-z
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def trunc_u: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def convert_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def convert_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def convert_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def convert_u: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def demote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def demote: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def promote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def promote: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def reinterpret: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def reinterpret: (to: Symbol) -> wasmValue
 
     def inspect: () -> untyped
   end
@@ -255,47 +257,47 @@ module Wardite
     def packed: (?size: Integer | nil) -> String
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def wrap: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def wrap: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def extend_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def extend_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def extend_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
-
-    # @see the same as F32
-    # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def trunc_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def extend_u: (to: Symbol) -> wasmValue
 
     # @see the same as F32
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def trunc_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def trunc_s: (to: Symbol) -> wasmValue
+
+    # @see the same as F32
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_u: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def convert_s: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def convert_s: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def convert_u: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def convert_u: (to: Symbol) -> wasmValue
 
     # @todo no loss of digits...
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def demote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def demote: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def promote: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def promote: (to: Symbol) -> wasmValue
 
     # @rbs to: Symbol
-    # @rbs return: I32|I64|F32|F64
-    def reinterpret: (to: Symbol) -> (I32 | I64 | F32 | F64)
+    # @rbs return: wasmValue
+    def reinterpret: (to: Symbol) -> wasmValue
 
     def inspect: () -> untyped
   end
