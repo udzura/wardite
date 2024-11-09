@@ -7,8 +7,6 @@ module Wardite
 end
 
 module Wardite
-  type wasmImportableProc = ^(Store, Array[Object]) -> wasmValue
-
   class Instance
     attr_accessor version: Integer
 
@@ -20,11 +18,11 @@ module Wardite
 
     attr_accessor exports: Exports
 
-    attr_reader import_object: Hash[Symbol, Hash[Symbol, Proc]]
+    attr_reader import_object: Hash[Symbol, Hash[Symbol, wasmCallable]]
 
-    # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
+    # @rbs import_object: Hash[Symbol, Hash[Symbol, wasmCallable]]
     # @rbs &blk: (Instance) -> void
-    def initialize: (Hash[Symbol, Hash[Symbol, Proc]] import_object) { (Instance) -> void } -> untyped
+    def initialize: (Hash[Symbol, Hash[Symbol, wasmCallable]] import_object) { (Instance) -> void } -> untyped
 
     # @rbs return: ImportSection
     def import_section: () -> ImportSection
@@ -283,18 +281,22 @@ module Wardite
     def locals_count: () -> Array[Integer]
   end
 
+  type wasmFuncReturn = Object | nil
+
+  type wasmCallable = ^(Store, Array[wasmValue]) -> wasmFuncReturn
+
   class ExternalFunction
     attr_accessor callsig: Array[Symbol]
 
     attr_accessor retsig: Array[Symbol]
 
-    attr_accessor callable: Proc
+    attr_accessor callable: wasmCallable
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
-    # @rbs callable: Proc
+    # @rbs callable: wasmCallable
     # @rbs return: void
-    def initialize: (Array[Symbol] callsig, Array[Symbol] retsig, Proc callable) -> void
+    def initialize: (Array[Symbol] callsig, Array[Symbol] retsig, wasmCallable callable) -> void
   end
 
   class GenericError < StandardError

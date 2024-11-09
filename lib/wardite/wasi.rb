@@ -45,7 +45,7 @@ module Wardite
       0
     end
 
-    # @rbs return: Hash[Symbol, Proc]
+    # @rbs return: Hash[Symbol, wasmCallable]
     def to_module
       {
         fd_write: lambda{|store, args| self.fd_write(store, args) },

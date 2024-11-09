@@ -24,9 +24,6 @@ require_relative "wardite/wasi"
 require "stringio"
 
 module Wardite
-  # @rbs!
-  #   type wasmImportableProc = ^(Store, Array[Object]) -> wasmValue
-
   class Instance
     attr_accessor :version #: Integer
 
@@ -38,9 +35,9 @@ module Wardite
 
     attr_accessor :exports #: Exports
 
-    attr_reader :import_object #: Hash[Symbol, Hash[Symbol, Proc]]
+    attr_reader :import_object #: Hash[Symbol, Hash[Symbol, wasmCallable]]
 
-    # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
+    # @rbs import_object: Hash[Symbol, Hash[Symbol, wasmCallable]]
     # @rbs &blk: (Instance) -> void
     def initialize(import_object, &blk)
       blk.call(self)
@@ -893,16 +890,20 @@ module Wardite
     end    
   end
 
+  # @rbs!
+  #   type wasmFuncReturn = Object|nil
+  #   type wasmCallable = ^(Store, Array[wasmValue]) -> wasmFuncReturn
+
   class ExternalFunction
     attr_accessor :callsig #: Array[Symbol]
 
     attr_accessor :retsig #: Array[Symbol]
 
-    attr_accessor :callable #: Proc
+    attr_accessor :callable #: wasmCallable
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
-    # @rbs callable: Proc
+    # @rbs callable: wasmCallable
     # @rbs return: void
     def initialize(callsig, retsig, callable)
       @callsig = callsig

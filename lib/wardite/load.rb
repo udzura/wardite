@@ -189,7 +189,7 @@ module Wardite
     # @rbs self.@buf: File|StringIO
 
     # @rbs buf: File|StringIO
-    # @rbs import_object: Hash[Symbol, Hash[Symbol, Proc]]
+    # @rbs import_object: Hash[Symbol, Hash[Symbol, wasmCallable]]
     # @rbs enable_wasi: boolish
     # @rbs return: Instance
     def self.load_from_buffer(buf, import_object: {}, enable_wasi: true)

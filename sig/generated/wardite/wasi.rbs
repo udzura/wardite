@@ -14,8 +14,8 @@ module Wardite
     # @rbs return: Object
     def fd_write: (Store store, Array[wasmValue] args) -> Object
 
-    # @rbs return: Hash[Symbol, Proc]
-    def to_module: () -> Hash[Symbol, Proc]
+    # @rbs return: Hash[Symbol, wasmCallable]
+    def to_module: () -> Hash[Symbol, wasmCallable]
 
     private
 
