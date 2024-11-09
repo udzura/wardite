@@ -381,7 +381,19 @@ module Wardite
         frame.pc = pc
 
       when :br_table
-        raise NotImplementedError, "TODO: br_table"
+        level_vec = insn.operand[0]
+        raise EvalError, "no level vector" if !level_vec.is_a?(Array)
+        default = insn.operand[1]
+        raise EvalError, "no default specified" if !default.is_a?(Integer)
+        idx = stack.pop 
+        raise EvalError, "idx not found" if !idx.is_a?(I32)
+        level = if idx.value_s < 0 || idx.value_s >= level_vec.size
+          default
+        else
+          level_vec[idx.value_s]
+        end
+        pc = do_branch(frame.labels, stack, level)
+        frame.pc = pc
 
       when :block
         block = insn.operand[0]

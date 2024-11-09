@@ -1,6 +1,8 @@
 # Generated from lib/wardite/instruction.rb with RBS::Inline
 
 module Wardite
+  type operandItem = Integer | Array[Integer] | Float | Block
+
   class Op
     # @see https://pengowray.github.io/wasm-ops/
     SYMS: Array[Symbol]
@@ -13,12 +15,12 @@ module Wardite
     attr_accessor code: Symbol
 
     # TODO: add types of potential operands
-    attr_accessor operand: Array[Integer | Float | Block]
+    attr_accessor operand: Array[operandItem]
 
     # @rbs namespace: Symbol
     # @rbs code: Symbol
-    # @rbs operand: Array[Integer|Float|Block]
-    def initialize: (Symbol namespace, Symbol code, Array[Integer | Float | Block] operand) -> untyped
+    # @rbs operand: Array[operandItem]
+    def initialize: (Symbol namespace, Symbol code, Array[operandItem] operand) -> untyped
 
     # @rbs chr: String
     # @rbs return: [Symbol, Symbol]

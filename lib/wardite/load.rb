@@ -502,7 +502,7 @@ module Wardite
       while c = buf.read(1)
         namespace, code = Op.to_sym(c)
         operand_types = Op.operand_of(code)
-        operand = [] #: Array[Integer|Float|Block]
+        operand = [] #: Array[operandItem]
         operand_types.each do |typ|
           case typ
           when :u8
@@ -513,6 +513,13 @@ module Wardite
             operand << ope.ord
           when :u32
             operand << fetch_uleb128(buf)
+          when :u32_vec
+            len = fetch_uleb128(buf)
+            vec = [] #: Array[Integer]
+            len.times do
+              vec << fetch_uleb128(buf)
+            end
+            operand << vec
           when :i32
             operand << fetch_sleb128(buf)
           when :i64

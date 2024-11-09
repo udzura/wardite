@@ -1,6 +1,9 @@
 # rbs_inline: enabled
 
 module Wardite
+  # @rbs!
+  #   type operandItem = Integer | Array[Integer] | Float | Block
+
   class Op
     # @see https://pengowray.github.io/wasm-ops/
     SYMS = %i[
@@ -50,11 +53,11 @@ module Wardite
     attr_accessor :code #: Symbol
 
     # TODO: add types of potential operands
-    attr_accessor :operand #: Array[Integer|Float|Block]
+    attr_accessor :operand #: Array[operandItem]
 
     # @rbs namespace: Symbol
     # @rbs code: Symbol
-    # @rbs operand: Array[Integer|Float|Block]
+    # @rbs operand: Array[operandItem]
     def initialize(namespace, code, operand)
       @namespace = namespace      
       @code = code
