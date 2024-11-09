@@ -533,7 +533,7 @@ module Wardite
             v = data.unpack("E")[0]
             raise "String#unpack is broken" if !v.is_a?(Float)
             operand << v
-          when :u8_if_block # :if specific
+          when :u8_block
             block_ope = buf.read 1
             if ! block_ope
               raise LoadError, "buffer too short for if"

@@ -363,6 +363,36 @@ module Wardite
       when :nop
         return
 
+      when :br
+        level = insn.operand[0]
+        raise EvalError, "br op without level" if !level.is_a?(Integer)
+        pc = do_branch(frame.labels, stack, level)
+        frame.pc = pc
+
+      when :br_if
+        level = insn.operand[0]
+        raise EvalError, "br op without level" if !level.is_a?(Integer)
+        cond = stack.pop 
+        raise EvalError, "cond not found" if !cond.is_a?(I32)
+        if cond.value.zero?
+          return
+        end
+        pc = do_branch(frame.labels, stack, level)
+        frame.pc = pc
+
+      when :br_table
+        raise NotImplementedError, "TODO: br_table"
+
+      when :block
+        block = insn.operand[0]
+        raise EvalError, "block op without block" if !block.is_a?(Block)
+        next_pc = fetch_ops_while_end(frame.body, frame.pc)
+        label = Label.new(:block, next_pc, stack.size, block.result_size)
+        frame.labels.push(label)
+
+      when :loop
+        raise NotImplementedError, "TODO: loop"
+
       when :if
         block = insn.operand[0]
         raise EvalError, "if op without block" if !block.is_a?(Block)
@@ -556,6 +586,31 @@ module Wardite
       raise "[BUG] unreachable"
     end
 
+    # @rbs labels: Array[Label]
+    # @rbs stack: Array[wasmValue]
+    # @rbs level: Integer
+    # @rbs return: Integer
+    def do_branch(labels, stack, level)
+      idx = labels.size - 1 - level
+      label = labels[idx]
+      pc = if label.kind == :loop
+        # keep the top of labels for loop again...
+        while labels.size > idx + 1
+          labels.pop
+        end
+        stack_unwind(label.sp, 0)
+        label.start || raise(EvalError, "loop withour start")
+      else
+        while labels.size > idx
+          labels.pop
+        end
+        stack_unwind(label.sp, label.arity)
+        label.pc
+      end
+
+      pc
+    end
+
     # @rbs ops: Array[Op]
     # @rbs pc_start: Integer
     # @rbs return: Integer
@@ -568,7 +623,7 @@ module Wardite
         case inst&.code
         when nil
           raise EvalError, "end op not found"
-        when :i
+        when :if, :block, :loop
           depth += 1
         when :end
           if depth == 0
@@ -648,7 +703,7 @@ module Wardite
     # @rbs sp: Integer
     # @rbs body: Array[Op]
     # @rbs arity: Integer
-    # @rbs locals: Array[Object]
+    # @rbs locals: Array[wasmValue]
     # @rbs returb: void
     def initialize(pc, sp, body, arity, locals)
       @pc = pc
@@ -668,16 +723,20 @@ module Wardite
 
     attr_accessor :arity #: Integer
 
+    attr_accessor :start #: Integer|nil
+
     # @rbs kind: (:if|:loop|:block)
     # @rbs pc: Integer
     # @rbs sp: Integer
     # @rbs arity: Integer
-    # @rbs returb: void
-    def initialize(kind, pc, sp, arity)
+    # @rbs start: Integer|nil
+    # @rbs return: void
+    def initialize(kind, pc, sp, arity, start=nil)
       @kind = kind
       @pc = pc
       @sp = sp
       @arity = arity
+      @start = start
     end
   end
 

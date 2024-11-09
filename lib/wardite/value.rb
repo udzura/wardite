@@ -9,7 +9,7 @@ module Wardite
     # @rbs return: I32
     def I32(value)
       if value < 0
-        $stderr.puts "debug: negative i32 value #{value} is passed, convert to unsigned"
+        # $stderr.puts "trace: negative i32 value #{value} is passed, convert to unsigned"
         value = as_u32(value)
       end
       I32.new.tap{|i| i.value = value & I32::I32_MAX }
@@ -19,7 +19,7 @@ module Wardite
     # @rbs return: I64
     def I64(value)
       if value < 0
-        $stderr.puts "debug: negative i64 value #{value} is passed, convert to unsigned"
+        # $stderr.puts "trace: negative i64 value #{value} is passed, convert to unsigned"
         value = as_u64(value)
       end
       I64.new.tap{|i| i.value = value & I64::I64_MAX }

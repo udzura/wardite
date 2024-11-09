@@ -106,6 +106,12 @@ module Wardite
     # @rbs return: Integer
     def fetch_ops_while_else_or_end: (Array[Op] ops, Integer pc_start) -> Integer
 
+    # @rbs labels: Array[Label]
+    # @rbs stack: Array[wasmValue]
+    # @rbs level: Integer
+    # @rbs return: Integer
+    def do_branch: (Array[Label] labels, Array[wasmValue] stack, Integer level) -> Integer
+
     # @rbs ops: Array[Op]
     # @rbs pc_start: Integer
     # @rbs return: Integer
@@ -148,9 +154,9 @@ module Wardite
     # @rbs sp: Integer
     # @rbs body: Array[Op]
     # @rbs arity: Integer
-    # @rbs locals: Array[Object]
+    # @rbs locals: Array[wasmValue]
     # @rbs returb: void
-    def initialize: (Integer pc, Integer sp, Array[Op] body, Integer arity, Array[Object] locals) -> untyped
+    def initialize: (Integer pc, Integer sp, Array[Op] body, Integer arity, Array[wasmValue] locals) -> untyped
   end
 
   class Label
@@ -162,12 +168,15 @@ module Wardite
 
     attr_accessor arity: Integer
 
+    attr_accessor start: Integer | nil
+
     # @rbs kind: (:if|:loop|:block)
     # @rbs pc: Integer
     # @rbs sp: Integer
     # @rbs arity: Integer
-    # @rbs returb: void
-    def initialize: (:if | :loop | :block kind, Integer pc, Integer sp, Integer arity) -> untyped
+    # @rbs start: Integer|nil
+    # @rbs return: void
+    def initialize: (:if | :loop | :block kind, Integer pc, Integer sp, Integer arity, ?Integer | nil start) -> void
   end
 
   class Store

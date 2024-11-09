@@ -102,9 +102,7 @@ module Wardite
         [:f32]
       when :f64_const
         [:f64]
-      when :if
-        [:u8_if_block]
-      when :block, :loop
+      when :if, :block, :loop
         [:u8_block]
       else
         []
