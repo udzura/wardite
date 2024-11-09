@@ -35,14 +35,30 @@ module Wardite
     end
   end
 
-  class StartSection < Section
-    attr_accessor :func_index #: Integer
+  class TableSection < Section
+    attr_accessor :table_types #: Array[Symbol]
+
+    attr_accessor :table_limits #: Array[[Integer, Integer?]]
 
     # @rbs return: void
     def initialize
-      self.name = "Start"
-      self.code = 0x8
-      self.func_index = -1
+      self.name = "Table"
+      self.code = 0x4
+
+      @table_types = []
+      @table_limits = []
+    end
+  end
+
+  class MemorySection < Section
+    attr_accessor :limits #: Array[[Integer, Integer?]]
+
+    # @rbs return: void
+    def initialize
+      self.name = "Memory"
+      self.code = 0x5
+
+      @limits = []
     end
   end
 
@@ -75,15 +91,29 @@ module Wardite
     end
   end
 
-  class MemorySection < Section
-    attr_accessor :limits #: Array[[Integer, Integer|nil]]
+  class StartSection < Section
+    attr_accessor :func_index #: Integer
 
     # @rbs return: void
     def initialize
-      self.name = "Memory"
-      self.code = 0x5
+      self.name = "Start"
+      self.code = 0x8
+      self.func_index = -1
+    end
+  end
 
-      @limits = []
+  class ElemSection < Section
+    attr_accessor :table_indices #: Array[Integer]
+
+    attr_accessor :element_indices #: Array[Array[Integer]]
+
+    # @rbs return: void
+    def initialize
+      self.name = "Elem"
+      self.code = 0x9
+
+      @table_indices = []
+      @element_indices = []
     end
   end
 
@@ -262,7 +292,7 @@ module Wardite
           when Wardite::SectionFunction
             function_section
           when Wardite::SectionTable
-            unimplemented_skip_section(code)
+            table_section
           when Wardite::SectionMemory
             memory_section
           when Wardite::SectionGlobal
@@ -453,6 +483,30 @@ module Wardite
       len.times do |i|
         index = fetch_uleb128(sbuf)
         dest.func_indices << index
+      end
+      dest
+    end
+
+    # @rbs return: TableSection
+    def self.table_section
+      dest = TableSection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+
+      len = fetch_uleb128(sbuf)
+      len.times do |i|
+        code = fetch_uleb128(sbuf)
+        type = Op.i2type(code)
+        dest.table_types << type
+
+        flags = fetch_uleb128(sbuf)
+        min = fetch_uleb128(sbuf)
+        max = nil
+        if flags != 0
+          max = fetch_uleb128(sbuf)
+        end
+        dest.table_limits << [min, max]
       end
       dest
     end

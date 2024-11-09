@@ -45,6 +45,12 @@ module Wardite
     # @rbs return: FunctionSection|nil
     def function_section: () -> (FunctionSection | nil)
 
+    # @rbs return: TableSection?
+    def table_section: () -> TableSection?
+
+    # @rbs return: ElemSection?
+    def elem_section: () -> ElemSection?
+
     # @rbs return: CodeSection|nil
     def code_section: () -> (CodeSection | nil)
 
@@ -186,6 +192,10 @@ module Wardite
 
     attr_accessor globals: Array[Global]
 
+    attr_accessor tables: Array[Table]
+
+    attr_accessor elements: Array[[ Symbol, Array[Integer] ]]
+
     # @rbs inst: Instance
     # @rbs return: void
     def initialize: (Instance inst) -> void
@@ -211,6 +221,27 @@ module Wardite
     def grow: (Integer delta) -> Integer
 
     def inspect: () -> untyped
+  end
+
+  class Table
+    attr_accessor type: Symbol
+
+    attr_accessor current: Integer
+
+    attr_accessor max: Integer | nil
+
+    attr_accessor refs: Array[WasmFunction | ExternalFunction | nil]
+
+    # @rbs type: Symbol
+    # @rbs init: Integer
+    # @rbs max: Integer|nil
+    # @rbs return: void
+    def initialize: (Symbol type, Integer init, Integer | nil max) -> void
+
+    # @rbs idx: Integer
+    # @rbs elem: WasmFunction|ExternalFunction|nil
+    # @rbs return: void
+    def set: (Integer idx, WasmFunction | ExternalFunction | nil elem) -> void
   end
 
   class Global

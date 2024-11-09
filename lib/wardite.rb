@@ -130,6 +130,30 @@ module Wardite
       sec
     end
 
+    # @rbs return: TableSection?
+    def table_section
+      sec = @sections.find{|s| s.code == Const::SectionTable }
+      if !sec
+        return nil
+      end
+      if !sec.is_a?(TableSection)
+        raise(GenericError, "instance doesn't have required section")
+      end
+      sec
+    end
+
+    # @rbs return: ElemSection?
+    def elem_section
+      sec = @sections.find{|s| s.code == Const::SectionElement }
+      if !sec
+        return nil
+      end
+      if !sec.is_a?(ElemSection)
+        raise(GenericError, "instance doesn't have required section")
+      end
+      sec
+    end
+
     # @rbs return: CodeSection|nil
     def code_section
       sec = @sections.find{|s| s.code == Const::SectionCode }
@@ -766,6 +790,10 @@ module Wardite
 
     attr_accessor :globals #: Array[Global]
 
+    attr_accessor :tables #: Array[Table]
+
+    attr_accessor :elements #: Array[[Symbol, Array[Integer]]]
+
     # @rbs inst: Instance
     # @rbs return: void
     def initialize(inst)
@@ -840,6 +868,52 @@ module Wardite
           end
         end
       end
+
+      @tables = []
+      @elements = []
+      table_section = inst.table_section
+      if table_section
+        table_section.table_types.each_with_index do |typ, idx|
+          init, max = *table_section.table_limits[idx]
+          if !init
+            raise LoadError, "empty limits"
+          end
+          table = Table.new(typ, init, max)
+          @tables << table
+        end
+      end
+
+      elem_section = inst.elem_section
+      if elem_section
+        elem_section.table_indices.each_with_index do |tidx, idx|
+          table = @tables[tidx]
+          if !table
+            raise LoadError, "invalid table index #{tidx}"
+          end
+          typ = table.type
+          indices = elem_section.element_indices[idx]
+          if indices
+            raise LoadError, "invalid element index #{idx}"
+          end
+          elms = [typ, indices] #: [Symbol, Array[Integer]]
+          @elements << elms
+        end
+      end
+
+      @elements.each_with_index do |(typ, indices), idx|
+        table = @tables[idx]
+        if !table
+          raise LoadError, "invalid table index #{idx}"          
+        end
+        indices.each_with_index do |eidx, tidx|
+          case typ
+          when :funcref
+            table.set(tidx, @funcs[eidx])
+          when :externref
+            raise NotImplementedError, "no support :externref"
+          end
+        end
+      end
     end
 
     # @rbs idx: Integer
@@ -879,6 +953,38 @@ module Wardite
 
     def inspect
       "#<Wardite::Memory initial=#{@data.size.inspect} max=#{@max.inspect} @data=#{@data[0...64].inspect}...>"
+    end
+  end
+
+  class Table
+    attr_accessor :type #: Symbol
+    
+    attr_accessor :current #: Integer
+
+    attr_accessor :max #: Integer|nil
+    
+    attr_accessor :refs #: Array[WasmFunction|ExternalFunction|nil]
+
+    # @rbs type: Symbol
+    # @rbs init: Integer
+    # @rbs max: Integer|nil
+    # @rbs return: void
+    def initialize(type, init, max)
+      @type = type
+      @current = init
+      @max = max
+
+      @refs = Array.new(3, nil)
+    end
+
+    # @rbs idx: Integer
+    # @rbs elem: WasmFunction|ExternalFunction|nil
+    # @rbs return: void
+    def set(idx, elem)
+      if idx >= @current
+        raise GenericError, "idx too large for table"
+      end
+      @refs[idx] = elem
     end
   end
 

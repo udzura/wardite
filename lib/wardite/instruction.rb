@@ -113,10 +113,15 @@ module Wardite
     end
 
     # @see https://www.w3.org/TR/wasm-core-1/#value-types%E2%91%A2
+    # We use this for reftype conversion. https://webassembly.github.io/spec/core/binary/types.html#binary-reftype
     # @rbs code: Integer
     # @rbs return: Symbol
     def self.i2type(code)
       case code
+      when 0x6f
+        :externref
+      when 0x70
+        :funcref
       when 0x7f
         :i32
       when 0x7e

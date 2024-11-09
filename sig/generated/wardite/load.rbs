@@ -26,8 +26,17 @@ module Wardite
     def initialize: () -> void
   end
 
-  class StartSection < Section
-    attr_accessor func_index: Integer
+  class TableSection < Section
+    attr_accessor table_types: Array[Symbol]
+
+    attr_accessor table_limits: Array[[ Integer, Integer? ]]
+
+    # @rbs return: void
+    def initialize: () -> void
+  end
+
+  class MemorySection < Section
+    attr_accessor limits: Array[[ Integer, Integer? ]]
 
     # @rbs return: void
     def initialize: () -> void
@@ -55,8 +64,17 @@ module Wardite
     def initialize: () -> void
   end
 
-  class MemorySection < Section
-    attr_accessor limits: Array[[ Integer, Integer | nil ]]
+  class StartSection < Section
+    attr_accessor func_index: Integer
+
+    # @rbs return: void
+    def initialize: () -> void
+  end
+
+  class ElemSection < Section
+    attr_accessor table_indices: Array[Integer]
+
+    attr_accessor element_indices: Array[Array[Integer]]
 
     # @rbs return: void
     def initialize: () -> void
@@ -172,6 +190,9 @@ module Wardite
 
     # @rbs return: FunctionSection
     def self.function_section: () -> FunctionSection
+
+    # @rbs return: TableSection
+    def self.table_section: () -> TableSection
 
     # @rbs return: CodeSection
     def self.code_section: () -> CodeSection
