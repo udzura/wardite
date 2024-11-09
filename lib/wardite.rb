@@ -391,7 +391,12 @@ module Wardite
         frame.labels.push(label)
 
       when :loop
-        raise NotImplementedError, "TODO: loop"
+        block = insn.operand[0]
+        raise EvalError, "loop op without block" if !block.is_a?(Block)
+        start = frame.pc
+        end_pc = fetch_ops_while_end(frame.body, frame.pc)
+        label = Label.new(:loop, end_pc, stack.size, block.result_size, start)
+        frame.labels.push(label)
 
       when :if
         block = insn.operand[0]
