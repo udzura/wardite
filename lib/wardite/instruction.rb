@@ -127,7 +127,8 @@ module Wardite
       prefix = code.to_s.split("_")[0]
       case prefix
       when "i32", "i64", "f32", "f64"
-        [prefix.to_sym, code]
+        # All FC operations for numeric are "convert"
+        [:convert, code]
       else
         [:default, code]
       end
