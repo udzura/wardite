@@ -56,7 +56,7 @@ module Wardite
   class I32
     include ValueHelper
 
-    I32_MAX = (1<<32) - 1
+    I32_MAX = (1<<32) - 1 #: Integer
     # value should be stored as unsigned Integer, even in I32/I64
     # when we want to access signed value, it'd be done via #value_s
     attr_accessor :value #: Integer
@@ -194,7 +194,31 @@ module Wardite
     # @rbs to: Symbol
     # @rbs return: wasmValue
     def extendN_s(from:, to:)
-      raise EvalError, "unsupported operation"
+      src_value = case from
+      when :i8
+        base = value & 0xff
+        (base >> 8).zero? ?
+          base :
+          ((-base) ^ 0xff) + 1
+      when :i16
+        base = value & 0xffff
+        (base >> 15).zero? ?
+          base :
+          ((-base) ^ 0xffff) + 1
+      when :i32
+        value_s
+      else
+        raise EvalError, "unsupported value size"
+      end
+
+      case to
+      when :i32
+        I32(src_value)
+      when :i64
+        I64(src_value)
+      else
+        raise EvalError, "unsupported value size"
+      end
     end
 
     # @rbs to: Symbol
@@ -218,7 +242,7 @@ module Wardite
   class I64
     include ValueHelper
 
-    I64_MAX = (1<<64) - 1
+    I64_MAX = (1<<64) - 1 #: Integer
 
     attr_accessor :value #: Integer
 
@@ -433,28 +457,52 @@ module Wardite
 
     # @todo need more testcase...
     # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
+    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
+    # @rbs saturating: bool
     # @rbs return: wasmValue
-    def trunc_s(to:)
+    def trunc_s(to:, saturating: false)
       v = value.to_i
       case to
       when :i32
         if v >= 0
-          I32(v & (I32::I32_MAX >> 1))
+          i32_signed_max = I32::I32_MAX >> 1
+          if saturating
+            v = i32_signed_max if v > i32_signed_max
+          else
+            v = v & i32_signed_max
+          end
+          I32(v & i32_signed_max)
         else
-          v = v & I32::I32_MAX
-          if (v >> 31).zero?
-            raise EvalError, "[undefined behavior] detected overflow: #{value}"
+          i32_signed_min = -(I32::I32_MAX >> 1) - 1
+          if saturating
+            v = i32_signed_min if v < i32_signed_min
+          else
+            v = v & I32::I32_MAX
+            if (v >> 31).zero?
+              raise EvalError, "[undefined behavior] detected overflow: #{value}"
+            end
           end
           I32(v)
         end
       when :i64
         if v >= 0
-          I64(v & (I64::I64_MAX >> 1))
+          i64_signed_max = I64::I64_MAX >> 1
+          if saturating
+            v = i64_signed_max if v > i64_signed_max
+          else
+            v = v & i64_signed_max
+          end
+          I64(v & i64_signed_max)
         else
-          v = v & I64::I64_MAX
-          if (v >> 31).zero?
-            raise EvalError, "[undefined behavior] detected overflow: #{value}"
+          i64_signed_min = -(I64::I64_MAX >> 1) - 1
+          if saturating
+            v = i64_signed_min if v < i64_signed_min
+          else
+            v = v & I64::I64_MAX
+            if (v >> 63).zero?
+              raise EvalError, "[undefined behavior] detected overflow: #{value}"
+            end
           end
           I64(v)
         end
@@ -464,19 +512,33 @@ module Wardite
     end
 
     # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-u-mathrm-trunc-mathsf-u-m-n-z
+    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
+    # @rbs sturating: bool
     # @rbs return: wasmValue
-    def trunc_u(to:)
+    def trunc_u(to:, saturating: false)
       v = value.to_i
       if v < 0
-        raise EvalError, "[undefined behavior] unexpected negative value"
+        if saturating
+          v = 0
+        else
+          raise EvalError, "[undefined behavior] unexpected negative value"
+        end
       end
       case to
       when :i32
-        v = v & I32::I32_MAX
+        if saturating
+          v = I32::I32_MAX if v > I32::I32_MAX
+        else
+          v = v & I32::I32_MAX
+        end
         I32(v)
       when :i64
-        v = v & I64::I64_MAX
+        if saturating
+          v = I64::I64_MAX if v > I64::I64_MAX
+        else
+          v = v & I64::I64_MAX
+        end
         I64(v)
       else
         raise EvalError, "unsupported operation to: #{to}"
@@ -527,13 +589,13 @@ module Wardite
     # @rbs to: Symbol
     # @rbs return: wasmValue
     def trunc_sat_u(to:)
-      raise EvalError, "unsupported operation"
+      trunc_u(to: to, saturating: true)
     end
 
     # @rbs to: Symbol
     # @rbs return: wasmValue
     def trunc_sat_s(to:)
-      raise EvalError, "unsupported operation"
+      trunc_s(to: to, saturating: true)
     end
 
     def inspect
@@ -596,27 +658,50 @@ module Wardite
 
     # @see the same as F32
     # @rbs to: Symbol
+    # @rbs saturating: bool
     # @rbs return: wasmValue
-    def trunc_s(to:)
+    def trunc_s(to:, saturating: false)
       v = value.to_i
       case to
       when :i32
         if v >= 0
-          I32(v & (I32::I32_MAX >> 1))
+          i32_signed_max = I32::I32_MAX >> 1
+          if saturating
+            v = i32_signed_max if v > i32_signed_max
+          else
+            v = v & i32_signed_max
+          end
+          I32(v & i32_signed_max)
         else
-          v = v & I32::I32_MAX
-          if (v >> 31).zero?
-            raise EvalError, "[undefined behavior] detected overflow: #{value}"
+          i32_signed_min = -(I32::I32_MAX >> 1) - 1
+          if saturating
+            v = i32_signed_min if v < i32_signed_min
+          else
+            v = v & I32::I32_MAX
+            if (v >> 31).zero?
+              raise EvalError, "[undefined behavior] detected overflow: #{value}"
+            end
           end
           I32(v)
         end
       when :i64
         if v >= 0
-          I64(v & (I64::I64_MAX >> 1))
+          i64_signed_max = I64::I64_MAX >> 1
+          if saturating
+            v = i64_signed_max if v > i64_signed_max
+          else
+            v = v & i64_signed_max
+          end
+          I64(v & i64_signed_max)
         else
-          v = v & I64::I64_MAX
-          if (v >> 31).zero?
-            raise EvalError, "[undefined behavior] detected overflow: #{value}"
+          i64_signed_min = -(I64::I64_MAX >> 1) - 1
+          if saturating
+            v = i64_signed_min if v < i64_signed_min
+          else
+            v = v & I64::I64_MAX
+            if (v >> 63).zero?
+              raise EvalError, "[undefined behavior] detected overflow: #{value}"
+            end
           end
           I64(v)
         end
@@ -627,18 +712,31 @@ module Wardite
 
     # @see the same as F32
     # @rbs to: Symbol
+    # @rbs saturating: bool
     # @rbs return: wasmValue
-    def trunc_u(to:)
+    def trunc_u(to:, saturating: false)
       v = value.to_i
       if v < 0
-        raise EvalError, "[undefined behavior] unexpected negative value"
+        if saturating
+          v = 0
+        else
+          raise EvalError, "[undefined behavior] unexpected negative value"
+        end
       end
       case to
       when :i32
-        v = v & I32::I32_MAX
+        if saturating
+          v = I32::I32_MAX if v > I32::I32_MAX
+        else
+          v = v & I32::I32_MAX
+        end
         I32(v)
       when :i64
-        v = v & I64::I64_MAX
+        if saturating
+          v = I64::I64_MAX if v > I64::I64_MAX
+        else
+          v = v & I64::I64_MAX
+        end
         I64(v)
       else
         raise EvalError, "unsupported operation to: #{to}"
@@ -690,13 +788,13 @@ module Wardite
     # @rbs to: Symbol
     # @rbs return: wasmValue
     def trunc_sat_u(to:)
-      raise EvalError, "unsupported operation"
+      trunc_u(to: to, saturating: true)
     end
 
     # @rbs to: Symbol
     # @rbs return: wasmValue
     def trunc_sat_s(to:)
-      raise EvalError, "unsupported operation"
+      trunc_s(to: to, saturating: true)
     end
 
     def inspect

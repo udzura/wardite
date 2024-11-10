@@ -752,7 +752,18 @@ module Wardite
           raise "Invalid definition of operand"
         end
         return I64(arg)
-      # TODO: floats
+      when :f32_const
+        arg = op.operand[0]
+        if !arg.is_a?(Float)
+          raise "Invalid definition of operand"
+        end
+        return F32(arg)
+      when :f64_const
+        arg = op.operand[0]
+        if !arg.is_a?(Float)
+          raise "Invalid definition of operand"
+        end
+        return F64(arg)
       else
         raise "Unimplemented offset op: #{op.code.inspect}"
       end

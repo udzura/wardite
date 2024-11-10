@@ -36,7 +36,7 @@ module Wardite
   class I32
     include ValueHelper
 
-    I32_MAX: untyped
+    I32_MAX: Integer
 
     # value should be stored as unsigned Integer, even in I32/I64
     # when we want to access signed value, it'd be done via #value_s
@@ -120,7 +120,7 @@ module Wardite
   class I64
     include ValueHelper
 
-    I64_MAX: untyped
+    I64_MAX: Integer
 
     attr_accessor value: Integer
 
@@ -231,14 +231,18 @@ module Wardite
 
     # @todo need more testcase...
     # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
+    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
+    # @rbs saturating: bool
     # @rbs return: wasmValue
-    def trunc_s: (to: Symbol) -> wasmValue
+    def trunc_s: (to: Symbol, ?saturating: bool) -> wasmValue
 
     # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-u-mathrm-trunc-mathsf-u-m-n-z
+    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
+    # @rbs sturating: bool
     # @rbs return: wasmValue
-    def trunc_u: (to: Symbol) -> wasmValue
+    def trunc_u: (to: Symbol, ?saturating: untyped) -> wasmValue
 
     # @rbs to: Symbol
     # @rbs return: wasmValue
@@ -309,13 +313,15 @@ module Wardite
 
     # @see the same as F32
     # @rbs to: Symbol
+    # @rbs saturating: bool
     # @rbs return: wasmValue
-    def trunc_s: (to: Symbol) -> wasmValue
+    def trunc_s: (to: Symbol, ?saturating: bool) -> wasmValue
 
     # @see the same as F32
     # @rbs to: Symbol
+    # @rbs saturating: bool
     # @rbs return: wasmValue
-    def trunc_u: (to: Symbol) -> wasmValue
+    def trunc_u: (to: Symbol, ?saturating: bool) -> wasmValue
 
     # @rbs to: Symbol
     # @rbs return: wasmValue
