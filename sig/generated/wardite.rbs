@@ -14,6 +14,8 @@ module Wardite
 
     attr_accessor runtime: Runtime
 
+    attr_accessor types: Array[Type]
+
     attr_accessor store: Store
 
     attr_accessor exports: Exports
@@ -143,6 +145,17 @@ module Wardite
     def respond_to?: (String | Symbol name) -> bool
   end
 
+  class Type
+    attr_accessor callsig: Array[Symbol]
+
+    attr_accessor retsig: Array[Symbol]
+
+    # @rbs callsig: Array[Symbol]
+    # @rbs retsig: Array[Symbol]
+    # @rbs returb: void
+    def initialize: (Array[Symbol] callsig, Array[Symbol] retsig) -> untyped
+  end
+
   class Frame
     attr_accessor pc: Integer
 
@@ -194,7 +207,7 @@ module Wardite
 
     attr_accessor tables: Array[Table]
 
-    attr_accessor elements: Array[[ Symbol, Array[Integer] ]]
+    attr_accessor elements: Array[[ Symbol, Integer, Array[Integer] ]]
 
     # @rbs inst: Instance
     # @rbs return: void
@@ -329,6 +342,10 @@ module Wardite
 
     # @rbs return: Array[Integer]
     def locals_count: () -> Array[Integer]
+
+    # @rbs override_type: Type?
+    # @rbs return: WasmFunction
+    def clone: (?override_type: Type?) -> WasmFunction
   end
 
   type wasmFuncReturn = Object | nil
@@ -347,6 +364,10 @@ module Wardite
     # @rbs callable: wasmCallable
     # @rbs return: void
     def initialize: (Array[Symbol] callsig, Array[Symbol] retsig, wasmCallable callable) -> void
+
+    # @rbs override_type: Type?
+    # @rbs return: ExternalFunction
+    def clone: (?override_type: Type?) -> ExternalFunction
   end
 
   class GenericError < StandardError

@@ -105,6 +105,8 @@ module Wardite
   class ElemSection < Section
     attr_accessor :table_indices #: Array[Integer]
 
+    attr_accessor :table_offsets #: Array[Integer]
+
     attr_accessor :element_indices #: Array[Array[Integer]]
 
     # @rbs return: void
@@ -113,6 +115,7 @@ module Wardite
       self.code = 0x9
 
       @table_indices = []
+      @table_offsets = []
       @element_indices = []
     end
   end
@@ -302,7 +305,7 @@ module Wardite
           when Wardite::SectionStart
             start_section
           when Wardite::SectionElement
-            unimplemented_skip_section(code)
+            elem_section
           when Wardite::SectionCode
             code_section
           when Wardite::SectionData
@@ -438,6 +441,39 @@ module Wardite
       # StartSection won't use size
       func_index = fetch_uleb128(@buf)
       dest.func_index = func_index
+      dest
+    end
+
+    # @rbs return: ElemSection
+    def self.elem_section
+      dest = ElemSection.new
+      size = fetch_uleb128(@buf)
+      dest.size = size
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+
+      len = fetch_uleb128(sbuf)
+      len.times do |i|
+        etype = fetch_uleb128(sbuf)
+        case etype
+        when 0x0 # expr, vec(funcidx)
+          dest.table_indices << 0 # default and fixed to table[0]
+
+          code = fetch_insn_while_end(sbuf)
+          ops = code_body(StringIO.new(code))
+          offset = decode_expr(ops)
+          dest.table_offsets << offset
+
+          elms = []
+          elen = fetch_uleb128(sbuf)
+          elen.times do |i|
+            index = fetch_uleb128(sbuf)
+            elms << index
+          end
+          dest.element_indices << elms
+        else
+          raise NotImplementedError, "element section type #{etype} is a TODO!"
+        end
+      end
       dest
     end
 

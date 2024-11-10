@@ -74,6 +74,8 @@ module Wardite
   class ElemSection < Section
     attr_accessor table_indices: Array[Integer]
 
+    attr_accessor table_offsets: Array[Integer]
+
     attr_accessor element_indices: Array[Array[Integer]]
 
     # @rbs return: void
@@ -184,6 +186,9 @@ module Wardite
 
     # @rbs return: StartSection
     def self.start_section: () -> StartSection
+
+    # @rbs return: ElemSection
+    def self.elem_section: () -> ElemSection
 
     # @rbs return: GlobalSection
     def self.global_section: () -> GlobalSection

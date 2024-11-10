@@ -31,6 +31,8 @@ module Wardite
 
     attr_accessor :runtime #: Runtime
 
+    attr_accessor :types #: Array[Type]
+
     attr_accessor :store #: Store
 
     attr_accessor :exports #: Exports
@@ -46,6 +48,15 @@ module Wardite
       @store = Store.new(self)
       @exports = Exports.new(self.export_section, store)
       @runtime = Runtime.new(self)
+
+      @types = []
+      type_section = self.type_section
+      if type_section
+        type_section.defined_types.each_with_index do |calltype, idx|
+          rettype = type_section.defined_results[idx]
+          @types << Type.new(calltype, rettype)
+        end
+      end
     end
 
     # @rbs return: ImportSection
@@ -475,6 +486,45 @@ module Wardite
           raise GenericError, "got a non-function pointer"
         end
 
+      when :call_indirect
+        table = self.instance.store.tables[0]
+        raise EvalError, "table required but not found" if !table
+        type_idx = insn.operand[0]
+        raise EvalError, "[BUG] index operand invalid" if !type_idx.is_a?(Integer)
+        nullbyte = insn.operand[1]
+        raise EvalError, "[BUG] invalid bytearray of call_indirect" if nullbyte != 0x0
+        table_idx = stack.pop
+        raise EvalError, "[BUG] index stack invalid" if !table_idx.is_a?(I32)
+        fntype = self.instance.types[type_idx]
+        if !fntype
+          raise EvalError, "undefined type index: idx=#{type_idx}"          
+        end
+        refs = self.instance.store.tables[0]&.refs
+        if !refs
+           raise EvalError, "uninitialized element idx:#{table_idx}"
+        end
+
+        fn = refs[table_idx.value]
+        case fn
+        when WasmFunction
+          if table.type != :funcref
+            raise EvalError, "invalid type of elem; expected: #{table.type}"
+          end
+          fn = fn.clone(override_type: fntype)
+          push_frame(fn)
+        when ExternalFunction
+          if table.type != :externref
+            raise EvalError, "invalid type of elem; expected: #{table.type}"
+          end
+          fn = fn.clone(override_type: fntype)
+          ret = invoke_external(fn)
+          self.stack.push ret if ret
+        when nil
+          raise EvalError, "uninitialized element idx:#{table_idx.value}"
+        else
+          raise EvalError, "[BUG] unknwon function type #{fn}"
+        end
+
       when :return
         old_frame = call_stack.pop
         if !old_frame
@@ -590,6 +640,7 @@ module Wardite
 
     rescue => e
       require "pp"
+      $stderr.puts "instance:::\n#{self.instance.pretty_inspect}"
       $stderr.puts "frame:::\n#{frame.pretty_inspect}"
       $stderr.puts "stack:::\n#{stack.pretty_inspect}"
       raise e
@@ -728,6 +779,20 @@ module Wardite
     end
   end
 
+  class Type
+    attr_accessor :callsig #: Array[Symbol]
+
+    attr_accessor :retsig #: Array[Symbol]
+
+    # @rbs callsig: Array[Symbol]
+    # @rbs retsig: Array[Symbol]
+    # @rbs returb: void
+    def initialize(callsig, retsig)
+      @callsig = callsig
+      @retsig = retsig
+    end
+  end
+
   class Frame
     attr_accessor :pc #: Integer
     attr_accessor :sp #: Integer
@@ -792,7 +857,7 @@ module Wardite
 
     attr_accessor :tables #: Array[Table]
 
-    attr_accessor :elements #: Array[[Symbol, Array[Integer]]]
+    attr_accessor :elements #: Array[[Symbol, Integer, Array[Integer]]]
 
     # @rbs inst: Instance
     # @rbs return: void
@@ -891,16 +956,20 @@ module Wardite
             raise LoadError, "invalid table index #{tidx}"
           end
           typ = table.type
-          indices = elem_section.element_indices[idx]
-          if indices
+          offset = elem_section.table_offsets[idx]
+          if !offset
             raise LoadError, "invalid element index #{idx}"
           end
-          elms = [typ, indices] #: [Symbol, Array[Integer]]
+          indices = elem_section.element_indices[idx]
+          if !indices
+            raise LoadError, "invalid element index #{idx}"
+          end
+          elms = [typ, offset, indices] #: [Symbol, Integer, Array[Integer]]
           @elements << elms
         end
       end
 
-      @elements.each_with_index do |(typ, indices), idx|
+      @elements.each_with_index do |(typ, offset, indices), idx|
         table = @tables[idx]
         if !table
           raise LoadError, "invalid table index #{idx}"          
@@ -908,7 +977,7 @@ module Wardite
         indices.each_with_index do |eidx, tidx|
           case typ
           when :funcref
-            table.set(tidx, @funcs[eidx])
+            table.set(offset + tidx, @funcs[eidx])
           when :externref
             raise NotImplementedError, "no support :externref"
           end
@@ -1106,7 +1175,18 @@ module Wardite
     # @rbs return: Array[Integer]
     def locals_count
       code_body.locals_count
-    end    
+    end
+
+    # @rbs override_type: Type?
+    # @rbs return: WasmFunction
+    def clone(override_type: nil)
+      if override_type
+        # code_body is assumed to be frozen, so we can copy its ref
+        WasmFunction.new(override_type.callsig, override_type.retsig, code_body)
+      else
+        WasmFunction.new(callsig, retsig, code_body)
+      end
+    end
   end
 
   # @rbs!
@@ -1128,6 +1208,17 @@ module Wardite
       @callsig = callsig
       @retsig = retsig
       @callable = callable
+    end
+
+    # @rbs override_type: Type?
+    # @rbs return: ExternalFunction
+    def clone(override_type: nil)
+      if override_type
+        # callable is assumed to be frozen, so we can copy its ref
+        ExternalFunction.new(override_type.callsig, override_type.retsig, callable)
+      else
+        ExternalFunction.new(callsig, retsig, callable)
+      end
     end
   end
 
