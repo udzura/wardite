@@ -724,6 +724,7 @@ module Wardite
           end
           dest.segments << segment
         end
+      end
       dest
     end
 
