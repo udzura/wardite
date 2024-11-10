@@ -7,6 +7,21 @@ A pure-ruby webassembly runtime.
 - [x] Fully typed by RBS (with the aid of [rbs-inline](https://github.com/soutaro/rbs-inline))
 - [ ] WASI (p1) support
 
+## Supported Instructions
+
+ref: https://webassembly.github.io/spec/core/binary/instructions.html
+
+- [x] Control Instructions
+- [x] Parametric Instructions
+- [x] Variable Instructions
+- [ ] Table Instructions
+- [x] Memory Instructions (except `data.drop`)
+- [x] Numeric Instructions (`0x41 ... 0xC4`)
+- [x] Numeric Instructions (`0xFC` Operations)
+- [ ] Reference Instructions
+- [ ] Vector Instructions
+- [x] end `0x0B`
+
 ## Installation
 
 Install the gem and add to the application's Gemfile by executing:
