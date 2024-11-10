@@ -28,6 +28,8 @@ module Wardite
     SectionCode: Integer
 
     SectionData: Integer
+
+    SectionDataCount: Integer
   end
 
   include Const

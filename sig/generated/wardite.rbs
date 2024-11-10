@@ -26,6 +26,9 @@ module Wardite
     # @rbs &blk: (Instance) -> void
     def initialize: (Hash[Symbol, Hash[Symbol, wasmCallable]] import_object) { (Instance) -> void } -> untyped
 
+    # @rbs return: void
+    def check_data_count: () -> void
+
     # @rbs return: ImportSection
     def import_section: () -> ImportSection
 
@@ -43,6 +46,9 @@ module Wardite
 
     # @rbs return: DataSection|nil
     def data_section: () -> (DataSection | nil)
+
+    # @rbs return: DataCountSection|nil
+    def data_count_section: () -> (DataCountSection | nil)
 
     # @rbs return: FunctionSection|nil
     def function_section: () -> (FunctionSection | nil)

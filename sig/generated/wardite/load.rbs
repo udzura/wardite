@@ -103,7 +103,9 @@ module Wardite
 
   class DataSection < Section
     class Segment
-      attr_accessor flags: Integer
+      attr_accessor mode: :active | :passive
+
+      attr_accessor mem_index: Integer
 
       attr_accessor offset: Integer
 
@@ -118,6 +120,14 @@ module Wardite
 
     # @rbs return: void
     def initialize: () -> void
+  end
+
+  class DataCountSection < Section
+    attr_accessor count: Integer
+
+    # @rbs count: Integer
+    # @rbs return: void
+    def initialize: (Integer count) -> void
   end
 
   class ExportSection < Section
@@ -213,6 +223,9 @@ module Wardite
 
     # @rbs return: DataSection
     def self.data_section: () -> DataSection
+
+    # @rbs return: DataCountSection
+    def self.data_count_section: () -> DataCountSection
 
     # @rbs sbuf: StringIO
     # @rbs return: String

@@ -148,7 +148,9 @@ module Wardite
 
   class DataSection < Section
     class Segment
-      attr_accessor :flags #: Integer
+      attr_accessor :mode #: :active|:passive
+
+      attr_accessor :mem_index #: Integer
       
       attr_accessor :offset #: Integer
 
@@ -169,6 +171,19 @@ module Wardite
       self.code = 0xb
 
       @segments = []
+    end
+  end
+
+  class DataCountSection < Section
+    attr_accessor :count #: Integer
+
+    # @rbs count: Integer
+    # @rbs return: void
+    def initialize(count)
+      self.name = "Data"
+      self.code = 0xc
+
+      @count = count
     end
   end
 
@@ -310,6 +325,8 @@ module Wardite
             code_section
           when Wardite::SectionData
             data_section
+          when Wardite::Const::SectionDataCount
+            data_count_section
           when Wardite::SectionCustom
             unimplemented_skip_section(code)
           else
@@ -673,24 +690,50 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        mem_index = fetch_uleb128(sbuf)
-        code = fetch_insn_while_end(sbuf)
-        ops = code_body(StringIO.new(code))
-        offset = decode_expr(ops)
-
-        len = fetch_uleb128(sbuf)
-        data = sbuf.read len
-        if !data
-          raise LoadError, "buffer too short"
+        data_type = fetch_uleb128(sbuf)
+        case data_type
+        when 0x0
+          # active
+          code = fetch_insn_while_end(sbuf)
+          ops = code_body(StringIO.new(code))
+          offset = decode_expr(ops)
+          len = fetch_uleb128(sbuf)
+          data = sbuf.read len
+          if !data
+            raise LoadError, "buffer too short"
+          end
+          segment = DataSection::Segment.new do |seg|
+            seg.mode = :active
+            seg.mem_index = 0 # memory index
+            seg.offset = offset
+            seg.data = data
+          end
+          dest.segments << segment
+        when 0x1
+          # passive
+          dsize = fetch_uleb128(sbuf)
+          data = sbuf.read dsize
+          if !data
+            raise LoadError, "data too short"
+          end
+          segment = DataSection::Segment.new do |seg|
+            seg.mode = :passive
+            seg.mem_index = 0 # unused
+            seg.offset = 0 # unused
+            seg.data = data
+          end
+          dest.segments << segment
         end
+      dest
+    end
 
-        segment = DataSection::Segment.new do |seg|
-          seg.flags = mem_index
-          seg.offset = offset
-          seg.data = data
-        end
-        dest.segments << segment
-      end
+    # @rbs return: DataCountSection
+    def self.data_count_section
+      size = fetch_uleb128(@buf)
+      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      count = fetch_uleb128(sbuf)
+      dest = DataCountSection.new(count)
+      dest.size = size
       dest
     end
 

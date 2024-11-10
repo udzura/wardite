@@ -57,6 +57,22 @@ module Wardite
           @types << Type.new(calltype, rettype)
         end
       end
+
+      check_data_count
+    end
+
+    # @rbs return: void
+    def check_data_count
+      data_count = self.data_count_section&.count
+      if data_count
+        actual_count = self.data_section&.segments&.size
+        if !actual_count
+          raise LoadError, "invalid data segment count"
+        end
+        if (data_count != actual_count)
+          raise LoadError, "invalid data segment count"
+        end
+      end
     end
 
     # @rbs return: ImportSection
@@ -124,6 +140,18 @@ module Wardite
         return nil
       end
       if !sec.is_a?(DataSection)
+        raise(GenericError, "[BUG] found invalid data section")
+      end
+      sec
+    end
+
+    # @rbs return: DataCountSection|nil
+    def data_count_section
+      sec = @sections.find{|s| s.code == Const::SectionDataCount }
+      if !sec
+        return nil
+      end
+      if !sec.is_a?(DataCountSection)
         raise(GenericError, "[BUG] found invalid data section")
       end
       sec
@@ -216,7 +244,7 @@ module Wardite
         call_by_index(start_section.func_index)
       end
     end
-    
+
     # @rbs name: String|Symbol
     # @rbs return: bool
     def callable?(name)
@@ -905,9 +933,12 @@ module Wardite
         data_section = inst.data_section
         if data_section
           data_section.segments.each do |segment|
-            memory = self.memories[segment.flags]
+            if segment.mode != :active
+              next
+            end
+            memory = self.memories[segment.mem_index]
             if !memory
-              raise GenericError, "invalid memory index: #{segment.flags}"
+              raise GenericError, "invalid memory index: #{segment.mem_index}"
             end
 
             data_start = segment.offset
