@@ -58,6 +58,54 @@ module Wardite
         runtime.stack.push(to)
 
 
+      when :i32_extend_8_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.extendN_s(to: :i32, from: :i8)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
+
+
+      when :i32_extend_16_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.extendN_s(to: :i32, from: :i16)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
+
+
+      when :i32_trunc_sat_f32_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.trunc_sat_s(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
+
+
+      when :i32_trunc_sat_f64_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.trunc_sat_s(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
+
+
+      when :i32_trunc_sat_f32_u
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.trunc_sat_u(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
+
+
+      when :i32_trunc_sat_f64_u
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.trunc_sat_u(to: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I32)
+        runtime.stack.push(to)
+
+
       when :i64_extend_i32_s
         from = runtime.stack.pop
         raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
@@ -126,6 +174,62 @@ module Wardite
         from = runtime.stack.pop
         raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
         to = from.reinterpret(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_extend_8_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.extendN_s(to: :i64, from: :i8)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_extend_16_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.extendN_s(to: :i64, from: :i16)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_extend_32_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
+        to = from.extendN_s(to: :i64, from: :i32)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_trunc_sat_f32_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.trunc_sat_s(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_trunc_sat_f64_s
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.trunc_sat_s(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_trunc_sat_f32_u
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F32)
+        to = from.trunc_sat_u(to: :i64)
+        raise EvalError, "failed to convert type" if !to.is_a?(I64)
+        runtime.stack.push(to)
+
+
+      when :i64_trunc_sat_f64_u
+        from = runtime.stack.pop
+        raise EvalError, "maybe empty or invalid stack" if !from.is_a?(F64)
+        to = from.trunc_sat_u(to: :i64)
         raise EvalError, "failed to convert type" if !to.is_a?(I64)
         runtime.stack.push(to)
 

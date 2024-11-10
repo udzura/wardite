@@ -170,6 +170,9 @@ task :generate do
       trunc_s: [:f32, :f64],
       trunc_u: [:f32, :f64],
       reinterpret: [:f32],
+      extendN_s: [:i8, :i16],
+      trunc_sat_s: [:f32, :f64],
+      trunc_sat_u: [:f32, :f64],
     },
     i64: {
       extend_s: [:i32, :i64],
@@ -177,6 +180,9 @@ task :generate do
       trunc_s: [:f32, :f64],
       trunc_u: [:f32, :f64],
       reinterpret: [:f64],
+      extendN_s: [:i8, :i16, :i32],
+      trunc_sat_s: [:f32, :f64],
+      trunc_sat_u: [:f32, :f64],
     },
     f32: {
       convert_s: [:i32, :i64],

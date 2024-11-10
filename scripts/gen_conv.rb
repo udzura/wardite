@@ -39,11 +39,18 @@ module GenConv
     code = DEF.dup
     method = op.to_s
     symbol = "#{to.to_s}_#{method}_#{from.to_sym}"
+    extra_kargs = ""
     
     if method == "extend"
       method = "extend_"
+    elsif method =~ /^extendN_(u|s)$/
+      suffix = $1
+      from_size = from.to_s.scan(/\d+/).join
+      symbol = "#{to.to_s}_extend_#{from_size}_#{suffix}"
+      extra_kargs = ", from: :#{from.to_s}"
     elsif method.end_with?("_s") or method.end_with?("_u")
-      core, suffix = *(method.split("_")[0..1])
+      core = method.sub(/_(s|u)$/, "")
+      suffix = method.scan(/_(s|u)$/).join
       symbol = "#{to.to_s}_#{core}_#{from.to_sym}_#{suffix}"
     end
     # NOTE to is as namespace
@@ -52,11 +59,14 @@ module GenConv
     code.gsub!(/\$\{TO\}/, to.to_s)
     code.gsub!(/\$\{TO_CLASS\}/, to_class(to.to_sym))
     code.gsub!(/\$\{FROM_CLASS\}/, to_class(from.to_sym))
+    code.gsub!(/\$\{EXTRA_KARGS\}/, extra_kargs)
     return code
   end
 
   def self.to_class(typ)
     {
+      i8: "I32",
+      i16: "I32",
       i32: "I32",
       i64: "I64",
       f32: "F32",
@@ -69,7 +79,7 @@ module GenConv
     when :${SYMBOL}
       from = runtime.stack.pop
       raise EvalError, "maybe empty or invalid stack" if !from.is_a?(${FROM_CLASS})
-      to = from.${METHOD}(to: :${TO})
+      to = from.${METHOD}(to: :${TO}${EXTRA_KARGS})
       raise EvalError, "failed to convert type" if !to.is_a?(${TO_CLASS})
       runtime.stack.push(to)
   RUBY
