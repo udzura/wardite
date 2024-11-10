@@ -31,15 +31,27 @@ module Wardite
       i32_trunc_f32_s i32_trunc_f32_u i32_trunc_f64_s i32_trunc_f64_u i64_extend_i32_s i64_extend_i32_u i64_trunc_f32_s i64_trunc_f32_u
       i64_trunc_f64_s i64_trunc_f64_u f32_convert_i32_s f32_convert_i32_u f32_convert_i64_s f32_convert_i64_u f32_demote_f64 f64_convert_i32_s
       f64_convert_i32_u f64_convert_i64_s f64_convert_i64_u f64_promote_f32 i32_reinterpret_f32 i64_reinterpret_f64 f32_reinterpret_i32 f64_reinterpret_i64
+      i32_extend8_s i32_extend16_s i64_extend8_s i64_extend16_s i64_extend32_s
+      __unsuported_from_here_on__
+    ] #: Array[Symbol]
+
+    FC_SYMS = %i[
+      i32_trunc_sat_f32_s i32_trunc_sat_f32_u i32_trunc_sat_f64_s i32_trunc_sat_f64_u
+      i64_trunc_sat_f32_s i64_trunc_sat_f32_u i64_trunc_sat_f64_s i64_trunc_sat_f64_u
+      memory_init data_drop memory_copy memory_fill
+      table_init elem_drop table_copy table_grow
+      table_size table_fill
       __unsuported_from_here_on__
     ] #: Array[Symbol]
 
     # @rbs @@table: Hash[Integer, Symbol] | nil
-    @@table = nil 
+    @@table = nil
+    # @rbs @@table: Hash[Integer, Symbol] | nil
+    @@fc_table = nil
 
     # @rbs return: Hash[Integer, Symbol]
     def self.table
-      @@table if @@table != nil
+      return @@table if @@table != nil
       @@table = {}.tap do |ha|
         SYMS.each_with_index do |sym, i|
           ha[i] = sym
@@ -48,6 +60,17 @@ module Wardite
       @@table
     end
 
+    # @rbs return: Hash[Integer, Symbol]
+    def self.fc_table
+      return @@fc_table if @@fc_table != nil
+      @@fc_table = {}.tap do |ha|
+        FC_SYMS.each_with_index do |sym, i|
+          ha[i] = sym
+        end
+      end
+      @@fc_table
+    end
+    
     attr_accessor :namespace #: Symbol
 
     attr_accessor :code #: Symbol
@@ -67,6 +90,10 @@ module Wardite
     # @rbs chr: String
     # @rbs return: [Symbol, Symbol]
     def self.to_sym(chr)
+      if chr.ord == 0xfc
+        return [:fc, :fc]
+      end
+
       code = table[chr.ord]
       if ! code
         raise "found unknown code 0x#{chr.ord.to_s(16)}"
@@ -74,6 +101,27 @@ module Wardite
       # opcodes equal to or larger than are "convert" ops
       if chr.ord >= 0xa7
         return [:convert, code]
+      end
+
+      prefix = code.to_s.split("_")[0]
+      case prefix
+      when "i32", "i64", "f32", "f64"
+        [prefix.to_sym, code]
+      else
+        [:default, code]
+      end
+    end
+
+    # @rbs lower: Integer
+    # @rbs return: [Symbol, Symbol]
+    def self.resolve_fc_sym(lower)
+      if lower == 0xfc
+        return [:fc, :fc]
+      end
+
+      code = fc_table[lower]
+      if ! code
+        raise "found unknown code 0xfc 0x#{lower.to_s(16)}"
       end
 
       prefix = code.to_s.split("_")[0]

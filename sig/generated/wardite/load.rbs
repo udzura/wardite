@@ -206,6 +206,11 @@ module Wardite
     # @rbs return: Array[::Wardite::Op]
     def self.code_body: (StringIO buf) -> Array[::Wardite::Op]
 
+    # @rbs c: String
+    # @rbs buf: StringIO
+    # @rbs return: [Symbol, Symbol]
+    def self.resolve_code: (String c, StringIO buf) -> [ Symbol, Symbol ]
+
     # @rbs return: DataSection
     def self.data_section: () -> DataSection
 

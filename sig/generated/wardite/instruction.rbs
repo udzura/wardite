@@ -7,8 +7,13 @@ module Wardite
     # @see https://pengowray.github.io/wasm-ops/
     SYMS: Array[Symbol]
 
+    FC_SYMS: Array[Symbol]
+
     # @rbs return: Hash[Integer, Symbol]
     def self.table: () -> Hash[Integer, Symbol]
+
+    # @rbs return: Hash[Integer, Symbol]
+    def self.fc_table: () -> Hash[Integer, Symbol]
 
     attr_accessor namespace: Symbol
 
@@ -25,6 +30,10 @@ module Wardite
     # @rbs chr: String
     # @rbs return: [Symbol, Symbol]
     def self.to_sym: (String chr) -> [ Symbol, Symbol ]
+
+    # @rbs lower: Integer
+    # @rbs return: [Symbol, Symbol]
+    def self.resolve_fc_sym: (Integer lower) -> [ Symbol, Symbol ]
 
     # @rbs code: Symbol
     # @rbs return: Array[Symbol]

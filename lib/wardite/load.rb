@@ -590,7 +590,7 @@ module Wardite
     def self.code_body(buf)
       dest = []
       while c = buf.read(1)
-        namespace, code = Op.to_sym(c)
+        namespace, code = resolve_code(c, buf)
         operand_types = Op.operand_of(code)
         operand = [] #: Array[operandItem]
         operand_types.each do |typ|
@@ -650,6 +650,18 @@ module Wardite
       end
 
       dest
+    end
+
+    # @rbs c: String
+    # @rbs buf: StringIO
+    # @rbs return: [Symbol, Symbol]
+    def self.resolve_code(c, buf)
+      namespace, code = Op.to_sym(c)
+      if namespace == :fc
+        lower = fetch_uleb128(buf)
+        return Op.resolve_fc_sym(lower) #: [Symbol, Symbol]
+      end
+      return [namespace, code] #: [Symbol, Symbol]
     end
 
     # @rbs return: DataSection
