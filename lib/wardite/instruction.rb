@@ -142,8 +142,12 @@ module Wardite
         [:u32, :u32]
       when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if
         [:u32]
+      when :memory_init, :memory_copy
+        [:u32, :u32]
+      when :memory_size, :memory_grow, :memory_fill
+        [:u32]
       when :call_indirect
-        [:u32, :u8]
+        [:u32, :u32]
       when :br_table
         [:u32_vec, :u32]
       when :i32_const

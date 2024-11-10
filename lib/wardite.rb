@@ -662,6 +662,57 @@ module Wardite
         memory = instance.store.memories[0] || raise("[BUG] no memory")
         stack.push(I32(memory.grow(delta.value)))
 
+      when :memory_init
+        idx = insn.operand[0]
+        if !idx.is_a?(Integer)
+          raise EvalError, "[BUG] invalid type of operand"
+        end
+        if insn.operand[1] != 0x0
+          $stderr.puts "warning: :memory_init is not ending with 0x00"
+        end
+        data_sec = instance.data_section
+        if !data_sec
+          raise EvalError, "data segment out of range"
+        end
+        data_seg = data_sec.segments[idx]
+        if !data_seg
+          raise EvalError, "data segment out of range"
+        end
+
+        memory = instance.store.memories[0] || raise("[BUG] no memory")
+        length, src_offset, dest_offset = stack.pop, stack.pop, stack.pop
+        if !length.is_a?(I32) || !src_offset.is_a?(I32) || !dest_offset.is_a?(I32)
+          raise EvalError, "invalid stack values"
+        end
+        source = data_seg.data[src_offset.value...(src_offset.value+length.value)]
+        raise EvalError, "invalid source range" if !source
+        memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
+
+      when :memory_copy
+        if insn.operand[0] != 0x0 || insn.operand[1] != 0x0
+          $stderr.puts "warning: :memory_copy is not ending with 0x00"
+        end
+        length, src_offset, dest_offset = stack.pop, stack.pop, stack.pop
+        if !length.is_a?(I32) || !src_offset.is_a?(I32) || !dest_offset.is_a?(I32)
+          raise EvalError, "invalid stack values"
+        end
+        memory = instance.store.memories[0] || raise("[BUG] no memory")
+        source = memory.data[src_offset.value...(src_offset.value+length.value)]
+        raise EvalError, "invalid source range" if !source
+        memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
+
+      when :memory_fill
+        if insn.operand[0] != 0x0
+          $stderr.puts "warning: :memory_fill is not ending with 0x00"
+        end
+        length, byte, dest_offset = stack.pop, stack.pop, stack.pop
+        if !length.is_a?(I32) || !byte.is_a?(I32) || !dest_offset.is_a?(I32)
+          raise EvalError, "invalid stack values"
+        end
+        memory = instance.store.memories[0] || raise("[BUG] no memory")
+        source = byte.value.chr * length.value
+        memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
+
       else
         raise "TODO! unsupported #{insn.inspect}"
       end
