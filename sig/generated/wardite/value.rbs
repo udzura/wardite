@@ -100,6 +100,19 @@ module Wardite
     # @rbs return: wasmValue
     def reinterpret: (to: Symbol) -> wasmValue
 
+    # @rbs from: Symbol
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def extendN_s: (from: Symbol, to: Symbol) -> wasmValue
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_u: (to: Symbol) -> wasmValue
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_s: (to: Symbol) -> wasmValue
+
     # I32#inspect shows signed value for convinience
     def inspect: () -> untyped
   end
@@ -168,6 +181,19 @@ module Wardite
     # @rbs return: wasmValue
     def reinterpret: (to: Symbol) -> wasmValue
 
+    # @rbs from: Symbol
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def extendN_s: (from: Symbol, to: Symbol) -> wasmValue
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_u: (to: Symbol) -> wasmValue
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_s: (to: Symbol) -> wasmValue
+
     # I64#inspect shows signed value
     def inspect: () -> untyped
   end
@@ -234,6 +260,19 @@ module Wardite
     # @rbs return: wasmValue
     def reinterpret: (to: Symbol) -> wasmValue
 
+    # @rbs from: Symbol
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def extendN_s: (from: Symbol, to: Symbol) -> wasmValue
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_u: (to: Symbol) -> wasmValue
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_s: (to: Symbol) -> wasmValue
+
     def inspect: () -> untyped
   end
 
@@ -298,6 +337,19 @@ module Wardite
     # @rbs to: Symbol
     # @rbs return: wasmValue
     def reinterpret: (to: Symbol) -> wasmValue
+
+    # @rbs from: Symbol
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def extendN_s: (from: Symbol, to: Symbol) -> wasmValue
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_u: (to: Symbol) -> wasmValue
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_s: (to: Symbol) -> wasmValue
 
     def inspect: () -> untyped
   end

@@ -190,6 +190,25 @@ module Wardite
       F32(v)
     end
 
+    # @rbs from: Symbol
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def extendN_s(from:, to:)
+      raise EvalError, "unsupported operation"
+    end
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_u(to:)
+      raise EvalError, "unsupported operation"
+    end
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_s(to:)
+      raise EvalError, "unsupported operation"
+    end
+
     # I32#inspect shows signed value for convinience
     def inspect
       "I32(#{value_s})"
@@ -332,6 +351,25 @@ module Wardite
       v = [value].pack("L!").unpack("d")[0]
       raise EvalError, "[BUG] String#unpack is broke, really?" if !v.is_a?(Float)
       F32(v)
+    end
+
+    # @rbs from: Symbol
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def extendN_s(from:, to:)
+      raise EvalError, "unsupported operation"
+    end
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_u(to:)
+      raise EvalError, "unsupported operation"
+    end
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_s(to:)
+      raise EvalError, "unsupported operation"
     end
 
     # I64#inspect shows signed value
@@ -479,6 +517,25 @@ module Wardite
       I32(v)
     end
 
+    # @rbs from: Symbol
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def extendN_s(from:, to:)
+      raise EvalError, "unsupported operation"
+    end
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_u(to:)
+      raise EvalError, "unsupported operation"
+    end
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_s(to:)
+      raise EvalError, "unsupported operation"
+    end
+
     def inspect
       "F32(#{@value})"
     end
@@ -621,6 +678,25 @@ module Wardite
       v = [value].pack("d").unpack("L!")[0]
       raise EvalError, "[BUG] String#unpack is broke, really?" if !v.is_a?(Integer)
       I64(v)
+    end
+
+    # @rbs from: Symbol
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def extendN_s(from:, to:)
+      raise EvalError, "unsupported operation"
+    end
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_u(to:)
+      raise EvalError, "unsupported operation"
+    end
+
+    # @rbs to: Symbol
+    # @rbs return: wasmValue
+    def trunc_sat_s(to:)
+      raise EvalError, "unsupported operation"
     end
 
     def inspect
