@@ -630,7 +630,7 @@ module Wardite
           when :i32
             operand << fetch_sleb128(buf)
           when :i64
-            operand << fetch_sleb128(buf)
+            operand << fetch_sleb128(buf, max_level: 16)
           when :f32
             data = buf.read 4
             if !data || data.size != 4
@@ -667,6 +667,12 @@ module Wardite
       end
 
       dest
+    rescue => e
+      require "pp"
+      $stderr.puts "parsed:::"
+      $stderr.puts "#{dest.pretty_inspect}"
+      $stderr.puts "code = #{code}"
+      raise e
     end
 
     # @rbs c: String
@@ -845,7 +851,7 @@ module Wardite
     # @rbs return: nil
     def self.unimplemented_skip_section(code)
       $stderr.puts "warning: unimplemented section: 0x0#{code}"
-      size = @buf.read(1)&.ord
+      size = fetch_uleb128(@buf)
       @buf.read(size)
       nil
     end

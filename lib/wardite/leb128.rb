@@ -2,8 +2,9 @@
 module Wardite
   module Leb128Helper
     # @rbs buf: File|StringIO
+    # @rbs max_level: Integer
     # @rbs return: Integer
-    def fetch_uleb128(buf)
+    def fetch_uleb128(buf, max_level: 8)
       dest = 0
       level = 0
       while b = buf.read(1)
@@ -18,7 +19,7 @@ module Wardite
           return dest
         end
 
-        if level > 6
+        if level > max_level
           break
         end
         level += 1
@@ -29,7 +30,7 @@ module Wardite
 
     # @rbs buf: File|StringIO
     # @rbs return: Integer
-    def fetch_sleb128(buf)
+    def fetch_sleb128(buf, max_level: 8)
       dest = 0
       level = 0
       while b = buf.read(1)
@@ -44,7 +45,7 @@ module Wardite
           break
         end
 
-        if level > 6
+        if level > max_level
           raise "unreachable! debug: dest = #{dest} level = #{level}"
         end
         level += 1
