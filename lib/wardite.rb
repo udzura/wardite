@@ -310,20 +310,28 @@ module Wardite
       end
       self.stack = drained_stack(local_start)
 
-      wasm_function.locals_type.each_with_index do |typ, i|
-        case typ
-        when :i32, :u32
-          locals.push I32(0)
-        when :i64, :u64
-          locals.push I64(0)
-        else
-          $stderr.puts "warning: unknown type #{typ.inspect}. default to I32"
-          locals.push I32(0)
+      wasm_function.locals_count.each_with_index do |count, i|
+        typ = wasm_function.locals_type[i]
+        count.times do
+          case typ
+          when :i32, :u32
+            locals.push I32(0)
+          when :i64, :u64
+            locals.push I64(0)
+          when :f32
+            locals.push F32(0.0)
+          when :f64
+            locals.push F64(0.0)
+          else
+            $stderr.puts "warning: unknown type #{typ.inspect}. default to I32"
+            locals.push I32(0)
+          end
         end
       end
 
       arity = wasm_function.retsig.size
       frame = Frame.new(-1, stack.size, wasm_function.body, arity, locals)
+      frame.findex = wasm_function.findex
       self.call_stack.push(frame)
     end
 
@@ -593,7 +601,8 @@ module Wardite
         end
         local = frame.locals[idx]
         if !local
-          raise EvalError, "local not found"
+          # require "irb"; binding.irb
+          raise EvalError, "local not found, idx = #{idx}"
         end
         stack.push(local)
 
@@ -884,6 +893,8 @@ module Wardite
 
     attr_accessor :locals #: Array[wasmValue]
 
+    attr_accessor :findex #: Integer
+
     # @rbs pc: Integer
     # @rbs sp: Integer
     # @rbs body: Array[Op]
@@ -897,6 +908,8 @@ module Wardite
       @arity = arity
       @locals = locals
       @labels = []
+
+      @findex = 0
     end
   end
 
@@ -970,6 +983,8 @@ module Wardite
           retsig = type_section.defined_results[sigindex]
           codes = code_section.func_codes[findex]
           wasm_function = WasmFunction.new(callsig, retsig, codes)
+          idx = self.funcs.size
+          wasm_function.findex = idx
           self.funcs << wasm_function
         end
       end
@@ -1233,6 +1248,8 @@ module Wardite
 
     attr_accessor :code_body #: CodeSection::CodeBody
 
+    attr_accessor :findex #: Integer
+
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
     # @rbs code_body: CodeSection::CodeBody
@@ -1242,6 +1259,7 @@ module Wardite
       @retsig = retsig
 
       @code_body = code_body
+      @findex = 0 # for debug
     end
 
     # @rbs return: Array[Op]

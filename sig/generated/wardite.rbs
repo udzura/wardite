@@ -175,6 +175,8 @@ module Wardite
 
     attr_accessor locals: Array[wasmValue]
 
+    attr_accessor findex: Integer
+
     # @rbs pc: Integer
     # @rbs sp: Integer
     # @rbs body: Array[Op]
@@ -333,6 +335,8 @@ module Wardite
     attr_accessor retsig: Array[Symbol]
 
     attr_accessor code_body: CodeSection::CodeBody
+
+    attr_accessor findex: Integer
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]

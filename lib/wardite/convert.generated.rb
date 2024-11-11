@@ -58,7 +58,7 @@ module Wardite
         runtime.stack.push(to)
 
 
-      when :i32_extend_8_s
+      when :i32_extend8_s
         from = runtime.stack.pop
         raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
         to = from.extendN_s(to: :i32, from: :i8)
@@ -66,7 +66,7 @@ module Wardite
         runtime.stack.push(to)
 
 
-      when :i32_extend_16_s
+      when :i32_extend16_s
         from = runtime.stack.pop
         raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
         to = from.extendN_s(to: :i32, from: :i16)
@@ -178,7 +178,7 @@ module Wardite
         runtime.stack.push(to)
 
 
-      when :i64_extend_8_s
+      when :i64_extend8_s
         from = runtime.stack.pop
         raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
         to = from.extendN_s(to: :i64, from: :i8)
@@ -186,7 +186,7 @@ module Wardite
         runtime.stack.push(to)
 
 
-      when :i64_extend_16_s
+      when :i64_extend16_s
         from = runtime.stack.pop
         raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
         to = from.extendN_s(to: :i64, from: :i16)
@@ -194,7 +194,7 @@ module Wardite
         runtime.stack.push(to)
 
 
-      when :i64_extend_32_s
+      when :i64_extend32_s
         from = runtime.stack.pop
         raise EvalError, "maybe empty or invalid stack" if !from.is_a?(I32)
         to = from.extendN_s(to: :i64, from: :i32)

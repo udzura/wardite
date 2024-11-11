@@ -46,7 +46,7 @@ module GenConv
     elsif method =~ /^extendN_(u|s)$/
       suffix = $1
       from_size = from.to_s.scan(/\d+/).join
-      symbol = "#{to.to_s}_extend_#{from_size}_#{suffix}"
+      symbol = "#{to.to_s}_extend#{from_size}_#{suffix}"
       extra_kargs = ", from: :#{from.to_s}"
     elsif method.end_with?("_s") or method.end_with?("_u")
       core = method.sub(/_(s|u)$/, "")
