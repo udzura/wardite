@@ -727,10 +727,12 @@ module Wardite
       end
 
     rescue => e
-      require "pp"
-      $stderr.puts "instance:::\n#{self.instance.pretty_inspect}"
-      $stderr.puts "frame:::\n#{frame.pretty_inspect}"
-      $stderr.puts "stack:::\n#{stack.pretty_inspect}"
+      if ENV["DEBUG"]
+        require "pp"
+        $stderr.puts "instance:::\n#{self.instance.pretty_inspect}"
+        $stderr.puts "frame:::\n#{frame.pretty_inspect}"
+        $stderr.puts "stack:::\n#{stack.pretty_inspect}"
+      end
       raise e
     end
 

@@ -43,7 +43,7 @@ path = ARGV[0]
 method = ARGV[1]
 args = ARGV[2..-1] || []
 
-instance = Wardite::new(path: path);
+instance = Wardite::new(path: path)
 if !method && instance.runtime.respond_to?(:_start)
   instance.runtime._start
 else

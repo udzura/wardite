@@ -237,6 +237,10 @@ module Wardite
     def inspect
       "I32(#{value_s})"
     end
+
+    def ==(other)
+      return self.class == other.class && self.value == other.value
+    end
   end
 
   class I64
@@ -399,6 +403,10 @@ module Wardite
     # I64#inspect shows signed value
     def inspect
       "I64(#{@value})"
+    end
+ 
+    def ==(other)
+      return self.class == other.class && self.value == other.value
     end
   end
 
@@ -601,6 +609,10 @@ module Wardite
     def inspect
       "F32(#{@value})"
     end
+
+    def ==(other)
+      return self.class == other.class && self.value == other.value
+    end
   end
 
   class F64
@@ -799,6 +811,10 @@ module Wardite
 
     def inspect
       "F64(#{@value})"
+    end
+
+    def ==(other)
+      return self.class == other.class && self.value == other.value
     end
   end
 end
