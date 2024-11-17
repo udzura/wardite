@@ -315,8 +315,10 @@ module Wardite
     def result_size: () -> Integer
   end
 
+  type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory
+
   class Exports
-    attr_accessor mappings: Hash[String, [ Integer, WasmFunction | ExternalFunction ]]
+    attr_accessor mappings: Hash[String, [ Integer, exportHandle ]]
 
     # @rbs export_section: ExportSection
     # @rbs store: Store
@@ -324,8 +326,12 @@ module Wardite
     def initialize: (ExportSection export_section, Store store) -> void
 
     # @rbs name: String
-    # @rbs return: [Integer, WasmFunction|ExternalFunction]
-    def []: (String name) -> [ Integer, WasmFunction | ExternalFunction ]
+    # @rbs return: exportHandle|nil
+    def []: (String name) -> (exportHandle | nil)
+
+    def respond_to?: (untyped name) -> untyped
+
+    def method_missing: (untyped name, *untyped _args) -> untyped
   end
 
   # TODO: common interface btw. WasmFunction and ExternalFunction?

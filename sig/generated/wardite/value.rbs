@@ -115,6 +115,8 @@ module Wardite
 
     # I32#inspect shows signed value for convinience
     def inspect: () -> untyped
+
+    def ==: (untyped other) -> untyped
   end
 
   class I64
@@ -196,6 +198,8 @@ module Wardite
 
     # I64#inspect shows signed value
     def inspect: () -> untyped
+
+    def ==: (untyped other) -> untyped
   end
 
   class F32
@@ -278,6 +282,8 @@ module Wardite
     def trunc_sat_s: (to: Symbol) -> wasmValue
 
     def inspect: () -> untyped
+
+    def ==: (untyped other) -> untyped
   end
 
   class F64
@@ -358,5 +364,7 @@ module Wardite
     def trunc_sat_s: (to: Symbol) -> wasmValue
 
     def inspect: () -> untyped
+
+    def ==: (untyped other) -> untyped
   end
 end

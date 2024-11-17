@@ -193,7 +193,7 @@ module Wardite
       
       attr_accessor :kind #: Integer
 
-      attr_accessor :func_index #: Integer
+      attr_accessor :index #: Integer
     end
 
     attr_accessor :exports #: Hash[String, ExportDesc]
@@ -840,7 +840,7 @@ module Wardite
         dest.add_desc do |desc|
           desc.name = name
           desc.kind = kind
-          desc.func_index = index
+          desc.index = index
         end
       end
 

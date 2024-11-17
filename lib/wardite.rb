@@ -258,8 +258,11 @@ module Wardite
       if !callable?(name)
         raise ::NoMethodError, "function #{name} not found"
       end
-      kind, fn = @instance.exports[name.to_s]
+      kind, fn = @instance.exports.mappings[name.to_s]
       if kind != 0
+        raise ::NoMethodError, "#{name} is not a function"
+      end
+      if !fn.is_a?(WasmFunction) && !fn.is_a?(ExternalFunction)
         raise ::NoMethodError, "#{name} is not a function"
       end
       if fn.callsig.size != args.size
@@ -1221,8 +1224,11 @@ module Wardite
     end
   end
 
+  # @rbs!
+  #   type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory
+
   class Exports
-    attr_accessor :mappings #: Hash[String, [Integer, WasmFunction|ExternalFunction]]
+    attr_accessor :mappings #: Hash[String, [Integer, exportHandle]]
 
     # @rbs export_section: ExportSection
     # @rbs store: Store
@@ -1230,15 +1236,36 @@ module Wardite
     def initialize(export_section, store)
       @mappings = {}
       export_section.exports.each_pair do |name, desc|
-        # TODO: introduce map by kind
-        @mappings[name] = [desc.kind, store.funcs[desc.func_index]]
+        case desc.kind
+        when 0x0
+          @mappings[name] = [desc.kind, store.funcs[desc.index]]
+        when 0x1
+          @mappings[name] = [desc.kind, store.tables[desc.index]]
+        when 0x2
+          @mappings[name] = [desc.kind, store.memories[desc.index]]
+        when 0x3
+          @mappings[name] = [desc.kind, store.globals[desc.index]]
+        else
+        end
       end
     end
 
     # @rbs name: String
-    # @rbs return: [Integer, WasmFunction|ExternalFunction]
+    # @rbs return: exportHandle|nil
     def [](name)
-      @mappings[name]
+      @mappings[name]&.[](1)
+    end
+
+    def respond_to?(name) 
+      !!self[name.to_s] || super
+    end
+
+    def method_missing(name, *_args)
+      if self[name.to_s]
+        self[name.to_s]
+      else
+        super
+      end
     end
   end
 
