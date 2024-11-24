@@ -61,6 +61,7 @@ GEM
     rbs-inline (0.9.0)
       prism (>= 0.29, < 1.1)
       rbs (>= 3.5.0)
+    ruby-prof (1.7.1)
     securerandom (0.3.1)
     steep (1.8.2)
       activesupport (>= 5.1)
@@ -102,6 +103,7 @@ PLATFORMS
 DEPENDENCIES
   rake (~> 13.0)
   rbs-inline (~> 0.9.0)
+  ruby-prof
   steep (>= 1.8.1)
   test-unit (~> 3.0)
   wardite!

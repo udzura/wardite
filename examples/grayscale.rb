@@ -21,23 +21,32 @@ opt.on('--width [W]') {|v| $options.width = v.to_i }
 opt.on('--height [H]') {|v| $options.height = v.to_i }
 opt.parse!
 
+#require 'ruby-prof'
+#profile = RubyProf::Profile.new
+
 f = File.open($options.wasm_file)
 data = IO.read($options.source)
-instance = Wardite::BinaryLoader::load_from_buffer(f);
-instance.store.memories[0].grow(data.size / (64*1024) + 1)
 orig = Base64.encode64(data).gsub(/(\r|\n)/, "")
 data_url = "data:image/png;base64," + orig
+instance = Wardite::BinaryLoader::load_from_buffer(f);
+instance.store.memories[0].grow(data_url.size / (64*1024) + 1)
 
 start = instance.exports.__heap_base.value.value
 instance.store.memories[0].data[start...(start+data_url.size)] = data_url
 
 offset = 0
+result = nil
 begin
   # pub fn grayscale(width: i32, height: i32, memory_offset: i32, length: i32) -> *const u8
-  offset = instance.runtime.grayscale($options.width, $options.height, start, data_url.size)
+  #profile.start
+  offset = instance.runtime.grayscale_blob($options.width, $options.height, start, data_url.size)
+  #result = profile.stop
 rescue => e
-  raise "failed to execute grayscale()" + e.message
+  raise "failed to execute grayscale() " + e.message
 end
+
+#printer = RubyProf::GraphPrinter.new(result)
+#printer.print(STDOUT, {})
 
 len = 0
 until instance.store.memories[0].data[offset.value+len] == "\0"
@@ -52,3 +61,4 @@ dest.write result
 dest.close
 
 puts "created: #{$options.dest}"
+
