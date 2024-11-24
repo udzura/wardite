@@ -4,10 +4,12 @@ module Wardite
     attr_accessor :ops #: Array[Op]
     
     # @rbs ops: Array[Op]
+    # @rbs return: void
     def initialize(ops)
       @ops = ops
     end
 
+    # @rbs return: void
     def revisit!
       @ops.each_with_index do |op, idx|
         case op.code
@@ -30,6 +32,7 @@ module Wardite
 
     # @rbs pc_start: Integer
     # @rbs return: Integer
+    # @rbs return: void
     def fetch_ops_while_else_or_end(pc_start)
       cursor = pc_start
       depth = 0
@@ -61,6 +64,7 @@ module Wardite
 
     # @rbs pc_start: Integer
     # @rbs return: Integer
+    # @rbs return: void
     def fetch_ops_while_end(pc_start)
       cursor = pc_start
       depth = 0
