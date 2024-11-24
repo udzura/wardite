@@ -8,20 +8,12 @@ module Wardite
     # @rbs value: Integer
     # @rbs return: I32
     def I32(value)
-      if value < 0
-        # $stderr.puts "trace: negative i32 value #{value} is passed, convert to unsigned"
-        value = as_u32(value)
-      end
-      I32.new.tap{|i| i.value = value & I32::I32_MAX }
+      I32.new(value & I32::I32_MAX)
     end
 
     # @rbs value: Integer
     # @rbs return: I64
     def I64(value)
-      if value < 0
-        # $stderr.puts "trace: negative i64 value #{value} is passed, convert to unsigned"
-        value = as_u64(value)
-      end
       I64.new.tap{|i| i.value = value & I64::I64_MAX }
     end
 
@@ -36,19 +28,6 @@ module Wardite
     def F64(value)
       F64.new.tap{|i| i.value = value }
     end
-
-    private
-    # @rbs value: Integer
-    # @rbs return: Integer
-    def as_u32(value)
-      ((-value) ^ I32::I32_MAX) + 1
-    end
-
-    # @rbs value: Integer
-    # @rbs return: Integer
-    def as_u64(value)
-      ((-value) ^ I64::I64_MAX) + 1
-    end
   end
 
   extend ValueHelper
@@ -60,6 +39,11 @@ module Wardite
     # value should be stored as unsigned Integer, even in I32/I64
     # when we want to access signed value, it'd be done via #value_s
     attr_accessor :value #: Integer
+
+    # @rbs value: Integer
+    def initialize(value=0)
+      @value = value
+    end
 
     # @rbs str: String
     # @rbs size: Integer|nil

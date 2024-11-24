@@ -19,16 +19,6 @@ module Wardite
     # @rbs value: Float
     # @rbs return: F64
     def F64: (Float value) -> F64
-
-    private
-
-    # @rbs value: Integer
-    # @rbs return: Integer
-    def as_u32: (Integer value) -> Integer
-
-    # @rbs value: Integer
-    # @rbs return: Integer
-    def as_u64: (Integer value) -> Integer
   end
 
   extend ValueHelper
@@ -41,6 +31,9 @@ module Wardite
     # value should be stored as unsigned Integer, even in I32/I64
     # when we want to access signed value, it'd be done via #value_s
     attr_accessor value: Integer
+
+    # @rbs value: Integer
+    def initialize: (?Integer value) -> untyped
 
     # @rbs str: String
     # @rbs size: Integer|nil
