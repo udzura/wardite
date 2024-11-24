@@ -1,6 +1,5 @@
 # Generated from lib/wardite/load.rb with RBS::Inline
 
-# rbs_inline: enabled
 module Wardite
   class Section
     attr_accessor name: String

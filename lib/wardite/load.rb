@@ -1,4 +1,6 @@
 # rbs_inline: enabled
+require "wardite/revisitor"
+
 module Wardite
   class Section
     attr_accessor :name #: String
@@ -593,10 +595,13 @@ module Wardite
           locals_type << Op.i2type(value_type || -1)
         end
         body = code_body(cbuf)
+        revisitor = Revisitor.new(body)
+        revisitor.revisit!
+        
         dest.func_codes << CodeSection::CodeBody.new do |b|
           b.locals_count = locals_count
           b.locals_type = locals_type
-          b.body = body
+          b.body = revisitor.ops
         end
       end
       dest
