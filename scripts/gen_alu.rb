@@ -592,8 +592,8 @@ module GenAlu
         if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
           raise EvalError, "maybe empty or invalid stack"
         end
-        value = left.value << right.value
-        value %= (1 << right.memsize) 
+        value = left.value << (right.value % right.memsize)
+        value %= 1 << right.memsize
 
         runtime.stack.push(${CLASS}(value))
     RUBY

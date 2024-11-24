@@ -460,8 +460,8 @@ module Wardite
         if !right.is_a?(I64) || !left.is_a?(I64)
           raise EvalError, "maybe empty or invalid stack"
         end
-        value = left.value << right.value
-        value %= (1 << right.memsize) 
+        value = left.value << (right.value % right.memsize)
+        value %= 1 << right.memsize
       
         runtime.stack.push(I64(value))
 
