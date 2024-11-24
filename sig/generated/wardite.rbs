@@ -115,21 +115,11 @@ module Wardite
     # @rbs return: void
     def eval_insn: (Frame frame, Op insn) -> void
 
-    # @rbs ops: Array[Op]
-    # @rbs pc_start: Integer
-    # @rbs return: Integer
-    def fetch_ops_while_else_or_end: (Array[Op] ops, Integer pc_start) -> Integer
-
     # @rbs labels: Array[Label]
     # @rbs stack: Array[wasmValue]
     # @rbs level: Integer
     # @rbs return: Integer
     def do_branch: (Array[Label] labels, Array[wasmValue] stack, Integer level) -> Integer
-
-    # @rbs ops: Array[Op]
-    # @rbs pc_start: Integer
-    # @rbs return: Integer
-    def fetch_ops_while_end: (Array[Op] ops, Integer pc_start) -> Integer
 
     # unwind the stack and put return value if exists
     # @rbs sp: Integer

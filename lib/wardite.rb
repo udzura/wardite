@@ -740,38 +740,6 @@ module Wardite
       raise e
     end
 
-    # @rbs ops: Array[Op]
-    # @rbs pc_start: Integer
-    # @rbs return: Integer
-    def fetch_ops_while_else_or_end(ops, pc_start)
-      cursor = pc_start
-      depth = 0
-      loop {
-        cursor += 1
-        inst = ops[cursor]
-        case inst&.code
-        when nil
-          raise EvalError, "end op not found"
-        when :if
-          depth += 1
-        when :else
-          if depth == 0
-            return cursor
-          end
-          # do not touch depth
-        when :end
-          if depth == 0
-            return cursor
-          else
-            depth -= 1
-          end
-        else
-          # nop
-        end
-      }
-      raise "[BUG] unreachable"
-    end
-
     # @rbs labels: Array[Label]
     # @rbs stack: Array[wasmValue]
     # @rbs level: Integer
@@ -795,33 +763,6 @@ module Wardite
       end
 
       pc
-    end
-
-    # @rbs ops: Array[Op]
-    # @rbs pc_start: Integer
-    # @rbs return: Integer
-    def fetch_ops_while_end(ops, pc_start)
-      cursor = pc_start
-      depth = 0
-      loop {
-        cursor += 1
-        inst = ops[cursor]
-        case inst&.code
-        when nil
-          raise EvalError, "end op not found"
-        when :if, :block, :loop
-          depth += 1
-        when :end
-          if depth == 0
-            return cursor
-          else
-            depth -= 1
-          end
-        else
-          # nop
-        end
-      }
-      raise "[BUG] unreachable"
     end
 
     # unwind the stack and put return value if exists
