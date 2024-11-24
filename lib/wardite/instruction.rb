@@ -78,6 +78,8 @@ module Wardite
     # TODO: add types of potential operands
     attr_accessor :operand #: Array[operandItem]
 
+    attr_accessor :meta #: Hash[Symbol, Integer]
+
     # @rbs namespace: Symbol
     # @rbs code: Symbol
     # @rbs operand: Array[operandItem]
@@ -85,6 +87,7 @@ module Wardite
       @namespace = namespace      
       @code = code
       @operand = operand
+      @meta = {}
     end
 
     # @rbs chr: String

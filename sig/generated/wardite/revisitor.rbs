@@ -1,0 +1,25 @@
+# Generated from lib/wardite/revisitor.rb with RBS::Inline
+
+# rbs_inline: enabled
+module Wardite
+  class Revisitor
+    attr_accessor ops: Array[Op]
+
+    # @rbs ops: Array[Op]
+    # @rbs return: void
+    def initialize: (Array[Op] ops) -> void
+
+    # @rbs return: void
+    def revisit!: () -> void
+
+    # @rbs pc_start: Integer
+    # @rbs return: Integer
+    # @rbs return: void
+    def fetch_ops_while_else_or_end: (Integer pc_start) -> Integer
+
+    # @rbs pc_start: Integer
+    # @rbs return: Integer
+    # @rbs return: void
+    def fetch_ops_while_end: (Integer pc_start) -> Integer
+  end
+end
