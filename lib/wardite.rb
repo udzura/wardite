@@ -1119,6 +1119,7 @@ module Wardite
       end
       
       @data += String.new("\0" * (delta * 64 * 1024))
+      self.current = newsize
       prev
     end
 
