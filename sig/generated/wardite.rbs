@@ -326,6 +326,8 @@ module Wardite
 
   # TODO: common interface btw. WasmFunction and ExternalFunction?
   class WasmFunction
+    include ValueHelper
+
     attr_accessor callsig: Array[Symbol]
 
     attr_accessor retsig: Array[Symbol]
@@ -333,6 +335,8 @@ module Wardite
     attr_accessor code_body: CodeSection::CodeBody
 
     attr_accessor findex: Integer
+
+    attr_accessor default_locals: Array[wasmValue]
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
@@ -348,6 +352,9 @@ module Wardite
 
     # @rbs return: Array[Integer]
     def locals_count: () -> Array[Integer]
+
+    # @rbs return: Array[wasmValue]
+    def construct_default_locals: () -> Array[wasmValue]
 
     # @rbs override_type: Type?
     # @rbs return: WasmFunction

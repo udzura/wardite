@@ -281,7 +281,8 @@ module Wardite
 
       case fn
       when WasmFunction
-        invoke_internal(fn)
+        r = invoke_internal(fn)
+        r
       when ExternalFunction
         invoke_external(fn)
       else
@@ -313,25 +314,7 @@ module Wardite
         raise LoadError, "stack too short"
       end
       self.stack = drained_stack(local_start)
-
-      wasm_function.locals_count.each_with_index do |count, i|
-        typ = wasm_function.locals_type[i]
-        count.times do
-          case typ
-          when :i32, :u32
-            locals.push I32(0)
-          when :i64, :u64
-            locals.push I64(0)
-          when :f32
-            locals.push F32(0.0)
-          when :f64
-            locals.push F64(0.0)
-          else
-            $stderr.puts "warning: unknown type #{typ.inspect}. default to I32"
-            locals.push I32(0)
-          end
-        end
-      end
+      locals.concat(wasm_function.default_locals)
 
       arity = wasm_function.retsig.size
       frame = Frame.new(-1, stack.size, wasm_function.body, arity, locals)
@@ -1214,6 +1197,8 @@ module Wardite
 
   # TODO: common interface btw. WasmFunction and ExternalFunction?
   class WasmFunction
+    include ValueHelper
+
     attr_accessor :callsig #: Array[Symbol]
 
     attr_accessor :retsig #: Array[Symbol]
@@ -1221,6 +1206,8 @@ module Wardite
     attr_accessor :code_body #: CodeSection::CodeBody
 
     attr_accessor :findex #: Integer
+
+    attr_accessor :default_locals #: Array[wasmValue]
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
@@ -1232,6 +1219,7 @@ module Wardite
 
       @code_body = code_body
       @findex = 0 # for debug
+      @default_locals = construct_default_locals
     end
 
     # @rbs return: Array[Op]
@@ -1247,6 +1235,30 @@ module Wardite
     # @rbs return: Array[Integer]
     def locals_count
       code_body.locals_count
+    end
+
+    # @rbs return: Array[wasmValue]
+    def construct_default_locals
+      locals = [] #: Array[wasmValue]
+      locals_count.each_with_index do |count, i|
+        typ = locals_type[i]
+        count.times do
+          case typ
+          when :i32, :u32
+            locals.push I32(0)
+          when :i64, :u64
+            locals.push I64(0)
+          when :f32
+            locals.push F32(0.0)
+          when :f64
+            locals.push F64(0.0)
+          else
+            $stderr.puts "warning: unknown type #{typ.inspect}. default to I32"
+            locals.push I32(0)
+          end
+        end
+      end
+      locals
     end
 
     # @rbs override_type: Type?
