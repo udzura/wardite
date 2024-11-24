@@ -480,7 +480,7 @@ module GenAlu
         digits = target.memsize
         count = 0
         digits.times do |i|
-          if (target.value & (1 << i)).zero?
+          if (target.value & (1 << i)).nonzero?
             count += 1
           end
         end
@@ -636,9 +636,10 @@ module GenAlu
         if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
           raise EvalError, "maybe empty or invalid stack"
         end
-        rotated = left.value << right.value
-        rest = left.value & (${CLASS}::${CLASS}_MAX << (right.memsize - right.value))
-        value = rotated | (rest >> (right.memsize - right.value))
+        k = (right.value % right.memsize)
+        rotated = left.value << k
+        rest = left.value & (${CLASS}::${CLASS}_MAX << (right.memsize - k))
+        value = rotated | (rest >> (right.memsize - k))
         runtime.stack.push(${CLASS}(value))
     RUBY
 
@@ -648,9 +649,10 @@ module GenAlu
         if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
           raise EvalError, "maybe empty or invalid stack"
         end
-        rotated = left.value >> right.value
-        rest = left.value & (${CLASS}::${CLASS}_MAX >> (right.memsize - right.value))
-        value = rotated | (rest << (right.memsize - right.value))
+        k = (right.value % right.memsize)
+        rotated = left.value >> k
+        rest = left.value & (${CLASS}::${CLASS}_MAX >> (right.memsize - k))
+        value = rotated | (rest << (right.memsize - k))
         runtime.stack.push(${CLASS}(value))
     RUBY
 
