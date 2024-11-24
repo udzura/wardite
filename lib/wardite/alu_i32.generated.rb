@@ -347,7 +347,13 @@ module Wardite
         if !right.is_a?(I32) || !left.is_a?(I32)
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(I32(left.value_s / right.value_s))
+        result = left.value_s / right.value_s.to_f
+        iresult = (result >= 0 ? result.floor : result.ceil).to_i
+        if iresult >= (1 << (left.memsize - 1))
+          raise IntegerOverflow, "integer overflow"
+        end
+      
+        runtime.stack.push(I32(iresult))
 
 
       when :i32_div_u
@@ -363,7 +369,13 @@ module Wardite
         if !right.is_a?(I32) || !left.is_a?(I32)
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(I32(left.value_s % right.value_s))
+        result = left.value_s % right.value_s
+        if result > 0 && left.value_s < 0
+          result = result - right.value_s
+        elsif result < 0 && left.value_s > 0
+          result = result - right.value_s
+        end
+        runtime.stack.push(I32(result))
 
 
       when :i32_rem_u

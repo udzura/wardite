@@ -7,6 +7,7 @@ require_relative "wardite/const"
 require_relative "wardite/instruction"
 require_relative "wardite/value"
 require_relative "wardite/load"
+require_relative "wardite/errors"
 
 module Wardite
   module Evaluator

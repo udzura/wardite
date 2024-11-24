@@ -520,7 +520,13 @@ module GenAlu
         if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(${CLASS}(left.value_s / right.value_s))
+        result = left.value_s / right.value_s.to_f
+        iresult = (result >= 0 ? result.floor : result.ceil).to_i
+        if iresult >= (1 << (left.memsize - 1))
+          raise IntegerOverflow, "integer overflow"
+        end
+
+        runtime.stack.push(${CLASS}(iresult))
     RUBY
 
     div_u: <<~RUBY,
@@ -547,7 +553,13 @@ module GenAlu
         if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(${CLASS}(left.value_s % right.value_s))
+        result = left.value_s % right.value_s
+        if result > 0 && left.value_s < 0
+          result = result - right.value_s
+        elsif result < 0 && left.value_s > 0
+          result = result - right.value_s
+        end
+        runtime.stack.push(${CLASS}(result))
     RUBY
 
     rem_u: <<~RUBY,
