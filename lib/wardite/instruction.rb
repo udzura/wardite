@@ -46,16 +46,15 @@ module Wardite
 
     # @rbs @@table: Hash[Integer, Symbol] | nil
     @@table = nil
-    # @rbs @@table: Hash[Integer, Symbol] | nil
+    # @rbs @@fc_table: Hash[Integer, Symbol] | nil
     @@fc_table = nil
 
     # @rbs return: Hash[Integer, Symbol]
     def self.table
       return @@table if @@table != nil
-      @@table = {}.tap do |ha|
-        SYMS.each_with_index do |sym, i|
-          ha[i] = sym
-        end
+      @@table = {} #: Hash[Integer, Symbol] | nil
+      SYMS.each_with_index do |sym, i|
+        @@table[i] = sym
       end
       @@table
     end
@@ -63,10 +62,9 @@ module Wardite
     # @rbs return: Hash[Integer, Symbol]
     def self.fc_table
       return @@fc_table if @@fc_table != nil
-      @@fc_table = {}.tap do |ha|
-        FC_SYMS.each_with_index do |sym, i|
-          ha[i] = sym
-        end
+      @@fc_table = {} #: Hash[Integer, Symbol] | nil
+      FC_SYMS.each_with_index do |sym, i|
+        @@fc_table[i] = sym
       end
       @@fc_table
     end

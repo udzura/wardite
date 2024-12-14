@@ -358,7 +358,7 @@ module Wardite
         end
 
         arglen = fetch_uleb128(sbuf)
-        arg = []
+        arg = [] #: Array[Symbol]
         arglen.times do
           case ty = assert_read(sbuf, 1)&.ord
           when 0x7f
@@ -376,7 +376,7 @@ module Wardite
         dest.defined_types << arg
 
         retlen = fetch_uleb128(sbuf)
-        ret = []
+        ret = [] #: Array[Symbol]
         retlen.times do
           case ty = assert_read(sbuf, 1)&.ord
           when 0x7f
@@ -482,7 +482,7 @@ module Wardite
           offset = decode_expr(ops)
           dest.table_offsets << offset
 
-          elms = []
+          elms = [] #: Array[Integer]
           elen = fetch_uleb128(sbuf)
           elen.times do |i|
             index = fetch_uleb128(sbuf)
@@ -585,8 +585,8 @@ module Wardite
           $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{last_code.ord}" 
         end
         cbuf = StringIO.new(code)
-        locals_count = []
-        locals_type = []
+        locals_count = [] #: Array[Integer]
+        locals_type = [] #: Array[Symbol]
         locals_len = fetch_uleb128(cbuf)
         locals_len.times do
           type_count = fetch_uleb128(cbuf)
@@ -610,7 +610,7 @@ module Wardite
     # @rbs buf: StringIO
     # @rbs return: Array[::Wardite::Op]
     def self.code_body(buf)
-      dest = []
+      dest = [] #: Array[Op]
       while c = buf.read(1)
         namespace, code = resolve_code(c, buf)
         operand_types = Op.operand_of(code)
