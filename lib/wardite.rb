@@ -38,13 +38,19 @@ module Wardite
 
     attr_accessor :exports #: Exports
 
-    attr_reader :import_object #: Hash[Symbol, Hash[Symbol, wasmCallable]]
+    attr_reader :import_object #: Hash[Symbol, wasmModule]
 
-    # @rbs import_object: Hash[Symbol, Hash[Symbol, wasmCallable]]
+    # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs &blk: (Instance) -> void
     def initialize(import_object, &blk)
       blk.call(self)
-      @import_object = import_object
+      import_object.each_pair do |k, v|
+        if v.is_a?(Hash)
+          import_object[k] = HashModule.new(v)
+        end
+      end
+
+      @import_object = import_object #: Hash[Symbol, wasmModule]
 
       @store = Store.new(self)
       @exports = Exports.new(self.export_section, store)
@@ -871,7 +877,7 @@ module Wardite
   class Store
     attr_accessor :funcs #: Array[WasmFunction|ExternalFunction]
 
-    # FIXME: attr_accessor :modules
+    attr_accessor :modules #: Hash[Symbol, wasmModule]
 
     attr_accessor :memories #: Array[Memory]
 
@@ -890,21 +896,19 @@ module Wardite
 
       import_section = inst.import_section
       @funcs = []
+      @modules = inst.import_object
 
       if type_section && func_section && code_section
         import_section.imports.each do |desc|
           callsig = type_section.defined_types[desc.sig_index]
           retsig = type_section.defined_results[desc.sig_index]
-          imported_module = inst.import_object[desc.module_name.to_sym]
-          if !imported_module
+          target_module = self.modules[desc.module_name.to_sym]
+          if target_module.nil?
             raise ::NameError, "module #{desc.module_name} not found"
           end
-          imported_proc = imported_module[desc.name.to_sym]
-          if !imported_proc
-            raise ::NameError, "function #{desc.module_name}.#{desc.name} not found"
-          end
+          target_name = desc.name.to_sym
           
-          ext_function = ExternalFunction.new(callsig, retsig, imported_proc)
+          ext_function = ExternalFunction.new(target_module, target_name, callsig, retsig)
           self.funcs << ext_function
         end
 
@@ -1278,20 +1282,30 @@ module Wardite
   #   type wasmCallable = ^(Store, Array[wasmValue]) -> wasmFuncReturn
 
   class ExternalFunction
+    attr_accessor :target_module #: wasmModule
+
+    attr_accessor :name #: Symbol
+
     attr_accessor :callsig #: Array[Symbol]
 
     attr_accessor :retsig #: Array[Symbol]
 
-    attr_accessor :callable #: wasmCallable
+    #attr_accessor :callable #: wasmCallable
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
     # @rbs callable: wasmCallable
     # @rbs return: void
-    def initialize(callsig, retsig, callable)
+    def initialize(target_module, name, callsig, retsig)
+      @target_module = target_module
+      @name = name
       @callsig = callsig
       @retsig = retsig
-      @callable = callable
+    end
+
+    # @rbs return: wasmCallable
+    def callable()
+      target_module.callable(self.name)
     end
 
     # @rbs override_type: Type?
@@ -1299,9 +1313,9 @@ module Wardite
     def clone(override_type: nil)
       if override_type
         # callable is assumed to be frozen, so we can copy its ref
-        ExternalFunction.new(override_type.callsig, override_type.retsig, callable)
+        ExternalFunction.new(target_module, name, override_type.callsig, override_type.retsig)
       else
-        ExternalFunction.new(callsig, retsig, callable)
+        ExternalFunction.new(target_module, name, callsig, retsig)
       end
     end
   end

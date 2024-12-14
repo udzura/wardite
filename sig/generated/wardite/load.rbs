@@ -173,10 +173,10 @@ module Wardite
     self.@buf: File | StringIO
 
     # @rbs buf: File|StringIO
-    # @rbs import_object: Hash[Symbol, Hash[Symbol, wasmCallable]]
+    # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs enable_wasi: boolish
     # @rbs return: Instance
-    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, Hash[Symbol, wasmCallable]], ?enable_wasi: boolish) -> Instance
+    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, wasmModuleSrc], ?enable_wasi: boolish) -> Instance
 
     # @rbs return: Integer
     def self.preamble: () -> Integer

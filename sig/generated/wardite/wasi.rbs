@@ -1,9 +1,10 @@
 # Generated from lib/wardite/wasi.rb with RBS::Inline
 
-# rbs_inline: enabled
 module Wardite
   class WasiSnapshotPreview1
     include ValueHelper
+
+    include WasmModule
 
     attr_accessor fd_table: Array[IO]
 
@@ -13,9 +14,6 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_write: (Store store, Array[wasmValue] args) -> Object
-
-    # @rbs return: Hash[Symbol, wasmCallable]
-    def to_module: () -> Hash[Symbol, wasmCallable]
 
     private
 

@@ -1,7 +1,11 @@
 # rbs_inline: enabled
+
+require "wardite/wasm_module"
+
 module Wardite
   class WasiSnapshotPreview1
     include ValueHelper
+    include WasmModule
 
     attr_accessor :fd_table #: Array[IO]
 
@@ -43,13 +47,6 @@ module Wardite
       memory.data[rp...(rp+4)] = [nwritten].pack("I!")
 
       0
-    end
-
-    # @rbs return: Hash[Symbol, wasmCallable]
-    def to_module
-      {
-        fd_write: lambda{|store, args| self.fd_write(store, args) },
-      }
     end
 
     private

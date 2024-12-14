@@ -250,7 +250,7 @@ module Wardite
     # @rbs self.@buf: File|StringIO
 
     # @rbs buf: File|StringIO
-    # @rbs import_object: Hash[Symbol, Hash[Symbol, wasmCallable]]
+    # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs enable_wasi: boolish
     # @rbs return: Instance
     def self.load_from_buffer(buf, import_object: {}, enable_wasi: true)
@@ -261,7 +261,7 @@ module Wardite
 
       if enable_wasi
         wasi_env = Wardite::WasiSnapshotPreview1.new       
-        import_object[:wasi_snapshot_preview1] = wasi_env.to_module
+        import_object[:wasi_snapshot_preview1] = wasi_env
       end
 
       return Instance.new(import_object) do |i|

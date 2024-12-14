@@ -1,0 +1,36 @@
+# Generated from lib/wardite/wasm_module.rb with RBS::Inline
+
+module Wardite
+  type wasmModuleSrc = Hash[Symbol, wasmCallable] | WasmModule | HashModule
+
+  type wasmModule = WasmModule | HashModule
+
+  module WasmModule
+    # @rbs fnname: Symbol
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: wasmFuncReturn
+    def invoke: (Symbol fnname, Store store, *untyped args) -> wasmFuncReturn
+
+    # @rbs fnname: Symbol
+    # @rbs return: wasmCallable
+    def callable: (Symbol fnname) -> wasmCallable
+  end
+
+  class HashModule
+    attr_accessor hash: Hash[Symbol, wasmCallable]
+
+    # @rbs ha: Hash[Symbol, wasmCallable]
+    def initialize: (untyped hash) -> untyped
+
+    # @rbs fnname: Symbol
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: wasmFuncReturn
+    def invoke: (Symbol fnname, Store store, *untyped args) -> wasmFuncReturn
+
+    # @rbs fnname: Symbol
+    # @rbs return: wasmCallable
+    def callable: (Symbol fnname) -> wasmCallable
+  end
+end

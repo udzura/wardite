@@ -20,11 +20,11 @@ module Wardite
 
     attr_accessor exports: Exports
 
-    attr_reader import_object: Hash[Symbol, Hash[Symbol, wasmCallable]]
+    attr_reader import_object: Hash[Symbol, wasmModule]
 
-    # @rbs import_object: Hash[Symbol, Hash[Symbol, wasmCallable]]
+    # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs &blk: (Instance) -> void
-    def initialize: (Hash[Symbol, Hash[Symbol, wasmCallable]] import_object) { (Instance) -> void } -> untyped
+    def initialize: (Hash[Symbol, wasmModuleSrc] import_object) { (Instance) -> void } -> untyped
 
     # @rbs return: void
     def check_data_count: () -> void
@@ -199,6 +199,8 @@ module Wardite
   class Store
     attr_accessor funcs: Array[WasmFunction | ExternalFunction]
 
+    attr_accessor modules: Hash[Symbol, wasmModule]
+
     attr_accessor memories: Array[Memory]
 
     attr_accessor globals: Array[Global]
@@ -366,17 +368,22 @@ module Wardite
   type wasmCallable = ^(Store, Array[wasmValue]) -> wasmFuncReturn
 
   class ExternalFunction
+    attr_accessor target_module: wasmModule
+
+    attr_accessor name: Symbol
+
     attr_accessor callsig: Array[Symbol]
 
     attr_accessor retsig: Array[Symbol]
-
-    attr_accessor callable: wasmCallable
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
     # @rbs callable: wasmCallable
     # @rbs return: void
-    def initialize: (Array[Symbol] callsig, Array[Symbol] retsig, wasmCallable callable) -> void
+    def initialize: (untyped target_module, untyped name, Array[Symbol] callsig, Array[Symbol] retsig) -> void
+
+    # @rbs return: wasmCallable
+    def callable: () -> wasmCallable
 
     # @rbs override_type: Type?
     # @rbs return: ExternalFunction
