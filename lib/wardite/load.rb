@@ -855,7 +855,7 @@ module Wardite
     # @rbs code: Integer
     # @rbs return: nil
     def self.unimplemented_skip_section(code)
-      $stderr.puts "warning: unimplemented section: 0x0#{code}"
+      $stderr.puts "warning: unimplemented section: 0x0#{code}" if ENV['WARN_UNIMPLEMENTED_SECTION']
       size = fetch_uleb128(@buf)
       @buf.read(size)
       nil
