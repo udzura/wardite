@@ -327,6 +327,7 @@ module Wardite
   end
 
   # TODO: common interface btw. WasmFunction and ExternalFunction?
+  #       may be _WasmCallable?
   class WasmFunction
     include ValueHelper
 
@@ -365,8 +366,6 @@ module Wardite
 
   type wasmFuncReturn = Object | nil
 
-  type wasmCallable = ^(Store, Array[wasmValue]) -> wasmFuncReturn
-
   class ExternalFunction
     attr_accessor target_module: wasmModule
 
@@ -378,12 +377,12 @@ module Wardite
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
-    # @rbs callable: wasmCallable
+    # @rbs callable: _WasmCallable
     # @rbs return: void
     def initialize: (untyped target_module, untyped name, Array[Symbol] callsig, Array[Symbol] retsig) -> void
 
-    # @rbs return: wasmCallable
-    def callable: () -> wasmCallable
+    # @rbs return: _WasmCallable
+    def callable: () -> _WasmCallable
 
     # @rbs override_type: Type?
     # @rbs return: ExternalFunction

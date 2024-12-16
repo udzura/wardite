@@ -2,7 +2,13 @@
 
 module Wardite
   # @rbs!
-  #   type wasmModuleSrc = Hash[Symbol, wasmCallable] | WasmModule | HashModule
+  #   interface _WasmCallable
+  #     def call: (Store, Array[wasmValue]) -> wasmFuncReturn
+  #     def []: (Store, Array[wasmValue]) -> wasmFuncReturn
+  #   end
+
+  # @rbs!
+  #   type wasmModuleSrc = Hash[Symbol, _WasmCallable] | WasmModule | HashModule
   #   type wasmModule    = WasmModule | HashModule
 
   module WasmModule
@@ -15,17 +21,16 @@ module Wardite
     end
 
     # @rbs fnname: Symbol
-    # @rbs return: wasmCallable
+    # @rbs return: _WasmCallable
     def callable(fnname)
-      # FIXME: RBS can resolve Method instance signature in the future?
-      self.method(fnname) #: untyped
+      self.method(fnname)
     end
   end
 
   class HashModule
-    attr_accessor :hash #: Hash[Symbol, wasmCallable]
+    attr_accessor :hash #: Hash[Symbol, _WasmCallable]
 
-    # @rbs ha: Hash[Symbol, wasmCallable]
+    # @rbs ha: Hash[Symbol, _WasmCallable]
     def initialize(hash)
       @hash = hash
     end
@@ -40,7 +45,7 @@ module Wardite
     end
 
     # @rbs fnname: Symbol
-    # @rbs return: wasmCallable
+    # @rbs return: _WasmCallable
     def callable(fnname)
       self.hash[fnname.to_sym]
     end
