@@ -23,5 +23,16 @@ jobs:
       with:
         ruby-version: ${{ matrix.ruby }}
         bundler-cache: true
+    - name: Install wasm-tools
+      run: |
+        mkdir .bin
+        curl -L https://github.com/bytecodealliance/wasm-tools/releases/download/v1.221.2/wasm-tools-1.221.2-x86_64-linux.tar.gz -o wasm-tools.tar.gz
+        tar xvzf wasm-tools.tar.gz
+        mv wasm-tools-*-x86_64-linux/wasm-tools .bin/wasm-tools
+        chmod a+x .bin/wasm-tools
+    - name: Version wasm-tools
+      run: |
+        export PATH=`pwd`/.bin:$PATH
+        wasm-tools --version
     - name: Run the default task
       run: bundle exec rake
