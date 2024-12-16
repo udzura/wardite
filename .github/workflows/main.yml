@@ -38,7 +38,7 @@ jobs:
       run: |
         export PATH=`pwd`/.bin:$PATH
         bundle exec rake check
-        - name: Run the test task
-        run: |
-          export PATH=`pwd`/.bin:$PATH
-          bundle exec rake test
+    - name: Run the test task
+      run: |
+        export PATH=`pwd`/.bin:$PATH
+        bundle exec rake test
