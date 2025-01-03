@@ -13,7 +13,32 @@ module Wardite
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
+    def environ_sizes_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def environ_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def clock_time_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
     def fd_write: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def proc_exit: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def random_get: (Store store, Array[wasmValue] args) -> Object
 
     private
 
