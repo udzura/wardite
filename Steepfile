@@ -4,6 +4,7 @@ target :lib do
   check "lib"
 
   library "pp"
+  library "securerandom"
   # configure_code_diagnostics(Steep::Diagnostic::Ruby.strict)
 end
 
