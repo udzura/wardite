@@ -84,6 +84,18 @@ header: '超入門WebAssembly（のランタイムをRubyで書く方法）'
 
 ---
 
+`<!--`
+
+# 名前の由来
+
+- `WA` で始まる鉱石の名前を探して、それを採用した
+- ワード石: NaAl<sub>3</sub>(PO4)<sub>2</sub>(OH)<sub>4</sub>2(H<sub>2</sub>O)
+- [Image CC BY-SA 4.0](https://en.wikipedia.org/wiki/Wardite#/media/File:Wardite.jpg)
+
+`-->`
+
+---
+
 # なぜ Ruby で WebAssembly ランタイムを書くのか
 
 - C拡張ベースの組み込みWebAssembly ランタイムなら実際結構ある
@@ -534,9 +546,26 @@ end
 
 ---
 
+# WASI
+
+---
+
+## > WASI（WebAssembly System Interface）とは何であるのかについて理解が深まる話をします
+
+- ...やばい！時間がなくてあんまできない！
+- と言ってもWASIはシンプルだと思う
+  - 基本的にはWASM Moduleにインポートする関数群
+  - Rubyのような言語でWASIに対応した関数を書く場合
+  - 本当にシンプルに、OS側のシステムコールに対応させるだけ
+    - 簡単とは言ってないよ！量が多いし！
+- ちなみにpreview1/preview2というのがあるが
+  - p2はComponent向け。まず基本p1を実装中
+
+---
+
 ## WASI (p1) 周り
 
-- ただのimport moduleなのでまずその仕組みを作る
+- ただのimport moduleなのでまずその仕組みを作った
 - あとはこういう関数を地道に実装するだけやで...
 
 ```ruby
