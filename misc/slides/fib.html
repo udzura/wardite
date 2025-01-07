@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+        WebAssembly.instantiateStreaming(fetch('./fib.wasm'))
+            .then(obj => {
+                alert(`fib(20) = ${obj.instance.exports.fib(20)}`);
+            });
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
