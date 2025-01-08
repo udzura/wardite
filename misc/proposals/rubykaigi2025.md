@@ -21,5 +21,26 @@ The author has developed a WASM runtime named Wardite, which is implemented enti
 
 ## Details
 
+現在、以下のような内容を考えています
+
+- なぜ、Warditeを作ったか？
+    - Pure Rubyであることのメリット
+    - cf. wazero in Go
+- 簡単なWarditeの紹介
+    - 動作のデモ
+- Warditeの実装
+    - WASM Core 1.0を動かすために必要な仕様の解説
+        - 簡単な内部設計
+        - 命令の概要
+    - RBSによる型情報の利用
+- Wardite開発上の技術的チャレンジ
+    - パフォーマンス改善の取り組み
+        - 基本的な計測（ruby-prof、perf）
+        - オブジェクト生成の低減・最適化
+- Warditeでruby.wasmを動かすための取り組み
+    - WASI preview 1 対応
+- 今後の展望
+    - 更なるパフォーマンス改善
+    - Component 対応
 
 ## Pitch
