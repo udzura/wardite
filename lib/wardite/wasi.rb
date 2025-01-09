@@ -1,6 +1,7 @@
 # rbs_inline: enabled
 
 require "wardite/wasm_module"
+require "wardite/wasi/errno"
 require "securerandom"
 
 module Wardite
@@ -8,7 +9,7 @@ module Wardite
     include ValueHelper
     include WasmModule
 
-    attr_accessor :fd_table #: Array[IO]
+    attr_accessor :fd_table #: Array[(IO|File)]
 
     def initialize
       @fd_table = [
@@ -82,6 +83,27 @@ module Wardite
       memory = store.memories[0]
       now_packed = [now].pack("Q!")
       memory.data[timebuf64...(timebuf64+8)] = now_packed
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_prestat_get(store, args)
+      fd = args[0].value.to_i
+      prestat_offset = args[1].value.to_i
+      if fd >= @fd_table.size
+        return Wasi::EBADF
+      end
+      file = @fd_table[fd]
+      if !file.is_a?(File)
+        return Wasi::EBADF
+      end
+      name = file.path
+      memory = store.memories[0]
+      # Zero-value 8-bit tag, and 3-byte zero-value padding
+      memory.data[prestat_offset...(prestat_offset+4)] = [0].pack("I!")
+      memory.data[(prestat_offset+4)...(prestat_offset+8)] = [name.size].pack("I!")
       0
     end
 

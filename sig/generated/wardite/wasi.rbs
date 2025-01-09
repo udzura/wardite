@@ -6,7 +6,7 @@ module Wardite
 
     include WasmModule
 
-    attr_accessor fd_table: Array[IO]
+    attr_accessor fd_table: Array[IO | File]
 
     def initialize: () -> untyped
 
@@ -24,6 +24,11 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def clock_time_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_prestat_get: (Store store, Array[wasmValue] args) -> Object
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
