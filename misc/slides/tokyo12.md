@@ -1,10 +1,8 @@
 ---
 marp: true
 theme: default
-class: lead
 paginate: true
 backgroundColor: #fff
-backgroundImage: url('https://example.com/background.png')
 header: '超入門WebAssembly（のランタイムをRubyで書く方法）'
 # footer: 'Page %page%'
 ---
@@ -89,7 +87,7 @@ header: '超入門WebAssembly（のランタイムをRubyで書く方法）'
 # 名前の由来
 
 - `WA` で始まる鉱石の名前を探して、それを採用した
-- ワード石: NaAl<sub>3</sub>(PO4)<sub>2</sub>(OH)<sub>4</sub>2(H<sub>2</sub>O)
+- ワード石: NaAl<sub>3</sub>(PO<sub>4</sub>)<sub>2</sub>(OH)<sub>4</sub>2(H<sub>2</sub>O)
 - [Image CC BY-SA 4.0](https://en.wikipedia.org/wiki/Wardite#/media/File:Wardite.jpg)
 
 `-->`
@@ -181,8 +179,22 @@ $ clang --target=wasm32 \
 </html>
 ```
 
-```
-$ ruby -run -e httpd . -p 8000
+----
+
+
+
+```javascript
+
+// WebAssemblyをフェッチしてインスタンス化する
+WebAssembly.instantiateStreaming(
+    fetch('./fib.wasm')
+).then(obj => {
+    // obj.instance にインスタンスがあり、
+    // さっきの fib がexportされている
+    const value = obj.instance.exports.fib(20)
+    alert(`fib(20) = ${value}`);
+});
+
 ```
 
 ----
