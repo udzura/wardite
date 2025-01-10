@@ -70,9 +70,9 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/udzura
 
 ## See also
 
-- https://github.com/technohippy/wasmrb?tab=readme-ov-file
+- https://github.com/technohippy/wasmrb
   - Referencial implementation but no support with WASI
-  - Wardite aims to support full WASI (previwe 1)
+  - Wardite aims to support full WASI (preview 1)
 - https://github.com/skanehira/chibiwasm
   - Small and consise implementation in Rust
   - Wardite was first built upon [its development tutorial](https://skanehira.github.io/writing-a-wasm-runtime-in-rust/). Thanks!
