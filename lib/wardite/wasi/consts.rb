@@ -1,0 +1,129 @@
+# rbs_inline: enabled
+
+module Wardite
+  module Wasi
+    EACCES = 2
+    EAGAIN = 6
+    EBADF  = 8
+    EEXIST = 20
+    EFAULT = 21
+    EINTR  = 27
+    EINVAL = 28
+    EIO    = 29
+    EISDIR = 31
+    ELOOP  = 32
+    ENAMETOOLONG = 37
+    ENOENT = 44
+    ENOSYS = 52
+    ENOTDIR = 54
+    ERANGE  = 68
+    ENOTEMPTY = 55
+    ENOTSOCK = 57
+    ENOTSUP = 58
+    EPERM  = 63
+    EROFS  = 69
+
+    FILETYPE_UNKNOWN = 0
+    FILETYPE_BLOCK_DEVICE = 1 #: Integer
+    FILETYPE_CHARACTER_DEVICE = 2 #: Integer
+    FILETYPE_DIRECTORY = 3 #: Integer
+    FILETYPE_REGULAR_FILE = 4 #: Integer
+    FILETYPE_SOCKET_DGRAM = 5 #: Integer
+    FILETYPE_SOCKET_STREAM = 6 #: Integer
+    FILETYPE_SYMBOLIC_LINK = 7 #: Integer
+
+    FD_APPEND  = 1 << 0 #: Integer
+    FD_DSYNC   = 1 << 1 #: Integer
+    FD_NONBLOCK = 1 << 2 #: Integer
+    FD_RSYNC    = 1 << 3 #: Integer
+    FD_SYNC     = 1 << 4 #: Integer
+  
+    RIGHT_FD_DATASYNC = 1 << 0
+    RIGHT_FD_READ = 1 << 1
+    RIGHT_FD_SEEK = 1 << 2
+    RIGHT_FDSTAT_SET_FLAGS = 1 << 3
+    RIGHT_FD_SYNC = 1 << 4
+    RIGHT_FD_TELL = 1 << 5
+    RIGHT_FD_WRITE = 1 << 6
+    RIGHT_FD_ADVISE = 1 << 7
+    RIGHT_FD_ALLOCATE = 1 << 8
+    RIGHT_PATH_CREATE_DIRECTORY = 1 << 9
+    RIGHT_PATH_CREATE_FILE = 1 << 10
+    RIGHT_PATH_LINK_SOURCE = 1 << 11
+    RIGHT_PATH_LINK_TARGET = 1 << 12
+    RIGHT_PATH_OPEN = 1 << 13
+    RIGHT_FD_READDIR = 1 << 14
+    RIGHT_PATH_READLINK = 1 << 15
+    RIGHT_PATH_RENAME_SOURCE = 1 << 16
+    RIGHT_PATH_RENAME_TARGET = 1 << 17
+    RIGHT_PATH_FILESTAT_GET = 1 << 18
+    RIGHT_PATH_FILESTAT_SET_SIZE = 1 << 19
+    RIGHT_PATH_FILESTAT_SET_TIMES = 1 << 20
+    RIGHT_FD_FILESTAT_GET = 1 << 21
+    RIGHT_FD_FILESTAT_SET_SIZE = 1 << 22
+    RIGHT_FD_FILESTAT_SET_TIMES = 1 << 23
+    RIGHT_PATH_SYMLINK = 1 << 24
+    RIGHT_PATH_REMOVE_DIRECTORY = 1 << 25
+    RIGHT_PATH_UNLINK_FILE = 1 << 26
+    RIGHT_POLL_FD_READWRITE = 1 << 27
+    RIGHT_SOCK_SHUTDOWN = 1 << 28
+
+    RIGHT_FILE_RIGHT_BASE = RIGHT_FD_DATASYNC |
+      RIGHT_FD_READ |
+      RIGHT_FD_SEEK |
+      RIGHT_FDSTAT_SET_FLAGS |
+      RIGHT_FD_SYNC |
+      RIGHT_FD_TELL |
+      RIGHT_FD_WRITE |
+      RIGHT_FD_ADVISE |
+      RIGHT_FD_ALLOCATE |
+      RIGHT_FD_FILESTAT_GET |
+      RIGHT_FD_FILESTAT_SET_SIZE |
+      RIGHT_FD_FILESTAT_SET_TIMES |
+      RIGHT_POLL_FD_READWRITE
+  
+    RIGHT_DIR_RIGHT_BASE = RIGHT_FD_DATASYNC |
+      RIGHT_FDSTAT_SET_FLAGS |
+      RIGHT_FD_SYNC |
+      RIGHT_PATH_CREATE_DIRECTORY |
+      RIGHT_PATH_CREATE_FILE |
+      RIGHT_PATH_LINK_SOURCE |
+      RIGHT_PATH_LINK_TARGET |
+      RIGHT_PATH_OPEN |
+      RIGHT_FD_READDIR |
+      RIGHT_PATH_READLINK |
+      RIGHT_PATH_RENAME_SOURCE |
+      RIGHT_PATH_RENAME_TARGET |
+      RIGHT_PATH_FILESTAT_GET |
+      RIGHT_PATH_FILESTAT_SET_SIZE |
+      RIGHT_PATH_FILESTAT_SET_TIMES |
+      RIGHT_FD_FILESTAT_GET |
+      RIGHT_FD_FILESTAT_SET_TIMES |
+      RIGHT_PATH_SYMLINK |
+      RIGHT_PATH_REMOVE_DIRECTORY |
+      RIGHT_PATH_UNLINK_FILE
+
+    # @rbs mode_str: String
+    # @rbs return: Integer
+    def self.to_ftype(mode_str)
+      case mode_str
+      when "file"
+        FILETYPE_REGULAR_FILE
+      when "directory"
+        FILETYPE_DIRECTORY
+      when "characterSpecial"
+        FILETYPE_CHARACTER_DEVICE
+      when "blockSpecial"
+        FILETYPE_BLOCK_DEVICE
+      when "fifo"
+        FILETYPE_UNKNOWN
+      when "link"
+        FILETYPE_SYMBOLIC_LINK
+      when "socket"
+        FILETYPE_SOCKET_STREAM # TODO: check UDP
+      else
+        FILETYPE_UNKNOWN
+      end
+    end
+  end
+end

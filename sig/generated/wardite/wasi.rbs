@@ -8,7 +8,21 @@ module Wardite
 
     attr_accessor fd_table: Array[IO | File]
 
-    def initialize: () -> untyped
+    attr_accessor argv: Array[String]
+
+    # @rbs argv: Array[String]
+    # @rbs return: void
+    def initialize: (?argv: Array[String]) -> void
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def args_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def args_sizes_get: (Store store, Array[wasmValue] args) -> Object
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
@@ -34,6 +48,21 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_write: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_read: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_fdstat_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_filestat_get: (Store store, Array[wasmValue] args) -> Object
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]

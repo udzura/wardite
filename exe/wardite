@@ -1,16 +1,22 @@
 #!/usr/bin/env ruby
 
 require "wardite"
-
 path = ARGV[0]
-method = ARGV[1]
-args = ARGV[2..-1] || []
 
 f = File.open(path)
 instance = Wardite::BinaryLoader::load_from_buffer(f);
-if !method && instance.runtime.respond_to?(:_start)
-  instance.runtime._start
+if instance.runtime.respond_to?(:_start) # assumed WASI
+  argv = ARGV[1..-1] || []
+  instance.wasi.argv = ["wardite"] + argv
+  Bundler.with_original_env do
+    # instance.store.memories[0].grow(128)
+    instance.runtime._start
+  end
 else
+  path = ARGV[0]
+  method = ARGV[1]
+  args = ARGV[2..-1] || []
+  
   args = args.map do|a|
     if a.include? "."
       a.to_f

@@ -1,0 +1,137 @@
+# Generated from lib/wardite/wasi/consts.rb with RBS::Inline
+
+module Wardite
+  module Wasi
+    EACCES: ::Integer
+
+    EAGAIN: ::Integer
+
+    EBADF: ::Integer
+
+    EEXIST: ::Integer
+
+    EFAULT: ::Integer
+
+    EINTR: ::Integer
+
+    EINVAL: ::Integer
+
+    EIO: ::Integer
+
+    EISDIR: ::Integer
+
+    ELOOP: ::Integer
+
+    ENAMETOOLONG: ::Integer
+
+    ENOENT: ::Integer
+
+    ENOSYS: ::Integer
+
+    ENOTDIR: ::Integer
+
+    ERANGE: ::Integer
+
+    ENOTEMPTY: ::Integer
+
+    ENOTSOCK: ::Integer
+
+    ENOTSUP: ::Integer
+
+    EPERM: ::Integer
+
+    EROFS: ::Integer
+
+    FILETYPE_UNKNOWN: ::Integer
+
+    FILETYPE_BLOCK_DEVICE: Integer
+
+    FILETYPE_CHARACTER_DEVICE: Integer
+
+    FILETYPE_DIRECTORY: Integer
+
+    FILETYPE_REGULAR_FILE: Integer
+
+    FILETYPE_SOCKET_DGRAM: Integer
+
+    FILETYPE_SOCKET_STREAM: Integer
+
+    FILETYPE_SYMBOLIC_LINK: Integer
+
+    FD_APPEND: Integer
+
+    FD_DSYNC: Integer
+
+    FD_NONBLOCK: Integer
+
+    FD_RSYNC: Integer
+
+    FD_SYNC: Integer
+
+    RIGHT_FD_DATASYNC: untyped
+
+    RIGHT_FD_READ: untyped
+
+    RIGHT_FD_SEEK: untyped
+
+    RIGHT_FDSTAT_SET_FLAGS: untyped
+
+    RIGHT_FD_SYNC: untyped
+
+    RIGHT_FD_TELL: untyped
+
+    RIGHT_FD_WRITE: untyped
+
+    RIGHT_FD_ADVISE: untyped
+
+    RIGHT_FD_ALLOCATE: untyped
+
+    RIGHT_PATH_CREATE_DIRECTORY: untyped
+
+    RIGHT_PATH_CREATE_FILE: untyped
+
+    RIGHT_PATH_LINK_SOURCE: untyped
+
+    RIGHT_PATH_LINK_TARGET: untyped
+
+    RIGHT_PATH_OPEN: untyped
+
+    RIGHT_FD_READDIR: untyped
+
+    RIGHT_PATH_READLINK: untyped
+
+    RIGHT_PATH_RENAME_SOURCE: untyped
+
+    RIGHT_PATH_RENAME_TARGET: untyped
+
+    RIGHT_PATH_FILESTAT_GET: untyped
+
+    RIGHT_PATH_FILESTAT_SET_SIZE: untyped
+
+    RIGHT_PATH_FILESTAT_SET_TIMES: untyped
+
+    RIGHT_FD_FILESTAT_GET: untyped
+
+    RIGHT_FD_FILESTAT_SET_SIZE: untyped
+
+    RIGHT_FD_FILESTAT_SET_TIMES: untyped
+
+    RIGHT_PATH_SYMLINK: untyped
+
+    RIGHT_PATH_REMOVE_DIRECTORY: untyped
+
+    RIGHT_PATH_UNLINK_FILE: untyped
+
+    RIGHT_POLL_FD_READWRITE: untyped
+
+    RIGHT_SOCK_SHUTDOWN: untyped
+
+    RIGHT_FILE_RIGHT_BASE: untyped
+
+    RIGHT_DIR_RIGHT_BASE: untyped
+
+    # @rbs mode_str: String
+    # @rbs return: Integer
+    def self.to_ftype: (String mode_str) -> Integer
+  end
+end
