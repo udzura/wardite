@@ -261,7 +261,7 @@ module Wardite
 
       wasi_env = nil
       if enable_wasi
-        require_relative "wardite/wasi"
+        require "wardite/wasi"
         wasi_env = Wardite::WasiSnapshotPreview1.new       
         import_object[:wasi_snapshot_preview1] = wasi_env
       end
