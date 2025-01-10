@@ -42,7 +42,7 @@ module Wardite
         case inst&.code
         when nil
           raise EvalError, "end op not found"
-        when :if
+        when :if, :block, :loop
           depth += 1
         when :else
           if depth == 0

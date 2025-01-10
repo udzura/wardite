@@ -20,8 +20,6 @@ require_relative "wardite/alu_f32.generated"
 require_relative "wardite/alu_f64.generated"
 require_relative "wardite/convert.generated"
 
-require_relative "wardite/wasi"
-
 require "stringio"
 
 module Wardite
@@ -40,9 +38,13 @@ module Wardite
 
     attr_reader :import_object #: Hash[Symbol, wasmModule]
 
+    attr_accessor :wasi #: WasiSnapshotPreview1?
+
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs &blk: (Instance) -> void
     def initialize(import_object, &blk)
+      @wasi = nil
+
       blk.call(self)
       import_object.each_pair do |k, v|
         if v.is_a?(Hash)

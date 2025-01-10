@@ -22,6 +22,8 @@ module Wardite
 
     attr_reader import_object: Hash[Symbol, wasmModule]
 
+    attr_accessor wasi: WasiSnapshotPreview1?
+
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs &blk: (Instance) -> void
     def initialize: (Hash[Symbol, wasmModuleSrc] import_object) { (Instance) -> void } -> untyped

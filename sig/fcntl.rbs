@@ -1,0 +1,7 @@
+# No fcntl RBS file by default
+module Fcntl
+  O_APPEND: Integer
+  O_NONBLOCK: Integer
+  F_GETFL: Integer
+  F_SETFL: Integer
+end
