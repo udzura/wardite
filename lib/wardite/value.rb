@@ -8,13 +8,13 @@ module Wardite
     # @rbs value: Integer
     # @rbs return: I32
     def I32(value)
-      I32.new(value & I32::I32_MAX)
+      I32.cached_or_initialize(value & I32::I32_MAX)
     end
 
     # @rbs value: Integer
     # @rbs return: I64
     def I64(value)
-      I64.new.tap{|i| i.value = value & I64::I64_MAX }
+      I64.new(value & I64::I64_MAX)
     end
 
     # @rbs value: Float
@@ -39,6 +39,16 @@ module Wardite
     # value should be stored as unsigned Integer, even in I32/I64
     # when we want to access signed value, it'd be done via #value_s
     attr_accessor :value #: Integer
+
+    # @rbs!
+    #   @@i32_object_pool: Hash[Integer, I32]
+    @@i32_object_pool = {} #: Hash[Integer, I32]
+
+    # @rbs value: Integer
+    # @rbs return: I32
+    def self.cached_or_initialize(value)
+      @@i32_object_pool[value] || I32.new(value)
+    end
 
     # @rbs value: Integer
     def initialize(value=0)
@@ -225,6 +235,12 @@ module Wardite
     def ==(other)
       return self.class == other.class && self.value == other.value
     end
+
+    (0..64).each do |value|
+      @@i32_object_pool[value] = I32.new(value)
+    end
+    value = -1 & I32::I32_MAX
+    @@i32_object_pool[value] = I32.new(value)
   end
 
   class I64
@@ -233,6 +249,11 @@ module Wardite
     I64_MAX = (1<<64) - 1 #: Integer
 
     attr_accessor :value #: Integer
+
+    # @rbs value: Integer
+    def initialize(value=0)
+      @value = value
+    end
 
     # @rbs str: String
     # @rbs size: Integer|nil

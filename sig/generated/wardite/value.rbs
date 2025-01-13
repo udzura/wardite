@@ -32,6 +32,12 @@ module Wardite
     # when we want to access signed value, it'd be done via #value_s
     attr_accessor value: Integer
 
+    @@i32_object_pool: Hash[Integer, I32]
+
+    # @rbs value: Integer
+    # @rbs return: I32
+    def self.cached_or_initialize: (Integer value) -> I32
+
     # @rbs value: Integer
     def initialize: (?Integer value) -> untyped
 
@@ -118,6 +124,9 @@ module Wardite
     I64_MAX: Integer
 
     attr_accessor value: Integer
+
+    # @rbs value: Integer
+    def initialize: (?Integer value) -> untyped
 
     # @rbs str: String
     # @rbs size: Integer|nil
