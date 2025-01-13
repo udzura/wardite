@@ -6,7 +6,7 @@ module Wardite
     # @rbs buf: File|StringIO
     # @rbs max_level: Integer
     # @rbs return: Integer
-    def fetch_uleb128: (File | StringIO buf, ?max_level: Integer) -> Integer
+    def self?.fetch_uleb128: (File | StringIO buf, ?max_level: Integer) -> Integer
 
     # @rbs buf: File|StringIO
     # @rbs return: Integer
