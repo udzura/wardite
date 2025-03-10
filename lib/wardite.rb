@@ -38,7 +38,7 @@ module Wardite
 
     attr_reader :import_object #: Hash[Symbol, wasmModule]
 
-    attr_accessor :wasi #: WasiSnapshotPreview1?
+    attr_accessor :wasi #: ::Wardite::WasiSnapshotPreview1?
 
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs &blk: (Instance) -> void
@@ -802,6 +802,12 @@ module Wardite
     # @rbs return: bool
     def respond_to? name
       callable?(name) || super
+    end
+
+    # @rbs args: Array[Object]
+    # @rbs return: Object?
+    def _start(*args)
+      call(:_start, args)
     end
   end
 
