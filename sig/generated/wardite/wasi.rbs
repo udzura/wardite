@@ -10,9 +10,12 @@ module Wardite
 
     attr_accessor argv: Array[String]
 
+    attr_accessor mapdir: Hash[String, String]
+
     # @rbs argv: Array[String]
+    # @rbs mapdir: Hash[String, String]
     # @rbs return: void
-    def initialize: (?argv: Array[String]) -> void
+    def initialize: (?argv: Array[String], ?mapdir: Hash[String, String]) -> void
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]

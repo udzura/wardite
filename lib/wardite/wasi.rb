@@ -12,16 +12,19 @@ module Wardite
 
     attr_accessor :fd_table #: Array[(IO|File)]
     attr_accessor :argv #: Array[String]
+    attr_accessor :mapdir #: Hash[String, String]
 
     # @rbs argv: Array[String]
+    # @rbs mapdir: Hash[String, String]
     # @rbs return: void
-    def initialize(argv: [])
+    def initialize(argv: [], mapdir: {})
       @fd_table = [
         STDIN,
         STDOUT,
         STDERR,
       ]
       @argv = argv
+      @mapdir = mapdir
     end
 
     # @rbs store: Store
