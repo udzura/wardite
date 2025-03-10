@@ -1,0 +1,50 @@
+# Generated from lib/wardite/cli/cli.rb with RBS::Inline
+
+module Wardite
+  module Cli
+    class Cli
+      @args: Array[String]
+
+      attr_reader invoke: String?
+
+      attr_reader mapdir: String?
+
+      attr_reader file: String
+
+      attr_reader memsize: Integer
+
+      attr_reader wasi: bool
+
+      # @rbs args: Array[String]
+      # @rbs return: void
+      def initialize: (Array[String] args) -> void
+
+      # @rbs return: Array[Integer | Float]
+      # @rbs %a{pure}
+      %a{pure}
+      def args: () -> Array[Integer | Float]
+
+      # @rbs return: ::Wardite::Instance
+      def new_instance: () -> ::Wardite::Instance
+
+      # @rbs return: void
+      def run: () -> void
+
+      # @rbs return: void
+      def invoke_function: () -> void
+
+      # @rbs return: void
+      def invoke_wasi: () -> void
+
+      # @rbs return: String?
+      # @rbs %a{pure}
+      %a{pure}
+      def mount_src: () -> String?
+
+      # @rbs return: String?
+      # @rbs %a{pure}
+      %a{pure}
+      def mount_dst: () -> String?
+    end
+  end
+end

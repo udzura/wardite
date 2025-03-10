@@ -5,6 +5,7 @@ target :lib do
 
   library "pp"
   library "securerandom"
+  library "optparse"
   # configure_code_diagnostics(Steep::Diagnostic::Ruby.strict)
 end
 
