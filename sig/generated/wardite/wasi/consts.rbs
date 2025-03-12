@@ -130,6 +130,16 @@ module Wardite
 
     RIGHT_DIR_RIGHT_BASE: untyped
 
+    LOOKUP_SYMLINK_FOLLOW: untyped
+
+    O_CREAT: untyped
+
+    O_DIRECTORY: untyped
+
+    O_EXCL: untyped
+
+    O_TRUNC: untyped
+
     # @rbs mode_str: String
     # @rbs return: Integer
     def self.to_ftype: (String mode_str) -> Integer
