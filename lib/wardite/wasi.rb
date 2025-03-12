@@ -27,6 +27,18 @@ module Wardite
       @mapdir = mapdir
     end
 
+    # @rbs orig_path: String
+    # @rbs return: String
+    def resolv_path(orig_path)
+      @mapdir.each do |k, v|
+        if orig_path.start_with?(k)
+          return v + orig_path[k.size..-1].to_s
+        end
+      end
+
+      return orig_path
+    end
+
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
@@ -138,6 +150,30 @@ module Wardite
       now_packed = [now].pack("Q!")
       memory.data[timebuf64...(timebuf64+8)] = now_packed
       0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_create_directory(store, args)
+      fd = args[0].value
+      path = args[1].value.to_i
+      path_len = args[2].value.to_i
+
+      at = Dir.fchdir(fd) do
+        pwd = Dir.pwd
+        resolv_path(pwd)
+      end #: String
+      path_str = store.memories[0].data[path...(path+path_len)]
+      if ! path_str
+        return Wasi::ENOENT
+      end
+      path_str= resolv_path(path_str)
+
+      target = File.expand_path(path_str, at)
+      Dir.mkdir(target, 0700)
+      0
+      # TODO; rescue EBADF, ENOTDIR
     end
 
     # @rbs store: Store

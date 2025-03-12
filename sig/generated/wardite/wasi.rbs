@@ -17,6 +17,10 @@ module Wardite
     # @rbs return: void
     def initialize: (?argv: Array[String], ?mapdir: Hash[String, String]) -> void
 
+    # @rbs orig_path: String
+    # @rbs return: String
+    def resolv_path: (String orig_path) -> String
+
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
@@ -41,6 +45,11 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def clock_time_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_create_directory: (Store store, Array[wasmValue] args) -> Object
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
