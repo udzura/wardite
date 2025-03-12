@@ -103,6 +103,13 @@ module Wardite
       RIGHT_PATH_REMOVE_DIRECTORY |
       RIGHT_PATH_UNLINK_FILE
 
+    LOOKUP_SYMLINK_FOLLOW = 1 << 0
+
+    O_CREAT = 1 << 0
+    O_DIRECTORY = 1 << 1
+    O_EXCL = 1 << 2
+    O_TRUNC = 1 << 3
+
     # @rbs mode_str: String
     # @rbs return: Integer
     def self.to_ftype(mode_str)

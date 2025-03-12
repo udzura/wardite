@@ -39,6 +39,79 @@ module Wardite
       return orig_path
     end
 
+    # @rbs atfd: Integer
+    # @rbs target: String
+    # @rbs return: String
+    def get_path_at(atfd, target)
+      target = resolv_path(target)
+
+      at = Dir.fchdir(atfd) do
+        pwd = Dir.pwd
+        resolv_path(pwd)
+      end
+
+      File.expand_path(target, at)
+    end
+
+    # @rbs dirflags: Integer
+    # @rbs oflags: Integer
+    # @rbs fdflags: Integer
+    # @rbs rights: Integer
+    def interpret_open_flags(dirflags, oflags, fdflags, rights)
+      open_flags = 0
+      if dirflags & Wasi::LOOKUP_SYMLINK_FOLLOW == 0
+        open_flags |= File::Constants::NOFOLLOW
+      end
+      if oflags & Wasi::O_DIRECTORY != 0
+        # open_flags |= File::Constants::DIRECTORY
+        raise NotImplementedError, "FIXME: Ruby does not have O_DIRECTORY const"
+      elsif oflags & Wasi::O_EXCL != 0
+        open_flags |= File::Constants::EXCL
+      end
+
+      default_mode = File::Constants::RDONLY
+      if oflags & Wasi::O_TRUNC != 0
+        open_flags |= File::Constants::TRUNC
+        default_mode = File::Constants::RDWR
+      end
+      if oflags & Wasi::O_CREAT != 0
+        open_flags |= File::Constants::CREAT
+        default_mode = File::Constants::RDWR
+      end
+      if fdflags & Wasi::FD_NONBLOCK != 0
+        open_flags |= File::Constants::NONBLOCK
+      end
+      if fdflags & Wasi::FD_APPEND != 0
+        open_flags |= File::Constants::APPEND
+        default_mode = File::Constants::RDWR
+      end
+      if fdflags & Wasi::FD_DSYNC != 0
+        open_flags |= File::Constants::DSYNC
+      end
+      if fdflags & Wasi::FD_RSYNC != 0
+        open_flags |= File::Constants::RSYNC
+      end
+      if fdflags & Wasi::FD_SYNC != 0
+        open_flags |= File::Constants::SYNC
+      end
+
+      r = Wasi::RIGHT_FD_READ
+      w = Wasi::RIGHT_FD_WRITE
+      rw = r | w
+      case
+      when (rights & rw) == rw
+        open_flags |= File::Constants::RDWR
+      when (rights & w) == w
+        open_flags |= File::Constants::WRONLY
+      when (rights & r) == r
+        open_flags |= File::Constants::RDONLY
+      else
+        open_flags |= default_mode
+      end
+
+      open_flags
+    end
+
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
@@ -156,24 +229,121 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def path_create_directory(store, args)
-      fd = args[0].value
+      fd = args[0].value.to_i
       path = args[1].value.to_i
       path_len = args[2].value.to_i
-
-      at = Dir.fchdir(fd) do
-        pwd = Dir.pwd
-        resolv_path(pwd)
-      end #: String
       path_str = store.memories[0].data[path...(path+path_len)]
-      if ! path_str
+      if !path_str
         return Wasi::ENOENT
       end
-      path_str= resolv_path(path_str)
 
-      target = File.expand_path(path_str, at)
+      target = get_path_at(fd, path_str)
       Dir.mkdir(target, 0700)
       0
       # TODO; rescue EBADF, ENOTDIR
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_filestat_get(store, args)
+      fd = args[0].value.to_i
+      flags = args[1].value.to_i
+      path = args[2].value.to_i
+      path_len = args[3].value.to_i
+      target = get_path_at(fd, store.memories[0].data[path...(path+path_len)].to_s)
+
+      stat = File.stat(target)
+      memory = store.memories[0]
+      binformat = [
+        stat.dev, stat.ino, Wasi.to_ftype(stat.ftype), stat.nlink,
+        stat.size, stat.atime.to_i, stat.mtime.to_i, stat.ctime.to_i
+      ].pack("Q8")
+      memory.data[flags...(flags+binformat.size)] = binformat
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_filestat_set_times(store, args)
+      fd = args[0].value.to_i
+      # TODO: flags support
+      _flags = args[1].value.to_i
+      path = args[2].value.to_i
+      path_len = args[3].value.to_i
+      atim = args[4].value.to_i # nanoseconds
+      mtim = args[5].value.to_i # nanoseconds
+      target = get_path_at(fd, store.memories[0].data[path...(path+path_len)].to_s)
+
+      atime = Time.at(atim.to_f / 1_000_000_000)
+      mtime = Time.at(mtim.to_f / 1_000_000_000)
+      File.utime(atime, mtime, target)
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_link(store, args)
+      old_fd = args[0].value.to_i
+      old_path = args[1].value.to_i
+      old_path_len = args[2].value.to_i
+      old_name = get_path_at(old_fd, store.memories[0].data[old_path...(old_path+old_path_len)].to_s)
+
+      new_fd = args[3].value.to_i
+      new_path = args[4].value.to_i
+      new_path_len = args[5].value.to_i
+      new_name = get_path_at(new_fd, store.memories[0].data[new_path...(new_path+new_path_len)].to_s)
+
+      File.link(old_name, new_name)
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_open(store, args)
+      dirfd = args[0].value.to_i
+      dirflags = args[1].value.to_i
+      path = args[2].value.to_i
+      path_len = args[3].value.to_i
+      oflags = args[4].value.to_i
+      fs_rights_base = args[5].value.to_i
+      _fs_rights_inheriting = args[6].value.to_i
+      fs_flags = args[7].value.to_i
+      fd_off = args[8].value.to_i
+
+      path_name = get_path_at(dirfd, store.memories[0].data[path...(path+path_len)].to_s)
+      open_flags = interpret_open_flags(dirflags, oflags, fs_flags, fs_rights_base)
+      is_dir = (oflags & Wasi::O_DIRECTORY) != 0
+      if is_dir && (oflags & Wasi::O_CREAT) != 0
+        return Wasi::EINVAL
+      end
+
+      file = File.open(path_name, open_flags, 0600)
+      @fd_table[file.fileno] = file
+
+      memory = store.memories[0]
+      memory.data[fd_off...(fd_off+4)] = [file.fileno].pack("I!")
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_symlink(store, args)
+      old_path = args[0].value.to_i
+      old_path_len = args[1].value.to_i
+      old_name = store.memories[0].data[old_path...(old_path+old_path_len)].to_s
+
+      fd = args[2].value.to_i
+      new_path = args[3].value.to_i
+      new_path_len = args[4].value.to_i
+      new_name = get_path_at(fd, store.memories[0].data[new_path...(new_path+new_path_len)].to_s)
+
+      File.symlink(old_name, new_name)
+      0
     end
 
     # @rbs store: Store

@@ -21,6 +21,17 @@ module Wardite
     # @rbs return: String
     def resolv_path: (String orig_path) -> String
 
+    # @rbs atfd: Integer
+    # @rbs target: String
+    # @rbs return: String
+    def get_path_at: (Integer atfd, String target) -> String
+
+    # @rbs dirflags: Integer
+    # @rbs oflags: Integer
+    # @rbs fdflags: Integer
+    # @rbs rights: Integer
+    def interpret_open_flags: (Integer dirflags, Integer oflags, Integer fdflags, Integer rights) -> untyped
+
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
@@ -50,6 +61,31 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def path_create_directory: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_filestat_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_filestat_set_times: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_link: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_open: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_symlink: (Store store, Array[wasmValue] args) -> Object
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
