@@ -332,6 +332,66 @@ module Wardite
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
+    def path_readlink(store, args)
+      fd = args[0].value.to_i
+      path = args[1].value.to_i
+      path_len = args[2].value.to_i
+      buf = args[3].value.to_i
+      buf_len = args[4].value.to_i
+      result_buf = args[5].value.to_i
+
+      if buf_len <= 0 || path_len <= 0
+        return Wasi::EINVAL
+      end
+      target = get_path_at(fd, store.memories[0].data[path...(path+path_len)].to_s)
+
+      link_target = File.readlink(target)
+      if link_target.size > buf_len
+        return Wasi::ENAMETOOLONG
+      end
+
+      memory = store.memories[0]
+      memory.data[buf...(buf+link_target.size)] = link_target
+      memory.data[result_buf...(result_buf+4)] = [link_target.size].pack("I!")
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_remove_directory(store, args)
+      fd = args[0].value.to_i
+      path = args[1].value.to_i
+      path_len = args[2].value.to_i
+      path_str = store.memories[0].data[path...(path+path_len)].to_s
+      target = get_path_at(fd, path_str)
+
+      Dir.rmdir(target)
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_rename(store, args)
+      fd = args[0].value.to_i
+      old_path = args[1].value.to_i
+      old_path_len = args[2].value.to_i
+
+      new_fd = args[3].value.to_i
+      new_path = args[4].value.to_i
+      new_path_len = args[5].value.to_i
+
+      old_target = get_path_at(fd, store.memories[0].data[old_path...(old_path+old_path_len)].to_s)
+      new_target = get_path_at(new_fd, store.memories[0].data[new_path...(new_path+new_path_len)].to_s)
+
+      File.rename(old_target, new_target)
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
     def path_symlink(store, args)
       old_path = args[0].value.to_i
       old_path_len = args[1].value.to_i
@@ -343,6 +403,20 @@ module Wardite
       new_name = get_path_at(fd, store.memories[0].data[new_path...(new_path+new_path_len)].to_s)
 
       File.symlink(old_name, new_name)
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_unlink_file(store, args)
+      fd = args[0].value.to_i
+      path = args[1].value.to_i
+      path_len = args[2].value.to_i
+      path_str = store.memories[0].data[path...(path+path_len)].to_s
+      target = get_path_at(fd, path_str)
+
+      File.unlink(target)
       0
     end
 
