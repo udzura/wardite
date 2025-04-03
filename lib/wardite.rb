@@ -354,6 +354,7 @@ module Wardite
     # @rbs external_function: ExternalFunction
     # @rbs return: wasmValue|nil
     def invoke_external(external_function)
+      p "call external function: #{external_function.name}" # if ENV["WARDITE_DEBUG"]
       local_start = stack.size - external_function.callsig.size
       args = stack[local_start..]
       if !args

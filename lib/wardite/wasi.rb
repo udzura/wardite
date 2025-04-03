@@ -2,6 +2,7 @@
 
 require "wardite/wasm_module"
 require "wardite/wasi/consts"
+require "wardite/wasi/preopens"
 require "securerandom"
 require "fcntl"
 
@@ -10,7 +11,8 @@ module Wardite
     include ValueHelper
     include WasmModule
 
-    attr_accessor :fd_table #: Array[(IO|File)]
+    attr_accessor :fd_table #: Hash[Integer, (IO|File|::Wardite::Wasi::PreopenedDir)]
+    attr_accessor :fd_count #: Integer
     attr_accessor :argv #: Array[String]
     attr_accessor :mapdir #: Hash[String, String]
 
@@ -18,13 +20,31 @@ module Wardite
     # @rbs mapdir: Hash[String, String]
     # @rbs return: void
     def initialize(argv: [], mapdir: {})
-      @fd_table = [
-        STDIN,
-        STDOUT,
-        STDERR,
-      ]
+      @fd_table = {
+        0 => STDIN,
+        1 => STDOUT,
+        2 => STDERR,
+      }
+      @fd_count = 3
       @argv = argv
       @mapdir = mapdir
+    end
+
+    # @rbs file: IO|File|::Wardite::Wasi::PreopenedDir
+    # @rbs return: Integer
+    def set_fd(file)
+      fd = @fd_count
+      @fd_table[fd] = file
+      @fd_count += 1
+      fd
+    end
+
+    # @rbs path: String
+    # @rbs guest_path: String
+    # @rbs return: void
+    def set_preopened_dir(path, guest_path)
+      fd = @fd_count
+      set_fd(::Wardite::Wasi::PreopenedDir.new(path, guest_path, fd))
     end
 
     # @rbs orig_path: String
@@ -45,12 +65,20 @@ module Wardite
     def get_path_at(atfd, target)
       target = resolv_path(target)
 
-      at = Dir.fchdir(atfd) do
-        pwd = Dir.pwd
-        resolv_path(pwd)
-      end
+      at = @fd_table[atfd]
+      pwd = case at
+            when Wasi::PreopenedDir
+              at.guest_path
+            when File
+              Dir.fchdir(at.fileno) do
+                Dir.pwd
+              end
+            else
+              raise ArgumentError, "invalid fd: #{atfd}"
+            end
 
-      File.expand_path(target, at)
+      ret = File.expand_path(target, pwd)
+      ret
     end
 
     # @rbs dirflags: Integer
@@ -64,7 +92,8 @@ module Wardite
       end
       if oflags & Wasi::O_DIRECTORY != 0
         # open_flags |= File::Constants::DIRECTORY
-        raise NotImplementedError, "FIXME: Ruby does not have O_DIRECTORY const"
+        $stderr.puts "O_DIRECTORY is not supported, ignore"
+        # raise NotImplementedError, "FIXME: Ruby does not have O_DIRECTORY const"
       elsif oflags & Wasi::O_EXCL != 0
         open_flags |= File::Constants::EXCL
       end
@@ -261,6 +290,8 @@ module Wardite
       ].pack("Q8")
       memory.data[flags...(flags+binformat.size)] = binformat
       0
+    rescue Errno::ENOENT
+      return Wasi::ENOENT
     end
 
     # @rbs store: Store
@@ -322,11 +353,13 @@ module Wardite
       end
 
       file = File.open(path_name, open_flags, 0600)
-      @fd_table[file.fileno] = file
+      fd = set_fd file
 
       memory = store.memories[0]
-      memory.data[fd_off...(fd_off+4)] = [file.fileno].pack("I!")
+      memory.data[fd_off...(fd_off+4)] = [fd].pack("I!")
       0
+    rescue Errno::ENOENT
+      return Wasi::ENOENT
     end
 
     # @rbs store: Store
@@ -426,11 +459,11 @@ module Wardite
     def fd_prestat_get(store, args)
       fd = args[0].value.to_i
       prestat_offset = args[1].value.to_i
-      if fd >= @fd_table.size
+      if fd >= fd_count
         return Wasi::EBADF
       end
       file = @fd_table[fd]
-      if !file.is_a?(File)
+      if !file.is_a?(Wasi::PreopenedDir)
         return Wasi::EBADF
       end
       name = file.path
@@ -438,6 +471,31 @@ module Wardite
       # Zero-value 8-bit tag, and 3-byte zero-value padding
       memory.data[prestat_offset...(prestat_offset+4)] = [0].pack("I!")
       memory.data[(prestat_offset+4)...(prestat_offset+8)] = [name.size].pack("I!")
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_prestat_dir_name(store, args)
+      fd = args[0].value.to_i
+      path = args[1].value.to_i
+      path_len = args[2].value.to_i
+      if fd >= fd_count
+        return Wasi::EBADF
+      end
+      file = @fd_table[fd]
+      if !file.is_a?(Wasi::PreopenedDir)
+        return Wasi::EBADF
+      end
+      name = file.path
+      if name.size > path_len
+        return Wasi::ENAMETOOLONG
+      end
+      name += ("\0" * (path_len - name.size))
+
+      memory = store.memories[0]
+      memory.data[path...(path+name.size)] = name
       0
     end
 
@@ -457,7 +515,7 @@ module Wardite
         raise Wardite::ArgumentError, "args too short"
       end
       file = self.fd_table[fd]
-      return Wasi::EBADF if !file
+      return Wasi::EBADF if !file || file.is_a?(Wasi::PreopenedDir)
       memory = store.memories[0]
       nwritten = 0
       iovs_len.times do
@@ -490,7 +548,7 @@ module Wardite
         raise Wardite::ArgumentError, "args too short"
       end
       file = self.fd_table[fd]
-      return Wasi::EBADF if !file
+      return Wasi::EBADF if !file || file.is_a?(Wasi::PreopenedDir)
       memory = store.memories[0]
       nread = 0
       
@@ -517,12 +575,16 @@ module Wardite
     def fd_fdstat_get(store, args)
       fd = args[0].value.to_i
       fdstat_offset = args[1].value.to_i
-      if fd >= @fd_table.size
+      if fd >= fd_count
         return Wasi::EBADF
       end
       file = @fd_table[fd]
       fdflags = 0
-      if file.is_a?(IO)
+      if !file
+        return Wasi::EBADF
+      elsif file.is_a?(Wasi::PreopenedDir)
+        file = File.open(file.guest_path) # reopen directory
+      elsif file.is_a?(IO) && !file.is_a?(File)
         fdflags |= Wasi::FD_APPEND
       else
         if (Fcntl::O_APPEND & file.fcntl(Fcntl::F_GETFL, 0)) != 0
@@ -565,15 +627,44 @@ module Wardite
     def fd_filestat_get(store, args)
       fd = args[0].value.to_i
       filestat_offset = args[1].value.to_i
-      if fd >= @fd_table.size
+      if fd >= fd_count
         return Wasi::EBADF
       end
       file = @fd_table[fd]
+      if !file || file.is_a?(Wasi::PreopenedDir)
+        return Wasi::EBADF
+      end
+
       stat = file.stat #: File::Stat
       memory = store.memories[0]
       binformat = [stat.dev, stat.ino, Wasi.to_ftype(stat.ftype), stat.nlink, stat.size, stat.atime.to_i, stat.mtime.to_i, stat.ctime.to_i].pack("Q8")
       memory.data[filestat_offset...(filestat_offset+binformat.size)] = binformat
       0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_close(store, args)
+      fd = args[0].value.to_i
+      if fd >= fd_count
+        return Wasi::EBADF
+      end
+      file = @fd_table[fd]
+      if !file
+        return Wasi::EBADF
+      end
+      if file.is_a?(Wasi::PreopenedDir)
+        # do nothing for preopened dir...?
+        $stderr.puts "close preopened dir?: #{file.guest_path}"
+        @fd_table.delete(fd)
+        return
+      end
+      file.close
+      @fd_table.delete(fd)
+      0
+    rescue Errno::EBADF
+      return Wasi::EBADF      
     end
 
     # @rbs store: Store

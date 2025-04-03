@@ -6,7 +6,9 @@ module Wardite
 
     include WasmModule
 
-    attr_accessor fd_table: Array[IO | File]
+    attr_accessor fd_table: Hash[Integer, IO | File | ::Wardite::Wasi::PreopenedDir]
+
+    attr_accessor fd_count: Integer
 
     attr_accessor argv: Array[String]
 
@@ -16,6 +18,15 @@ module Wardite
     # @rbs mapdir: Hash[String, String]
     # @rbs return: void
     def initialize: (?argv: Array[String], ?mapdir: Hash[String, String]) -> void
+
+    # @rbs file: IO|File|::Wardite::Wasi::PreopenedDir
+    # @rbs return: Integer
+    def set_fd: (IO | File | ::Wardite::Wasi::PreopenedDir file) -> Integer
+
+    # @rbs path: String
+    # @rbs guest_path: String
+    # @rbs return: void
+    def set_preopened_dir: (String path, String guest_path) -> void
 
     # @rbs orig_path: String
     # @rbs return: String
@@ -85,12 +96,37 @@ module Wardite
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
+    def path_readlink: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_remove_directory: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def path_rename: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
     def path_symlink: (Store store, Array[wasmValue] args) -> Object
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
+    def path_unlink_file: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
     def fd_prestat_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_prestat_dir_name: (Store store, Array[wasmValue] args) -> Object
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
@@ -111,6 +147,11 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_filestat_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_close: (Store store, Array[wasmValue] args) -> Object
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]

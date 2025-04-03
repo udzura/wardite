@@ -383,7 +383,7 @@ module Wardite
       raise EvalError, "unsupported operation" if to != :f64
       v = [value].pack("L!").unpack("d")[0]
       raise EvalError, "[BUG] String#unpack is broke, really?" if !v.is_a?(Float)
-      F32(v)
+      F64(v)
     end
 
     # @rbs from: Symbol
