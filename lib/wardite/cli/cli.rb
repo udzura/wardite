@@ -11,18 +11,21 @@ module Wardite
       attr_reader :file    #: String
       attr_reader :memsize #: Integer
       attr_reader :wasi    #: bool
+      attr_reader :yjit    #: bool
 
       # @rbs args: Array[String]
       # @rbs return: void
       def initialize(args)
         @invoke = @mapdir = nil
         @wasi = true # default to true
+        @yjit = false
         @memsize = 1
         options = OptionParser.new do |opts|
+          opts.version = Wardite::VERSION
           opts.on("--invoke [fnname]", "Invoke the function") { |v|
             @invoke = v
           }
-          opts.on("--mapdir [dest[:src]]", "Map the directory") { |v|
+          opts.on("--mapdir [dirs]", "Map the directory") { |v|
             @mapdir = v
           }
           opts.on("--memsize [size_in_bytes]", "Initial memory size") { |v|
@@ -31,12 +34,19 @@ module Wardite
           opts.on("--no-wasi", "Disable WASI feature") {|_v|
             @wasi = false
           }
+          opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
+            @yjit = true
+          }
           opts.on("FILE.wasm") { }
         end
         options.parse!(args)
         @file = args[0] || raise("require file argument")
         @args = (args[1..-1] || [])
         @args.unshift if @args[0] == '--'
+
+        if (yjit || ENV["WARDITE_YJIT_ON"] == "1") && (defined? RubyVM::YJIT)
+          RubyVM::YJIT.enable
+        end
       end
 
       # @rbs return: Array[Integer | Float]
@@ -66,7 +76,10 @@ module Wardite
         if invoke
           invoke_function
         else
-          invoke_wasi if wasi
+          if wasi
+            invoke_wasi
+            return
+          end
           raise("requires function name to invoke")
         end
       end
@@ -91,6 +104,7 @@ module Wardite
         if mapdir && mount_dst && mount_src
           # TODO: support multiple mapdir
           instance.wasi.mapdir[mount_dst] = mount_src
+          instance.wasi.set_preopened_dir(mount_dst, mount_src)
         end
 
         if defined? Bundler
@@ -99,7 +113,7 @@ module Wardite
           end
         else
           instance.runtime._start
-        end              
+        end
       end
 
       # @rbs return: String?

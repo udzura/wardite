@@ -1,0 +1,15 @@
+# Generated from lib/wardite/wasi/preopens.rb with RBS::Inline
+
+module Wardite
+  module Wasi
+    class PreopenedDir
+      attr_reader path: String
+
+      attr_reader guest_path: String
+
+      attr_reader fd: Integer
+
+      def initialize: (untyped path, untyped guest_path, untyped fd) -> untyped
+    end
+  end
+end
