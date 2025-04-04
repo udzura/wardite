@@ -14,6 +14,8 @@ module Wardite
 
     attr_accessor mapdir: Hash[String, String]
 
+    attr_accessor dirent_cache: Hash[Integer, ::Wardite::Wasi::DirentCache]
+
     # @rbs argv: Array[String]
     # @rbs mapdir: Hash[String, String]
     # @rbs return: void
@@ -147,6 +149,15 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_filestat_get: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
+    def fd_readdir: (Store store, Array[wasmValue] args) -> Object
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    def fd_tell: (Store store, Array[wasmValue] args) -> untyped
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]

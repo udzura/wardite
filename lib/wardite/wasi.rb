@@ -3,6 +3,7 @@
 require "wardite/wasm_module"
 require "wardite/wasi/consts"
 require "wardite/wasi/preopens"
+require "wardite/wasi/dirent_cache"
 require "securerandom"
 require "fcntl"
 
@@ -15,6 +16,7 @@ module Wardite
     attr_accessor :fd_count #: Integer
     attr_accessor :argv #: Array[String]
     attr_accessor :mapdir #: Hash[String, String]
+    attr_accessor :dirent_cache #: Hash[Integer, ::Wardite::Wasi::DirentCache]
 
     # @rbs argv: Array[String]
     # @rbs mapdir: Hash[String, String]
@@ -28,6 +30,8 @@ module Wardite
       @fd_count = 3
       @argv = argv
       @mapdir = mapdir
+
+      @dirent_cache = {}
     end
 
     # @rbs file: IO|File|::Wardite::Wasi::PreopenedDir
@@ -559,10 +563,10 @@ module Wardite
         iovs += 4
         buf = file.read(slen)
         if !buf
-          return Wasi::EFAULT
+          break 0
         end
-        memory.data[start...(start+slen)] = buf
-        nread += slen
+        memory.data[start...(start+buf.size)] = buf
+        nread += buf.size
       end
 
       memory.data[rp...(rp+4)] = [nread].pack("I!")
@@ -645,6 +649,69 @@ module Wardite
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
+    def fd_readdir(store, args)
+      fd = args[0].value.to_i
+      buf = args[1].value.to_i
+      buf_len = args[2].value.to_i
+      cookie = args[3].value.to_i
+      result_buf_used = args[4].value.to_i
+
+      if buf_len < 24 # when smaller than Dirent header size: Q! Q! I! I!
+        return Wasi::EINVAL
+      end
+
+      memory = store.memories[0]
+      
+      if dirent_cache[fd]&.eof
+        dirent_cache.delete(fd)
+      end
+      dir = @fd_table[fd]
+      if dir.is_a?(Wasi::PreopenedDir) || (dir.is_a?(File) && dir.stat.ftype == "directory")
+        dirent_cache[fd] ||= Wasi::DirentCache.new(dir.path)
+      else
+        return Wasi::EBADF
+      end
+
+      dirent = dirent_cache[fd]
+      bindata, is_truncated = dirent.fetch_entries_binary(buf_len, cookie)
+
+      bufused = bindata.size
+      # bufused == buf_len means more dirents exist
+      if is_truncated
+        bufused = buf_len
+        memory.data[buf...(buf+buf_len)] = bindata + "\0" * (buf_len - bindata.size)
+      else
+        dirent.eof = true
+        memory.data[buf...(buf+bindata.size)] = bindata
+      end
+
+      memory.data[result_buf_used...(result_buf_used+4)] = [bufused].pack("I!")
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    def fd_tell(store, args)
+      fd = args[0].value.to_i
+      result_buf = args[1].value.to_i
+      if fd >= fd_count
+        return Wasi::EBADF
+      end
+      file = @fd_table[fd]
+      if !file || file.is_a?(Wasi::PreopenedDir)
+        return Wasi::EBADF
+      end
+
+      memory = store.memories[0]
+      memory.data[result_buf...(result_buf+4)] = [file.tell].pack("I!")
+      0
+    rescue Errno::EBADF
+      return Wasi::EBADF
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Object
     def fd_close(store, args)
       fd = args[0].value.to_i
       if fd >= fd_count
@@ -658,7 +725,7 @@ module Wardite
         # do nothing for preopened dir...?
         $stderr.puts "close preopened dir?: #{file.guest_path}"
         @fd_table.delete(fd)
-        return
+        return 0
       end
       file.close
       @fd_table.delete(fd)

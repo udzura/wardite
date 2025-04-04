@@ -1,0 +1,42 @@
+# Generated from lib/wardite/wasi/dirent_cache.rb with RBS::Inline
+
+module Wardite
+  module Wasi
+    class Dirent
+      attr_reader path: String
+
+      attr_reader ino: Integer
+
+      attr_reader type: Integer
+
+      # @rbs path: String
+      # @rbs ino: Integer
+      # @rbs type: Integer
+      # @rbs return: void
+      def initialize: (String path, Integer ino, Integer type) -> void
+    end
+
+    class DirentCache
+      attr_reader entries: Array[Dirent]
+
+      attr_accessor eof: bool
+
+      # @rbs path: String
+      # @rbs return: void
+      def initialize: (String path) -> void
+
+      # @rbs buf_len: Integer
+      # @rbs cookie: Integer
+      # @rbs return: [String, bool]
+      def fetch_entries_binary: (Integer buf_len, Integer cookie) -> [ String, bool ]
+
+      # @rbs d_next: Integer
+      # @rbs ino: Integer
+      # @rbs name_len: Integer
+      # @rbs type: Integer
+      # @rbs name: String
+      # @rbs return: String
+      def make_dirent_pack1: (Integer d_next, Integer ino, Integer name_len, Integer type, String name) -> String
+    end
+  end
+end
