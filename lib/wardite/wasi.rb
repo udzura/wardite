@@ -96,8 +96,7 @@ module Wardite
       end
       if oflags & Wasi::O_DIRECTORY != 0
         # open_flags |= File::Constants::DIRECTORY
-        $stderr.puts "O_DIRECTORY is not supported, ignore"
-        # raise NotImplementedError, "FIXME: Ruby does not have O_DIRECTORY const"
+        $stderr.puts "O_DIRECTORY is not supported, ignore" if ENV["WARDITE_TRACE"]
       elsif oflags & Wasi::O_EXCL != 0
         open_flags |= File::Constants::EXCL
       end
