@@ -225,6 +225,17 @@ module Wardite
       end
       sec
     end
+
+    # @rbs name: Symbol
+    # @rbs args: Array[Object]
+    # @rbs return: untyped
+    def method_missing(name, *args)
+      if runtime.callable? name
+        runtime.call(name, args)
+      else
+        super
+      end
+    end
   end
 
   class Runtime
@@ -398,7 +409,7 @@ module Wardite
           break
         end
         cur_frame.pc += 1
-        insn = cur_frame.body[cur_frame.pc]
+        insn = cur_frame.body[cur_frame.pc] #: Op
         if !insn
           break
         end

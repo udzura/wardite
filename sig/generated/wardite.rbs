@@ -66,6 +66,11 @@ module Wardite
 
     # @rbs return: ExportSection
     def export_section: () -> ExportSection
+
+    # @rbs name: Symbol
+    # @rbs args: Array[Object]
+    # @rbs return: untyped
+    def method_missing: (Symbol name, *untyped args) -> untyped
   end
 
   class Runtime

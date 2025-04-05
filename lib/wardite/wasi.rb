@@ -246,7 +246,7 @@ module Wardite
       timebuf64 = args[2].value
       if clock_id != 0 # - CLOCKID_REALTIME
         # raise NotImplementedError, "CLOCKID_REALTIME is an only supported id"
-        return -255
+        return Wasi::EINVAL
       end
       # timestamp in nanoseconds
       now = Time.now.to_i * 1_000_000
