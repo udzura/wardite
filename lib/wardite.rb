@@ -362,6 +362,9 @@ module Wardite
       return nil
     end
 
+    # @rbs!
+    #   $GLOBAL_EXTERNAL_ELAP:  Float
+    #   $GLOBAL_EXTERNAL_TIMES: Integer
     $GLOBAL_EXTERNAL_ELAP = 0.0 #: Float
     $GLOBAL_EXTERNAL_TIMES = 0  #: Integer
     END {

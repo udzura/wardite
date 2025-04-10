@@ -110,6 +110,10 @@ module Wardite
     # @rbs return: Object|nil
     def invoke_internal: (WasmFunction wasm_function) -> (Object | nil)
 
+    $GLOBAL_EXTERNAL_ELAP: Float
+
+    $GLOBAL_EXTERNAL_TIMES: Integer
+
     # @rbs external_function: ExternalFunction
     # @rbs return: wasmValue|nil
     def invoke_external: (ExternalFunction external_function) -> (wasmValue | nil)
