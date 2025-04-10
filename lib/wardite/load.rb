@@ -254,6 +254,7 @@ module Wardite
     # @rbs enable_wasi: boolish
     # @rbs return: Instance
     def self.load_from_buffer(buf, import_object: {}, enable_wasi: true)
+      start = Time.now.to_f #: Float
       @buf = buf
 
       version = preamble
@@ -273,6 +274,8 @@ module Wardite
           i.wasi = wasi_env
         end
       end
+    ensure
+      $stderr.puts "load_from_buffer: #{Time.now.to_f - start}" if ENV['WARITE_TRACE']
     end
 
     # @rbs return: Integer

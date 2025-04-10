@@ -362,9 +362,19 @@ module Wardite
       return nil
     end
 
+    $GLOBAL_EXTERNAL_ELAP = 0.0 #: Float
+    $GLOBAL_EXTERNAL_TIMES = 0  #: Integer
+    END {
+      if ENV["WARDITE_TRACE"] == "1"
+        $stderr.puts "external call count: #{$GLOBAL_EXTERNAL_TIMES}"
+        $stderr.puts "external call elapsed: #{$GLOBAL_EXTERNAL_ELAP}(s)"
+      end
+    }
+
     # @rbs external_function: ExternalFunction
     # @rbs return: wasmValue|nil
     def invoke_external(external_function)
+      start = Time.now.to_f
       $stderr.puts "[trace] call external function: #{external_function.name}" if ENV["WARDITE_TRACE"]
       local_start = stack.size - external_function.callsig.size
       args = stack[local_start..]
@@ -399,6 +409,9 @@ module Wardite
       end
 
       raise "invalid type of value returned in proc. val: #{val.inspect}"
+    ensure
+      $GLOBAL_EXTERNAL_TIMES += 1
+      $GLOBAL_EXTERNAL_ELAP += (Time.now.to_f - start)
     end
 
     # @rbs return: void
