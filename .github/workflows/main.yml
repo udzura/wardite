@@ -14,8 +14,10 @@ jobs:
     strategy:
       matrix:
         ruby:
-          - '3.3.7'
-          - '3.4.2'
+          - '3.3.9'
+          - '3.4.5'
+        wasm_tools:
+          - '1.236.0'
 
     steps:
     - uses: actions/checkout@v4
@@ -27,7 +29,7 @@ jobs:
     - name: Install wasm-tools
       run: |
         mkdir .bin
-        curl -L https://github.com/bytecodealliance/wasm-tools/releases/download/v1.221.2/wasm-tools-1.221.2-x86_64-linux.tar.gz -o wasm-tools.tar.gz
+        curl -L https://github.com/bytecodealliance/wasm-tools/releases/download/v${{ matrix.wasm_tools }}/wasm-tools-${{ matrix.wasm_tools }}-x86_64-linux.tar.gz -o wasm-tools.tar.gz
         tar xvzf wasm-tools.tar.gz
         mv wasm-tools-*-x86_64-linux/wasm-tools .bin/wasm-tools
         chmod a+x .bin/wasm-tools
