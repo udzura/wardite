@@ -18,6 +18,8 @@ jobs:
           - '3.4.5'
         wasm_tools:
           - '1.236.0'
+        wabt:
+          - '1.0.37'
 
     steps:
     - uses: actions/checkout@v4
@@ -28,7 +30,7 @@ jobs:
         bundler-cache: true
     - name: Install wasm-tools
       run: |
-        mkdir .bin
+        mkdir -p .bin
         curl -L https://github.com/bytecodealliance/wasm-tools/releases/download/v${{ matrix.wasm_tools }}/wasm-tools-${{ matrix.wasm_tools }}-x86_64-linux.tar.gz -o wasm-tools.tar.gz
         tar xvzf wasm-tools.tar.gz
         mv wasm-tools-*-x86_64-linux/wasm-tools .bin/wasm-tools
@@ -37,6 +39,17 @@ jobs:
       run: |
         export PATH=`pwd`/.bin:$PATH
         wasm-tools --version
+    - name: Install wast2json
+      run: |
+        mkdir -p .bin
+        curl -L https://github.com/WebAssembly/wabt/releases/download/${{ matrix.wabt }}/wabt-${{ matrix.wabt }}-ubuntu-20.04.tar.gz -o wabt.tar.gz
+        tar xvzf wabt.tar.gz
+        mv wabt-*/bin/wast2json .bin/wast2json
+        chmod a+x .bin/wast2json
+    - name: Version wast2json
+      run: |
+        export PATH=`pwd`/.bin:$PATH
+        wast2json --version
     - name: Run the check task
       run: |
         export PATH=`pwd`/.bin:$PATH
@@ -45,3 +58,7 @@ jobs:
       run: |
         export PATH=`pwd`/.bin:$PATH
         bundle exec rake test
+    - name: Run the official spec
+      run: |
+        export PATH=`pwd`/.bin:$PATH
+        bundle exec rake 'spec[i32]'

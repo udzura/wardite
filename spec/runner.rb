@@ -2,7 +2,8 @@ require "json"
 require "wardite"
 require "test-unit"
 
-testcase = JSON.load_file("spec/i32.json", symbolize_names: true)
+json_path = ENV['JSON_PATH'] || File.expand_path("../i32.json", __FILE__)
+testcase = JSON.load_file(json_path, symbolize_names: true)
 
 $commands = testcase[:commands]
 
@@ -28,6 +29,10 @@ def parse_result(arg)
   end
 end
 
+BEGIN {
+  File.delete(File.expand_path("../skip.txt", __FILE__)) if File.exist?(File.expand_path("../skip.txt", __FILE__))
+}
+
 class WarditeI32Test < Test::Unit::TestCase
   extend Wardite::ValueHelper
   current_wasm = nil
@@ -52,7 +57,7 @@ class WarditeI32Test < Test::Unit::TestCase
       expected_ = expected.map{|v| parse_result(v)}
   
       test "#{command_type}: (#{"%4d" % line}) #{field}(#{args_.inspect}) -> #{expected_.inspect}" do
-        instance = instance = Wardite::new(path: "spec/" + current_wasm)
+        instance = instance = Wardite::new(path: File.expand_path("../#{current_wasm}", __FILE__))
         ret = instance.runtime.call(field, args_)
 
         assert { ret == expected_[0] }
@@ -72,7 +77,7 @@ class WarditeI32Test < Test::Unit::TestCase
       expected_ = expected.map{|v| parse_result(v)}
   
       test "#{command_type}: (#{"%4d" % line}) #{field}(#{args_.inspect})" do
-        instance = instance = Wardite::new(path: "spec/" + current_wasm)
+        instance = instance = Wardite::new(path: File.expand_path("../#{current_wasm}", __FILE__))
         command => {text:}
         trapped = false
         begin
@@ -87,8 +92,12 @@ class WarditeI32Test < Test::Unit::TestCase
         end
       end
     when "assert_invalid", "assert_malformed"
-      test "#{command_type}: #{command.inspect}" do
-        omit "skip #{command_type}"
+      if ENV['VERBOSE']
+        test "#{command_type}: #{command.inspect}" do
+          omit "skip #{command_type}"
+        end
+      else
+        IO.write(File.expand_path("../skip.txt", __FILE__), "#{command_type}: #{command.inspect}\n", mode: "a")
       end
     end
   end
