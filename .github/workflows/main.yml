@@ -45,3 +45,7 @@ jobs:
       run: |
         export PATH=`pwd`/.bin:$PATH
         bundle exec rake test
+    - name: Run the official spec
+      run: |
+        export PATH=`pwd`/.bin:$PATH
+        bundle exec rake 'spec[i32]'

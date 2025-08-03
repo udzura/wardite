@@ -22,6 +22,23 @@ task :wasm, [:name] do |t, args|
   end
 end
 
+desc "Run the official spec"
+task :spec, [:name] do |t, args|
+  sh "which git && git clean -f spec/ || true"
+
+  Dir.chdir "spec" do
+    sh "curl -L -o ./#{args.name}.wast https://raw.githubusercontent.com/WebAssembly/spec/refs/tags/wg-1.0/test/core/#{args.name}.wast"
+    sh "wast2json ./#{args.name}.wast"
+    sh "env JSON_PATH=./#{args.name}.json ruby ./runner.rb -v"
+
+    if File.exist?("./skip.txt")
+      puts
+      puts "\e[1;36mSkipped tests:\e[0m"
+      puts IO.read("./skip.txt")
+    end
+  end
+end
+
 desc "Generate codes"
 task :generate do
   require_relative "scripts/gen_alu"
