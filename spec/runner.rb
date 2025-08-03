@@ -11,8 +11,14 @@ def parse_value(arg)
   case arg[:type]
   when "i32"
     return arg[:value]&.to_i
+  when "i64"
+    return arg[:value]&.to_i
+  when "f32"
+    return arg[:value]&.to_f
+  when "f64"
+    return arg[:value]&.to_f
   else
-    raise "not yet supported"
+    raise "not yet supported: #{arg.inspect}"
   end
 end
 
@@ -24,8 +30,26 @@ def parse_result(arg)
     else
       nil
     end
+  when "i64"
+    if v = arg[:value]&.to_i
+      I64(v)
+    else
+      nil
+    end
+  when "f32"
+    if v = arg[:value]&.to_f
+      F32(v)
+    else
+      nil
+    end
+  when "f64"
+    if v = arg[:value]&.to_f
+      F64(v)
+    else
+      nil
+    end
   else
-    raise "not yet supported"
+    raise "not yet supported: #{arg.inspect}"
   end
 end
 
@@ -33,7 +57,11 @@ BEGIN {
   File.delete(File.expand_path("../skip.txt", __FILE__)) if File.exist?(File.expand_path("../skip.txt", __FILE__))
 }
 
-class WarditeI32Test < Test::Unit::TestCase
+klass_name = File.basename(json_path, ".json").split("_").map(&:capitalize).join
+eval "class Wardite#{klass_name}Test < Test::Unit::TestCase; end"
+klass = Object.const_get("Wardite#{klass_name}Test")
+
+klass.instance_eval do
   extend Wardite::ValueHelper
   current_wasm = nil
 

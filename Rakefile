@@ -24,7 +24,7 @@ end
 
 desc "Run the official spec"
 task :spec, [:name] do |t, args|
-  sh "which git && git clean -f spec/ || true"
+  sh "which git && git clean -xf spec/ || true"
 
   Dir.chdir "spec" do
     sh "curl -L -o ./#{args.name}.wast https://raw.githubusercontent.com/WebAssembly/spec/refs/tags/wg-1.0/test/core/#{args.name}.wast"
