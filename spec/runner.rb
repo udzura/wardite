@@ -28,6 +28,10 @@ def parse_result(arg)
   end
 end
 
+BEGIN {
+  File.delete("spec/skip.txt") if File.exist?("spec/skip.txt")
+}
+
 class WarditeI32Test < Test::Unit::TestCase
   extend Wardite::ValueHelper
   current_wasm = nil
@@ -87,8 +91,12 @@ class WarditeI32Test < Test::Unit::TestCase
         end
       end
     when "assert_invalid", "assert_malformed"
-      test "#{command_type}: #{command.inspect}" do
-        omit "skip #{command_type}"
+      if ENV['VERBOSE']
+        test "#{command_type}: #{command.inspect}" do
+          omit "skip #{command_type}"
+        end
+      else
+        IO.write("spec/skip.txt", "#{command_type}: #{command.inspect}\n", mode: "a")
       end
     end
   end
