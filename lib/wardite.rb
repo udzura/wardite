@@ -433,10 +433,23 @@ module Wardite
       end
     end
 
+    $INSTRUCTIONS = {}
+    END {
+      if ENV["WARDITE_TRACE"] == "1"
+        $stderr.puts "[trace] instructions stats:"
+        $INSTRUCTIONS.sort_by{ -(_2) }.each do |name, count|
+          $stderr.puts "[trace] #{name}: #{count}"
+        end
+      end
+    }
+
     # @rbs frame: Frame
     # @rbs insn: Op
     # @rbs return: void
     def eval_insn(frame, insn)
+      $INSTRUCTIONS[insn.code] ||= 0
+      $INSTRUCTIONS[insn.code] += 1
+
       case insn.namespace
       when :convert
         return Evaluator.convert_eval_insn(self, frame, insn)
