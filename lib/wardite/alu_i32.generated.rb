@@ -180,11 +180,11 @@ module Wardite
 
       when :i32_eq
         right, left = runtime.stack.pop, runtime.stack.pop
-        if !right.is_a?(I32) || !left.is_a?(I32)
+        if !right || !left
           raise EvalError, "maybe empty or invalid stack"
         end
-        value = (left.value == right.value) ? 1 : 0
-        runtime.stack.push(I32(value))
+        value = (left == right) ? 1 : 0
+        runtime.stack.push(value)
 
 
       when :i32_ne
@@ -198,11 +198,11 @@ module Wardite
 
       when :i32_lts
         right, left = runtime.stack.pop, runtime.stack.pop
-        if !right.is_a?(I32) || !left.is_a?(I32)
+        if !right || !left
           raise EvalError, "maybe empty or invalid stack"
         end
-        value = (left.value_s < right.value_s) ? 1 : 0
-        runtime.stack.push(I32(value))
+        value = (left < right) ? 1 : 0
+        runtime.stack.push(value)
 
 
       when :i32_ltu
@@ -216,11 +216,11 @@ module Wardite
 
       when :i32_gts
         right, left = runtime.stack.pop, runtime.stack.pop
-        if !right.is_a?(I32) || !left.is_a?(I32)
+        if !right || !left
           raise EvalError, "maybe empty or invalid stack"
         end
-        value = (left.value_s > right.value_s) ? 1 : 0
-        runtime.stack.push(I32(value))
+        value = (left > right) ? 1 : 0
+        runtime.stack.push(value)
 
 
       when :i32_gtu
@@ -363,16 +363,16 @@ module Wardite
 
       when :i32_rem_s
         right, left = runtime.stack.pop, runtime.stack.pop
-        if !right.is_a?(I32) || !left.is_a?(I32)
+        if !right || !left
           raise EvalError, "maybe empty or invalid stack"
         end
-        result = left.value_s % right.value_s
-        if result > 0 && left.value_s < 0
-          result = result - right.value_s
-        elsif result < 0 && left.value_s > 0
-          result = result - right.value_s
+        result = left % right
+        if result > 0 && left < 0
+          result = result - right
+        elsif result < 0 && left > 0
+          result = result - right
         end
-        runtime.stack.push(I32(result))
+        runtime.stack.push(result)
 
 
       when :i32_rem_u

@@ -480,8 +480,8 @@ module Wardite
         level = insn.operand[0]
         raise EvalError, "br op without level" if !level.is_a?(Integer)
         cond = stack.pop 
-        raise EvalError, "cond not found" if !cond.is_a?(I32)
-        if cond.value.zero?
+        raise EvalError, "cond not found" if !cond
+        if cond.zero?
           return
         end
         pc = do_branch(frame.labels, stack, level)
@@ -521,10 +521,10 @@ module Wardite
         block = insn.operand[0]
         raise EvalError, "if op without block" if !block.is_a?(Block)
         cond = stack.pop
-        raise EvalError, "cond not found" if !cond.is_a?(I32)
+        raise EvalError, "cond not found" if !cond
         next_pc = insn.meta[:end_pos]
 
-        if cond.value.zero?
+        if cond.zero?
           frame.pc = insn.meta[:else_pos]
         end
 
