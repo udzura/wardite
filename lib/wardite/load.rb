@@ -808,7 +808,7 @@ module Wardite
         if !arg.is_a?(Integer)
           raise "Invalid definition of operand"
         end
-        return I32(arg)
+        return arg
       when :i64_const
         arg = op.operand[0]
         if !arg.is_a?(Integer)

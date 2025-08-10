@@ -292,7 +292,7 @@ module Wardite
         case fn.callsig[idx]
         when :i32
           raise "type mismatch: i32(#{arg})" unless arg.is_a?(Integer)
-          stack.push I32(arg)
+          stack.push arg
         else
           raise "TODO: add me"
         end
@@ -398,7 +398,7 @@ module Wardite
       when Integer
         case external_function.retsig[0]
         when :i32
-          return I32(val)
+          return val
         when :i64
           return I64(val)
         end
@@ -1299,7 +1299,7 @@ module Wardite
         count.times do
           case typ
           when :i32, :u32
-            locals.push I32(0)
+            locals.push 0
           when :i64, :u64
             locals.push I64(0)
           when :f32

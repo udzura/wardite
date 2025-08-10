@@ -166,7 +166,7 @@ module Wardite
         if !const.is_a?(Integer)
           raise EvalError, "invalid type of operand"
         end
-        runtime.stack.push(I32(const))
+        runtime.stack.push(const)
 
 
       when :i32_eqz
@@ -320,40 +320,37 @@ module Wardite
 
       when :i32_add
         right, left = runtime.stack.pop, runtime.stack.pop
-        if !right.is_a?(I32) || !left.is_a?(I32)
+        if !right || !left
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(I32(left.value + right.value))
+        runtime.stack.push(left + right)
 
 
       when :i32_sub
         right, left = runtime.stack.pop, runtime.stack.pop
-        if !right.is_a?(I32) || !left.is_a?(I32)
+        if !right || !left
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(I32(left.value - right.value))
+        runtime.stack.push(left - right)
 
 
       when :i32_mul
         right, left = runtime.stack.pop, runtime.stack.pop
-        if !right.is_a?(I32) || !left.is_a?(I32)
+        if !right || !left
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(I32(left.value * right.value))
+        runtime.stack.push(left * right)
 
 
       when :i32_div_s
         right, left = runtime.stack.pop, runtime.stack.pop
-        if !right.is_a?(I32) || !left.is_a?(I32)
+        if !right || !left
           raise EvalError, "maybe empty or invalid stack"
         end
-        result = left.value_s / right.value_s.to_f
-        iresult = (result >= 0 ? result.floor : result.ceil).to_i
-        if iresult >= (1 << (left.memsize - 1))
-          raise IntegerOverflow, "integer overflow"
-        end
+        # result = I32.signed(left) / I32.signed(right)
+        result = left / right
       
-        runtime.stack.push(I32(iresult))
+        runtime.stack.push(result)
 
 
       when :i32_div_u
