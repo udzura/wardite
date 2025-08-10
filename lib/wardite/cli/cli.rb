@@ -47,6 +47,10 @@ module Wardite
         if (yjit || ENV["WARDITE_YJIT_ON"] == "1") && (defined? RubyVM::YJIT)
           RubyVM::YJIT.enable
         end
+
+        if (yjit || ENV["WARDITE_YJIT_ON"] == "1") && !defined?(RubyVM::YJIT)
+          warn "Warning: --yjit option is specified, but not available in this Ruby build"
+        end
       end
 
       # @rbs return: Array[Integer | Float]

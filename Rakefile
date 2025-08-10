@@ -39,6 +39,12 @@ task :spec, [:name] do |t, args|
   end
 end
 
+desc "Run basic benchmark"
+task :basic_benchmark do
+  sh "wasm-tools parse examples/i32_bench.wat -o examples/i32_bench.wasm"
+  sh "hyperfine --warmup 3 'bundle exec wardite --yjit --no-wasi --invoke detailed_arithmetic_loop examples/i32_bench.wasm'"
+end
+
 desc "Generate codes"
 task :generate do
   require_relative "scripts/gen_alu"

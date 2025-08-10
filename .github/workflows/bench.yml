@@ -1,4 +1,4 @@
-name: Test Wardite
+name: Bench Wardite
 
 on:
   push:
@@ -18,8 +18,8 @@ jobs:
           - '3.4.5'
         wasm_tools:
           - '1.236.0'
-        wabt:
-          - '1.0.37'
+        hyperfine:
+          - '1.19.0'
 
     steps:
     - uses: actions/checkout@v4
@@ -36,25 +36,20 @@ jobs:
         mv wasm-tools-*-x86_64-linux/wasm-tools $HOME/.bin/wasm-tools
         chmod a+x $HOME/.bin/wasm-tools
         echo "$HOME/.bin" >> $GITHUB_PATH
+    - name: Install Hyperfine
+      run: |
+        HYPERFINE_VERSION="${{ matrix.hyperfine }}"
+        curl -LO "https://github.com/sharkdp/hyperfine/releases/download/v${HYPERFINE_VERSION}/hyperfine-v${HYPERFINE_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+        tar xzf "hyperfine-v${HYPERFINE_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+        mkdir -p $HOME/.bin
+        mv "hyperfine-v${HYPERFINE_VERSION}-x86_64-unknown-linux-gnu/hyperfine" $HOME/.bin/hyperfine
+        chmod a+x $HOME/.bin/hyperfine
     - name: Version wasm-tools
       run: |
         wasm-tools --version
-    - name: Install wast2json
+    - name: Version Hyperfine
       run: |
-        mkdir -p $HOME/.bin
-        curl -L https://github.com/WebAssembly/wabt/releases/download/${{ matrix.wabt }}/wabt-${{ matrix.wabt }}-ubuntu-20.04.tar.gz -o wabt.tar.gz
-        tar xvzf wabt.tar.gz
-        mv wabt-*/bin/wast2json $HOME/.bin/wast2json
-        chmod a+x $HOME/.bin/wast2json
-    - name: Version wast2json
+        hyperfine --version
+    - name: Run the bench task
       run: |
-        wast2json --version
-    - name: Run the check task
-      run: |
-        bundle exec rake check
-    - name: Run the test task
-      run: |
-        bundle exec rake test
-    - name: Run the official spec
-      run: |
-        bundle exec rake 'spec[i32]'
+        bundle exec rake basic_benchmark
