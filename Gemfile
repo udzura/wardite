@@ -13,4 +13,5 @@ gem "test-unit", "~> 3.0"
 gem "rbs-inline", :require => false
 gem "steep", ">= 1.8.1"
 
-gem "ruby-prof"
+#gem "ruby-prof"
+gem "stackprof"

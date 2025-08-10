@@ -78,7 +78,28 @@ module Wardite
       # @rbs return: void
       def run
         if invoke
-          invoke_function
+          if ENV["WARDITE_STACKPROF"] == "1"
+            $COUNTER = {}
+            TracePoint.trace(:call) do |tp|
+              if %i(I32 I64 F32 F64).include?(tp.method_id)
+                $COUNTER[tp.method_id] ||= 0
+                $COUNTER[tp.method_id] += 1
+              end
+            end
+
+            at_exit {
+              pp $COUNTER
+            }
+
+            require "stackprof"
+            StackProf.run(mode: :cpu, out: '/tmp/stackprof.dump', raw: true) do
+              invoke_function
+            end
+          else
+            invoke_function
+          end
+
+          puts "StackProf dump written to /tmp/stackprof.dump"
         else
           if wasi
             invoke_wasi
