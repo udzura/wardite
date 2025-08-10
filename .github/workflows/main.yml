@@ -1,4 +1,4 @@
-name: Ruby
+name: Test Wardite
 
 on:
   push:
