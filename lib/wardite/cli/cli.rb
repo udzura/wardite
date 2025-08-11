@@ -79,27 +79,26 @@ module Wardite
       def run
         if invoke
           if ENV["WARDITE_STACKPROF"] == "1"
-            $COUNTER = {}
-            TracePoint.trace(:call) do |tp|
-              if %i(I32 I64 F32 F64).include?(tp.method_id)
-                $COUNTER[tp.method_id] ||= 0
-                $COUNTER[tp.method_id] += 1
-              end
-            end
+            # $COUNTER = {}
+            # TracePoint.trace(:call) do |tp|
+            #   if %i(I32 I64 F32 F64).include?(tp.method_id)
+            #     $COUNTER[tp.method_id] ||= 0
+            #     $COUNTER[tp.method_id] += 1
+            #   end
+            # end
 
-            at_exit {
-              pp $COUNTER
-            }
+            # at_exit {
+            #   pp $COUNTER
+            # }
 
-            require "stackprof"
-            StackProf.run(mode: :cpu, out: '/tmp/stackprof.dump', raw: true) do
+            require "vernier"
+            Vernier.profile(out: "./tmp/time_profile.json") do
               invoke_function
             end
+            puts "Profile saved to ./tmp/time_profile.json"
           else
             invoke_function
           end
-
-          puts "StackProf dump written to /tmp/stackprof.dump"
         else
           if wasi
             invoke_wasi

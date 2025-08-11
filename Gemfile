@@ -13,5 +13,7 @@ gem "test-unit", "~> 3.0"
 gem "rbs-inline", :require => false
 gem "steep", ">= 1.8.1"
 
-#gem "ruby-prof"
-gem "stackprof"
+gem "vernier", "~> 1.0", require: false
+#gem "ruby-prof", require: false
+#gem "ruby-prof-flamegraph", github: "oozou/ruby-prof-flamegraph", require: false
+#gem "stackprof"

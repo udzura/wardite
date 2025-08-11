@@ -429,6 +429,73 @@ module Wardite
         if !insn
           break
         end
+
+        if insn.code == :local_get
+          idx = insn.operand[0]
+          # if !idx
+          #   raise EvalError, "[BUG] invalid type of operand"
+          # end
+          local = cur_frame.locals[idx]
+          # if !local
+          #   # require "irb"; binding.irb
+          #   raise EvalError, "local not found, idx = #{idx}"
+          # end
+          stack.push(local)
+          next
+        end
+
+        if insn.code == :local_set
+          idx = insn.operand[0]
+          # if !idx
+          #   raise EvalError, "[BUG] invalid type of operand"
+          # end
+          value = stack.pop
+          # if !value
+          #   raise EvalError, "value should be pushed"
+          # end
+          cur_frame.locals[idx] = value
+          next
+        end
+
+        if insn.code == :i32_const
+          const = insn.operand[0]
+          if !const.is_a?(Integer)
+            raise EvalError, "invalid type of operand"
+          end
+          self.stack.push(I32(const))
+          next
+        end
+
+        if insn.code == :i32_add
+          right, left = self.stack.pop, self.stack.pop
+          if !right.is_a?(I32) || !left.is_a?(I32)
+            raise EvalError, "maybe empty or invalid stack"
+          end
+          self.stack.push(I32(left.value + right.value))
+          next
+        end
+
+        if insn.code == :if
+          block = insn.operand[0]
+          #raise EvalError, "if op without block" if !block.is_a?(Block)
+          cond = stack.pop
+          #raise EvalError, "cond not found" if !cond.is_a?(I32)
+          next_pc = insn.meta[:end_pos]
+
+          if cond.value.zero?
+            cur_frame.pc = insn.meta[:else_pos]
+          end
+
+          if cur_frame.pc == next_pc
+            # This means if block has no else instr.
+            next
+          end
+
+          label = Label.new(:if, next_pc, stack.size, block.result_size)
+          cur_frame.labels.push(label)
+          next
+        end
+
         eval_insn(cur_frame, insn)
       end
     end
