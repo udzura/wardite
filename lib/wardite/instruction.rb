@@ -35,6 +35,16 @@ module Wardite
       __unsuported_from_here_on__
     ] #: Array[Symbol]
 
+    I32_SYMS = SYMS.grep(/^i32/)
+    I64_SYMS = SYMS.grep(/^i64/)
+    F32_SYMS = SYMS.grep(/^f32/)
+    F64_SYMS = SYMS.grep(/^f64/)
+    $SYM_PREFIX = {}
+    I32_SYMS.each { |sym| $SYM_PREFIX[sym] = :i32 }
+    I64_SYMS.each { |sym| $SYM_PREFIX[sym] = :i64 }
+    F32_SYMS.each { |sym| $SYM_PREFIX[sym] = :f32 }
+    F64_SYMS.each { |sym| $SYM_PREFIX[sym] = :f64 }
+
     FC_SYMS = %i[
       i32_trunc_sat_f32_s i32_trunc_sat_f32_u i32_trunc_sat_f64_s i32_trunc_sat_f64_u
       i64_trunc_sat_f32_s i64_trunc_sat_f32_u i64_trunc_sat_f64_s i64_trunc_sat_f64_u
@@ -78,6 +88,10 @@ module Wardite
 
     attr_accessor :meta #: Hash[Symbol, Integer]
 
+    # $OP_COUNT = 0
+    # END {
+    #   puts "Total opcodes: #{$OP_COUNT}"
+    # }
     # @rbs namespace: Symbol
     # @rbs code: Symbol
     # @rbs operand: Array[operandItem]
@@ -86,6 +100,7 @@ module Wardite
       @code = code
       @operand = operand
       @meta = {}
+      # $OP_COUNT += 1
     end
 
     # @rbs chr: String
@@ -104,13 +119,7 @@ module Wardite
         return [:convert, code]
       end
 
-      prefix = code.to_s.split("_")[0]
-      case prefix
-      when "i32", "i64", "f32", "f64"
-        [prefix.to_sym, code]
-      else
-        [:default, code]
-      end
+      [$SYM_PREFIX[code] || :default, code]
     end
 
     # @rbs lower: Integer
@@ -139,8 +148,6 @@ module Wardite
     # @rbs return: Array[Symbol]
     def self.operand_of(code)
       case code
-      when /load/, /store/
-        [:u32, :u32]
       when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if
         [:u32]
       when :memory_init, :memory_copy
@@ -161,6 +168,10 @@ module Wardite
         [:f64]
       when :if, :block, :loop
         [:u8_block]
+      when :i32_load, :i64_load, :f32_load, :f64_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
+           :i64_load8_s, :i64_load8_u, :i64_load16_s, :i64_load16_u, :i64_load32_s, :i64_load32_u, :i32_store, :i64_store,
+           :f32_store, :f64_store, :i32_store8, :i32_store16, :i64_store8, :i64_store16, :i64_store32
+        [:u32, :u32]
       else
         []
       end
