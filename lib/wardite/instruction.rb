@@ -54,19 +54,17 @@ module Wardite
       __unsuported_from_here_on__
     ] #: Array[Symbol]
 
-    # @rbs @@table: Hash[Integer, Symbol] | nil
-    @@table = nil
+    # @rbs $table: Hash[Integer, Symbol] | nil
+    $table = {}
+    SYMS.each_with_index do |sym, i|
+      $table[i] = sym
+    end
     # @rbs @@fc_table: Hash[Integer, Symbol] | nil
     @@fc_table = nil
 
     # @rbs return: Hash[Integer, Symbol]
     def self.table
-      return @@table if @@table != nil
-      @@table = {} #: Hash[Integer, Symbol] | nil
-      SYMS.each_with_index do |sym, i|
-        @@table[i] = sym
-      end
-      @@table
+      $table
     end
 
     # @rbs return: Hash[Integer, Symbol]
@@ -110,7 +108,7 @@ module Wardite
         return [:fc, :fc]
       end
 
-      code = table[chr.ord]
+      code = $table[chr.ord]
       if ! code
         raise "found unknown code 0x#{chr.ord.to_s(16)}"
       end
