@@ -101,7 +101,15 @@ module Wardite
           end
         else
           if wasi
-            invoke_wasi
+            if ENV["WARDITE_STACKPROF"] == "1"
+              require "vernier"
+              Vernier.profile(out: "./tmp/time_profile.json") do
+                invoke_wasi
+              end
+              puts "Profile saved to ./tmp/time_profile.json"
+            else
+              invoke_wasi
+            end
             return
           end
           raise("requires function name to invoke")
