@@ -1,5 +1,4 @@
 # rbs_inline: enabled
-require "wardite/revisitor"
 
 module Wardite
   class Section
@@ -128,7 +127,7 @@ module Wardite
 
       attr_accessor :locals_type #: Array[Symbol]
 
-      attr_accessor :body #: Array[Op]
+      attr_accessor :body #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
 
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
@@ -603,22 +602,20 @@ module Wardite
           locals_type << Op.i2type(value_type || -1)
         end
         body = code_body(cbuf)
-        revisitor = Revisitor.new(body)
-        revisitor.revisit!
         
         dest.func_codes << CodeSection::CodeBody.new do |b|
           b.locals_count = locals_count
           b.locals_type = locals_type
-          b.body = revisitor.ops
+          b.body = body
         end
       end
       dest
     end
 
     # @rbs buf: StringIO
-    # @rbs return: Array[::Wardite::Op]
+    # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     def self.code_body(buf)
-      dest = [] #: Array[Op]
+      dest = [] #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       # HINT: [symname, index of op, index of else, index of end]
       branching_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       fixed_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
@@ -679,7 +676,8 @@ module Wardite
           end         
         end
 
-        dest << Op.new(namespace, code, operand)
+        # HINT: [namespace, code, operand, else_pos, end_pos]
+        dest << [namespace, code, operand, nil, nil]
         if code == :block || code == :loop || code == :if
           branching_stack << [code, dest.size - 1, -1, -1]
         elsif code == :else
@@ -706,10 +704,10 @@ module Wardite
         end
         case sym
         when :block, :loop
-          dest[begin_idx].meta[:end_pos] = end_idx
+          dest[begin_idx][4] = end_idx
         when :if
-          dest[begin_idx].meta[:else_pos] = else_idx == -1 ? end_idx : else_idx
-          dest[begin_idx].meta[:end_pos] = end_idx
+          dest[begin_idx][3] = else_idx == -1 ? end_idx : else_idx
+          dest[begin_idx][4] = end_idx
         else
           raise "[BUG] unknown sym #{sym.inspect}"
         end
@@ -809,7 +807,7 @@ module Wardite
       code
     end
 
-    # @rbs ops: Array[Op]
+    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs return: Integer
     def self.decode_expr(ops)
       # sees first opcode
@@ -817,19 +815,19 @@ module Wardite
       if !op
         raise LoadError, "empty opcodes"
       end
-      case op.code
+      case op[1]
       when :i32_const
-        arg = op.operand[0]
+        arg = op[2][0]
         if !arg.is_a?(Integer)
           raise "Invalid definition of operand"
         end
         return arg
       else
-        raise "Unimplemented offset op: #{op.code.inspect}"
+        raise "Unimplemented offset op: #{op.inspect}"
       end
     end
 
-    # @rbs ops: Array[Op]
+    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs return: wasmValue
     def self.decode_global_expr(ops)
       # sees first opcode
@@ -837,33 +835,33 @@ module Wardite
       if !op
         raise LoadError, "empty opcodes"
       end
-      case op.code
+      case op[1]
       when :i32_const
-        arg = op.operand[0]
+        arg = op[2][0]
         if !arg.is_a?(Integer)
           raise "Invalid definition of operand"
         end
         return I32(arg)
       when :i64_const
-        arg = op.operand[0]
+        arg = op[2][0]
         if !arg.is_a?(Integer)
           raise "Invalid definition of operand"
         end
         return I64(arg)
       when :f32_const
-        arg = op.operand[0]
+        arg = op[2][0]
         if !arg.is_a?(Float)
           raise "Invalid definition of operand"
         end
         return F32(arg)
       when :f64_const
-        arg = op.operand[0]
+        arg = op[2][0]
         if !arg.is_a?(Float)
           raise "Invalid definition of operand"
         end
         return F64(arg)
       else
-        raise "Unimplemented offset op: #{op.code.inspect}"
+        raise "Unimplemented offset op: #{op.inspect}"
       end
     end
 

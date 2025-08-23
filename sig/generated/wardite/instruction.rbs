@@ -7,6 +7,14 @@ module Wardite
     # @see https://pengowray.github.io/wasm-ops/
     SYMS: Array[Symbol]
 
+    I32_SYMS: untyped
+
+    I64_SYMS: untyped
+
+    F32_SYMS: untyped
+
+    F64_SYMS: untyped
+
     FC_SYMS: Array[Symbol]
 
     # @rbs return: Hash[Integer, Symbol]
@@ -24,6 +32,10 @@ module Wardite
 
     attr_accessor meta: Hash[Symbol, Integer]
 
+    # $OP_COUNT = 0
+    # END {
+    #   puts "Total opcodes: #{$OP_COUNT}"
+    # }
     # @rbs namespace: Symbol
     # @rbs code: Symbol
     # @rbs operand: Array[operandItem]
