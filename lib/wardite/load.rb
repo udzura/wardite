@@ -672,12 +672,12 @@ module Wardite
           else
             $stderr.puts "warning: unknown type #{typ.inspect}. defaulting to u32"
             operand << fetch_uleb128(buf)
-          end         
+          end
         end
 
         # HINT: [code, operand, else_pos, end_pos]
         dest << [code, operand, nil, nil]
-        if code == :block || code == :loop || code == :if
+        if code == :if || code == :block || code == :loop
           branching_stack << [code, dest.size - 1, -1, -1]
         elsif code == :else
           if branching_stack.empty?
@@ -703,10 +703,10 @@ module Wardite
         end
         case sym
         when :block, :loop
-          dest[begin_idx][4] = end_idx
+          dest[begin_idx][3] = end_idx
         when :if
-          dest[begin_idx][3] = else_idx == -1 ? end_idx : else_idx
-          dest[begin_idx][4] = end_idx
+          dest[begin_idx][2] = else_idx == -1 ? end_idx : else_idx
+          dest[begin_idx][3] = end_idx
         else
           raise "[BUG] unknown sym #{sym.inspect}"
         end
