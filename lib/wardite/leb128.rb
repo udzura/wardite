@@ -8,10 +8,9 @@ module Wardite
       dest = 0
       level = 0
       while b = buf.read(1)
-        if b == nil
-          raise LoadError, "buffer too short"
-        end
+        raise LoadError, "buffer too short" unless b
         c = b.ord
+        return c if c < 0x80 && level.zero?
 
         upper, lower = (c >> 7), (c & (1 << 7) - 1)
         dest |= lower << (7 * level)
@@ -34,9 +33,7 @@ module Wardite
       dest = 0
       level = 0
       while b = buf.read(1)
-        if b == nil
-          raise LoadError, "buffer too short"
-        end
+        raise LoadError, "buffer too short" unless b
         c = b.ord
 
         upper, lower = (c >> 7), (c & (1 << 7) - 1)
