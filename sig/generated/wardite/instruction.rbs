@@ -17,6 +17,8 @@ module Wardite
 
     FC_SYMS: Array[Symbol]
 
+    OPERANDS: Array[Array[Symbol]]
+
     # @rbs return: Hash[Integer, Symbol]
     def self.table: () -> Hash[Integer, Symbol]
 

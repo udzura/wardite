@@ -217,8 +217,8 @@ module Wardite
 
     # @rbs c: String
     # @rbs buf: StringIO
-    # @rbs return: Symbol
-    def self.resolve_code: (String c, StringIO buf) -> Symbol
+    # @rbs return: [Symbol, Array[Symbol]]
+    def self.resolve_code: (String c, StringIO buf) -> [ Symbol, Array[Symbol] ]
 
     # @rbs return: DataSection
     def self.data_section: () -> DataSection
