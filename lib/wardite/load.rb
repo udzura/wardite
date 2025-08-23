@@ -619,6 +619,9 @@ module Wardite
     # @rbs return: Array[::Wardite::Op]
     def self.code_body(buf)
       dest = [] #: Array[Op]
+      # HINT: [symname, index of op, index of else, index of end]
+      branching_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
+      fixed_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       while c = buf.read(1)
         namespace, code = resolve_code(c, buf)
         operand_types = Op.operand_of(code)
@@ -677,8 +680,40 @@ module Wardite
         end
 
         dest << Op.new(namespace, code, operand)
+        if code == :block || code == :loop || code == :if
+          branching_stack << [code, dest.size - 1, -1, -1]
+        elsif code == :else
+          if branching_stack.empty?
+            raise "broken sequence: unmatched else"
+          else
+            last = branching_stack.pop || raise("[BUG] empty pop")
+            if last[0] != :if
+              raise "broken sequence: else without if"
+            end
+            branching_stack << [last[0], last[1], dest.size - 1, -1]
+          end
+        elsif code == :end
+          unless branching_stack.empty?
+            last = branching_stack.pop || raise("[BUG] empty pop")
+            fixed_stack << [last[0], last[1], last[2], dest.size - 1]
+          end
+        end
       end
 
+      fixed_stack.each do |(sym, begin_idx, else_idx, end_idx)|
+        if end_idx == -1
+          raise "broken sequence: branching without end"
+        end
+        case sym
+        when :block, :loop
+          dest[begin_idx].meta[:end_pos] = end_idx
+        when :if
+          dest[begin_idx].meta[:else_pos] = else_idx == -1 ? end_idx : else_idx
+          dest[begin_idx].meta[:end_pos] = end_idx
+        else
+          raise "[BUG] unknown sym #{sym.inspect}"
+        end
+      end
       dest
     rescue => e
       require "pp"
