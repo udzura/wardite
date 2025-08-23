@@ -127,7 +127,7 @@ module Wardite
 
       attr_accessor :locals_type #: Array[Symbol]
 
-      attr_accessor :body #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      attr_accessor :body #: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
 
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
@@ -613,14 +613,14 @@ module Wardite
     end
 
     # @rbs buf: StringIO
-    # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    # @rbs return: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
     def self.code_body(buf)
-      dest = [] #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      dest = [] #: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
       # HINT: [symname, index of op, index of else, index of end]
       branching_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       fixed_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       while c = buf.read(1)
-        namespace, code = resolve_code(c, buf)
+        code = resolve_code(c, buf)
         operand_types = Op.operand_of(code)
         operand = [] #: Array[operandItem]
         operand_types.each do |typ|
@@ -676,8 +676,8 @@ module Wardite
           end         
         end
 
-        # HINT: [namespace, code, operand, else_pos, end_pos]
-        dest << [namespace, code, operand, nil, nil]
+        # HINT: [code, operand, else_pos, end_pos]
+        dest << [code, operand, nil, nil]
         if code == :block || code == :loop || code == :if
           branching_stack << [code, dest.size - 1, -1, -1]
         elsif code == :else
@@ -723,14 +723,14 @@ module Wardite
 
     # @rbs c: String
     # @rbs buf: StringIO
-    # @rbs return: [Symbol, Symbol]
+    # @rbs return: Symbol
     def self.resolve_code(c, buf)
-      namespace, code = Op.to_sym(c)
-      if namespace == :fc
+      code = Op.to_sym(c)
+      if code == :fc
         lower = fetch_uleb128(buf)
-        return Op.resolve_fc_sym(lower) #: [Symbol, Symbol]
+        return Op.resolve_fc_sym(lower) #: Symbol
       end
-      return [namespace, code] #: [Symbol, Symbol]
+      return code
     end
 
     # @rbs return: DataSection
@@ -807,7 +807,7 @@ module Wardite
       code
     end
 
-    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    # @rbs ops: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs return: Integer
     def self.decode_expr(ops)
       # sees first opcode
@@ -815,9 +815,9 @@ module Wardite
       if !op
         raise LoadError, "empty opcodes"
       end
-      case op[1]
+      case op[0]
       when :i32_const
-        arg = op[2][0]
+        arg = op[1][0]
         if !arg.is_a?(Integer)
           raise "Invalid definition of operand"
         end
@@ -827,7 +827,7 @@ module Wardite
       end
     end
 
-    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    # @rbs ops: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs return: wasmValue
     def self.decode_global_expr(ops)
       # sees first opcode
@@ -835,27 +835,27 @@ module Wardite
       if !op
         raise LoadError, "empty opcodes"
       end
-      case op[1]
+      case op[0]
       when :i32_const
-        arg = op[2][0]
+        arg = op[1][0]
         if !arg.is_a?(Integer)
           raise "Invalid definition of operand"
         end
         return I32(arg)
       when :i64_const
-        arg = op[2][0]
+        arg = op[1][0]
         if !arg.is_a?(Integer)
           raise "Invalid definition of operand"
         end
         return I64(arg)
       when :f32_const
-        arg = op[2][0]
+        arg = op[1][0]
         if !arg.is_a?(Float)
           raise "Invalid definition of operand"
         end
         return F32(arg)
       when :f64_const
-        arg = op[2][0]
+        arg = op[1][0]
         if !arg.is_a?(Float)
           raise "Invalid definition of operand"
         end

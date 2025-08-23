@@ -42,12 +42,12 @@ module Wardite
     def initialize: (Symbol namespace, Symbol code, Array[operandItem] operand) -> untyped
 
     # @rbs chr: String
-    # @rbs return: [Symbol, Symbol]
-    def self.to_sym: (String chr) -> [ Symbol, Symbol ]
+    # @rbs return: Symbol
+    def self.to_sym: (String chr) -> Symbol
 
     # @rbs lower: Integer
-    # @rbs return: [Symbol, Symbol]
-    def self.resolve_fc_sym: (Integer lower) -> [ Symbol, Symbol ]
+    # @rbs return: Symbol
+    def self.resolve_fc_sym: (Integer lower) -> Symbol
 
     # @rbs code: Symbol
     # @rbs return: Array[Symbol]
