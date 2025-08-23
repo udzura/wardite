@@ -362,8 +362,8 @@ module Wardite
     # @rbs return: void
     def initialize: (Array[Symbol] callsig, Array[Symbol] retsig, CodeSection::CodeBody code_body) -> void
 
-    # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
-    def body: () -> Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+    # @rbs return: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
+    def body: () -> Array[[ Symbol, Array[operandItem], Integer?, Integer? ]]
 
     # @rbs return: Array[Symbol]
     def locals_type: () -> Array[Symbol]

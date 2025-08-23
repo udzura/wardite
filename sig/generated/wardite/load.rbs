@@ -87,7 +87,7 @@ module Wardite
 
       attr_accessor locals_type: Array[Symbol]
 
-      attr_accessor body: Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+      attr_accessor body: Array[[ Symbol, Array[operandItem], Integer?, Integer? ]]
 
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
@@ -212,13 +212,13 @@ module Wardite
     def self.code_section: () -> CodeSection
 
     # @rbs buf: StringIO
-    # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
-    def self.code_body: (StringIO buf) -> Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+    # @rbs return: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
+    def self.code_body: (StringIO buf) -> Array[[ Symbol, Array[operandItem], Integer?, Integer? ]]
 
     # @rbs c: String
     # @rbs buf: StringIO
-    # @rbs return: [Symbol, Symbol]
-    def self.resolve_code: (String c, StringIO buf) -> [ Symbol, Symbol ]
+    # @rbs return: Symbol
+    def self.resolve_code: (String c, StringIO buf) -> Symbol
 
     # @rbs return: DataSection
     def self.data_section: () -> DataSection
@@ -230,13 +230,13 @@ module Wardite
     # @rbs return: String
     def self.fetch_insn_while_end: (StringIO sbuf) -> String
 
-    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    # @rbs ops: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs return: Integer
-    def self.decode_expr: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] ops) -> Integer
+    def self.decode_expr: (Array[[ Symbol, Array[operandItem], Integer?, Integer? ]] ops) -> Integer
 
-    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    # @rbs ops: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs return: wasmValue
-    def self.decode_global_expr: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] ops) -> wasmValue
+    def self.decode_global_expr: (Array[[ Symbol, Array[operandItem], Integer?, Integer? ]] ops) -> wasmValue
 
     # @rbs return: ExportSection
     def self.export_section: () -> ExportSection

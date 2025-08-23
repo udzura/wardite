@@ -102,44 +102,19 @@ module Wardite
     end
 
     # @rbs chr: String
-    # @rbs return: [Symbol, Symbol]
+    # @rbs return: Symbol
     def self.to_sym(chr)
       if chr.ord == 0xfc
-        return [:fc, :fc]
+        return :fc
       end
 
-      code = $table[chr.ord]
-      if ! code
-        raise "found unknown code 0x#{chr.ord.to_s(16)}"
-      end
-      # opcodes equal to or larger than are "convert" ops
-      if chr.ord >= 0xa7
-        return [:convert, code]
-      end
-
-      [$SYM_PREFIX[code] || :default, code]
+      return SYMS[chr.ord]
     end
 
     # @rbs lower: Integer
-    # @rbs return: [Symbol, Symbol]
+    # @rbs return: Symbol
     def self.resolve_fc_sym(lower)
-      if lower == 0xfc
-        return [:fc, :fc]
-      end
-
-      code = fc_table[lower]
-      if ! code
-        raise "found unknown code 0xfc 0x#{lower.to_s(16)}"
-      end
-
-      prefix = code.to_s.split("_")[0]
-      case prefix
-      when "i32", "i64", "f32", "f64"
-        # All FC operations for numeric are "convert"
-        [:convert, code]
-      else
-        [:default, code]
-      end
+      FC_SYMS[lower] || raise("found unknown code 0xfc 0x#{lower.to_s(16)}")
     end
 
     # @rbs code: Symbol
