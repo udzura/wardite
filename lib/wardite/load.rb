@@ -620,8 +620,7 @@ module Wardite
       branching_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       fixed_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       while c = buf.read(1)
-        code = resolve_code(c, buf)
-        operand_types = Op.operand_of(code)
+        code, operand_types = resolve_code(c, buf)
         operand = [] #: Array[operandItem]
         operand_types.each do |typ|
           case typ
@@ -723,14 +722,15 @@ module Wardite
 
     # @rbs c: String
     # @rbs buf: StringIO
-    # @rbs return: Symbol
+    # @rbs return: [Symbol, Array[Symbol]]
     def self.resolve_code(c, buf)
       code = Op.to_sym(c)
       if code == :fc
         lower = fetch_uleb128(buf)
-        return Op.resolve_fc_sym(lower) #: Symbol
+        sym = Op.resolve_fc_sym(lower)
+        return [sym, Op.operand_of(sym)]
       end
-      return code
+      return [code, Op::OPERANDS[c.ord]]
     end
 
     # @rbs return: DataSection
