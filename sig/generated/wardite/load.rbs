@@ -87,7 +87,7 @@ module Wardite
 
       attr_accessor locals_type: Array[Symbol]
 
-      attr_accessor body: Array[Op]
+      attr_accessor body: Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
 
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
@@ -212,8 +212,8 @@ module Wardite
     def self.code_section: () -> CodeSection
 
     # @rbs buf: StringIO
-    # @rbs return: Array[::Wardite::Op]
-    def self.code_body: (StringIO buf) -> Array[::Wardite::Op]
+    # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    def self.code_body: (StringIO buf) -> Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
 
     # @rbs c: String
     # @rbs buf: StringIO
@@ -230,13 +230,13 @@ module Wardite
     # @rbs return: String
     def self.fetch_insn_while_end: (StringIO sbuf) -> String
 
-    # @rbs ops: Array[Op]
+    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs return: Integer
-    def self.decode_expr: (Array[Op] ops) -> Integer
+    def self.decode_expr: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] ops) -> Integer
 
-    # @rbs ops: Array[Op]
+    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs return: wasmValue
-    def self.decode_global_expr: (Array[Op] ops) -> wasmValue
+    def self.decode_global_expr: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] ops) -> wasmValue
 
     # @rbs return: ExportSection
     def self.export_section: () -> ExportSection

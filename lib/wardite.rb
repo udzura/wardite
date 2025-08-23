@@ -1263,7 +1263,7 @@ module Wardite
       @default_locals = construct_default_locals
     end
 
-    # @rbs return: Array[Op]
+    # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     def body
       code_body.body
     end
@@ -1271,7 +1271,7 @@ module Wardite
     # @rbs return: Array[Symbol]
     def locals_type
       code_body.locals_type
-    end    
+    end
 
     # @rbs return: Array[Integer]
     def locals_count
