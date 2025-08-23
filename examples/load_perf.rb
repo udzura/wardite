@@ -21,4 +21,4 @@ Vernier.profile(out: "./tmp/load_perf.json") do
   puts "Load time: #{Time.now.to_f - start.to_f} seconds"
 end
 
-p "OK"
+puts "OK"
