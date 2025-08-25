@@ -34,6 +34,7 @@ module Wardite
       i32_extend8_s i32_extend16_s i64_extend8_s i64_extend16_s i64_extend32_s
       __unsuported_from_here_on__
     ] #: Array[Symbol]
+    SYMS[0xfc] = :fc
 
     I32_SYMS = SYMS.grep(/^i32/)
     I64_SYMS = SYMS.grep(/^i64/)
@@ -307,14 +308,10 @@ module Wardite
       # $OP_COUNT += 1
     end
 
-    # @rbs chr: String
+    # @rbs chr: Integer
     # @rbs return: Symbol
     def self.to_sym(chr)
-      if chr.ord == 0xfc
-        return :fc
-      end
-
-      return SYMS[chr.ord]
+      return SYMS[chr]
     end
 
     # @rbs lower: Integer

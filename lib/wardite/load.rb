@@ -724,13 +724,14 @@ module Wardite
     # @rbs buf: StringIO
     # @rbs return: [Symbol, Array[Symbol]]
     def self.resolve_code(c, buf)
-      code = Op.to_sym(c)
+      ord = c.ord
+      code = Op::SYMS[ord]
       if code == :fc
         lower = fetch_uleb128(buf)
-        sym = Op.resolve_fc_sym(lower)
+        sym = Op::FC_SYMS[lower]
         return [sym, Op.operand_of(sym)]
       end
-      return [code, Op::OPERANDS[c.ord]]
+      return [code, Op::OPERANDS[ord]]
     end
 
     # @rbs return: DataSection
