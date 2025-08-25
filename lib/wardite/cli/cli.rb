@@ -77,14 +77,18 @@ module Wardite
 
       # @rbs return: void
       def run
-        if invoke
-          invoke_function
-        else
-          if wasi
-            invoke_wasi
-            return
+        require "vernier"
+        puts "Activated Vernier profiling"
+        Vernier.profile(out: "./tmp/load_perf.json") do
+          if invoke
+            invoke_function
+          else
+            if wasi
+              invoke_wasi
+              return
+            end
+            raise("requires function name to invoke")
           end
-          raise("requires function name to invoke")
         end
       end
 
