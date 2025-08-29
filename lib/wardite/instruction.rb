@@ -36,16 +36,6 @@ module Wardite
     ] #: Array[Symbol]
     SYMS[0xfc] = :fc
 
-    I32_SYMS = SYMS.grep(/^i32/)
-    I64_SYMS = SYMS.grep(/^i64/)
-    F32_SYMS = SYMS.grep(/^f32/)
-    F64_SYMS = SYMS.grep(/^f64/)
-    $SYM_PREFIX = {}
-    I32_SYMS.each { |sym| $SYM_PREFIX[sym] = :i32 }
-    I64_SYMS.each { |sym| $SYM_PREFIX[sym] = :i64 }
-    F32_SYMS.each { |sym| $SYM_PREFIX[sym] = :f32 }
-    F64_SYMS.each { |sym| $SYM_PREFIX[sym] = :f64 }
-
     FC_SYMS = %i[
       i32_trunc_sat_f32_s i32_trunc_sat_f32_u i32_trunc_sat_f64_s i32_trunc_sat_f64_u
       i64_trunc_sat_f32_s i64_trunc_sat_f32_u i64_trunc_sat_f64_s i64_trunc_sat_f64_u
@@ -466,34 +456,6 @@ module Wardite
       :convert,
       :convert
     ] #: Array[Symbol]
-
-    # @rbs $table: Hash[Integer, Symbol] | nil
-    $table = {}
-    SYMS.each_with_index do |sym, i|
-      $table[i] = sym
-    end
-    # @rbs @@fc_table: Hash[Integer, Symbol] | nil
-    @@fc_table = nil
-
-    # @rbs return: Hash[Integer, Symbol]
-    def self.table
-      return @@table if @@table != nil
-      @@table = {} #: Hash[Integer, Symbol] | nil
-      SYMS.each_with_index do |sym, i|
-        @@table[i] = sym
-      end
-      @@table
-    end
-
-    # @rbs return: Hash[Integer, Symbol]
-    def self.fc_table
-      return @@fc_table if @@fc_table != nil
-      @@fc_table = {} #: Hash[Integer, Symbol] | nil
-      FC_SYMS.each_with_index do |sym, i|
-        @@fc_table[i] = sym
-      end
-      @@fc_table
-    end
     
     attr_accessor :namespace #: Symbol
 

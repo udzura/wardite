@@ -7,14 +7,6 @@ module Wardite
     # @see https://pengowray.github.io/wasm-ops/
     SYMS: Array[Symbol]
 
-    I32_SYMS: untyped
-
-    I64_SYMS: untyped
-
-    F32_SYMS: untyped
-
-    F64_SYMS: untyped
-
     FC_SYMS: Array[Symbol]
 
     OPERANDS: Array[Array[Symbol]]
@@ -22,12 +14,6 @@ module Wardite
     NAMESPACES: Array[Symbol]
 
     FC_OPERANDS: Array[Symbol]
-
-    # @rbs return: Hash[Integer, Symbol]
-    def self.table: () -> Hash[Integer, Symbol]
-
-    # @rbs return: Hash[Integer, Symbol]
-    def self.fc_table: () -> Hash[Integer, Symbol]
 
     attr_accessor namespace: Symbol
 
