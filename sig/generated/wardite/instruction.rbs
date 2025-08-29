@@ -19,6 +19,10 @@ module Wardite
 
     OPERANDS: Array[Array[Symbol]]
 
+    NAMESPACES: Array[Symbol]
+
+    FC_OPERANDS: Array[Symbol]
+
     # @rbs return: Hash[Integer, Symbol]
     def self.table: () -> Hash[Integer, Symbol]
 

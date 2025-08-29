@@ -122,9 +122,9 @@ module Wardite
     def execute!: () -> void
 
     # @rbs frame: Frame
-    # @rbs insn: [Symbol, Array[operandItem], Integer?, Integer?]
+    # @rbs insn: [Symbol, Symbol, Array[operandItem], Integer?, Integer?]
     # @rbs return: void
-    def eval_insn: (Frame frame, [ Symbol, Array[operandItem], Integer?, Integer? ] insn) -> void
+    def eval_insn: (Frame frame, [ Symbol, Symbol, Array[operandItem], Integer?, Integer? ] insn) -> void
 
     # @rbs labels: Array[Label]
     # @rbs stack: Array[wasmValue]
@@ -172,7 +172,7 @@ module Wardite
 
     attr_accessor sp: Integer
 
-    attr_accessor body: Array[[ Symbol, Array[Wardite::operandItem], Integer?, Integer? ]]
+    attr_accessor body: Array[[ Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer? ]]
 
     attr_accessor arity: Integer
 
@@ -184,11 +184,11 @@ module Wardite
 
     # @rbs pc: Integer
     # @rbs sp: Integer
-    # @rbs body: Array[[Symbol, Array[Wardite::operandItem], Integer?, Integer?]]
+    # @rbs body: Array[[Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer?]]
     # @rbs arity: Integer
     # @rbs locals: Array[wasmValue]
     # @rbs returb: void
-    def initialize: (Integer pc, Integer sp, Array[[ Symbol, Array[Wardite::operandItem], Integer?, Integer? ]] body, Integer arity, Array[wasmValue] locals) -> untyped
+    def initialize: (Integer pc, Integer sp, Array[[ Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer? ]] body, Integer arity, Array[wasmValue] locals) -> untyped
   end
 
   class Label
@@ -362,8 +362,8 @@ module Wardite
     # @rbs return: void
     def initialize: (Array[Symbol] callsig, Array[Symbol] retsig, CodeSection::CodeBody code_body) -> void
 
-    # @rbs return: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
-    def body: () -> Array[[ Symbol, Array[operandItem], Integer?, Integer? ]]
+    # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    def body: () -> Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
 
     # @rbs return: Array[Symbol]
     def locals_type: () -> Array[Symbol]
