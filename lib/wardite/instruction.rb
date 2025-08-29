@@ -34,6 +34,7 @@ module Wardite
       i32_extend8_s i32_extend16_s i64_extend8_s i64_extend16_s i64_extend32_s
       __unsuported_from_here_on__
     ] #: Array[Symbol]
+    SYMS[0xfc] = :fc
 
     FC_SYMS = %i[
       i32_trunc_sat_f32_s i32_trunc_sat_f32_u i32_trunc_sat_f64_s i32_trunc_sat_f64_u
@@ -44,30 +45,417 @@ module Wardite
       __unsuported_from_here_on__
     ] #: Array[Symbol]
 
-    # @rbs @@table: Hash[Integer, Symbol] | nil
-    @@table = nil
-    # @rbs @@fc_table: Hash[Integer, Symbol] | nil
-    @@fc_table = nil
+    OPERANDS = [
+      [],
+      [],
+      [:u8_block],
+      [:u8_block],
+      [:u8_block],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [:u32],
+      [:u32],
+      [:u32_vec, :u32],
+      [],
+      [:u32],
+      [:u32, :u32],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [:u32],
+      [:u32],
+      [:u32],
+      [:u32],
+      [:u32],
+      [],
+      [],
+      [],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32, :u32],
+      [:u32],
+      [:u32],
+      [:i32],
+      [:i64],
+      [:f32],
+      [:f64],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ] #: Array[Array[Symbol]]
 
-    # @rbs return: Hash[Integer, Symbol]
-    def self.table
-      return @@table if @@table != nil
-      @@table = {} #: Hash[Integer, Symbol] | nil
-      SYMS.each_with_index do |sym, i|
-        @@table[i] = sym
-      end
-      @@table
-    end
+    NAMESPACES = [
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :i32,
+      :i64,
+      :f32,
+      :f64,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i32,
+      :i64,
+      :f32,
+      :f64,
+      :i32,
+      :i32,
+      :i64,
+      :i64,
+      :i64,
+      :default,
+      :default,
+      :i32,
+      :i64,
+      :f32,
+      :f64,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert
+    ] #: Array[Symbol]
 
-    # @rbs return: Hash[Integer, Symbol]
-    def self.fc_table
-      return @@fc_table if @@fc_table != nil
-      @@fc_table = {} #: Hash[Integer, Symbol] | nil
-      FC_SYMS.each_with_index do |sym, i|
-        @@fc_table[i] = sym
-      end
-      @@fc_table
-    end
+    FC_OPERANDS = [
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert
+    ] #: Array[Symbol]
     
     attr_accessor :namespace #: Symbol
 
@@ -78,6 +466,10 @@ module Wardite
 
     attr_accessor :meta #: Hash[Symbol, Integer]
 
+    # $OP_COUNT = 0
+    # END {
+    #   puts "Total opcodes: #{$OP_COUNT}"
+    # }
     # @rbs namespace: Symbol
     # @rbs code: Symbol
     # @rbs operand: Array[operandItem]
@@ -86,61 +478,25 @@ module Wardite
       @code = code
       @operand = operand
       @meta = {}
+      # $OP_COUNT += 1
     end
 
-    # @rbs chr: String
-    # @rbs return: [Symbol, Symbol]
+    # @rbs chr: Integer
+    # @rbs return: Symbol
     def self.to_sym(chr)
-      if chr.ord == 0xfc
-        return [:fc, :fc]
-      end
-
-      code = table[chr.ord]
-      if ! code
-        raise "found unknown code 0x#{chr.ord.to_s(16)}"
-      end
-      # opcodes equal to or larger than are "convert" ops
-      if chr.ord >= 0xa7
-        return [:convert, code]
-      end
-
-      prefix = code.to_s.split("_")[0]
-      case prefix
-      when "i32", "i64", "f32", "f64"
-        [prefix.to_sym, code]
-      else
-        [:default, code]
-      end
+      return SYMS[chr]
     end
 
     # @rbs lower: Integer
-    # @rbs return: [Symbol, Symbol]
+    # @rbs return: Symbol
     def self.resolve_fc_sym(lower)
-      if lower == 0xfc
-        return [:fc, :fc]
-      end
-
-      code = fc_table[lower]
-      if ! code
-        raise "found unknown code 0xfc 0x#{lower.to_s(16)}"
-      end
-
-      prefix = code.to_s.split("_")[0]
-      case prefix
-      when "i32", "i64", "f32", "f64"
-        # All FC operations for numeric are "convert"
-        [:convert, code]
-      else
-        [:default, code]
-      end
+      FC_SYMS[lower] || raise("found unknown code 0xfc 0x#{lower.to_s(16)}")
     end
 
     # @rbs code: Symbol
     # @rbs return: Array[Symbol]
     def self.operand_of(code)
       case code
-      when /load/, /store/
-        [:u32, :u32]
       when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if
         [:u32]
       when :memory_init, :memory_copy
@@ -161,6 +517,10 @@ module Wardite
         [:f64]
       when :if, :block, :loop
         [:u8_block]
+      when :i32_load, :i64_load, :f32_load, :f64_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
+           :i64_load8_s, :i64_load8_u, :i64_load16_s, :i64_load16_u, :i64_load32_s, :i64_load32_u, :i32_store, :i64_store,
+           :f32_store, :f64_store, :i32_store8, :i32_store16, :i64_store8, :i64_store16, :i64_store32
+        [:u32, :u32]
       else
         []
       end

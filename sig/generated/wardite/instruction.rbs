@@ -9,11 +9,11 @@ module Wardite
 
     FC_SYMS: Array[Symbol]
 
-    # @rbs return: Hash[Integer, Symbol]
-    def self.table: () -> Hash[Integer, Symbol]
+    OPERANDS: Array[Array[Symbol]]
 
-    # @rbs return: Hash[Integer, Symbol]
-    def self.fc_table: () -> Hash[Integer, Symbol]
+    NAMESPACES: Array[Symbol]
+
+    FC_OPERANDS: Array[Symbol]
 
     attr_accessor namespace: Symbol
 
@@ -24,18 +24,22 @@ module Wardite
 
     attr_accessor meta: Hash[Symbol, Integer]
 
+    # $OP_COUNT = 0
+    # END {
+    #   puts "Total opcodes: #{$OP_COUNT}"
+    # }
     # @rbs namespace: Symbol
     # @rbs code: Symbol
     # @rbs operand: Array[operandItem]
     def initialize: (Symbol namespace, Symbol code, Array[operandItem] operand) -> untyped
 
-    # @rbs chr: String
-    # @rbs return: [Symbol, Symbol]
-    def self.to_sym: (String chr) -> [ Symbol, Symbol ]
+    # @rbs chr: Integer
+    # @rbs return: Symbol
+    def self.to_sym: (Integer chr) -> Symbol
 
     # @rbs lower: Integer
-    # @rbs return: [Symbol, Symbol]
-    def self.resolve_fc_sym: (Integer lower) -> [ Symbol, Symbol ]
+    # @rbs return: Symbol
+    def self.resolve_fc_sym: (Integer lower) -> Symbol
 
     # @rbs code: Symbol
     # @rbs return: Array[Symbol]

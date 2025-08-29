@@ -5,14 +5,15 @@ module Wardite
   module Evaluator
     # @rbs runtime: Runtime
     # @rbs frame: Frame
-    # @rbs insn: Op
-    # @rbs return: void 
-    def self.i64_eval_insn(runtime, frame, insn)
-      case insn.code
+    # @rbs code: Symbol
+    # @rbs operand: Array[operandItem]
+    # @rbs return: bool?
+    def self.i64_eval_insn(runtime, frame, code, operand)
+      case code
 
       when :i64_load
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         addr = runtime.stack.pop
@@ -31,8 +32,8 @@ module Wardite
 
 
       when :i64_load8_s
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         addr = runtime.stack.pop
@@ -51,8 +52,8 @@ module Wardite
 
 
       when :i64_load8_u
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         addr = runtime.stack.pop
@@ -71,8 +72,8 @@ module Wardite
 
 
       when :i64_load16_s
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         addr = runtime.stack.pop
@@ -91,8 +92,8 @@ module Wardite
 
 
       when :i64_load16_u
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         addr = runtime.stack.pop
@@ -111,8 +112,8 @@ module Wardite
 
 
       when :i64_load32_s
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         addr = runtime.stack.pop
@@ -131,8 +132,8 @@ module Wardite
 
 
       when :i64_load32_u
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         addr = runtime.stack.pop
@@ -151,8 +152,8 @@ module Wardite
 
 
       when :i64_store
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         value = runtime.stack.pop
@@ -168,8 +169,8 @@ module Wardite
 
 
       when :i64_store8
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         value = runtime.stack.pop
@@ -185,8 +186,8 @@ module Wardite
 
 
       when :i64_store16
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         value = runtime.stack.pop
@@ -202,8 +203,8 @@ module Wardite
 
 
       when :i64_store32
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         value = runtime.stack.pop
@@ -219,7 +220,7 @@ module Wardite
 
 
       when :i64_const
-        const = insn.operand[0]
+        const = operand[0]
         if !const.is_a?(Integer)
           raise EvalError, "invalid type of operand"
         end
@@ -521,8 +522,9 @@ module Wardite
 
 
       else
-        raise "Unknown opcode for namespace #{insn.namespace}: #{insn.code}"
+        return
       end
+      return true
     end
   end
 end

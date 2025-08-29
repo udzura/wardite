@@ -15,17 +15,25 @@ module Wardite
         case op.code
         when :block
           next_pc = fetch_ops_while_end(idx)
-          op.meta[:end_pos] = next_pc
+          if op.meta[:end_pos] != next_pc
+            raise "mismatched end_pos for block at #{op}: #{op.meta[:end_pos]} vs #{next_pc}"
+          end
   
         when :loop
           next_pc = fetch_ops_while_end(idx)
-          op.meta[:end_pos] = next_pc
+          if op.meta[:end_pos] != next_pc
+            raise "mismatched end_pos for loop at #{op}: #{op.meta[:end_pos]} vs #{next_pc}"
+          end
   
         when :if
           next_pc = fetch_ops_while_end(idx)
           else_pc = fetch_ops_while_else_or_end(idx)
-          op.meta[:end_pos] = next_pc
-          op.meta[:else_pos] = else_pc
+          if op.meta[:end_pos] != next_pc
+            raise "mismatched end_pos for if at #{op}: #{op.meta[:end_pos]} vs #{next_pc}"
+          end
+          if op.meta[:else_pos] != else_pc
+            raise "mismatched else_pos for if at #{op}: #{op.meta[:else_pos]} vs #{else_pc}"
+          end
         end
       end
     end

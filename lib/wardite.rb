@@ -425,7 +425,7 @@ module Wardite
           break
         end
         cur_frame.pc += 1
-        insn = cur_frame.body[cur_frame.pc] #: Op
+        insn = cur_frame.body[cur_frame.pc]
         if !insn
           break
         end
@@ -434,37 +434,38 @@ module Wardite
     end
 
     # @rbs frame: Frame
-    # @rbs insn: Op
+    # @rbs insn: [Symbol, Symbol, Array[operandItem], Integer?, Integer?]
     # @rbs return: void
     def eval_insn(frame, insn)
-      case insn.namespace
+      namespace, code, operand, else_pos, end_pos = *insn
+      case namespace
       when :convert
-        return Evaluator.convert_eval_insn(self, frame, insn)
+        return Evaluator.convert_eval_insn(self, frame, code, operand)
       when :i32
-        return Evaluator.i32_eval_insn(self, frame, insn)
+        return Evaluator.i32_eval_insn(self, frame, code, operand)
       when :i64
-        return Evaluator.i64_eval_insn(self, frame, insn)
+        return Evaluator.i64_eval_insn(self, frame, code, operand)
       when :f32
-        return Evaluator.f32_eval_insn(self, frame, insn)
+        return Evaluator.f32_eval_insn(self, frame, code, operand)
       when :f64
-        return Evaluator.f64_eval_insn(self, frame, insn)
+        return Evaluator.f64_eval_insn(self, frame, code, operand)
       end
 
       # unmached namespace...
-      case insn.code
+      case code
       when :unreachable
         raise Unreachable, "unreachable op"
       when :nop
         return
 
       when :br
-        level = insn.operand[0]
+        level = operand[0]
         raise EvalError, "br op without level" if !level.is_a?(Integer)
         pc = do_branch(frame.labels, stack, level)
         frame.pc = pc
 
       when :br_if
-        level = insn.operand[0]
+        level = operand[0]
         raise EvalError, "br op without level" if !level.is_a?(Integer)
         cond = stack.pop 
         raise EvalError, "cond not found" if !cond.is_a?(I32)
@@ -475,9 +476,9 @@ module Wardite
         frame.pc = pc
 
       when :br_table
-        level_vec = insn.operand[0]
+        level_vec = operand[0]
         raise EvalError, "no level vector" if !level_vec.is_a?(Array)
-        default = insn.operand[1]
+        default = operand[1]
         raise EvalError, "no default specified" if !default.is_a?(Integer)
         idx = stack.pop 
         raise EvalError, "idx not found" if !idx.is_a?(I32)
@@ -490,29 +491,29 @@ module Wardite
         frame.pc = pc
 
       when :block
-        block = insn.operand[0]
+        block = operand[0]
         raise EvalError, "block op without block" if !block.is_a?(Block)
-        next_pc = insn.meta[:end_pos]
+        next_pc = end_pos || -1
         label = Label.new(:block, next_pc, stack.size, block.result_size)
         frame.labels.push(label)
 
       when :loop
-        block = insn.operand[0]
+        block = operand[0]
         raise EvalError, "loop op without block" if !block.is_a?(Block)
         start = frame.pc
-        next_pc = insn.meta[:end_pos]
+        next_pc = end_pos || -1
         label = Label.new(:loop, next_pc, stack.size, block.result_size, start)
         frame.labels.push(label)
 
       when :if
-        block = insn.operand[0]
+        block = operand[0]
         raise EvalError, "if op without block" if !block.is_a?(Block)
         cond = stack.pop
         raise EvalError, "cond not found" if !cond.is_a?(I32)
-        next_pc = insn.meta[:end_pos]
+        next_pc = end_pos || -1
 
         if cond.value.zero?
-          frame.pc = insn.meta[:else_pos]
+          frame.pc = else_pos || -1
         end
 
         if frame.pc == next_pc
@@ -532,7 +533,7 @@ module Wardite
         end
 
       when :call
-        idx = insn.operand[0]
+        idx = operand[0]
         raise EvalError, "[BUG] local operand not found" if !idx.is_a?(Integer)
         fn = self.instance.store.funcs[idx]
         case fn
@@ -548,9 +549,9 @@ module Wardite
       when :call_indirect
         table = self.instance.store.tables[0]
         raise EvalError, "table required but not found" if !table
-        type_idx = insn.operand[0]
+        type_idx = operand[0]
         raise EvalError, "[BUG] index operand invalid" if !type_idx.is_a?(Integer)
-        nullbyte = insn.operand[1]
+        nullbyte = operand[1]
         raise EvalError, "[BUG] invalid bytearray of call_indirect" if nullbyte != 0x0
         table_idx = stack.pop
         raise EvalError, "[BUG] index stack invalid" if !table_idx.is_a?(I32)
@@ -618,7 +619,7 @@ module Wardite
         stack.push(cond.value != 0 ? left : right)
 
       when :local_get
-        idx = insn.operand[0]
+        idx = operand[0]
         if !idx.is_a?(Integer)
           raise EvalError, "[BUG] invalid type of operand"
         end
@@ -630,7 +631,7 @@ module Wardite
         stack.push(local)
 
       when :local_set
-        idx = insn.operand[0]
+        idx = operand[0]
         if !idx.is_a?(Integer)
           raise EvalError, "[BUG] invalid type of operand"
         end
@@ -641,7 +642,7 @@ module Wardite
         frame.locals[idx] = value
 
       when :local_tee
-        idx = insn.operand[0]
+        idx = operand[0]
         if !idx.is_a?(Integer)
           raise EvalError, "[BUG] invalid type of operand"
         end
@@ -653,7 +654,7 @@ module Wardite
         stack.push value
 
       when :global_get
-        idx = insn.operand[0]
+        idx = operand[0]
         if !idx.is_a?(Integer)
           raise EvalError, "[BUG] invalid type of operand"
         end
@@ -664,7 +665,7 @@ module Wardite
         stack.push(global.value)
 
       when :global_set
-        idx = insn.operand[0]
+        idx = operand[0]
         if !idx.is_a?(Integer)
           raise EvalError, "[BUG] invalid type of operand"
         end
@@ -695,11 +696,11 @@ module Wardite
         stack.push(I32(memory.grow(delta.value)))
 
       when :memory_init
-        idx = insn.operand[0]
+        idx = operand[0]
         if !idx.is_a?(Integer)
           raise EvalError, "[BUG] invalid type of operand"
         end
-        if insn.operand[1] != 0x0
+        if operand[1] != 0x0
           $stderr.puts "warning: :memory_init is not ending with 0x00"
         end
         data_sec = instance.data_section
@@ -721,7 +722,7 @@ module Wardite
         memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
 
       when :memory_copy
-        if insn.operand[0] != 0x0 || insn.operand[1] != 0x0
+        if operand[0] != 0x0 || operand[1] != 0x0
           $stderr.puts "warning: :memory_copy is not ending with 0x00"
         end
         length, src_offset, dest_offset = stack.pop, stack.pop, stack.pop
@@ -734,7 +735,7 @@ module Wardite
         memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
 
       when :memory_fill
-        if insn.operand[0] != 0x0
+        if operand[0] != 0x0
           $stderr.puts "warning: :memory_fill is not ending with 0x00"
         end
         length, byte, dest_offset = stack.pop, stack.pop, stack.pop
@@ -857,7 +858,7 @@ module Wardite
     attr_accessor :pc #: Integer
     attr_accessor :sp #: Integer
 
-    attr_accessor :body #: Array[Op]
+    attr_accessor :body #: Array[[Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer?]]
 
     attr_accessor :arity #: Integer
 
@@ -869,7 +870,7 @@ module Wardite
 
     # @rbs pc: Integer
     # @rbs sp: Integer
-    # @rbs body: Array[Op]
+    # @rbs body: Array[[Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer?]]
     # @rbs arity: Integer
     # @rbs locals: Array[wasmValue]
     # @rbs returb: void
@@ -1263,7 +1264,7 @@ module Wardite
       @default_locals = construct_default_locals
     end
 
-    # @rbs return: Array[Op]
+    # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     def body
       code_body.body
     end
@@ -1271,7 +1272,7 @@ module Wardite
     # @rbs return: Array[Symbol]
     def locals_type
       code_body.locals_type
-    end    
+    end
 
     # @rbs return: Array[Integer]
     def locals_count
