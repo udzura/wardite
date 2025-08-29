@@ -13,6 +13,8 @@ module Wardite
       attr_reader :wasi    #: bool
       attr_reader :yjit    #: bool
 
+      attr_reader :profile_file_path #: String?
+
       # @rbs args: Array[String]
       # @rbs return: void
       def initialize(args)
@@ -36,6 +38,9 @@ module Wardite
           }
           opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
             @yjit = true
+          }
+          opts.on("--out-profile [file]", "Enable Vernier profiling and save to the file") {|v|
+            @profile_file_path = v
           }
           opts.on("FILE.wasm") { }
         end
@@ -77,19 +82,28 @@ module Wardite
 
       # @rbs return: void
       def run
-        require "vernier"
-        #puts "Activated Vernier profiling"
-        #Vernier.profile(out: "./tmp/load_perf.json") do
-          if invoke
-            invoke_function
-          else
-            if wasi
-              invoke_wasi
-              return
-            end
-            raise("requires function name to invoke")
+        if profile_file_path
+          require "vernier"
+          $stderr.puts "Activated Vernier profiling"
+          Vernier.profile(out: profile_file_path) do
+            __run
           end
-        #end
+        else
+          __run
+        end
+      end
+
+      # @rbs return: void
+      def __run
+        if invoke
+          invoke_function
+        else
+          if wasi
+            invoke_wasi
+            return
+          end
+          raise("requires function name to invoke")
+        end
       end
 
       # @rbs return: void

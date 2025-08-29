@@ -1,0 +1,3 @@
+module Vernier
+  def self.profile: (?out: String) { (void) -> void } -> void
+end
