@@ -43,9 +43,9 @@ module Wardite
     # @rbs operand: Array[operandItem]
     def initialize: (Symbol namespace, Symbol code, Array[operandItem] operand) -> untyped
 
-    # @rbs chr: String
+    # @rbs chr: Integer
     # @rbs return: Symbol
-    def self.to_sym: (String chr) -> Symbol
+    def self.to_sym: (Integer chr) -> Symbol
 
     # @rbs lower: Integer
     # @rbs return: Symbol

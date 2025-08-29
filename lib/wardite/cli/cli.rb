@@ -78,8 +78,8 @@ module Wardite
       # @rbs return: void
       def run
         require "vernier"
-        puts "Activated Vernier profiling"
-        Vernier.profile(out: "./tmp/load_perf.json") do
+        #puts "Activated Vernier profiling"
+        #Vernier.profile(out: "./tmp/load_perf.json") do
           if invoke
             invoke_function
           else
@@ -89,7 +89,7 @@ module Wardite
             end
             raise("requires function name to invoke")
           end
-        end
+        #end
       end
 
       # @rbs return: void

@@ -5,10 +5,11 @@ module Wardite
   module Evaluator
     # @rbs runtime: Runtime
     # @rbs frame: Frame
-    # @rbs insn: Op
-    # @rbs return: void 
-    def self.convert_eval_insn(runtime, frame, insn)
-      case insn.code
+    # @rbs code: Symbol
+    # @rbs operand: Array[operandItem]
+    # @rbs return: bool?
+    def self.convert_eval_insn(runtime, frame, code, operand)
+      case code
 
       when :i32_wrap_i64
         from = runtime.stack.pop
@@ -331,8 +332,9 @@ module Wardite
 
 
       else
-        raise "Unknown opcode for namespace #{insn.namespace}: #{insn.code}"
+        return
       end
+      return true
     end
   end
 end

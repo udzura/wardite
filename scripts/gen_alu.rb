@@ -49,8 +49,8 @@ module GenAlu
   DEFS = { #: Hash[Symbol, String]
     load: <<~RUBY,
       when :${PREFIX}_load
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         addr = runtime.stack.pop
@@ -70,8 +70,8 @@ module GenAlu
 
     load8_s: <<~RUBY,
       when :${PREFIX}_load8_s
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         addr = runtime.stack.pop
@@ -91,8 +91,8 @@ module GenAlu
 
     load8_u: <<~RUBY,
       when :${PREFIX}_load8_u
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         addr = runtime.stack.pop
@@ -112,8 +112,8 @@ module GenAlu
 
     load16_s: <<~RUBY,
       when :${PREFIX}_load16_s
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         addr = runtime.stack.pop
@@ -133,8 +133,8 @@ module GenAlu
 
     load16_u: <<~RUBY,
       when :${PREFIX}_load16_u
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         addr = runtime.stack.pop
@@ -154,8 +154,8 @@ module GenAlu
 
     load32_s: <<~RUBY,
       when :${PREFIX}_load32_s
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         addr = runtime.stack.pop
@@ -175,8 +175,8 @@ module GenAlu
 
     load32_u: <<~RUBY,
       when :${PREFIX}_load32_u
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         addr = runtime.stack.pop
@@ -196,8 +196,8 @@ module GenAlu
 
     store: <<~RUBY,
       when :${PREFIX}_store
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         value = runtime.stack.pop
@@ -214,8 +214,8 @@ module GenAlu
 
     store8: <<~RUBY,
       when :${PREFIX}_store8
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         value = runtime.stack.pop
@@ -232,8 +232,8 @@ module GenAlu
 
     store16: <<~RUBY,
       when :${PREFIX}_store16
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         value = runtime.stack.pop
@@ -250,8 +250,8 @@ module GenAlu
 
     store32: <<~RUBY,
       when :${PREFIX}_store32
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
 
         value = runtime.stack.pop
@@ -268,7 +268,7 @@ module GenAlu
 
     const: <<~RUBY,
       when :${PREFIX}_const
-        const = insn.operand[0]
+        const = operand[0]
         if !const.is_a?(Integer)
           raise EvalError, "invalid type of operand"
         end
@@ -277,7 +277,7 @@ module GenAlu
 
     const__f: <<~RUBY,
       when :${PREFIX}_const
-        const = insn.operand[0]
+        const = operand[0]
         if !const.is_a?(Float)
           raise EvalError, "invalid type of operand"
         end

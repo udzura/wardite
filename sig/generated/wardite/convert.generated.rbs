@@ -4,8 +4,9 @@ module Wardite
   module Evaluator
     # @rbs runtime: Runtime
     # @rbs frame: Frame
-    # @rbs insn: Op
-    # @rbs return: void 
-    def self.convert_eval_insn: (Runtime runtime, Frame frame, Op insn) -> void
+    # @rbs code: Symbol
+    # @rbs operand: Array[operandItem]
+    # @rbs return: bool?
+    def self.convert_eval_insn: (Runtime runtime, Frame frame, Symbol code, Array[operandItem] operand) -> bool?
   end
 end
