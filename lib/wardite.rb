@@ -43,8 +43,10 @@ module Wardite
 
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs engine: Symbol
+    # @rbs disabled_optimizations: Array[Symbol]
+    # @rbs mir_profile: bool
     # @rbs &blk: (Instance) -> void
-    def initialize(import_object, engine: :stack, &blk)
+    def initialize(import_object, engine: :stack, disabled_optimizations: [], mir_profile: false, &blk)
       @wasi = nil
 
       blk.call(self)
@@ -74,7 +76,7 @@ module Wardite
       check_data_count
       @runtime = case engine
       when :stack then Runtime.new(self)
-      when :efflorescence then Efflorescence::VM.new(self)
+      when :efflorescence then Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile)
       else raise LoadError, "unknown engine: #{engine}"
       end
     end

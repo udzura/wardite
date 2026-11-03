@@ -1,5 +1,151 @@
 # Wardite i32 benchmark
 
+## Phase 2 optimization comparison
+
+The Phase 2 sample below predates the integer-literal dispatch follow-up; see
+[the isolated dispatch comparison](#integer-literal-dispatch) for that change.
+
+```sh
+ruby benchmark/compare_optimizations.rb 100000 123
+# Also measure each feature independently disabled:
+ABLATIONS=1 RUNS=3 WARMUPS=1 ruby benchmark/compare_optimizations.rb 100000 123
+```
+
+Requires Ruby, Spinel/C toolchain, make and wasm-tools. The script builds the CLI
+and phase worker, verifies every measured CLI/worker pair against the independent
+reference, collects detailed counters in separate untimed runs, and measures
+CRuby, available YJIT and Spinel. Defaults: five samples after two warmups.
+`unoptimized` disables all Phase 2 features in the current code, while
+`optimized` enables all of them. Each-feature-off measurements keep the other
+features enabled; their effects interact (e.g. disabling immediates also prevents
+immediate shift/XOR fusion), so speedups are not additive.
+
+The report `build/benchmark/optimizations.json` contains raw samples, phase and
+whole-process means, CRuby execution allocations and per-opcode counters.
+Time measurement does not enable MIR counters. Both phase and CLI measurements
+include the same Ruby-facing boxed return boundary. Spinel allocations are `n/a`.
+The shared phase loader creates the default runtime, then the selected MIR VM is
+constructed in the MIR phase; the fixture has no start function. Phase timing
+uses a separate executable, whose Spinel inference can differ from the CLI.
+`SPINEL` and `SPINELFLAGS` choose the compiler/flags (default `-O2`).
+
+For an independently built Phase 1 baseline (requires commit `67fbfae` locally):
+
+```sh
+mkdir -p build/phase1 build/benchmark
+git archive 67fbfae | tar -x -C build/phase1
+make -C build/phase1 spinel
+spinel -I build/phase1/lib --strict-require -O2 build/phase1/benchmark/engine_phases.rb -o build/benchmark/phase1-engine-phases
+PHASE1_ROOT=build/phase1 PHASE1_BIN=build/phase1/build/wardite PHASE1_WORKER=build/benchmark/phase1-engine-phases ruby benchmark/compare_optimizations.rb 100000 123
+```
+
+The native baseline defaults to `build/benchmark/phase1-wardite` when
+`PHASE1_BIN` is omitted. The archived CRuby source runs independently, rather
+than using the current engine's disabled-pass mode as a substitute for Phase 1.
+[Implementation and metric definitions](../docs/efflorescence-phase2.md)
+([日本語](../docs/efflorescence-phase2-ja.md)).
+
+### Phase 2 sample (2026-11-04)
+
+macOS arm64, CRuby 4.0.9 (`3e93b23afc`), Spinel `2026.10.25+1967`
+(`6e7fc1355`, Apple clang 21.0.0), `-O2` and default integer overflow checks.
+100,000 rounds, seed 123, five samples after two warmups. The Phase 1 baseline
+is the archived source and independent native executables from `67fbfae`.
+All 18 CLI/worker pairs matched checksum `3870791521` before timing, and every
+timed sample was checked again. Timings are milliseconds, not speedup factors.
+
+Whole CLI process time:
+
+| Runtime | Phase 1 inline | Phase 2 inline | Phase 1 call | Phase 2 call |
+| --- | ---: | ---: | ---: | ---: |
+| CRuby | 414.82 | 317.33 | 668.59 | 575.44 |
+| CRuby + YJIT | 215.49 | 159.61 | 336.77 | 235.56 |
+| Spinel | 62.58 | 17.83 | 86.63 | 30.71 |
+
+Execution phase only (separate worker binaries):
+
+| Runtime | Phase 1 inline | Phase 2 inline | Phase 1 call | Phase 2 call |
+| --- | ---: | ---: | ---: | ---: |
+| CRuby | 393.16 | 253.94 | 609.77 | 500.60 |
+| CRuby + YJIT | 153.46 | 65.38 | 231.06 | 141.26 |
+| Spinel | 30.98 | 12.25 | 49.03 | 23.33 |
+
+Current-code unoptimized execution was also measured: Spinel 33.07/56.26 ms,
+CRuby 375.25/667.11 ms, YJIT 126.85/241.11 ms (inline/call). This is distinct
+from the independently compiled Phase 1 baseline. Phase 2 MIR construction
+averaged 0.58/0.61 ms on CRuby, 23.25/23.30 ms with YJIT, and 0.17/0.18 ms
+on Spinel. This cost matters for short workloads.
+
+CRuby's `call_mix` execution allocations fell from 200,074 in current-code
+unoptimized mode to 79 with all features enabled. These counts include API
+setup and one boxed return, and exclude module loading/translation. They do
+not imply the same total allocation count on Spinel; instrumented MIR separately
+confirmed Frame allocations falling from 100,001 to 2 on both runtimes.
+
+An exploratory each-feature-off run (three CLI samples after one warmup) gave
+the following Spinel process times. These use the same CLI boundary as above;
+they are diagnostic observations, not independent additive speedups:
+
+| Disabled feature | inline | call |
+| --- | ---: | ---: |
+| None | 16.43 | 30.18 |
+| COPY reduction | 19.95 | 34.55 |
+| Immediates | 17.52 | 31.82 |
+| Branch fusion | 16.51 | 31.75 |
+| Superinstructions | 17.81 | 32.10 |
+| Flat code | 40.05 | 60.38 |
+| Frame reuse | 15.75 | 33.61 |
+
+Flat code had the clearest Spinel benefit. Frame reuse primarily helped call
+workloads. Some CRuby/YJIT variants were within noise or faster with an
+individual feature disabled; feature defaults prioritize Spinel while retaining
+the individual controls. Accumulators and basic-block dispatch are deferred.
+Raw local reports are `build/benchmark/optimizations.json` (five-sample run)
+and `build/benchmark/optimizations-experiment.json` (exploratory run).
+
+### Integer-literal dispatch
+
+```sh
+ruby benchmark/compare_dispatch.rb 100000 123
+RUNTIMES=Spinel ruby benchmark/compare_dispatch.rb 1000000 123
+```
+
+The script compares `when Opcode::NAME` with `when <integer literal>` while
+keeping all Phase 2 features enabled in both variants. It creates a temporary
+constant-label baseline from the current source's annotated dispatch labels,
+builds both CLI and worker with the same Spinel/flags, and verifies every
+CLI/worker pair against the independent reference. Paired samples alternate
+order; all timed invocations are checked again. Defaults are five samples after
+two warmups. `RUNTIMES` can select `Spinel`, `CRuby`, and/or available `YJIT`,
+comma-separated. Raw samples are saved to `build/benchmark/dispatch.json`.
+
+On 2026-11-04, with the same CRuby/Spinel toolchain and `-O2` as above,
+100,000 rounds and seed 123, five measured processes after two warmups gave
+these execution-phase means (milliseconds):
+
+| Runtime | Constant inline | Literal inline | Constant call | Literal call |
+| --- | ---: | ---: | ---: | ---: |
+| CRuby | 254.08 | 119.21 | 492.31 | 303.84 |
+| CRuby + YJIT | 65.93 | 58.71 | 140.36 | 129.40 |
+| Spinel | 10.11 | 9.13 | 25.93 | 21.21 |
+
+The short Spinel constant-label call samples had a 6.53 ms standard deviation,
+so a longer Spinel-only run used **1,000,000 rounds**, seed 123. All calls
+returned `1259766978`. Five samples after two warmups gave:
+
+| Spinel export | Constant execution | Literal execution | Time reduction |
+| --- | ---: | ---: | ---: |
+| `inline_mix` | 100.43 ± 0.49 ms | 90.68 ± 0.28 ms | 9.7% |
+| `call_mix` | 229.76 ± 0.30 ms | 209.93 ± 0.94 ms | 8.6% |
+
+Uncertainty is the sample standard deviation, not a confidence interval.
+Whole CLI process times in that longer run were 104.94 → 97.33 ms for inline
+and 248.37 → 221.64 ms for call. Thus this change gives a further measured
+Spinel improvement beyond the other Phase 2 optimizations; the short call run's
+larger apparent gain should not be treated as the stable speedup.
+Local raw reports are `build/benchmark/dispatch-100k.json` and
+`build/benchmark/dispatch-million.json` (also the latest `dispatch.json`).
+
 ## Compare the stack and Efflorescence engines
 
 ```sh

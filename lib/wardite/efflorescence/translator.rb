@@ -115,7 +115,7 @@ module Wardite
             next unless @reachable
             slot = @constants[value]
             unless slot
-              slot = register(value)
+              slot = @function.allocate_constant(value)
               @constants[value] = slot
             end
             @stack << slot

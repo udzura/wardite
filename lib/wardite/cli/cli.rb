@@ -13,6 +13,9 @@ module Wardite
       attr_reader :wasi    #: bool
       attr_reader :yjit    #: bool
       attr_reader :new_engine #: bool
+      attr_reader :disabled_optimizations #: Array[Symbol]
+      attr_reader :mir_dump #: bool
+      attr_reader :mir_profile #: bool
 
       attr_reader :profile_file_path #: String?
 
@@ -23,6 +26,9 @@ module Wardite
         @wasi = RUBY_ENGINE != "spinel"
         @yjit = false
         @new_engine = false
+        @disabled_optimizations = []
+        @mir_dump = false
+        @mir_profile = false
         @memsize = 1
         options = OptionParser.new do |opts|
           opts.version = Wardite::VERSION
@@ -41,6 +47,11 @@ module Wardite
           opts.on("--new-engine", "Use the Efflorescence register VM (i32 subset)") {|_v|
             @new_engine = true
           }
+          opts.on("--mir-disable NAME", "Disable copy, immediate, branch, superinstruction, flat, frames, or all (repeatable)") {|v|
+            @disabled_optimizations << v.to_sym
+          }
+          opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }
+          opts.on("--mir-profile", "Instrument MIR execution (do not use for timing)") { @mir_profile = true }
           opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
             @yjit = true
           }
@@ -50,6 +61,9 @@ module Wardite
           opts.on("FILE.wasm") { }
         end
         options.parse!(args)
+        if !new_engine && (!disabled_optimizations.empty? || mir_dump || mir_profile)
+          raise "MIR options require --new-engine"
+        end
         @file = args[0] || raise("require file argument")
         @args = (args[1..-1] || [])
         @args.unshift if @args[0] == '--'
@@ -81,7 +95,8 @@ module Wardite
       # @rbs return: ::Wardite::Instance
       def new_instance
         ins = File.open(file, "rb") do |f|
-          Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi, engine: new_engine ? :efflorescence : :stack)
+          Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi, engine: new_engine ? :efflorescence : :stack,
+            disabled_optimizations: disabled_optimizations, mir_profile: mir_profile)
         end
         if memsize > 1
           ins.store.memories[0].grow(memsize)
@@ -126,6 +141,11 @@ module Wardite
         end
         instance = new_instance
         ret = instance.runtime.call(invoke, args)
+        runtime = instance.runtime
+        if runtime.is_a?(Wardite::Efflorescence::VM)
+          $stderr.puts runtime.dump_mir if mir_dump
+          $stderr.puts runtime.metrics.report if mir_profile
+        end
         $stderr.puts "return value: #{ret.inspect}"
       end
 

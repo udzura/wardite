@@ -29,9 +29,9 @@ module EfflorescenceHelper
     end
   end
 
-  def load_efflorescence(code)
+  def load_efflorescence(code, **options)
     Wardite::BinaryLoader.load_from_buffer(
-      StringIO.new(compile_efflorescence_wat(code)), enable_wasi: false, engine: :efflorescence
+      StringIO.new(compile_efflorescence_wat(code)), enable_wasi: false, engine: :efflorescence, **options
     )
   end
 end

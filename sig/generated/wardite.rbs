@@ -26,8 +26,10 @@ module Wardite
 
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs engine: Symbol
+    # @rbs disabled_optimizations: Array[Symbol]
+    # @rbs mir_profile: bool
     # @rbs &blk: (Instance) -> void
-    def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol) { (Instance) -> void } -> untyped
+    def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?mir_profile: bool) { (Instance) -> void } -> untyped
 
     # @rbs return: void
     def check_data_count: () -> void

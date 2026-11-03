@@ -7,8 +7,16 @@ module Wardite
 
       attr_reader ir: Wardite::Efflorescence::IR
 
+      attr_reader semantic_ir: Wardite::Efflorescence::IR
+
+      attr_reader optimized_ir: Wardite::Efflorescence::IR
+
+      attr_reader metrics: Wardite::Efflorescence::Metrics
+
       # @rbs instance: Wardite::Instance
-      def initialize: (Wardite::Instance instance) -> untyped
+      # @rbs disabled_optimizations: Array[Symbol]
+      # @rbs profile: bool
+      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool) -> untyped
 
       # @rbs name: String|Symbol
       # @rbs return: bool
@@ -35,6 +43,9 @@ module Wardite
       # @rbs return: bool
       def respond_to_missing?: (String | Symbol name, ?bool include_private) -> bool
 
+      # @rbs return: String
+      def dump_mir: () -> String
+
       private
 
       # No Wasm operand stack, boxed values, or recursive Ruby calls here.
@@ -44,6 +55,16 @@ module Wardite
       # @rbs arguments: Array[Integer]
       # @rbs return: Integer
       def execute: (Integer index, Array[Integer] arguments) -> Integer
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs return: Integer
+      def execute_semantic: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools) -> Integer
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs return: Integer
+      def execute_flat: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools) -> Integer
     end
   end
 end

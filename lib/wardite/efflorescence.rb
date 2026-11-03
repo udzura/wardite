@@ -2,4 +2,6 @@
 
 require_relative "efflorescence/ir"
 require_relative "efflorescence/translator"
+require_relative "efflorescence/optimizer"
+require_relative "efflorescence/inspection"
 require_relative "efflorescence/vm"

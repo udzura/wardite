@@ -34,6 +34,41 @@ module Wardite
       RETURN: ::Integer
 
       TRAP: ::Integer
+
+      I32_ADD_IMM: ::Integer
+
+      I32_SUB_IMM: ::Integer
+
+      I32_MUL_IMM: ::Integer
+
+      I32_XOR_IMM: ::Integer
+
+      I32_SHL_IMM: ::Integer
+
+      I32_SHR_U_IMM: ::Integer
+
+      BR_IF_ZERO: ::Integer
+
+      I32_XOR_SHR_U_IMM: ::Integer
+
+      I32_XOR_SHL_IMM: ::Integer
+
+      PROFILE: ::Integer
+
+      NAMES: untyped
+
+      # These are semantic register accesses, excluding frame initialization.
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Array[Integer]
+      def self.read_positions: (Wardite::Efflorescence::Instruction instruction) -> Array[Integer]
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Integer
+      def self.destination: (Wardite::Efflorescence::Instruction instruction) -> Integer
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Integer
+      def self.target_position: (Wardite::Efflorescence::Instruction instruction) -> Integer
     end
 
     # A small wrapper keeps operand reads monomorphic even when a compiler
@@ -55,6 +90,9 @@ module Wardite
 
       # @rbs return: Integer
       def size: () -> Integer
+
+      # @rbs return: Wardite::Efflorescence::Instruction
+      def copy: () -> Wardite::Efflorescence::Instruction
     end
 
     # Each instruction holds an integer array. Sources and destinations are slots
@@ -73,6 +111,12 @@ module Wardite
       attr_reader instructions: Array[Wardite::Efflorescence::Instruction]
 
       attr_reader initial_registers: Array[Integer]
+
+      attr_reader constant_registers: Array[Integer]
+
+      attr_reader bytecode: Array[Integer]
+
+      attr_reader calls: Array[Wardite::Efflorescence::CallSite]
 
       # @rbs index: Integer
       # @rbs parameter_types: Array[Symbol]
@@ -93,6 +137,32 @@ module Wardite
       # @rbs value: Integer
       # @rbs return: Integer
       def allocate_register: (Integer value) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def allocate_constant: (Integer value) -> Integer
+
+      # @rbs instructions: Array[Wardite::Efflorescence::Instruction]
+      # @rbs return: void
+      def replace_instructions: (Array[Wardite::Efflorescence::Instruction] instructions) -> void
+
+      # @rbs code: Array[Integer]
+      # @rbs calls: Array[Wardite::Efflorescence::CallSite]
+      # @rbs return: void
+      def install_code: (Array[Integer] code, Array[Wardite::Efflorescence::CallSite] calls) -> void
+
+      # @rbs return: Wardite::Efflorescence::Function
+      def copy: () -> Wardite::Efflorescence::Function
+    end
+
+    class CallSite
+      attr_reader callee: Wardite::Efflorescence::Function
+
+      attr_reader arguments: Array[Integer]
+
+      # @rbs callee: Wardite::Efflorescence::Function
+      # @rbs arguments: Array[Integer]
+      def initialize: (Wardite::Efflorescence::Function callee, Array[Integer] arguments) -> untyped
     end
 
     class IR
@@ -100,6 +170,9 @@ module Wardite
 
       # @rbs functions: Array[Wardite::Efflorescence::Function]
       def initialize: (Array[Wardite::Efflorescence::Function] functions) -> untyped
+
+      # @rbs return: Wardite::Efflorescence::IR
+      def copy: () -> Wardite::Efflorescence::IR
     end
 
     class Frame
@@ -114,6 +187,28 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return_register: Integer
       def initialize: (Wardite::Efflorescence::Function function, Integer return_register) -> untyped
+
+      # @rbs return_register: Integer
+      # @rbs return: void
+      def reset: (Integer return_register) -> void
+    end
+
+    # An invocation owns its pools. Active recursive frames never enter the
+    # free list, and overlapping/reentrant public calls cannot share a frame.
+    class FramePool
+      attr_reader created: Integer
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs reuse: bool
+      def initialize: (Wardite::Efflorescence::Function function, bool reuse) -> untyped
+
+      # @rbs destination: Integer
+      # @rbs return: Wardite::Efflorescence::Frame
+      def acquire: (Integer destination) -> Wardite::Efflorescence::Frame
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs return: void
+      def release: (Wardite::Efflorescence::Frame frame) -> void
     end
   end
 end

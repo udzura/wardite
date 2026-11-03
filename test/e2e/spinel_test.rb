@@ -15,6 +15,24 @@ class WarditeSpinelTest < Test::Unit::TestCase
     assert File.executable?(@binary), "Native executable not found: #{@binary}"
   end
 
+  test "Efflorescence opcode dispatch lowers to C switches" do
+    Dir.mktmpdir("wardite-spinel-dispatch") do |dir|
+      generated = File.join(dir, "wardite.c")
+      output, status = Open3.capture2e(ENV.fetch("SPINEL", "spinel"), "--strict-require",
+        "-I#{ROOT}/lib", "-c", "#{ROOT}/exe/wardite", "-o", generated)
+      assert status.success?, output
+      code = File.read(generated)
+      %w[semantic flat].each do |name|
+        body = code[/^static [^\n]+sp_(?:Wardite__Efflorescence__)?VM_execute_#{name}\([^;\n]*\) \{.*?(?=^static |\z)/m]
+        assert_not_nil body, "Missing generated execute_#{name}"
+        assert_match(/switch \(_t\d+/, body)
+        assert_equal (0...Wardite::Efflorescence::Opcode::NAMES.size).to_a,
+          body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
+          "execute_#{name} should dispatch every opcode through the literal switch"
+      end
+    end
+  end
+
   test "i32.const with WASI disabled by default" do
     assert_native_result(<<~WAT, "answer", [], 42, no_wasi_flag: false)
       (module
@@ -30,7 +48,11 @@ class WarditeSpinelTest < Test::Unit::TestCase
       MIX_CASES.each do |rounds, seed|
         expected = reference_mix(rounds, seed)
         expected -= 2**32 if expected >= 2**31
-        [[], ["--new-engine"]].each do |engine|
+        engine_options = [[], ["--new-engine"], ["--new-engine", "--mir-disable", "all"]]
+        Wardite::Efflorescence::Configuration::FEATURES.each do |feature|
+          engine_options << ["--new-engine", "--mir-disable", feature.to_s]
+        end
+        engine_options.each do |engine|
           %w[inline_mix call_mix].each do |export|
             out, err, status = Open3.capture3(@binary, *engine, "--invoke", export,
               "--", wasm, rounds.to_s, seed.to_s)
@@ -42,6 +64,38 @@ class WarditeSpinelTest < Test::Unit::TestCase
         end
       end
     end
+  end
+
+  test "Efflorescence profiling and MIR dumps are opt in on native engine" do
+    Dir.mktmpdir("wardite-spinel-mir-profile") do |dir|
+      wasm = File.join(dir, "mix.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(File.read(MIX_WAT)))
+      out, err, status = Open3.capture3(@binary, "--new-engine", "--mir-dump", "--mir-profile",
+        "--invoke", "call_mix", "--", wasm, "10", "123")
+      assert status.success?, err
+      assert_equal "", out
+      assert_include err, "Semantic MIR (instructions=35 copies=11 registers=37)"
+      assert_include err, "Optimized MIR (instructions=20 copies=2 registers=37)"
+      assert_include err, "I32_XOR_SHR_U_IMM"
+      assert_include err, "dispatches=93 copies=1 register_reads=83 register_writes=71 function_entries=11 frames_created=2"
+      assert_include err, "return value: I32(483678737)"
+    end
+  end
+
+  test "Efflorescence reused native frames reinitialize local values" do
+    code = <<~WAT
+      (module
+        (func $helper (param i32 i32) (result i32) (local i32)
+          block
+            local.get 0 i32.eqz br_if 0
+            local.get 1 local.set 2
+          end
+          local.get 2)
+        (func (export "run") (result i32)
+          i32.const 1 i32.const 99 call $helper drop
+          i32.const 0 i32.const 33 call $helper))
+    WAT
+    assert_native_result(code, "run", [], 0, new_engine: true)
   end
 
   test "Efflorescence snapshot and block result on native engine" do

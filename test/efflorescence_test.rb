@@ -38,7 +38,7 @@ class EfflorescenceTest < Test::Unit::TestCase
       (module (func (export "add") (param i32) (result i32)
         local.get 0 i32.const 10 i32.add))
     WAT
-    function = instance.runtime.ir.functions[0]
+    function = instance.runtime.semantic_ir.functions[0]
     assert_equal 0, function.index
     assert_equal [:i32], function.parameter_types
     assert_equal [:i32], function.result_types
@@ -183,7 +183,7 @@ class EfflorescenceTest < Test::Unit::TestCase
     assert_equal reference_mix(1000, 123), result.value
     assert_equal 1, boxes
     assert_equal 0, runtime_calls
-    assert_equal 1001, frames
+    assert_equal 2, frames
     assert instance.runtime.ir.functions.all? { |fn| fn.initial_registers.all? { |v| v.is_a?(Integer) } }
   end
 

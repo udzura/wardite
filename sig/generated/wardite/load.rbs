@@ -180,8 +180,10 @@ module Wardite
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs enable_wasi: boolish
     # @rbs engine: Symbol
+    # @rbs disabled_optimizations: Array[Symbol]
+    # @rbs mir_profile: bool
     # @rbs return: Instance
-    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, wasmModuleSrc], ?enable_wasi: boolish, ?engine: Symbol) -> Instance
+    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, wasmModuleSrc], ?enable_wasi: boolish, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?mir_profile: bool) -> Instance
 
     # @rbs return: Integer
     def self.preamble: () -> Integer

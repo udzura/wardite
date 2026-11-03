@@ -2,6 +2,11 @@
 
 [English](efflorescence.md)
 
+この文書はPhase 1（`67fbfae`）の記録です。現在のEfflorescenceでは、
+[Phase 2の最適化](efflorescence-phase2-ja.md)がデフォルトで有効になります。
+`--mir-disable all` で、最適化していないMIRの実行を選べます。
+Wardite全体のデフォルトは、引き続き既存のスタックVMです。
+
 Efflorescenceは、明示的に選択して使う、Pure Ruby製のレジスタ型インタプリタです。
 デフォルトは引き続き、スタック型インタプリタの `Wardite::Runtime` です。
 両エンジンはバイナリローダー、デコード済みのWasm命令、ストア、エクスポート情報を共有しますが、
