@@ -164,8 +164,8 @@ module Wardite
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
-    # @rbs returb: void
-    def initialize: (Array[Symbol] callsig, Array[Symbol] retsig) -> untyped
+    # @rbs return: void
+    def initialize: (Array[Symbol] callsig, Array[Symbol] retsig) -> void
   end
 
   class Frame
@@ -188,8 +188,8 @@ module Wardite
     # @rbs body: Array[[Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer?]]
     # @rbs arity: Integer
     # @rbs locals: Array[wasmValue]
-    # @rbs returb: void
-    def initialize: (Integer pc, Integer sp, Array[[ Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer? ]] body, Integer arity, Array[wasmValue] locals) -> untyped
+    # @rbs return: void
+    def initialize: (Integer pc, Integer sp, Array[[ Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer? ]] body, Integer arity, Array[wasmValue] locals) -> void
   end
 
   class Label

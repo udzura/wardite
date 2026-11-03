@@ -62,6 +62,33 @@ class WarditeSpinelTest < Test::Unit::TestCase
     assert_native_result(code, "choose", [1], 42)
   end
 
+  test "indirect calls use element index vectors" do
+    code = <<~WAT
+      (module
+        (type $result (func (result i32)))
+        (table 2 funcref)
+        (elem (i32.const 0) $first $second)
+        (func $first (result i32) i32.const 111)
+        (func $second (result i32) i32.const 222)
+        (func (export "choose") (param i32) (result i32)
+          local.get 0
+          call_indirect (type $result)))
+    WAT
+    assert_native_result(code, "choose", [0], 111)
+    assert_native_result(code, "choose", [1], 222)
+  end
+
+  test "i64 arithmetic keeps overflowing intermediate values before masking" do
+    assert_native_result(<<~WAT, "overflow", [], 1)
+      (module
+        (func (export "overflow") (result i32)
+          i64.const 4294967296
+          i64.const 4294967296
+          i64.mul
+          i64.eqz))
+    WAT
+  end
+
   private
 
   def assert_native_result(code, export, args, expected, no_wasi_flag: true)

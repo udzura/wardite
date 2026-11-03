@@ -11,6 +11,6 @@ gem "ostruct"
 gem "test-unit", "~> 3.0"
 
 gem "rbs-inline", :require => false
-gem "steep", ">= 1.8.1"
+gem "steep", "~> 2.1"
 
 gem "vernier"
