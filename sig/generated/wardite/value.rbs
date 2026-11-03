@@ -266,16 +266,11 @@ module Wardite
     # @rbs return: wasmValue
     def extend_u: (to: Symbol) -> wasmValue
 
-    # @todo need more testcase...
-    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
-    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
     # @rbs saturating: bool
     # @rbs return: wasmValue
     def trunc_s: (to: Symbol, ?saturating: bool) -> wasmValue
 
-    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-u-mathrm-trunc-mathsf-u-m-n-z
-    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
     # @rbs sturating: bool
     # @rbs return: wasmValue

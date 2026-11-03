@@ -327,7 +327,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
       assert status.success?, output
       stdout, stderr, status = Open3.capture3(executable)
       assert status.success?, stderr
-      assert_equal "9223372036854775808\n18446744073709551615\n0\n4294967295\n18446744073709549568\n18446744073709551615\n", stdout
+      assert_equal "9223372036854775808\n18446744073709551615\n0\n4294967295\n18446744073709549568\n18446744073709551615\n9223372036854775807\n-9223372036854775808\n", stdout
     end
   end
 

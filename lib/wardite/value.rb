@@ -552,64 +552,13 @@ module Wardite
       raise EvalError, "unsupported operation"
     end
 
-    # @todo need more testcase...
-    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
-    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
     # @rbs saturating: bool
     # @rbs return: wasmValue
     def trunc_s(to:, saturating: false)
-      v = value.to_i
-      case to
-      when :i32
-        if v >= 0
-          i32_signed_max = I32::I32_MAX >> 1
-          if saturating
-            v = i32_signed_max if v > i32_signed_max
-          else
-            v = v & i32_signed_max
-          end
-          I32(v & i32_signed_max)
-        else
-          i32_signed_min = -(I32::I32_MAX >> 1) - 1
-          if saturating
-            v = i32_signed_min if v < i32_signed_min
-          else
-            v = v & I32::I32_MAX
-            if (v >> 31).zero?
-              raise EvalError, "[undefined behavior] detected overflow: #{value}"
-            end
-          end
-          I32(v)
-        end
-      when :i64
-        if v >= 0
-          i64_signed_max = I64::I64_MAX >> 1
-          if saturating
-            v = i64_signed_max if v > i64_signed_max
-          else
-            v = v & i64_signed_max
-          end
-          I64(v & i64_signed_max)
-        else
-          i64_signed_min = -(I64::I64_MAX >> 1) - 1
-          if saturating
-            v = i64_signed_min if v < i64_signed_min
-          else
-            v = v & I64::I64_MAX
-            if (v >> 63).zero?
-              raise EvalError, "[undefined behavior] detected overflow: #{value}"
-            end
-          end
-          I64(v)
-        end
-      else
-        raise EvalError, "unsupported operation to: #{to}"
-      end
+      truncate_float(value, to: to, signed: true, saturating: saturating)
     end
 
-    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-u-mathrm-trunc-mathsf-u-m-n-z
-    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
     # @rbs sturating: bool
     # @rbs return: wasmValue
