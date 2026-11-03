@@ -14,8 +14,7 @@ jobs:
     strategy:
       matrix:
         ruby:
-          - '3.3.9'
-          - '3.4.5'
+          - '4.0.9'
         wasm_tools:
           - '1.236.0'
         wabt:
