@@ -66,6 +66,9 @@ Additionaly, you can run `bundle exec rake check` to generate rbs files from ann
 
 ### Native executable with Spinel
 
+A `spin.toml` application is also available under [`spinel/`](spinel/README.md),
+using `lib/` as a local source dependency and the same CLI as the RubyGem.
+
 With `spinel` and a C compiler on your PATH, build the existing CLI:
 
 ```console
