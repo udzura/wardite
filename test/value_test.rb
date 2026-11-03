@@ -3,6 +3,13 @@
 require "test_helper"
 
 class WarditeValueTest < Test::Unit::TestCase
+  test "I64 signed view handles both sides of the sign bit" do
+    {0 => 0, 0x7fffffffffffffff => 0x7fffffffffffffff,
+     0x8000000000000000 => -9223372036854775808, 0xffffffffffffffff => -1}.each do |bits, signed|
+      assert_equal signed, Wardite::I64(bits).value_s
+    end
+  end
+
   test "I32 multiplication wraps without a wide intermediate product" do
     values = [0, 1, 0xffff, 0x10000, 0x10001, 0x7fffffff, 0x80000000, 0xffffffff]
     values.product(values).each do |left, right|

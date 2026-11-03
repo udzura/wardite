@@ -130,6 +130,16 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "i64 signed comparison handles the minimum value" do
+    assert_native_result(<<~WAT, "signed_min", [], 1)
+      (module
+        (func (export "signed_min") (result i32)
+          i64.const -9223372036854775808
+          i64.const 0
+          i64.lt_s))
+    WAT
+  end
+
   private
 
   def assert_native_result(code, export, args, expected, no_wasi_flag: true)

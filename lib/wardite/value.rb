@@ -294,9 +294,9 @@ module Wardite
     # returns a value interpreted as signed integer
     # @rbs return: Integer
     def value_s
-      (@value >> 63).zero? ?
-        @value :
-        ((-@value) ^ I64_MAX) + 1
+      low = @value[0, 63]
+      sign = @value[63]
+      low + sign * (-9223372036854775807 - 1)
     end
 
     # @rbs size: Integer|nil
