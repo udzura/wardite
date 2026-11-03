@@ -256,8 +256,9 @@ module Wardite
     # @rbs buf: File|StringIO
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs enable_wasi: boolish
+    # @rbs engine: Symbol
     # @rbs return: Instance
-    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true)
+    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :stack)
       start = Time.now.to_f #: Float
       @buf = buf
 
@@ -275,7 +276,7 @@ module Wardite
         end
       end
 
-      return Instance.new(import_object) do |i|
+      return Instance.new(import_object, engine: engine) do |i|
         i.version = version
         i.sections = sections_
         if enable_wasi

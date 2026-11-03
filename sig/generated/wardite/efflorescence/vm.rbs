@@ -1,0 +1,49 @@
+# Generated from lib/wardite/efflorescence/vm.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class VM
+      attr_reader instance: Wardite::Instance
+
+      attr_reader ir: Wardite::Efflorescence::IR
+
+      # @rbs instance: Wardite::Instance
+      def initialize: (Wardite::Instance instance) -> untyped
+
+      # @rbs name: String|Symbol
+      # @rbs return: bool
+      def callable?: (String | Symbol name) -> bool
+
+      # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
+      # @rbs name: String|Symbol
+      # @rbs arguments: Array[Object]
+      # @rbs return: Wardite::I32?
+      def call: (String | Symbol name, Array[Object] arguments) -> Wardite::I32?
+
+      # @rbs name: String|Symbol
+      # @rbs arguments: Array[Object]
+      # @rbs return: Integer?
+      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> Integer?
+
+      # @rbs name: Symbol
+      # @rbs *arguments: Object
+      # @rbs return: Wardite::I32?
+      def method_missing: (Symbol name, *Object arguments) -> Wardite::I32?
+
+      # @rbs name: String|Symbol
+      # @rbs include_private: bool
+      # @rbs return: bool
+      def respond_to_missing?: (String | Symbol name, ?bool include_private) -> bool
+
+      private
+
+      # No Wasm operand stack, boxed values, or recursive Ruby calls here.
+      # Every register array contains only normalized i32 Integers. Void calls
+      # use destination -1; execute returns an unused integer for a void entry.
+      # @rbs index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Integer
+      def execute: (Integer index, Array[Integer] arguments) -> Integer
+    end
+  end
+end

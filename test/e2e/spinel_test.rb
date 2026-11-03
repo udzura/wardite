@@ -3,8 +3,10 @@
 require "test_helper"
 require "open3"
 require "rbconfig"
+require_relative "../support/efflorescence_helper"
 
 class WarditeSpinelTest < Test::Unit::TestCase
+  include EfflorescenceHelper
   ROOT = File.expand_path("../..", __dir__)
 
   def setup
@@ -19,6 +21,71 @@ class WarditeSpinelTest < Test::Unit::TestCase
         (func (export "answer") (result i32)
           i32.const 42))
     WAT
+  end
+
+  test "Efflorescence complete acceptance module on both native engines" do
+    Dir.mktmpdir("wardite-spinel-mir") do |dir|
+      wasm = File.join(dir, "mix.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(File.read(MIX_WAT)))
+      MIX_CASES.each do |rounds, seed|
+        expected = reference_mix(rounds, seed)
+        expected -= 2**32 if expected >= 2**31
+        [[], ["--new-engine"]].each do |engine|
+          %w[inline_mix call_mix].each do |export|
+            out, err, status = Open3.capture3(@binary, *engine, "--invoke", export,
+              "--", wasm, rounds.to_s, seed.to_s)
+            assert status.success?, err
+            assert_equal "", out
+            assert_equal "return value: I32(#{expected})\n", err,
+              "#{engine.inspect} #{export}(#{rounds}, #{seed})"
+          end
+        end
+      end
+    end
+  end
+
+  test "Efflorescence snapshot and block result on native engine" do
+    code = <<~WAT
+      (module
+        (func (export "snapshot") (param i32) (result i32)
+          local.get 0
+          block (result i32)
+            i32.const 10 local.set 0
+            i32.const 42 local.get 0 br_if 0
+            drop i32.const 7
+          end
+          i32.add))
+    WAT
+    assert_native_result(code, "snapshot", [123], 165, new_engine: true)
+  end
+
+  test "Efflorescence arithmetic boundaries on native engine" do
+    {"mul" => [[0xffffffff, 0xffffffff, 1], [0x80000000, 2, 0], [0x10001, 0x10001, 131073]],
+     "add" => [[0xffffffff, 1, 0]], "sub" => [[0, 1, -1]],
+     "shl" => [[0xffffffff, 31, -2147483648], [1, 32, 1], [1, -1, -2147483648]],
+     "shr_u" => [[0xffffffff, 31, 1], [0xffffffff, 32, -1], [0x80000000, 33, 1073741824]]}.each do |op, cases|
+      code = <<~WAT
+        (module (func (export "run") (param i32 i32) (result i32)
+          local.get 0 local.get 1 i32.#{op}))
+      WAT
+      cases.each { |a, b, expected| assert_native_result(code, "run", [a, b], expected, new_engine: true) }
+    end
+  end
+
+  test "Efflorescence recursive calls use independent native frames" do
+    code = <<~WAT
+      (module
+        (func $void)
+        (func $count (export "count") (param i32) (result i32)
+          block
+            local.get 0 br_if 0
+            i32.const 5 return
+          end
+          call $void
+          local.get 0 i32.const 1 i32.sub call $count
+          i32.const 1 i32.add))
+    WAT
+    assert_native_result(code, "count", [5000], 5005, new_engine: true)
   end
 
   test "i32.add with runtime arguments and wrapping" do
@@ -344,7 +411,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
 
   private
 
-  def assert_native_result(code, export, args, expected, no_wasi_flag: true)
+  def assert_native_result(code, export, args, expected, no_wasi_flag: true, new_engine: false)
     Dir.mktmpdir("wardite-spinel-test") do |dir|
       wat = File.join(dir, "test.wat")
       wasm = File.join(dir, "test.wasm")
@@ -353,6 +420,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
       assert status.success?, output
 
       arguments = ["--invoke", export, "--", wasm, *args.map(&:to_s)]
+      arguments.unshift("--new-engine") if new_engine
       native_arguments = no_wasi_flag ? ["--no-wasi", *arguments] : arguments
       stdout, stderr, status = Open3.capture3(@binary, *native_arguments)
       assert status.success?, stderr

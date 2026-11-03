@@ -1,0 +1,119 @@
+# Generated from lib/wardite/efflorescence/ir.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class UnsupportedFeature < Wardite::LoadError
+    end
+
+    class TranslationError < Wardite::LoadError
+    end
+
+    module Opcode
+      COPY: ::Integer
+
+      I32_ADD: ::Integer
+
+      I32_SUB: ::Integer
+
+      I32_MUL: ::Integer
+
+      I32_XOR: ::Integer
+
+      I32_SHL: ::Integer
+
+      I32_SHR_U: ::Integer
+
+      I32_EQZ: ::Integer
+
+      BR: ::Integer
+
+      BR_IF: ::Integer
+
+      CALL: ::Integer
+
+      RETURN: ::Integer
+
+      TRAP: ::Integer
+    end
+
+    # A small wrapper keeps operand reads monomorphic even when a compiler
+    # represents the outer instruction table as a generic object array.
+    class Instruction
+      attr_reader operands: Array[Integer]
+
+      # @rbs operands: Array[Integer]
+      def initialize: (Array[Integer] operands) -> untyped
+
+      # @rbs index: Integer
+      # @rbs return: Integer
+      def []: (Integer index) -> Integer
+
+      # @rbs index: Integer
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def []=: (Integer index, Integer value) -> Integer
+
+      # @rbs return: Integer
+      def size: () -> Integer
+    end
+
+    # Each instruction holds an integer array. Sources and destinations are slots
+    # in initial_registers; constants occupy immutable, preinitialized slots.
+    # This is deliberately separate from translation and execution so later
+    # function-level optimization passes can consume and produce MIR.
+    class Function
+      attr_reader index: Integer
+
+      attr_reader parameter_types: Array[Symbol]
+
+      attr_reader result_types: Array[Symbol]
+
+      attr_reader local_count: Integer
+
+      attr_reader instructions: Array[Wardite::Efflorescence::Instruction]
+
+      attr_reader initial_registers: Array[Integer]
+
+      # @rbs index: Integer
+      # @rbs parameter_types: Array[Symbol]
+      # @rbs result_types: Array[Symbol]
+      # @rbs local_count: Integer
+      def initialize: (Integer index, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer local_count) -> untyped
+
+      # @rbs return: Integer
+      def register_count: () -> Integer
+
+      # @rbs return: Integer
+      def parameter_count: () -> Integer
+
+      # @rbs index: Integer
+      # @rbs return: Integer
+      def initial_value: (Integer index) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def allocate_register: (Integer value) -> Integer
+    end
+
+    class IR
+      attr_reader functions: Array[Wardite::Efflorescence::Function]
+
+      # @rbs functions: Array[Wardite::Efflorescence::Function]
+      def initialize: (Array[Wardite::Efflorescence::Function] functions) -> untyped
+    end
+
+    class Frame
+      attr_reader function: Wardite::Efflorescence::Function
+
+      attr_reader registers: Array[Integer]
+
+      attr_reader return_register: Integer
+
+      attr_accessor pc: Integer
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return_register: Integer
+      def initialize: (Wardite::Efflorescence::Function function, Integer return_register) -> untyped
+    end
+  end
+end

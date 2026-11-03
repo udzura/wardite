@@ -12,6 +12,7 @@ module Wardite
       attr_reader :memsize #: Integer
       attr_reader :wasi    #: bool
       attr_reader :yjit    #: bool
+      attr_reader :new_engine #: bool
 
       attr_reader :profile_file_path #: String?
 
@@ -21,6 +22,7 @@ module Wardite
         @invoke = @mapdir = nil
         @wasi = RUBY_ENGINE != "spinel"
         @yjit = false
+        @new_engine = false
         @memsize = 1
         options = OptionParser.new do |opts|
           opts.version = Wardite::VERSION
@@ -35,6 +37,9 @@ module Wardite
           }
           opts.on("--no-wasi", "Disable WASI feature") {|_v|
             @wasi = false
+          }
+          opts.on("--new-engine", "Use the Efflorescence register VM (i32 subset)") {|_v|
+            @new_engine = true
           }
           opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
             @yjit = true
@@ -75,8 +80,9 @@ module Wardite
 
       # @rbs return: ::Wardite::Instance
       def new_instance
-        f = File.open(file)
-        ins = Wardite::BinaryLoader::load_from_buffer(f, enable_wasi: wasi);
+        ins = File.open(file, "rb") do |f|
+          Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi, engine: new_engine ? :efflorescence : :stack)
+        end
         if memsize > 1
           ins.store.memories[0].grow(memsize)
         end
@@ -140,10 +146,10 @@ module Wardite
 
         if defined? Bundler
           Bundler.with_original_env do
-            instance.runtime._start
+            instance.runtime.call(:_start, [])
           end
         else
-          instance.runtime._start
+          instance.runtime.call(:_start, [])
         end
       end
 

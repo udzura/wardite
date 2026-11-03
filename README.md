@@ -58,6 +58,21 @@ $ wardite examples/test.wasm
 #=> Test!
 ```
 
+### Efflorescence register VM (experimental)
+
+Use `--new-engine` to select the MIR-based i32 engine; the stack VM remains the
+default. The same option is available in Spinel builds.
+
+```sh
+wardite --new-engine --no-wasi --invoke add test/add.wasm 100 200
+# return value: I32(300)
+```
+
+In Ruby, pass `engine: :efflorescence` to `Wardite.new` or
+`BinaryLoader.load_from_buffer`. Unsupported instructions raise an explicit
+exception. See the [design, supported subset and tests](docs/efflorescence.md)
+and [engine comparison benchmark](benchmark/README.md).
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `bundle exec rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

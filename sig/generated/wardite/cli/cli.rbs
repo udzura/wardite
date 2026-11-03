@@ -17,6 +17,8 @@ module Wardite
 
       attr_reader yjit: bool
 
+      attr_reader new_engine: bool
+
       attr_reader profile_file_path: String?
 
       # @rbs args: Array[String]
