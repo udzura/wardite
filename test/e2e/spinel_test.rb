@@ -196,6 +196,19 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "i64.ctz reaches the sign bit without constructing a wide mask" do
+    [[0, 64], [-9223372036854775808, 63], [1, 0]].each do |value, count|
+      assert_native_result(<<~WAT, "ctz", [], 1)
+        (module
+          (func (export "ctz") (result i32)
+            i64.const #{value}
+            i64.ctz
+            i64.const #{count}
+            i64.eq))
+      WAT
+    end
+  end
+
   test "I32 normalization compiles without a global overflow mode" do
     Dir.mktmpdir("wardite-i32-normalization") do |dir|
       executable = File.join(dir, "normalize")

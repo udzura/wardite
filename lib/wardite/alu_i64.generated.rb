@@ -352,7 +352,7 @@ module Wardite
         finish = target.memsize
         count = 0
         while count < finish
-          if (target.value & (1 << count)).zero?
+          if target.value[count].zero?
             count += 1
           else
             break
