@@ -140,6 +140,20 @@ class WarditeSpinelTest < Test::Unit::TestCase
     WAT
   end
 
+  test "signed LEB128 compiles without a global overflow mode" do
+    Dir.mktmpdir("wardite-sleb128") do |dir|
+      executable = File.join(dir, "sleb128")
+      output, status = Open3.capture2e(
+        ENV.fetch("SPINEL", "spinel"), "--strict-require", "-I#{ROOT}/lib",
+        "#{ROOT}/test/spinel/sleb128.rb", "-o", executable
+      )
+      assert status.success?, output
+      stdout, stderr, status = Open3.capture3(executable)
+      assert status.success?, stderr
+      assert_equal "9223372036854775807\n-9223372036854775808\n-1\n", stdout
+    end
+  end
+
   private
 
   def assert_native_result(code, export, args, expected, no_wasi_flag: true)
