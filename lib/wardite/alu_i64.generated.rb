@@ -397,7 +397,7 @@ module Wardite
         if !right.is_a?(I64) || !left.is_a?(I64)
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(I64(left.value * right.value))
+        runtime.stack.push(left.multiply(right))
 
 
       when :i64_div_s

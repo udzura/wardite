@@ -3,6 +3,15 @@
 require "test_helper"
 
 class WarditeValueTest < Test::Unit::TestCase
+  test "I64 multiplication wraps without a wide intermediate product" do
+    values = [0, 1, 0xffff, 0x10000, 0xffffffff, 0x100000000,
+              0x7fffffffffffffff, 0x8000000000000000, 0xffffffffffffffff]
+    values.product(values).each do |left, right|
+      expected = (left * right) & 0xffffffffffffffff
+      assert_equal expected, Wardite::I64(left).multiply(Wardite::I64(right)).value
+    end
+  end
+
   test "I64 normalizes wide integers and preserves unsigned 64-bit values" do
     [0, 0x7fffffffffffffff, 0x8000000000000000, 0xffffffffffffffff].each do |value|
       assert_equal value, Wardite::I64(value).value

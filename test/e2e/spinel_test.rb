@@ -89,6 +89,20 @@ class WarditeSpinelTest < Test::Unit::TestCase
     WAT
   end
 
+  test "i64.mul wraps at the unsigned and signed boundaries" do
+    [[-1, -1, 1], [0x7fffffffffffffff, 2, -2], [-9223372036854775808, 2, 0]].each do |a, b, product|
+      assert_native_result(<<~WAT, "mul", [], 1)
+        (module
+          (func (export "mul") (result i32)
+            i64.const #{a}
+            i64.const #{b}
+            i64.mul
+            i64.const #{product}
+            i64.eq))
+      WAT
+    end
+  end
+
   test "I32 normalization compiles without a global overflow mode" do
     Dir.mktmpdir("wardite-i32-normalization") do |dir|
       executable = File.join(dir, "normalize")

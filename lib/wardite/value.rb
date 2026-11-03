@@ -303,6 +303,22 @@ module Wardite
       low + sign * (-9223372036854775807 - 1)
     end
 
+    # Multiply in base 2**16; only the low four words contribute modulo 2**64.
+    # Every intermediate product and carry fits in a signed 64-bit integer.
+    # @rbs other: I64
+    # @rbs return: I64
+    def multiply(other)
+      a0, a1, a2, a3 = @value[0, 16], @value[16, 16], @value[32, 16], @value[48, 16]
+      b0, b1, b2, b3 = other.value[0, 16], other.value[16, 16], other.value[32, 16], other.value[48, 16]
+      w0 = a0 * b0
+      w1 = (w0 >> 16) + a0 * b1 + a1 * b0
+      w2 = (w1 >> 16) + a0 * b2 + a1 * b1 + a2 * b0
+      w3 = (w2 >> 16) + a0 * b3 + a1 * b2 + a2 * b1 + a3 * b0
+      low = (w0 & 0xffff) | ((w1 & 0xffff) << 16) | ((w2 & 0xffff) << 32)
+      high = ((w3 & 0x7fff) << 48) | (((w3 >> 15) & 1) * (-9223372036854775807 - 1))
+      I64(low | high)
+    end
+
     # @rbs size: Integer|nil
     # @rbs return: String
     def packed(size: nil)
