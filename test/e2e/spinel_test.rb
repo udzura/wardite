@@ -159,6 +159,43 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "i64.div_s uses exact integer division and truncates toward zero" do
+    [[0x7fffffffffffffff, 1, 0x7fffffffffffffff], [-9223372036854775808, 1, -9223372036854775808],
+     [-7, 3, -2], [7, -3, -2], [-7, -3, 2]].each do |a, b, quotient|
+      assert_native_result(<<~WAT, "div", [], 1)
+        (module
+          (func (export "div") (result i32)
+            i64.const #{a}
+            i64.const #{b}
+            i64.div_s
+            i64.const #{quotient}
+            i64.eq))
+      WAT
+    end
+  end
+
+  test "signed division traps for minimum divided by minus one" do
+    [32, 64].each do |bits|
+      code = <<~WAT
+        (module
+          (func (export "div") (result i#{bits})
+            i#{bits}.const #{-(1 << (bits - 1))}
+            i#{bits}.const -1
+            i#{bits}.div_s))
+      WAT
+      instance = Wardite::BinaryLoader.load_from_buffer(make_buffer_from_wat(code), enable_wasi: false)
+      assert_raise(Wardite::IntegerOverflow) { instance.runtime.call("div", []) }
+      Dir.mktmpdir("wardite-division-trap") do |dir|
+        wasm = File.join(dir, "test.wasm")
+        output, status = Open3.capture2e("wasm-tools", "parse", "-", "-o", wasm, stdin_data: code)
+        assert status.success?, output
+        _out, err, status = Open3.capture3(@binary, "--no-wasi", "--invoke", "div", "--", wasm)
+        assert_false status.success?
+        assert_include err, "integer overflow"
+      end
+    end
+  end
+
   test "I32 normalization compiles without a global overflow mode" do
     Dir.mktmpdir("wardite-i32-normalization") do |dir|
       executable = File.join(dir, "normalize")

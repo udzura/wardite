@@ -348,12 +348,17 @@ module Wardite
         if !right.is_a?(I32) || !left.is_a?(I32)
           raise EvalError, "maybe empty or invalid stack"
         end
-        result = left.value_s / right.value_s.to_f
-        iresult = (result >= 0 ? result.floor : result.ceil).to_i
-        if iresult >= (1 << (left.memsize - 1))
+        dividend = left.value_s
+        divisor = right.value_s
+        signed_min = -(1 << (left.memsize - 2)) * 2
+        if dividend == signed_min && divisor == -1
           raise IntegerOverflow, "integer overflow"
         end
-      
+        iresult = dividend / divisor
+        # Ruby rounds integer division down; Wasm truncates toward zero.
+        if (dividend < 0) != (divisor < 0) && dividend % divisor != 0
+          iresult += 1
+        end
         runtime.stack.push(I32(iresult))
 
 
