@@ -1,5 +1,11 @@
 # Wardite i32 benchmark
 
+Run `ruby benchmark/compare.rb` to compare the **new Efflorescence VM on Spinel,
+Wasmtime and iwasm** on the same workload. Old-VM and CRuby/YJIT runners can be
+enabled in the script. See [Run](#run) for the complete
+matrix and options. The scripts below provide additional optimization-specific
+comparisons.
+
 ## Phase 2 optimization comparison
 
 The Phase 2 sample below predates the integer-literal dispatch follow-up; see
@@ -221,26 +227,48 @@ signature and checksum:
 The calculation mixes a changing 32-bit value using XOR, shifts, multiplication,
 and addition. Every iteration contributes to the returned checksum. Work size
 and seed are runtime arguments. There are no imports, WASI calls, or I/O inside
-Wasm, and no growing memory allocation by the guest program. Wardite itself
-still allocates value objects and, for `call_mix`, frames during interpretation.
+Wasm, and no growing memory allocation by the guest program. The stack VM
+allocates value objects and, for `call_mix`, frames during interpretation;
+Efflorescence keeps i32 values unboxed and reuses call frames.
 
 ## Run
 
-Requirements: Ruby with YJIT, Spinel and its C toolchain, `make`, `wasm-tools`,
-`wasmtime`, and `hyperfine` on PATH. No Bundler dependencies are needed for the comparison script.
+Requirements: Ruby, Spinel and its C toolchain, `make`, `wasm-tools`,
+`wasmtime`, `iwasm` (WAMR with interpreter support), and `hyperfine` on PATH.
+No Bundler dependencies are needed for the comparison script.
 Run from the repository root:
 
 ```sh
 ruby benchmark/compare.rb
 # Adjust work size and seed:
 ruby benchmark/compare.rb 200000 42
+# Adjust sample counts (default: 5 samples after 2 warmups):
+RUNS=3 WARMUPS=1 ruby benchmark/compare.rb 100000 123
 ```
 
 The script compiles the WAT and the Spinel CLI, computes an independent Ruby
-reference, and checks all eight command results before timing. It compares CRuby
-with YJIT explicitly disabled, CRuby with YJIT enabled, Spinel, and Wasmtime, for each export. A mismatch or unavailable YJIT stops the run. Defaults: 100,000 rounds,
+reference, and checks all enabled command results before timing. The current
+selection is New VM / Spinel, iwasm, Wasmtime (Pulley) and Wasmtime: **8 commands**
+across both exports. Uncomment the CRuby/YJIT and Old VM runner definitions in
+`compare.rb` to enable the full nine-configuration, **18-command** matrix below.
+YJIT support is required only when its runner is enabled.
+
+| Engine | Execution configurations |
+| --- | --- |
+| Old VM (`Wardite::Runtime`) | CRuby (YJIT disabled), CRuby + YJIT, Spinel |
+| New VM (`Wardite::Efflorescence::VM`) | CRuby (YJIT disabled), CRuby + YJIT, Spinel; `--new-engine`, default optimizations |
+| iwasm / WAMR | Explicit interpreter mode (`--interp`) |
+| Wasmtime (Pulley) | `--target pulley64 -C cache=n` |
+| Wasmtime | Native compilation, `-C cache=n` |
+
+Hyperfine command names distinguish `Old VM` and `New VM`. A mismatch,
+unavailable enabled YJIT or a missing required runtime stops the run.
+Defaults: 100,000 rounds,
 seed 123456789, two warmup processes, and five measured processes per command.
 The expected checksum with these defaults is `I32(261279018)`.
+Wardite and Wasmtime display a signed decimal i32; iwasm displays the same
+unsigned bits as hexadecimal. Verification accounts for both representations,
+including values with the high bit set.
 
 Results are written to `build/benchmark/results.json` (overwritten each run).
 The Spinel compiler build and reference/result checks are outside the timed commands.
@@ -251,8 +279,13 @@ For a single invocation after building:
 
 ```sh
 ruby -Ilib exe/wardite --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
+ruby -Ilib exe/wardite --new-engine --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
 ruby --yjit -Ilib exe/wardite --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
+ruby --yjit -Ilib exe/wardite --new-engine --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
 ./build/wardite --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
+./build/wardite --new-engine --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
+iwasm --interp -f inline_mix build/benchmark/i32_mix.wasm 100000 123456789
+wasmtime run --target pulley64 -C cache=n --invoke inline_mix build/benchmark/i32_mix.wasm 100000 123456789
 wasmtime run -C cache=n --invoke inline_mix build/benchmark/i32_mix.wasm 100000 123456789
 ```
 
@@ -274,8 +307,36 @@ same call overhead that an interpreter does. This workload covers i32
 execution and calls; it does not measure memory instructions, floating point,
 WASI, or arbitrary real-world programs.
 
-Zero/one rounds and high-bit seeds were additionally checked against CRuby,
-Spinel, and Wasmtime during development.
+Zero/one rounds and high-bit seeds can be checked with the same script; each
+checksum is validated across both Wardite VMs, iwasm and both Wasmtime modes.
+
+### Full engine comparison (2026-11-04)
+
+Verified with the default input (100,000 rounds, seed 123456789), five measured
+processes after two warmups. All 18 preflight results matched the independent
+reference checksum `261279018`, and every measured process exited successfully.
+Zero rounds and one round with seed `4294967295` were also checked on all nine
+configurations. Toolchain: macOS arm64, CRuby 4.0.9, Spinel `2026.10.25+1967`
+(`6e7fc1355`, `-O2`, default overflow checks), Wasmtime 49.0.0, iwasm 2.4.5,
+Hyperfine 1.19.0.
+
+Whole process time, mean ± sample standard deviation in milliseconds:
+
+| Engine / runtime | `inline_mix` | `call_mix` |
+| --- | ---: | ---: |
+| Old VM / CRuby | 1039.26 ± 6.84 | 1230.13 ± 7.00 |
+| New VM / CRuby | 181.23 ± 3.26 | 377.69 ± 31.42 |
+| Old VM / CRuby + YJIT | 493.67 ± 5.19 | 621.38 ± 3.00 |
+| New VM / CRuby + YJIT | 145.85 ± 0.60 | 215.39 ± 1.60 |
+| Old VM / Spinel | 341.02 ± 4.73 | 401.50 ± 0.78 |
+| New VM / Spinel | 12.95 ± 0.26 | 25.71 ± 0.28 |
+| iwasm (WAMR interpreter) | 5.13 ± 0.22 | 5.59 ± 0.26 |
+| Wasmtime (Pulley) | 8.11 ± 0.28 | 9.32 ± 0.14 |
+| Wasmtime | 6.31 ± 0.08 | 6.63 ± 0.24 |
+
+Raw samples are in `build/benchmark/results.json`. These include startup and
+loading, plus compilation for Wasmtime and MIR translation for Efflorescence;
+they are not execution-loop-only measurements.
 
 ### Sample run (2026-11-03)
 
