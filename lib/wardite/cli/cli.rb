@@ -13,6 +13,8 @@ module Wardite
       attr_reader :wasi    #: bool
       attr_reader :yjit    #: bool
 
+      attr_reader :profile_file_path #: String?
+
       # @rbs args: Array[String]
       # @rbs return: void
       def initialize(args)
@@ -36,6 +38,9 @@ module Wardite
           }
           opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
             @yjit = true
+          }
+          opts.on("--out-profile [file]", "Enable Vernier profiling and save to the file") {|v|
+            @profile_file_path = v
           }
           opts.on("FILE.wasm") { }
         end
@@ -77,39 +82,30 @@ module Wardite
 
       # @rbs return: void
       def run
-        if invoke
-          if ENV["WARDITE_STACKPROF"] == "1"
-            # $COUNTER = {}
-            # TracePoint.trace(:call) do |tp|
-            #   if %i(I32 I64 F32 F64).include?(tp.method_id)
-            #     $COUNTER[tp.method_id] ||= 0
-            #     $COUNTER[tp.method_id] += 1
-            #   end
-            # end
+        profile_path = profile_file_path
+        if !profile_path && ENV["WARDITE_STACKPROF"] == "1"
+          profile_path = "./tmp/time_profile.json"
+        end
 
-            # at_exit {
-            #   pp $COUNTER
-            # }
-
-            require "vernier"
-            Vernier.profile(out: "./tmp/time_profile.json") do
-              invoke_function
-            end
-            puts "Profile saved to ./tmp/time_profile.json"
-          else
-            invoke_function
+        if profile_path
+          require "vernier"
+          $stderr.puts "Activated Vernier profiling"
+          Vernier.profile(out: profile_path) do
+            __run
           end
+          puts "Profile saved to #{profile_path}"
+        else
+          __run
+        end
+      end
+
+      # @rbs return: void
+      def __run
+        if invoke
+          invoke_function
         else
           if wasi
-            if ENV["WARDITE_STACKPROF"] == "1"
-              require "vernier"
-              Vernier.profile(out: "./tmp/time_profile.json") do
-                invoke_wasi
-              end
-              puts "Profile saved to ./tmp/time_profile.json"
-            else
-              invoke_wasi
-            end
+            invoke_wasi
             return
           end
           raise("requires function name to invoke")

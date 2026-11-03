@@ -17,6 +17,8 @@ module Wardite
 
       attr_reader yjit: bool
 
+      attr_reader profile_file_path: String?
+
       # @rbs args: Array[String]
       # @rbs return: void
       def initialize: (Array[String] args) -> void
@@ -31,6 +33,9 @@ module Wardite
 
       # @rbs return: void
       def run: () -> void
+
+      # @rbs return: void
+      def __run: () -> void
 
       # @rbs return: void
       def invoke_function: () -> void

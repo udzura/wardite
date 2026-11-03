@@ -3,7 +3,6 @@
 module Wardite
   # @rbs!
   #   type operandItem = Integer | Array[Integer] | Float | Block
-  #   $SYM_PREFIX: Hash[Symbol, Symbol]
 
   class Op
     # @see https://pengowray.github.io/wasm-ops/
@@ -35,16 +34,7 @@ module Wardite
       i32_extend8_s i32_extend16_s i64_extend8_s i64_extend16_s i64_extend32_s
       __unsuported_from_here_on__
     ] #: Array[Symbol]
-
-    I32_SYMS = SYMS.grep(/^i32/)
-    I64_SYMS = SYMS.grep(/^i64/)
-    F32_SYMS = SYMS.grep(/^f32/)
-    F64_SYMS = SYMS.grep(/^f64/)
-    $SYM_PREFIX = {}
-    I32_SYMS.each { |sym| $SYM_PREFIX[sym] = :i32 }
-    I64_SYMS.each { |sym| $SYM_PREFIX[sym] = :i64 }
-    F32_SYMS.each { |sym| $SYM_PREFIX[sym] = :f32 }
-    F64_SYMS.each { |sym| $SYM_PREFIX[sym] = :f64 }
+    SYMS[0xfc] = :fc
 
     FC_SYMS = %i[
       i32_trunc_sat_f32_s i32_trunc_sat_f32_u i32_trunc_sat_f64_s i32_trunc_sat_f64_u
@@ -54,9 +44,6 @@ module Wardite
       table_size table_fill
       __unsuported_from_here_on__
     ] #: Array[Symbol]
-
-    # Numeric conversions occupy 0xa7..0xc4 and the first eight 0xfc opcodes.
-    CONVERT_SYMS = SYMS.drop(0xa7).take(30) + FC_SYMS.take(8) #: Array[Symbol]
 
     OPERANDS = [
       [],
@@ -259,28 +246,216 @@ module Wardite
       []
     ] #: Array[Array[Symbol]]
 
-    # @rbs $table: Hash[Integer, Symbol] | nil
-    $table = {}
-    SYMS.each_with_index do |sym, i|
-      $table[i] = sym
-    end
-    # @rbs @@fc_table: Hash[Integer, Symbol] | nil
-    @@fc_table = nil
+    NAMESPACES = [
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :default,
+      :i32,
+      :i64,
+      :f32,
+      :f64,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i32,
+      :i64,
+      :f32,
+      :f64,
+      :i32,
+      :i32,
+      :i64,
+      :i64,
+      :i64,
+      :default,
+      :default,
+      :i32,
+      :i64,
+      :f32,
+      :f64,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i32,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :i64,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f32,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :f64,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert
+    ] #: Array[Symbol]
 
-    # @rbs return: Hash[Integer, Symbol]
-    def self.table
-      $table
-    end
-
-    # @rbs return: Hash[Integer, Symbol]
-    def self.fc_table
-      return @@fc_table if @@fc_table != nil
-      @@fc_table = {} #: Hash[Integer, Symbol] | nil
-      FC_SYMS.each_with_index do |sym, i|
-        @@fc_table[i] = sym
-      end
-      @@fc_table
-    end
+    FC_OPERANDS = [
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert,
+      :convert
+    ] #: Array[Symbol]
     
     attr_accessor :namespace #: Symbol
 
@@ -306,27 +481,10 @@ module Wardite
       # $OP_COUNT += 1
     end
 
-    # The binary decoder also uses these tuples for constant expressions.
-    # Turn function instructions into the objects consumed by the evaluator.
-    # @rbs decoded: [Symbol, Array[operandItem], Integer?, Integer?]
-    # @rbs return: Op
-    def self.from_decoded(decoded)
-      code, operand, else_pos, end_pos = decoded
-      namespace = CONVERT_SYMS.include?(code) ? :convert : ($SYM_PREFIX[code] || :default)
-      op = new(namespace, code, operand)
-      op.meta[:else_pos] = else_pos if else_pos
-      op.meta[:end_pos] = end_pos if end_pos
-      op
-    end
-
-    # @rbs chr: String
+    # @rbs chr: Integer
     # @rbs return: Symbol
     def self.to_sym(chr)
-      if chr.ord == 0xfc
-        return :fc
-      end
-
-      return SYMS[chr.ord]
+      return SYMS[chr]
     end
 
     # @rbs lower: Integer

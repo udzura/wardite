@@ -3,32 +3,17 @@
 module Wardite
   type operandItem = Integer | Array[Integer] | Float | Block
 
-  $SYM_PREFIX: Hash[Symbol, Symbol]
-
   class Op
     # @see https://pengowray.github.io/wasm-ops/
     SYMS: Array[Symbol]
 
-    I32_SYMS: untyped
-
-    I64_SYMS: untyped
-
-    F32_SYMS: untyped
-
-    F64_SYMS: untyped
-
     FC_SYMS: Array[Symbol]
-
-    # Numeric conversions occupy 0xa7..0xc4 and the first eight 0xfc opcodes.
-    CONVERT_SYMS: Array[Symbol]
 
     OPERANDS: Array[Array[Symbol]]
 
-    # @rbs return: Hash[Integer, Symbol]
-    def self.table: () -> Hash[Integer, Symbol]
+    NAMESPACES: Array[Symbol]
 
-    # @rbs return: Hash[Integer, Symbol]
-    def self.fc_table: () -> Hash[Integer, Symbol]
+    FC_OPERANDS: Array[Symbol]
 
     attr_accessor namespace: Symbol
 
@@ -48,15 +33,9 @@ module Wardite
     # @rbs operand: Array[operandItem]
     def initialize: (Symbol namespace, Symbol code, Array[operandItem] operand) -> untyped
 
-    # The binary decoder also uses these tuples for constant expressions.
-    # Turn function instructions into the objects consumed by the evaluator.
-    # @rbs decoded: [Symbol, Array[operandItem], Integer?, Integer?]
-    # @rbs return: Op
-    def self.from_decoded: ([ Symbol, Array[operandItem], Integer?, Integer? ] decoded) -> Op
-
-    # @rbs chr: String
+    # @rbs chr: Integer
     # @rbs return: Symbol
-    def self.to_sym: (String chr) -> Symbol
+    def self.to_sym: (Integer chr) -> Symbol
 
     # @rbs lower: Integer
     # @rbs return: Symbol

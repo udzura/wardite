@@ -5,14 +5,15 @@ module Wardite
   module Evaluator
     # @rbs runtime: Runtime
     # @rbs frame: Frame
-    # @rbs insn: Op
-    # @rbs return: void 
-    def self.f32_eval_insn(runtime, frame, insn)
-      case insn.code
+    # @rbs code: Symbol
+    # @rbs operand: Array[operandItem]
+    # @rbs return: bool?
+    def self.f32_eval_insn(runtime, frame, code, operand)
+      case code
 
       when :f32_load
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         addr = runtime.stack.pop
@@ -31,8 +32,8 @@ module Wardite
 
 
       when :f32_store
-        _align = insn.operand[0] # TODO: alignment support?
-        offset = insn.operand[1]
+        _align = operand[0] # TODO: alignment support?
+        offset = operand[1]
         raise EvalError, "[BUG] invalid type of operand" if !offset.is_a?(Integer)
       
         value = runtime.stack.pop
@@ -48,7 +49,7 @@ module Wardite
 
 
       when :f32_const
-        const = insn.operand[0]
+        const = operand[0]
         if !const.is_a?(Float)
           raise EvalError, "invalid type of operand"
         end
@@ -243,8 +244,9 @@ module Wardite
 
 
       else
-        raise "Unknown opcode for namespace #{insn.namespace}: #{insn.code}"
+        return
       end
+      return true
     end
   end
 end
