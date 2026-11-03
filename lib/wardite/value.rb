@@ -303,6 +303,15 @@ module Wardite
       low + sign * (-9223372036854775807 - 1)
     end
 
+    # @rbs other: I64
+    # @rbs return: I64
+    def add(other)
+      low = @value[0, 32] + other.value[0, 32]
+      high = @value[32, 32] + other.value[32, 32] + (low >> 32)
+      signed = low[0, 32] | (high[0, 31] << 32) | (high[31] * (-9223372036854775807 - 1))
+      I64(signed)
+    end
+
     # Multiply in base 2**16; only the low four words contribute modulo 2**64.
     # Every intermediate product and carry fits in a signed 64-bit integer.
     # @rbs other: I64

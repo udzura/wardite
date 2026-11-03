@@ -150,6 +150,10 @@ module Wardite
     # @rbs return: Integer
     def value_s: () -> Integer
 
+    # @rbs other: I64
+    # @rbs return: I64
+    def add: (I64 other) -> I64
+
     # Multiply in base 2**16; only the low four words contribute modulo 2**64.
     # Every intermediate product and carry fits in a signed 64-bit integer.
     # @rbs other: I64

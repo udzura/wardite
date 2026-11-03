@@ -3,6 +3,15 @@
 require "test_helper"
 
 class WarditeValueTest < Test::Unit::TestCase
+  test "I64 addition carries and wraps at both word boundaries" do
+    values = [0, 1, 0xffffffff, 0x100000000,
+              0x7fffffffffffffff, 0x8000000000000000, 0xffffffffffffffff]
+    values.product(values).each do |left, right|
+      expected = (left + right) & 0xffffffffffffffff
+      assert_equal expected, Wardite::I64(left).add(Wardite::I64(right)).value
+    end
+  end
+
   test "I64 multiplication wraps without a wide intermediate product" do
     values = [0, 1, 0xffff, 0x10000, 0xffffffff, 0x100000000,
               0x7fffffffffffffff, 0x8000000000000000, 0xffffffffffffffff]

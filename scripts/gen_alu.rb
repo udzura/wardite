@@ -21,8 +21,8 @@ module GenAlu
   def self.generate_ops(prefix:, defined_ops:)
     result = StringIO.new("")
     defined_ops.each do |op|
-      key = ["i32", "i64"].include?(prefix) && op.to_sym == :mul ? :mul_integer : op.to_sym
-      code = DEFS[key].dup
+      key = ["i32", "i64"].include?(prefix) && op.to_sym == :mul ? :mul_integer : :"#{op}_#{prefix}"
+      code = (DEFS[key] || DEFS[op.to_sym]).dup
       if ! code
         raise "unsupported code specified! #{op.inspect}"
       end
@@ -486,6 +486,15 @@ module GenAlu
           end
         end
         runtime.stack.push(${CLASS}(count))
+    RUBY
+
+    add_i64: <<~RUBY,
+      when :i64_add
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(left.add(right))
     RUBY
 
     add: <<~RUBY,

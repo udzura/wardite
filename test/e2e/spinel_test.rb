@@ -103,6 +103,20 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "i64.add carries into and beyond the sign bit" do
+    [[0x7fffffffffffffff, 1, -9223372036854775808], [-1, 1, 0], [0xffffffff, 1, 0x100000000]].each do |a, b, sum|
+      assert_native_result(<<~WAT, "add", [], 1)
+        (module
+          (func (export "add") (result i32)
+            i64.const #{a}
+            i64.const #{b}
+            i64.add
+            i64.const #{sum}
+            i64.eq))
+      WAT
+    end
+  end
+
   test "I32 normalization compiles without a global overflow mode" do
     Dir.mktmpdir("wardite-i32-normalization") do |dir|
       executable = File.join(dir, "normalize")
