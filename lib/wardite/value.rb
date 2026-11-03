@@ -8,7 +8,7 @@ module Wardite
     # @rbs value: Integer
     # @rbs return: I32
     def I32(value)
-      I32.cached_or_initialize(value & I32::I32_MAX)
+      I32.cached_or_initialize(value[0, 32])
     end
 
     # @rbs value: Integer
