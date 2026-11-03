@@ -791,32 +791,7 @@ module Wardite
     # @rbs saturating: bool
     # @rbs return: wasmValue
     def trunc_u(to:, saturating: false)
-      v = value.to_i
-      if v < 0
-        if saturating
-          v = 0
-        else
-          raise EvalError, "[undefined behavior] unexpected negative value"
-        end
-      end
-      case to
-      when :i32
-        if saturating
-          v = I32::I32_MAX if v > I32::I32_MAX
-        else
-          v = v & I32::I32_MAX
-        end
-        I32(v)
-      when :i64
-        if saturating
-          v = I64::I64_MAX if v > I64::I64_MAX
-        else
-          v = v & I64::I64_MAX
-        end
-        I64(v)
-      else
-        raise EvalError, "unsupported operation to: #{to}"
-      end
+      truncate_float(value, to: to, signed: false, saturating: saturating)
     end
 
     # @rbs to: Symbol
