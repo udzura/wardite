@@ -3,6 +3,17 @@
 require "test_helper"
 
 class WarditeValueTest < Test::Unit::TestCase
+  test "F64 signed truncation bounds inputs before converting" do
+    assert_equal 9223372036854774784, Wardite::F64(9223372036854774784.0).trunc_s(to: :i64).value
+    assert_equal -9223372036854775808, Wardite::F64(-9223372036854775808.0).trunc_s(to: :i64).value_s
+    assert_equal 0x7fffffffffffffff, Wardite::F64(1e100).trunc_sat_s(to: :i64).value
+    assert_equal -9223372036854775808, Wardite::F64(-1e100).trunc_sat_s(to: :i64).value_s
+    assert_equal 0x7fffffff, Wardite::F64(Float::INFINITY).trunc_sat_s(to: :i32).value
+    assert_equal 0, Wardite::F64(Float::NAN).trunc_sat_s(to: :i64).value
+    assert_raise(Wardite::IntegerOverflow) { Wardite::F64(9223372036854775808.0).trunc_s(to: :i64) }
+    assert_raise(Wardite::IntegerOverflow) { Wardite::F64(-9223372036854777856.0).trunc_s(to: :i64) }
+  end
+
   test "F32 signed truncation bounds inputs before converting" do
     assert_equal -2147483648, Wardite::F32(-2147483648.5).trunc_s(to: :i32).value_s
     assert_equal -9223372036854775808, Wardite::F32(-9223372036854775808.0).trunc_s(to: :i64).value_s

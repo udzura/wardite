@@ -351,7 +351,6 @@ module Wardite
     # @rbs return: wasmValue
     def trunc_s: (to: Symbol, ?saturating: bool) -> wasmValue
 
-    # @see the same as F32
     # @rbs to: Symbol
     # @rbs saturating: bool
     # @rbs return: wasmValue
