@@ -3,6 +3,7 @@
 module Wardite
   # @rbs!
   #   type operandItem = Integer | Array[Integer] | Float | Block
+  #   $SYM_PREFIX: Hash[Symbol, Symbol]
 
   class Op
     # @see https://pengowray.github.io/wasm-ops/
@@ -53,6 +54,9 @@ module Wardite
       table_size table_fill
       __unsuported_from_here_on__
     ] #: Array[Symbol]
+
+    # Numeric conversions occupy 0xa7..0xc4 and the first eight 0xfc opcodes.
+    CONVERT_SYMS = SYMS.drop(0xa7).take(30) + FC_SYMS.take(8) #: Array[Symbol]
 
     OPERANDS = [
       [],
@@ -300,6 +304,19 @@ module Wardite
       @operand = operand
       @meta = {}
       # $OP_COUNT += 1
+    end
+
+    # The binary decoder also uses these tuples for constant expressions.
+    # Turn function instructions into the objects consumed by the evaluator.
+    # @rbs decoded: [Symbol, Array[operandItem], Integer?, Integer?]
+    # @rbs return: Op
+    def self.from_decoded(decoded)
+      code, operand, else_pos, end_pos = decoded
+      namespace = CONVERT_SYMS.include?(code) ? :convert : ($SYM_PREFIX[code] || :default)
+      op = new(namespace, code, operand)
+      op.meta[:else_pos] = else_pos if else_pos
+      op.meta[:end_pos] = end_pos if end_pos
+      op
     end
 
     # @rbs chr: String

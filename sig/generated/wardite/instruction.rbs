@@ -3,6 +3,8 @@
 module Wardite
   type operandItem = Integer | Array[Integer] | Float | Block
 
+  $SYM_PREFIX: Hash[Symbol, Symbol]
+
   class Op
     # @see https://pengowray.github.io/wasm-ops/
     SYMS: Array[Symbol]
@@ -16,6 +18,9 @@ module Wardite
     F64_SYMS: untyped
 
     FC_SYMS: Array[Symbol]
+
+    # Numeric conversions occupy 0xa7..0xc4 and the first eight 0xfc opcodes.
+    CONVERT_SYMS: Array[Symbol]
 
     OPERANDS: Array[Array[Symbol]]
 
@@ -42,6 +47,12 @@ module Wardite
     # @rbs code: Symbol
     # @rbs operand: Array[operandItem]
     def initialize: (Symbol namespace, Symbol code, Array[operandItem] operand) -> untyped
+
+    # The binary decoder also uses these tuples for constant expressions.
+    # Turn function instructions into the objects consumed by the evaluator.
+    # @rbs decoded: [Symbol, Array[operandItem], Integer?, Integer?]
+    # @rbs return: Op
+    def self.from_decoded: ([ Symbol, Array[operandItem], Integer?, Integer? ] decoded) -> Op
 
     # @rbs chr: String
     # @rbs return: Symbol

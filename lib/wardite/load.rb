@@ -127,7 +127,7 @@ module Wardite
 
       attr_accessor :locals_type #: Array[Symbol]
 
-      attr_accessor :body #: Array[[Symbol, Array[operandItem], Integer?, Integer?]]
+      attr_accessor :body #: Array[Op]
 
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
@@ -606,7 +606,7 @@ module Wardite
         dest.func_codes << CodeSection::CodeBody.new do |b|
           b.locals_count = locals_count
           b.locals_type = locals_type
-          b.body = body
+          b.body = body.map { |decoded| Op.from_decoded(decoded) }
         end
       end
       dest

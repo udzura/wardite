@@ -87,7 +87,7 @@ module Wardite
 
       attr_accessor locals_type: Array[Symbol]
 
-      attr_accessor body: Array[[ Symbol, Array[operandItem], Integer?, Integer? ]]
+      attr_accessor body: Array[Op]
 
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
