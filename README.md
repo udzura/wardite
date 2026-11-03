@@ -64,6 +64,29 @@ After checking out the repo, run `bin/setup` to install dependencies. Then, run 
 
 Additionaly, you can run `bundle exec rake check` to generate rbs files from annotations and run `steep check`.
 
+### Native executable with Spinel
+
+With `spinel` and a C compiler on your PATH, build the existing CLI:
+
+```console
+$ make spinel
+$ build/wardite --no-wasi --invoke add test/add.wasm 100 200
+return value: I32(300)
+$ make spinel-test
+```
+
+The executable defaults to WASI disabled. This initial integration tests small
+Wasm modules with `i32.const`, `i32.add`, internal calls, and `if`/`else`, comparing
+the native CLI's results with CRuby. WASI and Vernier profiling are excluded from
+the native build. Ruby's dynamic export helpers (`instance.add(...)` and
+`runtime.add(...)`) rely on `method_missing`; use `instance.runtime.call("add",
+[100, 200])` when compiling an application with Spinel.
+
+The build uses `--no-inline-rbs` because the annotations target `rbs-inline`, and
+`--int-overflow=promote` to retain Ruby's integer arithmetic for Wasm masks and
+intermediate values. Tested with Spinel `2026.10.25+1967` (`6e7fc1355`) on macOS
+arm64. Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/udzura/wardite.

@@ -14,8 +14,7 @@ jobs:
     strategy:
       matrix:
         ruby:
-          - '3.3.9'
-          - '3.4.5'
+          - '4.0.9'
         wasm_tools:
           - '1.236.0'
         wabt:
@@ -49,12 +48,6 @@ jobs:
     - name: Version wast2json
       run: |
         wast2json --version
-    - name: Run the check task
-      run: |
-        bundle exec rake check
-    - name: Run the test task
-      run: |
-        bundle exec rake test
     - name: Run the official spec
       run: |
         bundle exec rake 'spec[i32]'

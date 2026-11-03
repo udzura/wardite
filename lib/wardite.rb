@@ -828,8 +828,9 @@ module Wardite
     end
 
     # @rbs name: String|Symbol
+    # @rbs include_private: bool
     # @rbs return: bool
-    def respond_to? name
+    def respond_to?(name, include_private = false)
       callable?(name) || super
     end
 
@@ -1223,7 +1224,10 @@ module Wardite
       @mappings[name]&.[](1)
     end
 
-    def respond_to?(name) 
+    # @rbs name: String|Symbol
+    # @rbs include_private: bool
+    # @rbs return: bool
+    def respond_to?(name, include_private = false)
       !!self[name.to_s] || super
     end
 
@@ -1371,7 +1375,7 @@ module Wardite
     if path
       buffer = File.open(path)
     end
-    if !buffer
+    if buffer.nil?
       raise ::ArgumentError, "nil buffer passed"
     end
     Wardite::BinaryLoader::load_from_buffer(buffer, **options);

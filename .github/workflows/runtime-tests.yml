@@ -1,0 +1,125 @@
+name: Test CRuby and Spinel
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  WASM_TOOLS_VERSION: '1.236.0'
+
+# Neither job has `needs`: their toolchain setup and tests run independently.
+jobs:
+  cruby:
+    name: CRuby tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        ruby:
+          - '4.0.9'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Ruby and bundle
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          # Read the Ruby version from .ruby-version and Bundler from the lockfile.
+          bundler-cache: true
+      - name: Install wasm-tools
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/wasm-tools.tar.gz"
+          curl -fL --retry 3 "https://github.com/bytecodealliance/wasm-tools/releases/download/v${WASM_TOOLS_VERSION}/wasm-tools-${WASM_TOOLS_VERSION}-x86_64-linux.tar.gz" -o "$archive"
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/wardite-tools"
+          install -m 755 "$RUNNER_TEMP/wasm-tools-${WASM_TOOLS_VERSION}-x86_64-linux/wasm-tools" "$RUNNER_TEMP/wardite-tools/wasm-tools"
+          echo "$RUNNER_TEMP/wardite-tools" >> "$GITHUB_PATH"
+      - name: Run type checks
+        run: bundle exec rake check
+      - name: Run CRuby tests
+        run: bundle exec rake test
+
+  spinel:
+    name: Spinel tests
+    runs-on: ubuntu-24.04
+    env:
+      # 2026.10.25+1967: the compiler revision verified with Wardite.
+      SPINEL_REF: 6e7fc13556709bf7d7ba4af5bd1d12bebc00733e
+    strategy:
+      matrix:
+        ruby:
+          - '4.0.9'
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Ruby and bundle
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: Install wasm-tools
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/wasm-tools.tar.gz"
+          curl -fL --retry 3 "https://github.com/bytecodealliance/wasm-tools/releases/download/v${WASM_TOOLS_VERSION}/wasm-tools-${WASM_TOOLS_VERSION}-x86_64-linux.tar.gz" -o "$archive"
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/wardite-tools"
+          install -m 755 "$RUNNER_TEMP/wasm-tools-${WASM_TOOLS_VERSION}-x86_64-linux/wasm-tools" "$RUNNER_TEMP/wardite-tools/wasm-tools"
+          echo "$RUNNER_TEMP/wardite-tools" >> "$GITHUB_PATH"
+      - name: Identify Spinel build environment
+        id: spinel-environment
+        shell: bash
+        run: |
+          fingerprint="$RUNNER_TEMP/spinel-build-environment.txt"
+          printf 'image=%s\nversion=%s\nprefix=%s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}" "$RUNNER_TEMP/spinel" > "$fingerprint"
+          cc --version >> "$fingerprint"
+          ruby --version >> "$fingerprint"
+          echo "hash=$(sha256sum "$fingerprint" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - name: Restore installed Spinel
+        id: spinel-cache
+        uses: actions/cache/restore@v4
+        with:
+          # Include the runtime, headers, and packages, not just the executable.
+          path: ${{ runner.temp }}/spinel
+          # Bump v1 if the build recipe changes. Only exact matches are reused.
+          key: spinel-install-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.SPINEL_REF }}-${{ steps.spinel-environment.outputs.hash }}
+      - name: Check out Spinel
+        if: steps.spinel-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: matz/spinel
+          ref: ${{ env.SPINEL_REF }}
+          path: .ci/spinel
+          persist-credentials: false
+      - name: Build and install Spinel
+        if: steps.spinel-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          make -C .ci/spinel deps
+          make -C .ci/spinel -j2 install PREFIX="$RUNNER_TEMP/spinel"
+      - name: Add Spinel to PATH
+        shell: bash
+        run: |
+          echo "$RUNNER_TEMP/spinel/bin" >> "$GITHUB_PATH"
+      - name: Check toolchain versions
+        run: |
+          ruby --version
+          bundle --version
+          wasm-tools --version
+          spinel --version
+      - name: Save installed Spinel
+        if: steps.spinel-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/spinel
+          key: ${{ steps.spinel-cache.outputs.cache-primary-key }}
+      - name: Run Spinel tests
+        run: make spinel-test RUBY="bundle exec ruby"

@@ -261,9 +261,13 @@ module Wardite
 
       wasi_env = nil
       if enable_wasi
-        require "wardite/wasi"
-        wasi_env = Wardite::WasiSnapshotPreview1.new       
-        import_object[:wasi_snapshot_preview1] = wasi_env
+        if RUBY_ENGINE == "spinel"
+          raise LoadError, "WASI is not supported in Spinel builds; pass enable_wasi: false"
+        else
+          require "wardite/wasi"
+          wasi_env = Wardite::WasiSnapshotPreview1.new
+          import_object[:wasi_snapshot_preview1] = wasi_env
+        end
       end
 
       return Instance.new(import_object) do |i|
@@ -291,10 +295,8 @@ module Wardite
       if !vstr
         raise LoadError, "buffer too short"
       end
-      version = vstr.to_enum(:chars)
-        .with_index
-        .inject(0) {|dest, (c, i)| dest | (c.ord << i*8) }
-      if version != 1
+      version = vstr.unpack1("V")
+      if !version.is_a?(Integer) || version != 1
         raise LoadError, "unsupported version: #{version}"
       end
       version
