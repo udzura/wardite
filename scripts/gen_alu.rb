@@ -682,6 +682,17 @@ module GenAlu
         runtime.stack.push(${CLASS}(value))
     RUBY
 
+    rotr_i64: <<~RUBY,
+      when :i64_rotr
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        k = right.value % 64
+        value = (left.value >> k) | left.shift_left((64 - k) % 64).value
+        runtime.stack.push(I64(value))
+    RUBY
+
     rotr: <<~RUBY,
       when :${PREFIX}_rotr
         right, left = runtime.stack.pop, runtime.stack.pop

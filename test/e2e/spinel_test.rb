@@ -145,6 +145,20 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "i64.rotr rotates into the sign bit without wide intermediates" do
+    [[1, 1, -9223372036854775808], [-9223372036854775808, 63, 1], [-1, 0, -1], [1, 64, 1]].each do |a, b, rotated|
+      assert_native_result(<<~WAT, "rotr", [], 1)
+        (module
+          (func (export "rotr") (result i32)
+            i64.const #{a}
+            i64.const #{b}
+            i64.rotr
+            i64.const #{rotated}
+            i64.eq))
+      WAT
+    end
+  end
+
   test "I32 normalization compiles without a global overflow mode" do
     Dir.mktmpdir("wardite-i32-normalization") do |dir|
       executable = File.join(dir, "normalize")
