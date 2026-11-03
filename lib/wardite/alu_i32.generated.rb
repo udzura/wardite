@@ -312,7 +312,7 @@ module Wardite
         digits = target.memsize
         count = 0
         digits.times do |i|
-          if (target.value & (1 << i)).nonzero?
+          if target.value[i].nonzero?
             count += 1
           end
         end

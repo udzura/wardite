@@ -209,6 +209,19 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "i64.popcnt counts the sign bit without constructing a wide mask" do
+    [[0, 0], [-9223372036854775808, 1], [-1, 64], [0x5555555555555555, 32]].each do |value, count|
+      assert_native_result(<<~WAT, "popcnt", [], 1)
+        (module
+          (func (export "popcnt") (result i32)
+            i64.const #{value}
+            i64.popcnt
+            i64.const #{count}
+            i64.eq))
+      WAT
+    end
+  end
+
   test "I32 normalization compiles without a global overflow mode" do
     Dir.mktmpdir("wardite-i32-normalization") do |dir|
       executable = File.join(dir, "normalize")
