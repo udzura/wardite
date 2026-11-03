@@ -1,0 +1,7 @@
+# Keep the Spinel application separate from the RubyGem's RBS and test suite.
+[package]
+name = "wardite-cli"
+
+[dependencies]
+# spin treats this source directory as a local package and adds it to -I.
+wardite = { path = "../lib" }
