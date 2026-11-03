@@ -317,6 +317,20 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "floating-point truncation compiles without a global overflow mode" do
+    Dir.mktmpdir("wardite-float-truncation") do |dir|
+      executable = File.join(dir, "truncate")
+      output, status = Open3.capture2e(
+        ENV.fetch("SPINEL", "spinel"), "--strict-require", "-I#{ROOT}/lib",
+        "#{ROOT}/test/spinel/float_truncation.rb", "-o", executable
+      )
+      assert status.success?, output
+      stdout, stderr, status = Open3.capture3(executable)
+      assert status.success?, stderr
+      assert_equal "9223372036854775808\n18446744073709551615\n0\n4294967295\n", stdout
+    end
+  end
+
   private
 
   def assert_native_result(code, export, args, expected, no_wasi_flag: true)

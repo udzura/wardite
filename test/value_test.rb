@@ -3,6 +3,18 @@
 require "test_helper"
 
 class WarditeValueTest < Test::Unit::TestCase
+  test "F32 unsigned truncation checks bounds before converting" do
+    assert_equal 0x8000000000000000, Wardite::F32(9223372036854775808.0).trunc_u(to: :i64).value
+    assert_equal 0, Wardite::F32(-0.5).trunc_u(to: :i64).value
+    assert_equal 0xffffffffffffffff, Wardite::F32(1e30).trunc_sat_u(to: :i64).value
+    assert_equal 0xffffffff, Wardite::F32(Float::INFINITY).trunc_sat_u(to: :i32).value
+    assert_equal 0, Wardite::F32(-Float::INFINITY).trunc_sat_u(to: :i64).value
+    assert_equal 0, Wardite::F32(Float::NAN).trunc_sat_u(to: :i64).value
+    assert_raise(Wardite::IntegerOverflow) { Wardite::F32(-1.0).trunc_u(to: :i64) }
+    assert_raise(Wardite::IntegerOverflow) { Wardite::F32(18446744073709551616.0).trunc_u(to: :i64) }
+    assert_raise(Wardite::EvalError) { Wardite::F32(Float::NAN).trunc_u(to: :i64) }
+  end
+
   test "I64 left shifts discard high bits before shifting" do
     [0, 1, 0xffffffff, 0x7fffffffffffffff, 0x8000000000000000, 0xffffffffffffffff].each do |value|
       [0, 1, 31, 32, 63, 64, 65].each do |count|

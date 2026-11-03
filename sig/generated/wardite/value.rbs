@@ -19,6 +19,14 @@ module Wardite
     # @rbs value: Float
     # @rbs return: F64
     def F64: (Float value) -> F64
+
+    # Check the range before Float#to_i, whose result may exceed a native word.
+    # @rbs value: Float
+    # @rbs to: Symbol
+    # @rbs signed: bool
+    # @rbs saturating: bool
+    # @rbs return: I32 | I64
+    def truncate_float: (Float value, to: Symbol, signed: bool, saturating: bool) -> (I32 | I64)
   end
 
   extend ValueHelper
