@@ -6,6 +6,7 @@ require_relative "wardite/leb128"
 require_relative "wardite/const"
 require_relative "wardite/instruction"
 require_relative "wardite/value"
+require_relative "wardite/wasm_module"
 require_relative "wardite/load"
 require_relative "wardite/errors"
 
@@ -940,7 +941,8 @@ module Wardite
         import_section.imports.each do |desc|
           callsig = type_section.defined_types[desc.sig_index]
           retsig = type_section.defined_results[desc.sig_index]
-          target_module = self.modules[desc.module_name.to_sym]
+          module_name = desc.module_name.to_sym
+          target_module = self.modules.fetch(module_name) { self.modules.default(module_name) }
           if target_module.nil?
             raise ::NameError, "module #{desc.module_name} not found"
           end

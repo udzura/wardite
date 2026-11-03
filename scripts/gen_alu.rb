@@ -21,7 +21,8 @@ module GenAlu
   def self.generate_ops(prefix:, defined_ops:)
     result = StringIO.new("")
     defined_ops.each do |op|
-      code = DEFS[op.to_sym].dup
+      key = ["i32", "i64"].include?(prefix) && op.to_sym == :mul ? :mul_integer : :"#{op}_#{prefix}"
+      code = (DEFS[key] || DEFS[op.to_sym]).dup
       if ! code
         raise "unsupported code specified! #{op.inspect}"
       end
@@ -462,7 +463,7 @@ module GenAlu
         finish = target.memsize
         count = 0
         while count < finish
-          if (target.value & (1 << count)).zero?
+          if target.value[count].zero?
             count += 1
           else
             break
@@ -480,11 +481,20 @@ module GenAlu
         digits = target.memsize
         count = 0
         digits.times do |i|
-          if (target.value & (1 << i)).nonzero?
+          if target.value[i].nonzero?
             count += 1
           end
         end
         runtime.stack.push(${CLASS}(count))
+    RUBY
+
+    add_i64: <<~RUBY,
+      when :i64_add
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(left.add(right))
     RUBY
 
     add: <<~RUBY,
@@ -505,6 +515,15 @@ module GenAlu
         runtime.stack.push(${CLASS}(left.value - right.value))
     RUBY
 
+    mul_integer: <<~RUBY,
+      when :${PREFIX}_mul
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(left.multiply(right))
+    RUBY
+
     mul: <<~RUBY,
       when :${PREFIX}_mul
         right, left = runtime.stack.pop, runtime.stack.pop
@@ -520,12 +539,17 @@ module GenAlu
         if !right.is_a?(${CLASS}) || !left.is_a?(${CLASS})
           raise EvalError, "maybe empty or invalid stack"
         end
-        result = left.value_s / right.value_s.to_f
-        iresult = (result >= 0 ? result.floor : result.ceil).to_i
-        if iresult >= (1 << (left.memsize - 1))
+        dividend = left.value_s
+        divisor = right.value_s
+        signed_min = -(1 << (left.memsize - 2)) * 2
+        if dividend == signed_min && divisor == -1
           raise IntegerOverflow, "integer overflow"
         end
-
+        iresult = dividend / divisor
+        # Ruby rounds integer division down; Wasm truncates toward zero.
+        if (dividend < 0) != (divisor < 0) && dividend % divisor != 0
+          iresult += 1
+        end
         runtime.stack.push(${CLASS}(iresult))
     RUBY
 
@@ -598,6 +622,15 @@ module GenAlu
         runtime.stack.push(${CLASS}(left.value ^ right.value))
     RUBY
 
+    shl_i64: <<~RUBY,
+      when :i64_shl
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(left.shift_left(right.value % 64))
+    RUBY
+
     shl: <<~RUBY,
       when :${PREFIX}_shl
         right, left = runtime.stack.pop, runtime.stack.pop
@@ -630,6 +663,17 @@ module GenAlu
         runtime.stack.push(${CLASS}(value))
     RUBY
 
+    rotl_i64: <<~RUBY,
+      when :i64_rotl
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        k = right.value % 64
+        value = left.shift_left(k).value | (left.value >> (64 - k))
+        runtime.stack.push(I64(value))
+    RUBY
+
     rotl: <<~RUBY,
       when :${PREFIX}_rotl
         right, left = runtime.stack.pop, runtime.stack.pop
@@ -638,9 +682,20 @@ module GenAlu
         end
         k = (right.value % right.memsize)
         rotated = left.value << k
-        rest = left.value & (${CLASS}::${CLASS}_MAX << (right.memsize - k))
-        value = rotated | (rest >> (right.memsize - k))
+        rest = left.value >> (right.memsize - k)
+        value = rotated | rest
         runtime.stack.push(${CLASS}(value))
+    RUBY
+
+    rotr_i64: <<~RUBY,
+      when :i64_rotr
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        k = right.value % 64
+        value = (left.value >> k) | left.shift_left((64 - k) % 64).value
+        runtime.stack.push(I64(value))
     RUBY
 
     rotr: <<~RUBY,

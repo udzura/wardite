@@ -352,7 +352,7 @@ module Wardite
         finish = target.memsize
         count = 0
         while count < finish
-          if (target.value & (1 << count)).zero?
+          if target.value[count].zero?
             count += 1
           else
             break
@@ -369,7 +369,7 @@ module Wardite
         digits = target.memsize
         count = 0
         digits.times do |i|
-          if (target.value & (1 << i)).nonzero?
+          if target.value[i].nonzero?
             count += 1
           end
         end
@@ -381,7 +381,7 @@ module Wardite
         if !right.is_a?(I64) || !left.is_a?(I64)
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(I64(left.value + right.value))
+        runtime.stack.push(left.add(right))
 
 
       when :i64_sub
@@ -397,7 +397,7 @@ module Wardite
         if !right.is_a?(I64) || !left.is_a?(I64)
           raise EvalError, "maybe empty or invalid stack"
         end
-        runtime.stack.push(I64(left.value * right.value))
+        runtime.stack.push(left.multiply(right))
 
 
       when :i64_div_s
@@ -405,12 +405,17 @@ module Wardite
         if !right.is_a?(I64) || !left.is_a?(I64)
           raise EvalError, "maybe empty or invalid stack"
         end
-        result = left.value_s / right.value_s.to_f
-        iresult = (result >= 0 ? result.floor : result.ceil).to_i
-        if iresult >= (1 << (left.memsize - 1))
+        dividend = left.value_s
+        divisor = right.value_s
+        signed_min = -(1 << (left.memsize - 2)) * 2
+        if dividend == signed_min && divisor == -1
           raise IntegerOverflow, "integer overflow"
         end
-      
+        iresult = dividend / divisor
+        # Ruby rounds integer division down; Wasm truncates toward zero.
+        if (dividend < 0) != (divisor < 0) && dividend % divisor != 0
+          iresult += 1
+        end
         runtime.stack.push(I64(iresult))
 
 
@@ -473,10 +478,7 @@ module Wardite
         if !right.is_a?(I64) || !left.is_a?(I64)
           raise EvalError, "maybe empty or invalid stack"
         end
-        value = left.value << (right.value % right.memsize)
-        value %= 1 << right.memsize
-      
-        runtime.stack.push(I64(value))
+        runtime.stack.push(left.shift_left(right.value % 64))
 
 
       when :i64_shr_s
@@ -502,10 +504,8 @@ module Wardite
         if !right.is_a?(I64) || !left.is_a?(I64)
           raise EvalError, "maybe empty or invalid stack"
         end
-        k = (right.value % right.memsize)
-        rotated = left.value << k
-        rest = left.value & (I64::I64_MAX << (right.memsize - k))
-        value = rotated | (rest >> (right.memsize - k))
+        k = right.value % 64
+        value = left.shift_left(k).value | (left.value >> (64 - k))
         runtime.stack.push(I64(value))
 
 
@@ -514,10 +514,8 @@ module Wardite
         if !right.is_a?(I64) || !left.is_a?(I64)
           raise EvalError, "maybe empty or invalid stack"
         end
-        k = (right.value % right.memsize)
-        rotated = left.value >> k
-        rest = left.value & (I64::I64_MAX >> (right.memsize - k))
-        value = rotated | (rest << (right.memsize - k))
+        k = right.value % 64
+        value = (left.value >> k) | left.shift_left((64 - k) % 64).value
         runtime.stack.push(I64(value))
 
 

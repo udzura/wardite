@@ -40,14 +40,17 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: wasmFuncReturn
     def invoke(fnname, store, *args)
-      fn = self.hash[fnname.to_sym]
+      fn = callable(fnname)
       fn.call(store, args)
     end
 
     # @rbs fnname: Symbol
     # @rbs return: _WasmCallable
     def callable(fnname)
-      self.hash[fnname.to_sym]
+      name = fnname.to_sym
+      fn = self.hash.fetch(name) { self.hash.default(name) }
+      raise NameError, "function #{fnname} not found" unless fn
+      fn
     end
   end
 end

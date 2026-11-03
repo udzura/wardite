@@ -30,25 +30,32 @@ module Wardite
     # @rbs buf: File|StringIO
     # @rbs return: Integer
     def fetch_sleb128(buf, max_level: 8)
-      dest = 0
+      bytes = [] #: Array[Integer]
+      negative = false
       level = 0
       while b = buf.read(1)
         raise LoadError, "buffer too short" unless b
         c = b.ord
 
         upper, lower = (c >> 7), (c & (1 << 7) - 1)
-        dest |= lower << (7 * level)
+        bytes << lower
+        negative = (c & 0x40) != 0
         if upper == 0
           break
         end
 
         if level > max_level
-          raise "unreachable! debug: dest = #{dest} level = #{level}"
+          raise "signed LEB128 exceeds maximum level #{max_level}"
         end
         level += 1
       end
-      shift = 7 * (level + 1) - 1
-      return dest | -(dest & (1 << shift))   
+      # Starting with the sign extension avoids an unsigned 70-bit
+      # intermediate when decoding a ten-byte signed 64-bit integer.
+      dest = negative ? -1 : 0
+      bytes.reverse_each do |lower|
+        dest = (dest << 7) | lower
+      end
+      dest
     end
 
     module_function :fetch_uleb128, :fetch_sleb128

@@ -19,6 +19,14 @@ module Wardite
     # @rbs value: Float
     # @rbs return: F64
     def F64: (Float value) -> F64
+
+    # Check the range before Float#to_i, whose result may exceed a native word.
+    # @rbs value: Float
+    # @rbs to: Symbol
+    # @rbs signed: bool
+    # @rbs saturating: bool
+    # @rbs return: I32 | I64
+    def truncate_float: (Float value, to: Symbol, signed: bool, saturating: bool) -> (I32 | I64)
   end
 
   extend ValueHelper
@@ -53,6 +61,12 @@ module Wardite
     # returns a value interpreted as signed integer
     # @rbs return: Integer
     def value_s: () -> Integer
+
+    # Keep intermediate products below 2**49, even for 0xffffffff operands.
+    # The omitted high bits do not contribute to the low 32-bit result.
+    # @rbs other: I32
+    # @rbs return: I32
+    def multiply: (I32 other) -> I32
 
     # TODO: eliminate use of pack, to support mruby - in this file!
     # @rbs size: Integer|nil
@@ -121,12 +135,15 @@ module Wardite
   class I64
     include ValueHelper
 
+    type bits = Integer
+
     I64_MAX: Integer
 
-    attr_accessor value: Integer
+    # Leave the representation inferred so Spinel can hold unsigned 64-bit values.
+    attr_accessor value: bits
 
-    # @rbs value: Integer
-    def initialize: (?Integer value) -> untyped
+    # @rbs value: bits
+    def initialize: (?bits value) -> untyped
 
     # @rbs str: String
     # @rbs size: Integer|nil
@@ -140,6 +157,20 @@ module Wardite
     # returns a value interpreted as signed integer
     # @rbs return: Integer
     def value_s: () -> Integer
+
+    # @rbs other: I64
+    # @rbs return: I64
+    def add: (I64 other) -> I64
+
+    # @rbs count: Integer
+    # @rbs return: I64
+    def shift_left: (Integer count) -> I64
+
+    # Multiply in base 2**16; only the low four words contribute modulo 2**64.
+    # Every intermediate product and carry fits in a signed 64-bit integer.
+    # @rbs other: I64
+    # @rbs return: I64
+    def multiply: (I64 other) -> I64
 
     # @rbs size: Integer|nil
     # @rbs return: String
@@ -235,16 +266,11 @@ module Wardite
     # @rbs return: wasmValue
     def extend_u: (to: Symbol) -> wasmValue
 
-    # @todo need more testcase...
-    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-s-mathrm-trunc-mathsf-s-m-n-z
-    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
     # @rbs saturating: bool
     # @rbs return: wasmValue
     def trunc_s: (to: Symbol, ?saturating: bool) -> wasmValue
 
-    # @see https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-u-mathrm-trunc-mathsf-u-m-n-z
-    # @see copy this impl to F64 when changed
     # @rbs to: Symbol
     # @rbs sturating: bool
     # @rbs return: wasmValue
@@ -325,7 +351,6 @@ module Wardite
     # @rbs return: wasmValue
     def trunc_s: (to: Symbol, ?saturating: bool) -> wasmValue
 
-    # @see the same as F32
     # @rbs to: Symbol
     # @rbs saturating: bool
     # @rbs return: wasmValue
