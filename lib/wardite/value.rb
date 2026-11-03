@@ -312,6 +312,15 @@ module Wardite
       I64(signed)
     end
 
+    # @rbs count: Integer
+    # @rbs return: I64
+    def shift_left(count)
+      count %= 64
+      low = @value[0, 63 - count] << count
+      sign = @value[63 - count]
+      I64(low | (sign * (-9223372036854775807 - 1)))
+    end
+
     # Multiply in base 2**16; only the low four words contribute modulo 2**64.
     # Every intermediate product and carry fits in a signed 64-bit integer.
     # @rbs other: I64

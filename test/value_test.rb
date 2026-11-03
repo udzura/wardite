@@ -3,6 +3,15 @@
 require "test_helper"
 
 class WarditeValueTest < Test::Unit::TestCase
+  test "I64 left shifts discard high bits before shifting" do
+    [0, 1, 0xffffffff, 0x7fffffffffffffff, 0x8000000000000000, 0xffffffffffffffff].each do |value|
+      [0, 1, 31, 32, 63, 64, 65].each do |count|
+        expected = (value << (count % 64)) & 0xffffffffffffffff
+        assert_equal expected, Wardite::I64(value).shift_left(count).value
+      end
+    end
+  end
+
   test "I64 addition carries and wraps at both word boundaries" do
     values = [0, 1, 0xffffffff, 0x100000000,
               0x7fffffffffffffff, 0x8000000000000000, 0xffffffffffffffff]

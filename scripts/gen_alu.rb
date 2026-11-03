@@ -617,6 +617,15 @@ module GenAlu
         runtime.stack.push(${CLASS}(left.value ^ right.value))
     RUBY
 
+    shl_i64: <<~RUBY,
+      when :i64_shl
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I64) || !left.is_a?(I64)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(left.shift_left(right.value % 64))
+    RUBY
+
     shl: <<~RUBY,
       when :${PREFIX}_shl
         right, left = runtime.stack.pop, runtime.stack.pop

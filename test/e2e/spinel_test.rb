@@ -117,6 +117,20 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "i64.shl masks the count and discards overflowing bits" do
+    [[1, 63, -9223372036854775808], [-1, 1, -2], [-1, 64, -1], [1, -1, -9223372036854775808]].each do |a, b, shifted|
+      assert_native_result(<<~WAT, "shl", [], 1)
+        (module
+          (func (export "shl") (result i32)
+            i64.const #{a}
+            i64.const #{b}
+            i64.shl
+            i64.const #{shifted}
+            i64.eq))
+      WAT
+    end
+  end
+
   test "I32 normalization compiles without a global overflow mode" do
     Dir.mktmpdir("wardite-i32-normalization") do |dir|
       executable = File.join(dir, "normalize")
