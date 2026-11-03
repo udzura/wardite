@@ -85,9 +85,9 @@ the native build. Ruby's dynamic export helpers (`instance.add(...)` and
 `runtime.add(...)`) rely on `method_missing`; use `instance.runtime.call("add",
 [100, 200])` when compiling an application with Spinel.
 
-The build uses `--no-inline-rbs` because the annotations target `rbs-inline`, and
-`--int-overflow=promote` to retain Ruby's integer arithmetic for Wasm masks and
-intermediate values. Tested with Spinel `2026.10.25+1967` (`6e7fc1355`) on macOS
+The build leaves inline RBS enabled and uses `--int-overflow=promote` to retain
+Ruby's integer arithmetic for Wasm masks and intermediate values.
+Tested with Spinel `2026.10.25+1967` (`6e7fc1355`) on macOS
 arm64. Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
 
 ## Contributing

@@ -63,7 +63,6 @@ module Wardite
       end
 
       # @rbs return: Array[Integer | Float]
-      # @rbs %a{pure}
       def args
         @args.map do |a|
           if a.include? "."
@@ -131,10 +130,12 @@ module Wardite
           raise "WASI not activated"
         end
         instance.wasi.argv = ["wardite"] + @args
-        if mapdir && mount_dst && mount_src
+        destination = mount_dst
+        source = mount_src
+        if mapdir && destination && source
           # TODO: support multiple mapdir
-          instance.wasi.mapdir[mount_dst] = mount_src
-          instance.wasi.set_preopened_dir(mount_dst, mount_src)
+          instance.wasi.mapdir[destination] = source
+          instance.wasi.set_preopened_dir(destination, source)
         end
 
         if defined? Bundler
@@ -147,13 +148,11 @@ module Wardite
       end
 
       # @rbs return: String?
-      # @rbs %a{pure}
       def mount_src
         mapdir&.split(":")&.first
       end
 
       # @rbs return: String?
-      # @rbs %a{pure}
       def mount_dst
         m = mapdir&.split(":")
         if m

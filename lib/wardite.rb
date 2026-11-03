@@ -848,7 +848,7 @@ module Wardite
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
-    # @rbs returb: void
+    # @rbs return: void
     def initialize(callsig, retsig)
       @callsig = callsig
       @retsig = retsig
@@ -874,7 +874,7 @@ module Wardite
     # @rbs body: Array[[Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer?]]
     # @rbs arity: Integer
     # @rbs locals: Array[wasmValue]
-    # @rbs returb: void
+    # @rbs return: void
     def initialize(pc, sp, body, arity, locals)
       @pc = pc
       @sp = sp

@@ -104,11 +104,16 @@ module Wardite
   end
 
   class ElemSection < Section
+    # @rbs!
+    #   type indexVector = Array[Integer]
+
     attr_accessor :table_indices #: Array[Integer]
 
     attr_accessor :table_offsets #: Array[Integer]
 
-    attr_accessor :element_indices #: Array[Array[Integer]]
+    # Rows are also shared with Store#elements. Keep the precise RBS type via
+    # an alias rather than pinning Spinel's specialized nested-array layout.
+    attr_accessor :element_indices #: Array[indexVector]
 
     # @rbs return: void
     def initialize

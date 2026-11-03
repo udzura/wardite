@@ -24,8 +24,6 @@ module Wardite
       def initialize: (Array[String] args) -> void
 
       # @rbs return: Array[Integer | Float]
-      # @rbs %a{pure}
-      %a{pure}
       def args: () -> Array[Integer | Float]
 
       # @rbs return: ::Wardite::Instance
@@ -44,13 +42,9 @@ module Wardite
       def invoke_wasi: () -> void
 
       # @rbs return: String?
-      # @rbs %a{pure}
-      %a{pure}
       def mount_src: () -> String?
 
       # @rbs return: String?
-      # @rbs %a{pure}
-      %a{pure}
       def mount_dst: () -> String?
     end
   end
