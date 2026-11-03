@@ -87,6 +87,16 @@ module Wardite
         ((-@value) ^ I32_MAX) + 1
     end
 
+    # Keep intermediate products below 2**49, even for 0xffffffff operands.
+    # The omitted high bits do not contribute to the low 32-bit result.
+    # @rbs other: I32
+    # @rbs return: I32
+    def multiply(other)
+      low = (@value & 0xffff) * other.value
+      high = (((@value >> 16) * other.value) & 0xffff) << 16
+      I32(low + high)
+    end
+
     # TODO: eliminate use of pack, to support mruby - in this file!
     # @rbs size: Integer|nil
     # @rbs return: String

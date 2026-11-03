@@ -103,6 +103,33 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "i32.mul wraps unsigned operand products" do
+    code = <<~WAT
+      (module
+        (func (export "mul") (param i32 i32) (result i32)
+          local.get 0
+          local.get 1
+          i32.mul))
+    WAT
+    assert_native_result(code, "mul", [0xffffffff, 0xffffffff], 1)
+    assert_native_result(code, "mul", [0x80000000, 2], 0)
+    assert_native_result(code, "mul", [0x10001, 0x10001], 131073)
+  end
+
+  test "I32 multiplication compiles without a global overflow mode" do
+    Dir.mktmpdir("wardite-i32-multiply") do |dir|
+      executable = File.join(dir, "multiply")
+      output, status = Open3.capture2e(
+        ENV.fetch("SPINEL", "spinel"), "--strict-require", "-I#{ROOT}/lib",
+        "#{ROOT}/test/spinel/i32_multiply.rb", "-o", executable
+      )
+      assert status.success?, output
+      stdout, stderr, status = Open3.capture3(executable)
+      assert status.success?, stderr
+      assert_equal "1\n0\n131073\n", stdout
+    end
+  end
+
   private
 
   def assert_native_result(code, export, args, expected, no_wasi_flag: true)

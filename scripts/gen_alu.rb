@@ -21,7 +21,8 @@ module GenAlu
   def self.generate_ops(prefix:, defined_ops:)
     result = StringIO.new("")
     defined_ops.each do |op|
-      code = DEFS[op.to_sym].dup
+      key = prefix == "i32" && op.to_sym == :mul ? :mul_i32 : op.to_sym
+      code = DEFS[key].dup
       if ! code
         raise "unsupported code specified! #{op.inspect}"
       end
@@ -503,6 +504,15 @@ module GenAlu
           raise EvalError, "maybe empty or invalid stack"
         end
         runtime.stack.push(${CLASS}(left.value - right.value))
+    RUBY
+
+    mul_i32: <<~RUBY,
+      when :i32_mul
+        right, left = runtime.stack.pop, runtime.stack.pop
+        if !right.is_a?(I32) || !left.is_a?(I32)
+          raise EvalError, "maybe empty or invalid stack"
+        end
+        runtime.stack.push(left.multiply(right))
     RUBY
 
     mul: <<~RUBY,
