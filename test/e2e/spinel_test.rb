@@ -130,6 +130,20 @@ class WarditeSpinelTest < Test::Unit::TestCase
     assert_native_result(code, "mul", [0x10001, 0x10001], 131073)
   end
 
+  test "i32.rotl avoids a mask wider than 64 bits" do
+    code = <<~WAT
+      (module
+        (func (export "rotl") (param i32 i32) (result i32)
+          local.get 0
+          local.get 1
+          i32.rotl))
+    WAT
+    assert_native_result(code, "rotl", [0x80000001, 1], 3)
+    assert_native_result(code, "rotl", [0xffffffff, 0], -1)
+    assert_native_result(code, "rotl", [1, 31], -2147483648)
+    assert_native_result(code, "rotl", [0x80000001, 32], -2147483647)
+  end
+
   test "I32 multiplication compiles without a global overflow mode" do
     Dir.mktmpdir("wardite-i32-multiply") do |dir|
       executable = File.join(dir, "multiply")

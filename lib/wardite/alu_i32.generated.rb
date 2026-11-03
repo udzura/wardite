@@ -447,8 +447,8 @@ module Wardite
         end
         k = (right.value % right.memsize)
         rotated = left.value << k
-        rest = left.value & (I32::I32_MAX << (right.memsize - k))
-        value = rotated | (rest >> (right.memsize - k))
+        rest = left.value >> (right.memsize - k)
+        value = rotated | rest
         runtime.stack.push(I32(value))
 
 

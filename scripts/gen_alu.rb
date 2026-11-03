@@ -648,8 +648,8 @@ module GenAlu
         end
         k = (right.value % right.memsize)
         rotated = left.value << k
-        rest = left.value & (${CLASS}::${CLASS}_MAX << (right.memsize - k))
-        value = rotated | (rest >> (right.memsize - k))
+        rest = left.value >> (right.memsize - k)
+        value = rotated | rest
         runtime.stack.push(${CLASS}(value))
     RUBY
 
