@@ -1371,7 +1371,7 @@ module Wardite
     if path
       buffer = File.open(path)
     end
-    if !buffer
+    if buffer.nil?
       raise ::ArgumentError, "nil buffer passed"
     end
     Wardite::BinaryLoader::load_from_buffer(buffer, **options);

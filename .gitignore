@@ -6,6 +6,7 @@
 /pkg/
 /spec/reports/
 /tmp/
+/build/
 .ruby-version
 .gem_rbs_collection
 ruby-wasm32-wasi

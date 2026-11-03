@@ -19,7 +19,7 @@ module Wardite
       # @rbs return: void
       def initialize(args)
         @invoke = @mapdir = nil
-        @wasi = true # default to true
+        @wasi = RUBY_ENGINE != "spinel"
         @yjit = false
         @memsize = 1
         options = OptionParser.new do |opts|
@@ -49,12 +49,16 @@ module Wardite
         @args = (args[1..-1] || [])
         @args.unshift if @args[0] == '--'
 
-        if (yjit || ENV["WARDITE_YJIT_ON"] == "1") && (defined? RubyVM::YJIT)
-          RubyVM::YJIT.enable
-        end
+        if RUBY_ENGINE == "spinel"
+          warn "Warning: YJIT is not available in Spinel builds" if yjit || ENV["WARDITE_YJIT_ON"] == "1"
+        else
+          if (yjit || ENV["WARDITE_YJIT_ON"] == "1") && (defined? RubyVM::YJIT)
+            RubyVM::YJIT.enable
+          end
 
-        if (yjit || ENV["WARDITE_YJIT_ON"] == "1") && !defined?(RubyVM::YJIT)
-          warn "Warning: --yjit option is specified, but not available in this Ruby build"
+          if (yjit || ENV["WARDITE_YJIT_ON"] == "1") && !defined?(RubyVM::YJIT)
+            warn "Warning: --yjit option is specified, but not available in this Ruby build"
+          end
         end
       end
 
@@ -82,14 +86,18 @@ module Wardite
 
       # @rbs return: void
       def run
-        if profile_file_path
-          require "vernier"
-          $stderr.puts "Activated Vernier profiling"
-          Vernier.profile(out: profile_file_path) do
+        if RUBY_ENGINE == "spinel"
+          __run
+        else
+          if profile_file_path
+            require "vernier"
+            $stderr.puts "Activated Vernier profiling"
+            Vernier.profile(out: profile_file_path) do
+              __run
+            end
+          else
             __run
           end
-        else
-          __run
         end
       end
 
