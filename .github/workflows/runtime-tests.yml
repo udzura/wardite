@@ -5,6 +5,8 @@ on:
     branches:
       - main
   pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -35,6 +37,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/wardite-tools"
           install -m 755 "$RUNNER_TEMP/wasm-tools-${WASM_TOOLS_VERSION}-x86_64-linux/wasm-tools" "$RUNNER_TEMP/wardite-tools/wasm-tools"
           echo "$RUNNER_TEMP/wardite-tools" >> "$GITHUB_PATH"
+      - name: Run type checks
+        run: bundle exec rake check
       - name: Run CRuby tests
         run: bundle exec rake test
 
