@@ -1,0 +1,81 @@
+name: Test CRuby and Spinel
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  WASM_TOOLS_VERSION: '1.236.0'
+
+# Neither job has `needs`: their toolchain setup and tests run independently.
+jobs:
+  cruby:
+    name: CRuby tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Ruby and bundle
+        uses: ruby/setup-ruby@v1
+        with:
+          # Read the Ruby version from .ruby-version and Bundler from the lockfile.
+          bundler-cache: true
+      - name: Install wasm-tools
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/wasm-tools.tar.gz"
+          curl -fL --retry 3 "https://github.com/bytecodealliance/wasm-tools/releases/download/v${WASM_TOOLS_VERSION}/wasm-tools-${WASM_TOOLS_VERSION}-x86_64-linux.tar.gz" -o "$archive"
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/wardite-tools"
+          install -m 755 "$RUNNER_TEMP/wasm-tools-${WASM_TOOLS_VERSION}-x86_64-linux/wasm-tools" "$RUNNER_TEMP/wardite-tools/wasm-tools"
+          echo "$RUNNER_TEMP/wardite-tools" >> "$GITHUB_PATH"
+      - name: Run CRuby tests
+        run: bundle exec rake test
+
+  spinel:
+    name: Spinel tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Ruby and bundle
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Install wasm-tools
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/wasm-tools.tar.gz"
+          curl -fL --retry 3 "https://github.com/bytecodealliance/wasm-tools/releases/download/v${WASM_TOOLS_VERSION}/wasm-tools-${WASM_TOOLS_VERSION}-x86_64-linux.tar.gz" -o "$archive"
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/wardite-tools"
+          install -m 755 "$RUNNER_TEMP/wasm-tools-${WASM_TOOLS_VERSION}-x86_64-linux/wasm-tools" "$RUNNER_TEMP/wardite-tools/wasm-tools"
+          echo "$RUNNER_TEMP/wardite-tools" >> "$GITHUB_PATH"
+      - name: Check out Spinel
+        uses: actions/checkout@v4
+        with:
+          repository: matz/spinel
+          # 2026.10.25+1967: the compiler revision verified with Wardite.
+          ref: 6e7fc13556709bf7d7ba4af5bd1d12bebc00733e
+          path: .ci/spinel
+          persist-credentials: false
+      - name: Build and install Spinel
+        shell: bash
+        run: |
+          make -C .ci/spinel deps
+          make -C .ci/spinel -j2 install PREFIX="$RUNNER_TEMP/spinel"
+          echo "$RUNNER_TEMP/spinel/bin" >> "$GITHUB_PATH"
+      - name: Check toolchain versions
+        run: |
+          ruby --version
+          bundle --version
+          wasm-tools --version
+          spinel --version
+      - name: Run Spinel tests
+        run: make spinel-test RUBY="bundle exec ruby"
