@@ -256,11 +256,15 @@ module Wardite
   class I64
     include ValueHelper
 
+    # @rbs!
+    #   type bits = Integer
+
     I64_MAX = (1<<64) - 1 #: Integer
 
-    attr_accessor :value #: Integer
+    # Leave the representation inferred so Spinel can hold unsigned 64-bit values.
+    attr_accessor :value #: bits
 
-    # @rbs value: Integer
+    # @rbs value: bits
     def initialize(value=0)
       @value = value
     end

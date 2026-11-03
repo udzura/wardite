@@ -154,6 +154,22 @@ class WarditeSpinelTest < Test::Unit::TestCase
     end
   end
 
+  test "I64 normalization compiles without a global overflow mode" do
+    Dir.mktmpdir("wardite-i64-normalization") do |dir|
+      executable = File.join(dir, "normalize")
+      output, status = Open3.capture2e(
+        ENV.fetch("SPINEL", "spinel"), "--strict-require", "-I#{ROOT}/lib",
+        "#{ROOT}/test/spinel/i64_normalization.rb", "-o", executable
+      )
+      assert status.success?, output
+      stdout, stderr, status = Open3.capture3(executable)
+      assert status.success?, stderr
+      expected = [9223372036854775807, 9223372036854775808, 18446744073709551615,
+                  18446744073709551615, 42, 18446744073709551615]
+      assert_equal expected.map { |n| "#{n}\n" }.join, stdout
+    end
+  end
+
   private
 
   def assert_native_result(code, export, args, expected, no_wasi_flag: true)

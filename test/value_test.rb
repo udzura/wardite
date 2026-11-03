@@ -3,6 +3,15 @@
 require "test_helper"
 
 class WarditeValueTest < Test::Unit::TestCase
+  test "I64 normalizes wide integers and preserves unsigned 64-bit values" do
+    [0, 0x7fffffffffffffff, 0x8000000000000000, 0xffffffffffffffff].each do |value|
+      assert_equal value, Wardite::I64(value).value
+    end
+    assert_equal 0xffffffffffffffff, Wardite::I64(-1).value
+    assert_equal 42, Wardite::I64((1 << 100) + 42).value
+    assert_equal 0xffffffffffffffff, Wardite::I64(-(1 << 100) - 1).value
+  end
+
   test "I64 signed view handles both sides of the sign bit" do
     {0 => 0, 0x7fffffffffffffff => 0x7fffffffffffffff,
      0x8000000000000000 => -9223372036854775808, 0xffffffffffffffff => -1}.each do |bits, signed|
