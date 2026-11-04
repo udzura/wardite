@@ -6,6 +6,7 @@ The observed min/max are shown independently and are never clipped to the body.
 from pathlib import Path
 import csv
 import json
+import math
 import os
 
 os.environ.setdefault('MPLCONFIGDIR', '/private/tmp/wardite-matplotlib-config')
@@ -28,7 +29,7 @@ plt.rcParams.update({
 })
 
 ENGINES = [
-    ('Efflorescence / Spinel', 'Efflorescence\nSpinel', '#2563EB'),
+    ('Efflorescence / Spinel', 'Efflorescence\nSpinel（パッチあり）', '#2563EB'),
     ('iwasm (WAMR interpreter)', 'iwasm\nWAMR interpreter', '#0D9488'),
     ('Wasmtime (Pulley)', 'Wasmtime\nPulley', '#D68A0B'),
     ('Wasmtime', 'Wasmtime', '#7C3AED'),
@@ -36,28 +37,32 @@ ENGINES = [
 # mean, standard deviation, minimum, maximum, runs; all times in milliseconds.
 VALUES = {
     'inline_mix': [
-        (8.1, 0.3, 7.8, 8.6, 5),
-        (3.5, 0.2, 3.3, 3.8, 5),
-        (5.8, 0.3, 5.5, 6.2, 5),
-        (4.8, 0.3, 4.4, 5.2, 5),
+        (6.6, 0.2, 6.3, 6.9, 5),
+        (4.8, 0.2, 4.6, 5.0, 5),
+        (8.4, 0.2, 8.1, 8.6, 5),
+        (6.8, 0.5, 6.1, 7.4, 5),
     ],
     'call_mix': [
-        (8.1, 0.2, 7.9, 8.3, 5),
-        (3.8, 0.2, 3.5, 3.9, 5),
-        (6.9, 0.4, 6.4, 7.3, 5),
-        (4.7, 0.4, 4.3, 5.2, 5),
+        (6.6, 0.3, 6.2, 7.0, 5),
+        (5.7, 0.3, 5.4, 6.0, 5),
+        (10.1, 0.2, 9.9, 10.3, 5),
+        (6.9, 0.6, 6.2, 7.5, 5),
     ],
 }
 
 rows = []
 for export, values in VALUES.items():
+    assert len(values) == len(ENGINES)
     for (engine, _, _), (mean, sd, minimum, maximum, runs) in zip(ENGINES, values):
         assert minimum <= mean <= maximum
         assert sd >= 0 and runs == 5
         rows.append(dict(export=export, engine=engine, mean_ms=mean, sd_ms=sd,
                          min_ms=minimum, max_ms=maximum, runs=runs))
 (OUT / 'spinel_new_vm_summary.json').write_text(json.dumps({
-    'source': 'User-provided Hyperfine summary',
+    'source': 'User-provided final Hyperfine summary',
+    'summary_precision_ms': 0.1,
+    'configuration': 'Efflorescence while dispatch; Spinel fetch-root-elision patch (6f1a2c259)',
+    'timing': 'Whole CLI process wall time; Wasmtime compilation included and compiled-module cache disabled',
     'body': 'mean +/- standard deviation',
     'whiskers': 'observed minimum and maximum',
     'data': rows,
@@ -69,16 +74,21 @@ with (OUT / 'spinel_new_vm_summary.csv').open('w', newline='') as handle:
 
 fig, axes = plt.subplots(1, 2, figsize=(15.6, 7.7), sharey=True)
 fig.patch.set_facecolor('#F5F7FB')
-fig.subplots_adjust(left=0.075, right=0.975, bottom=0.245, top=0.79, wspace=0.12)
-fig.text(0.075, 0.944, 'Wasmランタイムの実行時間', fontsize=23, weight='bold', color='#17273D')
-fig.text(0.075, 0.894, '各5回の計測  ·  小さいほど高速', fontsize=11.5, color='#5C6B80')
+fig.subplots_adjust(left=0.075, right=0.975, bottom=0.29, top=0.79, wspace=0.12)
+fig.text(0.075, 0.944, 'Wasmランタイムの起動込み実行時間', fontsize=23, weight='bold', color='#17273D')
+fig.text(0.075, 0.894, '最終計測  ·  各5回  ·  小さいほど高速', fontsize=11.5, color='#5C6B80')
+
+# Leave room for every observed maximum, statistical body and numeric label.
+peak = max(max(mean + sd, maximum)
+           for values in VALUES.values() for mean, sd, _, maximum, _ in values)
+y_limit = math.ceil((peak + 1.0) / 2) * 2
 
 for ax, (export, values) in zip(axes, VALUES.items()):
     ax.set_facecolor('white')
     ax.set_title(export, loc='left', pad=18, fontsize=17, weight='bold', color='#17273D')
-    ax.set_ylim(0, 10)
+    ax.set_ylim(0, y_limit)
     ax.set_xlim(-0.55, 3.55)
-    ax.set_yticks(range(0, 11, 2))
+    ax.set_yticks(range(0, y_limit + 1, 2))
     ax.set_axisbelow(True)
     ax.grid(axis='y', color='#DFE5EE', linewidth=0.8)
     for spine in ('top', 'right'):
@@ -111,9 +121,11 @@ legend = [
 ]
 fig.legend(handles=legend, loc='upper right', bbox_to_anchor=(0.983, 0.925),
            ncol=3, frameon=False, fontsize=10.5, handlelength=1.8, columnspacing=1.8)
-fig.text(0.075, 0.12, '2つのパネルは同じ縦軸。ラベルは平均 ± 標準偏差（σ）。',
+fig.text(0.075, 0.16, 'Efflorescenceはwhile版MIR VM。Spinelはfetchルート省略パッチ（6f1a2c259）を併用。',
          fontsize=10.5, color='#43536A')
-fig.text(0.075, 0.075, '平均 ± σ が実測の最小〜最大を超える箇所も、そのまま表示しています。',
+fig.text(0.075, 0.115, 'CLI全体の計測。起動・ロードを含み、WasmtimeはWasmコンパイルも含む（キャッシュ無効）。',
+         fontsize=10, color='#6E7C90')
+fig.text(0.075, 0.07, '両パネルは同じ縦軸。Wasmtimeとの差は小さく、実測範囲・平均±σの区間が重なっています。',
          fontsize=10, color='#6E7C90')
 
 for suffix in ('png', 'svg'):

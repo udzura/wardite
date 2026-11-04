@@ -1,9 +1,9 @@
 export,engine,mean_ms,sd_ms,min_ms,max_ms,runs
-inline_mix,Efflorescence / Spinel,8.1,0.3,7.8,8.6,5
-inline_mix,iwasm (WAMR interpreter),3.5,0.2,3.3,3.8,5
-inline_mix,Wasmtime (Pulley),5.8,0.3,5.5,6.2,5
-inline_mix,Wasmtime,4.8,0.3,4.4,5.2,5
-call_mix,Efflorescence / Spinel,8.1,0.2,7.9,8.3,5
-call_mix,iwasm (WAMR interpreter),3.8,0.2,3.5,3.9,5
-call_mix,Wasmtime (Pulley),6.9,0.4,6.4,7.3,5
-call_mix,Wasmtime,4.7,0.4,4.3,5.2,5
+inline_mix,Efflorescence / Spinel,6.6,0.2,6.3,6.9,5
+inline_mix,iwasm (WAMR interpreter),4.8,0.2,4.6,5.0,5
+inline_mix,Wasmtime (Pulley),8.4,0.2,8.1,8.6,5
+inline_mix,Wasmtime,6.8,0.5,6.1,7.4,5
+call_mix,Efflorescence / Spinel,6.6,0.3,6.2,7.0,5
+call_mix,iwasm (WAMR interpreter),5.7,0.3,5.4,6.0,5
+call_mix,Wasmtime (Pulley),10.1,0.2,9.9,10.3,5
+call_mix,Wasmtime,6.9,0.6,6.2,7.5,5

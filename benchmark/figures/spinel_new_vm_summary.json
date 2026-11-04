@@ -1,78 +1,81 @@
 {
-  "source": "User-provided Hyperfine summary",
+  "source": "User-provided final Hyperfine summary",
+  "summary_precision_ms": 0.1,
+  "configuration": "Efflorescence while dispatch; Spinel fetch-root-elision patch (6f1a2c259)",
+  "timing": "Whole CLI process wall time; Wasmtime compilation included and compiled-module cache disabled",
   "body": "mean +/- standard deviation",
   "whiskers": "observed minimum and maximum",
   "data": [
     {
       "export": "inline_mix",
       "engine": "Efflorescence / Spinel",
-      "mean_ms": 8.1,
-      "sd_ms": 0.3,
-      "min_ms": 7.8,
+      "mean_ms": 6.6,
+      "sd_ms": 0.2,
+      "min_ms": 6.3,
+      "max_ms": 6.9,
+      "runs": 5
+    },
+    {
+      "export": "inline_mix",
+      "engine": "iwasm (WAMR interpreter)",
+      "mean_ms": 4.8,
+      "sd_ms": 0.2,
+      "min_ms": 4.6,
+      "max_ms": 5.0,
+      "runs": 5
+    },
+    {
+      "export": "inline_mix",
+      "engine": "Wasmtime (Pulley)",
+      "mean_ms": 8.4,
+      "sd_ms": 0.2,
+      "min_ms": 8.1,
       "max_ms": 8.6,
       "runs": 5
     },
     {
       "export": "inline_mix",
-      "engine": "iwasm (WAMR interpreter)",
-      "mean_ms": 3.5,
-      "sd_ms": 0.2,
-      "min_ms": 3.3,
-      "max_ms": 3.8,
-      "runs": 5
-    },
-    {
-      "export": "inline_mix",
-      "engine": "Wasmtime (Pulley)",
-      "mean_ms": 5.8,
-      "sd_ms": 0.3,
-      "min_ms": 5.5,
-      "max_ms": 6.2,
-      "runs": 5
-    },
-    {
-      "export": "inline_mix",
       "engine": "Wasmtime",
-      "mean_ms": 4.8,
-      "sd_ms": 0.3,
-      "min_ms": 4.4,
-      "max_ms": 5.2,
+      "mean_ms": 6.8,
+      "sd_ms": 0.5,
+      "min_ms": 6.1,
+      "max_ms": 7.4,
       "runs": 5
     },
     {
       "export": "call_mix",
       "engine": "Efflorescence / Spinel",
-      "mean_ms": 8.1,
-      "sd_ms": 0.2,
-      "min_ms": 7.9,
-      "max_ms": 8.3,
+      "mean_ms": 6.6,
+      "sd_ms": 0.3,
+      "min_ms": 6.2,
+      "max_ms": 7.0,
       "runs": 5
     },
     {
       "export": "call_mix",
       "engine": "iwasm (WAMR interpreter)",
-      "mean_ms": 3.8,
-      "sd_ms": 0.2,
-      "min_ms": 3.5,
-      "max_ms": 3.9,
+      "mean_ms": 5.7,
+      "sd_ms": 0.3,
+      "min_ms": 5.4,
+      "max_ms": 6.0,
       "runs": 5
     },
     {
       "export": "call_mix",
       "engine": "Wasmtime (Pulley)",
-      "mean_ms": 6.9,
-      "sd_ms": 0.4,
-      "min_ms": 6.4,
-      "max_ms": 7.3,
+      "mean_ms": 10.1,
+      "sd_ms": 0.2,
+      "min_ms": 9.9,
+      "max_ms": 10.3,
       "runs": 5
     },
     {
       "export": "call_mix",
       "engine": "Wasmtime",
-      "mean_ms": 4.7,
-      "sd_ms": 0.4,
-      "min_ms": 4.3,
-      "max_ms": 5.2,
+      "mean_ms": 6.9,
+      "sd_ms": 0.6,
+      "min_ms": 6.2,
+      "max_ms": 7.5,
       "runs": 5
     }
   ]
