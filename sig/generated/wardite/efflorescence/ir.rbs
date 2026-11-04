@@ -151,6 +151,12 @@ module Wardite
       # @rbs return: void
       def install_code: (Array[Integer] code, Array[Wardite::Efflorescence::CallSite] calls) -> void
 
+      # Keep the element type at the array boundary. In particular, fetch on
+      # an object array makes Spinel fall back to a generic boxed container.
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::CallSite
+      def call_site: (Integer index) -> Wardite::Efflorescence::CallSite
+
       # @rbs return: Wardite::Efflorescence::Function
       def copy: () -> Wardite::Efflorescence::Function
     end
@@ -170,6 +176,10 @@ module Wardite
 
       # @rbs functions: Array[Wardite::Efflorescence::Function]
       def initialize: (Array[Wardite::Efflorescence::Function] functions) -> untyped
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::Function
+      def function_at: (Integer index) -> Wardite::Efflorescence::Function
 
       # @rbs return: Wardite::Efflorescence::IR
       def copy: () -> Wardite::Efflorescence::IR

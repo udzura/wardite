@@ -56,7 +56,10 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
         position = OP.target_position(instruction)
         assert_equal instruction[position] * 4, function.bytecode[pc * 4 + position] if position >= 0
       end
-      function.calls.each { |site| assert_same vm.ir.functions[site.callee.index], site.callee }
+      function.calls.each_with_index do |site, index|
+        assert_same site, function.call_site(index)
+        assert_same vm.ir.function_at(site.callee.index), site.callee
+      end
     end
     assert_equal 0, vm.metrics.dispatches
     assert vm.ir.functions.none? { |fn| fn.instructions.any? { |i| i[0] == OP::PROFILE } }
@@ -234,5 +237,12 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     assert_equal [:copy, :flat], cli.disabled_optimizations
     assert cli.mir_dump
     assert cli.mir_profile
+  end
+
+  test "concrete MIR lookups report missing functions and call sites" do
+    vm = load_efflorescence(File.read(MIX_WAT)).runtime
+    assert_raise(Wardite::EvalError) { vm.ir.function_at(vm.ir.functions.size) }
+    function = vm.ir.function_at(0)
+    assert_raise(Wardite::EvalError) { function.call_site(function.calls.size) }
   end
 end

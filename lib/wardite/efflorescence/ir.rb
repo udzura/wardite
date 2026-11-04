@@ -194,6 +194,14 @@ module Wardite
         @calls = calls
       end
 
+      # Keep the element type at the array boundary. In particular, fetch on
+      # an object array makes Spinel fall back to a generic boxed container.
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::CallSite
+      def call_site(index)
+        @calls[index] || raise(Wardite::EvalError, "invalid MIR call site")
+      end
+
       # @rbs return: Wardite::Efflorescence::Function
       def copy
         result = Function.new(@index, @parameter_types, @result_types, @local_count)
@@ -229,6 +237,12 @@ module Wardite
       # @rbs functions: Array[Wardite::Efflorescence::Function]
       def initialize(functions)
         @functions = functions
+      end
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::Function
+      def function_at(index)
+        @functions[index] || raise(Wardite::EvalError, "invalid MIR function index #{index}")
       end
 
       # @rbs return: Wardite::Efflorescence::IR

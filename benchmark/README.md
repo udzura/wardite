@@ -8,6 +8,22 @@ comparisons.
 
 ## Investigate internal call costs
 
+To compare the CALL/RETURN type-preservation change against the independently
+built previous commit (`fa4b14e`, required locally):
+
+```sh
+RUNS=7 WARMUPS=2 ruby benchmark/compare_call_types.rb 5000000 123
+RUNTIMES=CRuby,YJIT RUNS=3 WARMUPS=1 ruby benchmark/compare_call_types.rb 100000 123
+```
+
+`BASELINE_REF` chooses another baseline. Each version gets a separate source
+snapshot, CLI and phase worker. Cached binaries are reused only after checking
+source/compiler/flag fingerprints and binary SHA256. Every measured checksum
+and each version's MIR metrics are verified; counters run outside timing.
+Spinel `call_mix` execution fell from 590.542 to 499.544 ms (15.4%), and CLI
+process time from 634.154 to 519.719 ms (18.0%).
+[Design, generated C, validation and all samples (日本語)](../docs/efflorescence-call-types.md).
+
 ```sh
 RUNS=7 WARMUPS=2 ruby benchmark/investigate_calls.rb 1000000 123
 ruby benchmark/build_call_profile.rb

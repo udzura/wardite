@@ -161,6 +161,8 @@ ABLATIONS=1 RUNS=3 WARMUPS=1 ruby benchmark/compare_optimizations.rb 100000 123
 
 その後の[フレーム初期化の軽量化](efflorescence-register-initialization.md)では、合流点・バックエッジを含む
 レジスタの定義解析も追加しました。この改修後の全体検証は、Spinelネイティブ版を含めて95テスト・5,009 assertionsが成功しています。
+続く[CALL/RETURNの型情報を保つ改修](efflorescence-call-types.md)では、生成CでFrame・pool・CallSite表の型を具体化しています。
+MIR命令は変更せず、96テスト・5,021 assertionsが成功しました。
 
 2026年11月4日に、CRuby 4.0.9でSpinelのネイティブテストも有効にして全体を検証し、
 **88テスト、4,466 assertions、失敗・エラー・省略はいずれも0件**でした。

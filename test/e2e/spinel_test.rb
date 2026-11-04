@@ -29,7 +29,18 @@ class WarditeSpinelTest < Test::Unit::TestCase
         assert_equal (0...Wardite::Efflorescence::Opcode::NAMES.size).to_a,
           body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
           "execute_#{name} should dispatch every opcode through the literal switch"
+        assert_match(/Frame \* lv_frame__in, sp_PtrArray \* lv_pools/, body,
+          "execute_#{name} must retain the concrete current frame and pool element types")
+        assert_match(/sp_PtrArray \* lv_frames =/, body,
+          "execute_#{name} must keep an unboxed frame stack")
+        assert_not_match(/sp_PolyArray_(?:get|push|pop|new)/, body,
+          "CALL/RETURN must not box the frame stack or call-site table")
+        assert_not_match(/sp_pd_[a-f0-9]+\(/, body) if name == "flat"
       end
+      function_layout = code[/struct sp_Function(?:_s)? \{.*?^\};/m]
+      assert_not_nil function_layout
+      assert_match(/sp_PtrArray \* iv_calls;/, function_layout,
+        "resolved call sites must stay a pointer array")
     end
   end
 

@@ -88,6 +88,13 @@ module Wardite
 
       private
 
+      # A concrete return type breaks the inference cycle between the current
+      # frame and the array it is restored from after every internal RETURN.
+      # @rbs return: Wardite::Efflorescence::Frame
+      def current_frame(frames)
+        frames.last || raise(Wardite::EvalError, "missing MIR caller")
+      end
+
       # No Wasm operand stack, boxed values, or recursive Ruby calls here.
       # Every register array contains only normalized i32 Integers. Void calls
       # use destination -1; execute returns an unused integer for a void entry.
@@ -98,7 +105,9 @@ module Wardite
         pools = [] #: Array[Wardite::Efflorescence::FramePool]
         @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }
         function = @ir.functions[index] || raise(Wardite::EvalError, "invalid function index #{index}")
-        frame = pools.fetch(function.index).acquire(-1)
+        pool = pools[function.index]
+        raise Wardite::EvalError, "missing MIR frame pool" unless pool
+        frame = pool.acquire(-1)
         arguments.each_with_index { |value, i| frame.registers[i] = value }
         @metrics = Metrics.new if @profiling
         @flat ? execute_flat(frame, pools) : execute_semantic(frame, pools)
@@ -178,7 +187,9 @@ module Wardite
           when 10 # Opcode::CALL
             frame.pc = pc
             callee = @ir.functions[instruction[2]] || raise(Wardite::EvalError, "invalid MIR call target")
-            next_frame = pools.fetch(callee.index).acquire(instruction[1])
+            pool = pools[callee.index]
+            raise Wardite::EvalError, "missing MIR frame pool" unless pool
+            next_frame = pool.acquire(instruction[1])
             argument = 0
             while argument < callee.parameter_count
               next_frame.registers[argument] = registers[instruction[argument + 3]]
@@ -193,9 +204,11 @@ module Wardite
             value = instruction[1] < 0 ? 0 : registers[instruction[1]]
             destination = frame.return_register
             frames.pop
-            pools.fetch(frame.function.index).release(frame)
+            pool = pools[frame.function.index]
+            raise Wardite::EvalError, "missing MIR frame pool" unless pool
+            pool.release(frame)
             return value if frames.empty?
-            frame = frames.last || raise(Wardite::EvalError, "missing MIR caller")
+            frame = current_frame(frames)
             registers = frame.registers
             registers[destination] = value if destination >= 0
             instructions = frame.function.instructions
@@ -279,9 +292,11 @@ module Wardite
             pc = b if registers[a] == 0
           when 10 # Opcode::CALL
             frame.pc = pc
-            site = frame.function.calls.fetch(b)
+            site = frame.function.call_site(b)
             callee = site.callee
-            next_frame = pools.fetch(callee.index).acquire(a)
+            pool = pools[callee.index]
+            raise Wardite::EvalError, "missing MIR frame pool" unless pool
+            next_frame = pool.acquire(a)
             argument = 0
             while argument < callee.parameter_count
               next_frame.registers[argument] = registers[site.arguments.fetch(argument)]
@@ -296,9 +311,11 @@ module Wardite
             value = a < 0 ? 0 : registers[a]
             destination = frame.return_register
             frames.pop
-            pools.fetch(frame.function.index).release(frame)
+            pool = pools[frame.function.index]
+            raise Wardite::EvalError, "missing MIR frame pool" unless pool
+            pool.release(frame)
             return value if frames.empty?
-            frame = frames.last || raise(Wardite::EvalError, "missing MIR caller")
+            frame = current_frame(frames)
             registers = frame.registers
             registers[destination] = value if destination >= 0
             instructions = frame.function.bytecode

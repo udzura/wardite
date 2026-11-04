@@ -286,7 +286,9 @@ module Wardite
       # @rbs ir: Wardite::Efflorescence::IR
       # @rbs return: void
       def compile(ir)
-        ir.functions.each do |function|
+        function_index = 0
+        while function_index < ir.functions.size
+          function = ir.function_at(function_index)
           code = [] #: Array[Integer]
           calls = [] #: Array[Wardite::Efflorescence::CallSite]
           function.instructions.each do |instruction|
@@ -295,7 +297,7 @@ module Wardite
             b = instruction.size > 2 ? instruction[2] : 0
             c = instruction.size > 3 ? instruction[3] : 0
             if opcode == Opcode::CALL
-              callee = ir.functions.fetch(instruction[2])
+              callee = ir.function_at(instruction[2])
               arguments = [] #: Array[Integer]
               index = 3
               while index < instruction.size
@@ -313,6 +315,7 @@ module Wardite
             code << opcode << a << b << c
           end
           function.install_code(code, calls)
+          function_index += 1
         end
       end
     end

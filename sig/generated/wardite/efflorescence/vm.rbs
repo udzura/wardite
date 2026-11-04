@@ -48,6 +48,11 @@ module Wardite
 
       private
 
+      # A concrete return type breaks the inference cycle between the current
+      # frame and the array it is restored from after every internal RETURN.
+      # @rbs return: Wardite::Efflorescence::Frame
+      def current_frame: (untyped frames) -> Wardite::Efflorescence::Frame
+
       # No Wasm operand stack, boxed values, or recursive Ruby calls here.
       # Every register array contains only normalized i32 Integers. Void calls
       # use destination -1; execute returns an unused integer for a void entry.
