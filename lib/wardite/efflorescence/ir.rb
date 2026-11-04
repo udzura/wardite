@@ -222,12 +222,28 @@ module Wardite
     class CallSite
       attr_reader :callee #: Wardite::Efflorescence::Function
       attr_reader :arguments #: Array[Integer]
+      attr_reader :pool_index #: Integer
 
       # @rbs callee: Wardite::Efflorescence::Function
       # @rbs arguments: Array[Integer]
       def initialize(callee, arguments)
         @callee = callee
         @arguments = arguments
+        @pool_index = callee.index
+      end
+
+      # Keep the generic argument loop out of the interpreter's live locals.
+      # The common single-argument path copies directly from the CALL operand.
+      # @rbs target: Array[Integer]
+      # @rbs source: Array[Integer]
+      # @rbs return: void
+      def copy_arguments(target, source)
+        argument = 0
+        count = @arguments.size
+        while argument < count
+          target[argument] = source[@arguments.fetch(argument)]
+          argument += 1
+        end
       end
     end
 
@@ -253,6 +269,7 @@ module Wardite
 
     class Frame
       attr_reader :function #: Wardite::Efflorescence::Function
+      attr_reader :pool_index #: Integer
       attr_reader :registers #: Array[Integer]
       attr_reader :return_register #: Integer
       attr_accessor :pc #: Integer
@@ -261,6 +278,7 @@ module Wardite
       # @rbs return_register: Integer
       def initialize(function, return_register)
         @function = function
+        @pool_index = function.index
         # Constants are initialized once and never written by verified MIR.
         # Copying the template also avoids zero-filling and then overwriting
         # every slot in a second loop on a newly allocated frame.

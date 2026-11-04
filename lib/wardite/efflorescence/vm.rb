@@ -204,7 +204,7 @@ module Wardite
             value = instruction[1] < 0 ? 0 : registers[instruction[1]]
             destination = frame.return_register
             frames.pop
-            pool = pools[frame.function.index]
+            pool = pools[frame.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
             pool.release(frame)
             return value if frames.empty?
@@ -293,14 +293,13 @@ module Wardite
           when 10 # Opcode::CALL
             frame.pc = pc
             site = frame.function.call_site(b)
-            callee = site.callee
-            pool = pools[callee.index]
+            pool = pools[site.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
             next_frame = pool.acquire(a)
-            argument = 0
-            while argument < callee.parameter_count
-              next_frame.registers[argument] = registers[site.arguments.fetch(argument)]
-              argument += 1
+            if c >= 0
+              next_frame.registers[0] = registers[c]
+            else
+              site.copy_arguments(next_frame.registers, registers)
             end
             frames << next_frame
             frame = next_frame
@@ -311,7 +310,7 @@ module Wardite
             value = a < 0 ? 0 : registers[a]
             destination = frame.return_register
             frames.pop
-            pool = pools[frame.function.index]
+            pool = pools[frame.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
             pool.release(frame)
             return value if frames.empty?

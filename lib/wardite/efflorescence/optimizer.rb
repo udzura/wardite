@@ -305,7 +305,10 @@ module Wardite
                 index += 1
               end
               b = calls.size
-              c = 0
+              # The fourth slot is already decoded on every dispatch. A single
+              # argument can name its source here, bypassing the argument table
+              # and loop; -1 selects the generic zero/multiple-argument path.
+              c = arguments.size == 1 ? arguments.fetch(0) : -1
               calls << CallSite.new(callee, arguments)
             elsif opcode == Opcode::BR
               a *= WIDTH

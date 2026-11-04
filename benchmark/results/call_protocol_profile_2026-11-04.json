@@ -1,0 +1,383 @@
+{
+  "rounds": 50000000,
+  "seed": 123,
+  "checksum": 3380275835,
+  "flags": "-O2 -g -fno-omit-frame-pointer --no-line-map",
+  "before": {
+    "sampled_cpu_ms": 5458.0,
+    "stack_samples": 5458,
+    "missing_stack_rows": 1,
+    "note": "Inclusive percentages overlap; these are sampled CPU weights, not wall-clock attribution.",
+    "functions": [
+      {
+        "name": "sp_VM_execute_flat",
+        "self_ms": 3381.0,
+        "self_percent": 61.94576768046904,
+        "inclusive_percent": 98.82740930743863
+      },
+      {
+        "name": "_sp_gc_root_push",
+        "self_ms": 444.0,
+        "self_percent": 8.13484792964456,
+        "inclusive_percent": 8.13484792964456
+      },
+      {
+        "name": "sp_IntArray_length",
+        "self_ms": 298.0,
+        "self_percent": 5.459875412238915,
+        "inclusive_percent": 5.459875412238915
+      },
+      {
+        "name": "sp_IntArray_set",
+        "self_ms": 233.0,
+        "self_percent": 4.2689629901062665,
+        "inclusive_percent": 4.2689629901062665
+      },
+      {
+        "name": "sp_gc_wb",
+        "self_ms": 130.0,
+        "self_percent": 2.3818248442652985,
+        "inclusive_percent": 2.565042139978014
+      },
+      {
+        "name": "sp_pd_1cf389ba",
+        "self_ms": 124.0,
+        "self_percent": 2.2718944668376695,
+        "inclusive_percent": 2.2718944668376695
+      },
+      {
+        "name": "sp_FramePool_acquire",
+        "self_ms": 106.0,
+        "self_percent": 1.942103334554782,
+        "inclusive_percent": 3.6277024551117627
+      },
+      {
+        "name": "sp_IntArray_oget",
+        "self_ms": 99.0,
+        "self_percent": 1.8138512275558814,
+        "inclusive_percent": 1.8138512275558814
+      },
+      {
+        "name": "sp_PtrArray_get",
+        "self_ms": 93.0,
+        "self_percent": 1.7039208501282521,
+        "inclusive_percent": 1.7039208501282521
+      },
+      {
+        "name": "sp_PtrArray_push",
+        "self_ms": 78.0,
+        "self_percent": 1.4290949065591791,
+        "inclusive_percent": 2.2718944668376695
+      },
+      {
+        "name": "sp_Function_parameter_count",
+        "self_ms": 66.0,
+        "self_percent": 1.209234151703921,
+        "inclusive_percent": 3.810919750824478
+      },
+      {
+        "name": "sp_IntArray_get",
+        "self_ms": 63.0,
+        "self_percent": 1.1542689629901062,
+        "inclusive_percent": 1.1542689629901062
+      },
+      {
+        "name": "_sp_gc_root_pop",
+        "self_ms": 44.0,
+        "self_percent": 0.8061561011359473,
+        "inclusive_percent": 0.8061561011359473
+      },
+      {
+        "name": "sp_Wardite__Efflorescence__Frame_reset",
+        "self_ms": 41.0,
+        "self_percent": 0.7511909124221327,
+        "inclusive_percent": 1.1542689629901062
+      },
+      {
+        "name": "sp_VM_current_frame",
+        "self_ms": 40.0,
+        "self_percent": 0.7328691828508611,
+        "inclusive_percent": 1.0993037742762917
+      },
+      {
+        "name": "sp_IntArray_get_ck",
+        "self_ms": 31.0,
+        "self_percent": 0.5679736167094174,
+        "inclusive_percent": 0.5679736167094174
+      },
+      {
+        "name": "sp_oint_arg",
+        "self_ms": 30.0,
+        "self_percent": 0.5496518871381458,
+        "inclusive_percent": 0.5496518871381458
+      },
+      {
+        "name": "sp_FramePool_release",
+        "self_ms": 30.0,
+        "self_percent": 0.5496518871381458,
+        "inclusive_percent": 2.290216196408941
+      },
+      {
+        "name": "sp_int_shl_ck",
+        "self_ms": 22.0,
+        "self_percent": 0.40307805056797363,
+        "inclusive_percent": 0.40307805056797363
+      },
+      {
+        "name": "sp_oint_val",
+        "self_ms": 22.0,
+        "self_percent": 0.40307805056797363,
+        "inclusive_percent": 0.40307805056797363
+      },
+      {
+        "name": "sp_Function_call_site",
+        "self_ms": 17.0,
+        "self_percent": 0.311469402711616,
+        "inclusive_percent": 0.8977647489923049
+      },
+      {
+        "name": "sp_box_ptr_array_k",
+        "self_ms": 15.0,
+        "self_percent": 0.2748259435690729,
+        "inclusive_percent": 0.2748259435690729
+      },
+      {
+        "name": "sp_PtrArray_pop",
+        "self_ms": 14.0,
+        "self_percent": 0.2565042139978014,
+        "inclusive_percent": 1.1359472334188347
+      },
+      {
+        "name": "OUTLINED_FUNCTION_193",
+        "self_ms": 10.0,
+        "self_percent": 0.18321729571271528,
+        "inclusive_percent": 0.18321729571271528
+      },
+      {
+        "name": "sp_poly_strbuf_deref",
+        "self_ms": 8.0,
+        "self_percent": 0.14657383657017223,
+        "inclusive_percent": 0.14657383657017223
+      },
+      {
+        "name": "sp_gc_cleanup",
+        "self_ms": 7.0,
+        "self_percent": 0.1282521069989007,
+        "inclusive_percent": 0.1282521069989007
+      },
+      {
+        "name": "sp_int_add_overflow_p",
+        "self_ms": 6.0,
+        "self_percent": 0.10993037742762916,
+        "inclusive_percent": 0.10993037742762916
+      },
+      {
+        "name": "mach_o::GenericTrie::find(CString, bool) const",
+        "self_ms": 1.0,
+        "self_percent": 0.01832172957127153,
+        "inclusive_percent": 0.01832172957127153
+      },
+      {
+        "name": "dyld4::prepare(dyld4::APIs&, mach_o::UnsafeHeader const*)",
+        "self_ms": 1.0,
+        "self_percent": 0.01832172957127153,
+        "inclusive_percent": 0.03664345914254306
+      },
+      {
+        "name": "sp_slab_init",
+        "self_ms": 1.0,
+        "self_percent": 0.01832172957127153,
+        "inclusive_percent": 0.01832172957127153
+      },
+      {
+        "name": "sp_PolyArray_difference",
+        "self_ms": 1.0,
+        "self_percent": 0.01832172957127153,
+        "inclusive_percent": 0.01832172957127153
+      },
+      {
+        "name": "sp_PtrArray_empty",
+        "self_ms": 1.0,
+        "self_percent": 0.01832172957127153,
+        "inclusive_percent": 0.8611212898497618
+      },
+      {
+        "name": "sp_int_shl",
+        "self_ms": 1.0,
+        "self_percent": 0.01832172957127153,
+        "inclusive_percent": 0.01832172957127153
+      }
+    ]
+  },
+  "after": {
+    "sampled_cpu_ms": 4922.0,
+    "stack_samples": 4922,
+    "missing_stack_rows": 0,
+    "note": "Inclusive percentages overlap; these are sampled CPU weights, not wall-clock attribution.",
+    "functions": [
+      {
+        "name": "sp_VM_execute_flat",
+        "self_ms": 2910.0,
+        "self_percent": 59.12230800487607,
+        "inclusive_percent": 97.84640390085332
+      },
+      {
+        "name": "_sp_gc_root_push",
+        "self_ms": 526.0,
+        "self_percent": 10.686712718407152,
+        "inclusive_percent": 10.686712718407152
+      },
+      {
+        "name": "sp_IntArray_length",
+        "self_ms": 307.0,
+        "self_percent": 6.237301909792767,
+        "inclusive_percent": 6.237301909792767
+      },
+      {
+        "name": "sp_IntArray_set",
+        "self_ms": 218.0,
+        "self_percent": 4.4290938642828115,
+        "inclusive_percent": 4.4290938642828115
+      },
+      {
+        "name": "sp_gc_wb",
+        "self_ms": 134.0,
+        "self_percent": 2.7224705404307192,
+        "inclusive_percent": 3.0678585940674523
+      },
+      {
+        "name": "sp_IntArray_oget",
+        "self_ms": 133.0,
+        "self_percent": 2.7021535960991465,
+        "inclusive_percent": 2.7021535960991465
+      },
+      {
+        "name": "sp_FramePool_acquire",
+        "self_ms": 113.0,
+        "self_percent": 2.295814709467696,
+        "inclusive_percent": 3.6976838683462008
+      },
+      {
+        "name": "sp_PtrArray_get",
+        "self_ms": 110.0,
+        "self_percent": 2.2348638764729785,
+        "inclusive_percent": 2.2348638764729785
+      },
+      {
+        "name": "sp_PtrArray_push",
+        "self_ms": 107.0,
+        "self_percent": 2.1739130434782608,
+        "inclusive_percent": 3.3522958147094677
+      },
+      {
+        "name": "sp_IntArray_get",
+        "self_ms": 88.0,
+        "self_percent": 1.7878911011783827,
+        "inclusive_percent": 1.7878911011783827
+      },
+      {
+        "name": "sp_IntArray_get_ck",
+        "self_ms": 41.0,
+        "self_percent": 0.8329947175944737,
+        "inclusive_percent": 0.8329947175944737
+      },
+      {
+        "name": "sp_FramePool_release",
+        "self_ms": 39.0,
+        "self_percent": 0.7923608289313288,
+        "inclusive_percent": 2.3161316537992684
+      },
+      {
+        "name": "sp_int_add_overflow_p",
+        "self_ms": 34.0,
+        "self_percent": 0.6907761072734661,
+        "inclusive_percent": 0.6907761072734661
+      },
+      {
+        "name": "sp_Function_call_site",
+        "self_ms": 22.0,
+        "self_percent": 0.44697277529459567,
+        "inclusive_percent": 1.3206013815522146
+      },
+      {
+        "name": "sp_Wardite__Efflorescence__Frame_reset",
+        "self_ms": 21.0,
+        "self_percent": 0.4266558309630232,
+        "inclusive_percent": 0.8329947175944737
+      },
+      {
+        "name": "sp_int_shl_ck",
+        "self_ms": 20.0,
+        "self_percent": 0.4063388866314506,
+        "inclusive_percent": 0.4063388866314506
+      },
+      {
+        "name": "sp_oint_val",
+        "self_ms": 20.0,
+        "self_percent": 0.4063388866314506,
+        "inclusive_percent": 0.4063388866314506
+      },
+      {
+        "name": "sp_VM_current_frame",
+        "self_ms": 18.0,
+        "self_percent": 0.3657049979683056,
+        "inclusive_percent": 0.7517269402681837
+      },
+      {
+        "name": "OUTLINED_FUNCTION_194",
+        "self_ms": 17.0,
+        "self_percent": 0.34538805363673303,
+        "inclusive_percent": 0.34538805363673303
+      },
+      {
+        "name": "sp_box_ptr_array_k",
+        "self_ms": 12.0,
+        "self_percent": 0.24380333197887039,
+        "inclusive_percent": 0.24380333197887039
+      },
+      {
+        "name": "_sp_gc_root_pop",
+        "self_ms": 11.0,
+        "self_percent": 0.22348638764729784,
+        "inclusive_percent": 0.22348638764729784
+      },
+      {
+        "name": "sp_PtrArray_empty",
+        "self_ms": 9.0,
+        "self_percent": 0.1828524989841528,
+        "inclusive_percent": 1.1986997155627794
+      },
+      {
+        "name": "sp_PtrArray_pop",
+        "self_ms": 8.0,
+        "self_percent": 0.16253555465258024,
+        "inclusive_percent": 1.0158472165786265
+      },
+      {
+        "name": "0x10475d9dd",
+        "self_ms": 1.0,
+        "self_percent": 0.02031694433157253,
+        "inclusive_percent": 0.02031694433157253
+      },
+      {
+        "name": "mach_o::GenericTrie::find(CString, bool) const",
+        "self_ms": 1.0,
+        "self_percent": 0.02031694433157253,
+        "inclusive_percent": 0.02031694433157253
+      },
+      {
+        "name": "AAREncoder::encodeFile(AAREncoder::File const&, ByteStream&) const",
+        "self_ms": 1.0,
+        "self_percent": 0.02031694433157253,
+        "inclusive_percent": 0.02031694433157253
+      },
+      {
+        "name": "__munmap",
+        "self_ms": 1.0,
+        "self_percent": 0.02031694433157253,
+        "inclusive_percent": 0.02031694433157253
+      }
+    ]
+  },
+  "note": "Sampling CPU weights, not normal-build benchmark samples; inclusive percentages overlap."
+}

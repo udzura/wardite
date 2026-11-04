@@ -170,6 +170,24 @@ class WarditeSpinelTest < Test::Unit::TestCase
     assert_native_result(code, "count", [5000], 5005, new_engine: true)
   end
 
+  test "Efflorescence call protocol preserves zero one multiple void and mutually recursive calls" do
+    Dir.mktmpdir("wardite-spinel-call-protocol") do |dir|
+      wasm = File.join(dir, "calls.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(CALL_PROTOCOL_WAT))
+      [[], ["--mir-disable", "all"], ["--mir-disable", "flat"],
+       ["--mir-disable", "frames"], ["--mir-profile"]].each do |options|
+        [["run", 0, -19], ["run", 123, 1247], ["run", 0xffffffff, -25],
+         ["alias", 123, -1], ["mutual", 200, 20127]].each do |name, argument, expected|
+          out, err, status = Open3.capture3(@binary, "--new-engine", *options,
+            "--invoke", name, "--", wasm, argument.to_s)
+          assert status.success?, err
+          assert_equal "", out
+          assert_include err, "return value: I32(#{expected})\n"
+        end
+      end
+    end
+  end
+
   test "i32.add with runtime arguments and wrapping" do
     code = <<~WAT
       (module

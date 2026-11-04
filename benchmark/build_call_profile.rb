@@ -8,7 +8,7 @@ require "open3"
 require "shellwords"
 
 Dir.chdir(File.expand_path("..", __dir__))
-output = File.expand_path("build/benchmark/call-cost/profile")
+output = File.expand_path(ENV.fetch("PROFILE_DIR", "build/benchmark/call-cost/profile"))
 FileUtils.mkdir_p(output)
 compiler = Shellwords.split(ENV.fetch("SPINEL", "spinel"))
 source = "#{output}/worker.c"

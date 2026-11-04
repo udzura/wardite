@@ -166,9 +166,18 @@ module Wardite
 
       attr_reader arguments: Array[Integer]
 
+      attr_reader pool_index: Integer
+
       # @rbs callee: Wardite::Efflorescence::Function
       # @rbs arguments: Array[Integer]
       def initialize: (Wardite::Efflorescence::Function callee, Array[Integer] arguments) -> untyped
+
+      # Keep the generic argument loop out of the interpreter's live locals.
+      # The common single-argument path copies directly from the CALL operand.
+      # @rbs target: Array[Integer]
+      # @rbs source: Array[Integer]
+      # @rbs return: void
+      def copy_arguments: (Array[Integer] target, Array[Integer] source) -> void
     end
 
     class IR
@@ -187,6 +196,8 @@ module Wardite
 
     class Frame
       attr_reader function: Wardite::Efflorescence::Function
+
+      attr_reader pool_index: Integer
 
       attr_reader registers: Array[Integer]
 

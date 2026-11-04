@@ -8,6 +8,17 @@ comparisons.
 
 ## Investigate internal call costs
 
+The subsequent argument-transfer / pool-index comparison uses `83a4b9c`:
+
+```sh
+BASELINE_REF=83a4b9c RUNS=7 WARMUPS=2 ruby benchmark/compare_call_types.rb 5000000 123
+```
+
+Spinel execution fell by 9.8% for `call_identity`, 9.5% for `call_add_one`,
+and 5.4% for `call_mix`; full CLI `call_mix` time fell by 7.7%.
+[Design, unsuccessful experiments, profiler results and samples (日本語)](../docs/efflorescence-call-transfer.md).
+`PROFILE_DIR` can select a separate output directory for `build_call_profile.rb`.
+
 To compare the CALL/RETURN type-preservation change against the independently
 built previous commit (`fa4b14e`, required locally):
 

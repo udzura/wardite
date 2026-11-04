@@ -44,6 +44,55 @@ module EfflorescenceHelper
         unreachable))
   WAT
 
+  CALL_PROTOCOL_WAT = <<~WAT.freeze
+    (module
+      (func $zero (result i32) i32.const 17)
+      (func $one (param i32) (result i32) local.get 0 i32.const 1 i32.add)
+      (func $many (param i32 i32 i32) (result i32)
+        local.get 0 i32.const 11 i32.mul
+        local.get 1 i32.const 3 i32.mul i32.sub
+        local.get 2 i32.add)
+      (func $void (param i32 i32)
+        block
+          local.get 0 local.get 1 i32.xor i32.eqz br_if 0
+          unreachable
+        end)
+      (func $empty)
+      (func (export "run") (param i32) (result i32)
+        call $empty
+        local.get 0 local.get 0 call $void
+        call $zero
+        local.get 0 call $one i32.add
+        local.get 0
+        local.get 0 i32.const 1 i32.add
+        local.get 0 i32.const 2 i32.add
+        call $many i32.xor)
+      (func (export "alias") (param i32) (result i32)
+        local.get 0
+        local.get 0 call $one local.set 0
+        local.get 0 i32.sub)
+      (func $a (param i32) (result i32) (local i32)
+        block
+          local.get 0 br_if 0
+          local.get 1 i32.const 7 i32.add return
+        end
+        local.get 0 local.set 1
+        local.get 0 i32.const 1 i32.sub call $b
+        local.get 1 i32.add)
+      (func $b (param i32) (result i32) (local i32)
+        block
+          local.get 0 br_if 0
+          local.get 1 i32.const 7 i32.add return
+        end
+        local.get 0 local.set 1
+        local.get 0 i32.const 1 i32.sub call $a
+        local.get 1 i32.add)
+      (func (export "mutual") (param i32) (result i32)
+        local.get 0 call $a
+        i32.const 0 call $a i32.add
+        i32.const 3 call $b i32.add))
+  WAT
+
   # Independent arithmetic reference: modulo rather than MIR register operations.
   def reference_mix(rounds, seed)
     x = seed % (2**32)

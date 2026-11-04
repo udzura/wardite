@@ -171,6 +171,10 @@ Its full CRuby/native Spinel suite passed with 95 tests and 5,009 assertions.
 The [CALL/RETURN type-preservation follow-up](efflorescence-call-types.md) keeps
 frames, pools and resolved call sites concrete in Spinel's generated C. Its
 suite passed with 96 tests and 5,021 assertions; the MIR opcode set is unchanged.
+The [argument-transfer follow-up](efflorescence-call-transfer.md) uses the fourth
+flat CALL word for a single source register (or -1 for the general path), keeps
+generic copies outside the interpreter's live locals, and caches pool indices.
+Its suite passed with 99 tests and 5,703 assertions.
 
 On 2026-11-04 the full suite passed on CRuby 4.0.9 with the Spinel native tests
 enabled: **88 tests, 4,466 assertions, no failures/errors/omissions**.
