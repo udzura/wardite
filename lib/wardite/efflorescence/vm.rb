@@ -22,6 +22,7 @@ module Wardite
         @metrics = Metrics.new
         @semantic_ir = Translator.new(instance).translate
         @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)
+        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function) }
         @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir
         Lowerer.new.compile(@ir) if @flat
         start = instance.start_section

@@ -113,6 +113,23 @@ class WarditeSpinelTest < Test::Unit::TestCase
     assert_native_result(code, "snapshot", [123], 165, new_engine: true)
   end
 
+  test "Efflorescence selective initialization preserves reused joins constants and recursive locals" do
+    Dir.mktmpdir("wardite-spinel-reset") do |dir|
+      wasm = File.join(dir, "reset.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(RESET_WAT))
+      [[], ["--mir-disable", "all"], ["--mir-disable", "flat"],
+       ["--mir-disable", "immediate"], ["--mir-profile"]].each do |options|
+        [["run", 123, 15744], ["run", 0xffffffff, -128], ["recursive", 50, 2550]].each do |name, argument, expected|
+          out, err, status = Open3.capture3(@binary, "--new-engine", *options,
+            "--invoke", name, "--", wasm, argument.to_s)
+          assert status.success?, err
+          assert_equal "", out
+          assert_include err, "return value: I32(#{expected})\n"
+        end
+      end
+    end
+  end
+
   test "Efflorescence arithmetic boundaries on native engine" do
     {"mul" => [[0xffffffff, 0xffffffff, 1], [0x80000000, 2, 0], [0x10001, 0x10001, 131073]],
      "add" => [[0xffffffff, 1, 0]], "sub" => [[0, 1, -1]],

@@ -6,6 +6,39 @@ enabled in the script. See [Run](#run) for the complete
 matrix and options. The scripts below provide additional optimization-specific
 comparisons.
 
+## Investigate internal call costs
+
+```sh
+RUNS=7 WARMUPS=2 ruby benchmark/investigate_calls.rb 1000000 123
+ruby benchmark/build_call_profile.rb
+```
+
+The first script compares empty/identity/add/mix loops and matching inline
+controls with five frame strategies on Spinel. `locals_only` is the production
+engine; `full_reset` restores the old reset loop in a copied library, keeping
+the constructor and load-time validation identical. Experimental changes are made
+only in copied libraries under `build/benchmark/call-cost/`. Every timed result
+is checked against an independent reference. MIR counters and native allocation
+reports are collected in separate, untimed processes.
+
+The second script saves generated C, obtains runtime/link settings from Spinel's
+`--print-build`, and compiles with `-O2 -g -fno-omit-frame-pointer`. On macOS it
+also retains the object file and creates a dSYM for Instruments.
+
+[Investigation, results and profiling commands (日本語)](../docs/efflorescence-call-investigation.md).
+The fixture-specific `metadata_only` experiment is not a supported engine mode.
+
+For the production selective-initialization comparison (five million rounds):
+
+```sh
+VARIANTS=full_reset,locals_only EXPORTS=inline_mix,call_mix \
+  RUNS=7 WARMUPS=2 ruby benchmark/investigate_calls.rb 5000000 123
+```
+
+Spinel `call_mix` execution averaged 727.817 → 603.672 ms (17.1% less time),
+with matching checksums and unchanged MIR dispatch counts.
+[Selective initialization: design, validation and samples (日本語)](../docs/efflorescence-register-initialization.md).
+
 ## Phase 2 optimization comparison
 
 The Phase 2 sample below predates the integer-literal dispatch follow-up; see

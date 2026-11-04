@@ -66,7 +66,7 @@ Direct `VM.new` accepts `disabled_optimizations:` and `profile:`.
 | Branch fusion | `I32_EQZ tmp, src; BR_IF tmp, pc` → `BR_IF_ZERO src, pc` | The temporary is not a local, has one definition/use, and the second instruction has no incoming edge. |
 | Superinstructions | Fuse immediate logical-right/left shift followed by XOR with the original source | The intermediate has one definition/use and the XOR is not a basic-block entry. No benchmark-specific whole-function instruction or function inlining is used. |
 | Flat execution | Lower to four integers per instruction: opcode and three operands | Branch ordinals become offsets multiplied by four. CALL uses an out-of-line `CallSite` with the resolved callee and argument-register array, allowing any supported arity. |
-| Frame reuse | Per-function free lists owned by one public invocation | Active frames are never pooled. Reused frames restore every register, including locals/constants/temporaries, and reset PC/return destination. Recursion and overlapping invocations have independent active frames. |
+| Frame reuse | Per-function free lists owned by one public invocation | Active frames are never pooled. New frames copy the register template; reused frames zero only non-parameter locals and reset PC/return destination. CALL supplies parameters, constants remain immutable, and load-time definite-assignment validation ensures temporaries are written before use. Recursion and overlapping invocations have independent active frames. |
 
 The object-based semantic executor remains available with `--mir-disable flat`,
 including when individual MIR passes remain enabled. This permits differential
@@ -164,6 +164,10 @@ overwrites/edges/calls/loops, incoming edges into candidate peepholes, live
 intermediates, unsigned products, shift masks, operand order, frame-local
 reinitialization, recursion, overlapping public calls and exact counter values.
 The existing stack VM tests remain part of the suite.
+
+The subsequent [selective frame initialization follow-up](efflorescence-register-initialization.md)
+also validates register definitions across joins/backedges before execution.
+Its full CRuby/native Spinel suite passed with 95 tests and 5,009 assertions.
 
 On 2026-11-04 the full suite passed on CRuby 4.0.9 with the Spinel native tests
 enabled: **88 tests, 4,466 assertions, no failures/errors/omissions**.

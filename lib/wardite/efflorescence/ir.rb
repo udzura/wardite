@@ -247,18 +247,25 @@ module Wardite
       # @rbs return_register: Integer
       def initialize(function, return_register)
         @function = function
-        @registers = Array.new(function.register_count, 0)
+        # Constants are initialized once and never written by verified MIR.
+        # Copying the template also avoids zero-filling and then overwriting
+        # every slot in a second loop on a newly allocated frame.
+        @registers = function.initial_registers.dup
+        @local_start = function.parameter_count
+        @local_end = @local_start + function.local_count
         @return_register = return_register
         @pc = 0
-        reset(return_register)
       end
 
       # @rbs return_register: Integer
       # @rbs return: void
       def reset(return_register)
-        index = 0
-        while index < @function.register_count
-          @registers[index] = @function.initial_value(index)
+        # CALL overwrites all parameters; Wasm initializes only non-parameter
+        # locals to zero. RegisterValidation proves that every temporary is
+        # written before it is read, including across joins and backedges.
+        index = @local_start
+        while index < @local_end
+          @registers[index] = 0
           index += 1
         end
         @return_register = return_register
