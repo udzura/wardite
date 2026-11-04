@@ -4,6 +4,7 @@ require "open3"
 
 module EfflorescenceHelper
   MIX_WAT = File.expand_path("../../benchmark/i32_mix.wat", __dir__)
+  ARITY_WAT = File.expand_path("../../benchmark/i32_call_arities.wat", __dir__)
   MIX_CASES = [[0, 0], [0, 123], [1, 0], [1, 123], [10, 123],
                [1000, 123], [1000, 0xffffffff], [100000, 123]].freeze
 
@@ -122,6 +123,33 @@ module EfflorescenceHelper
       (func (export "branch") (param i32 i32) (result i32)
         block local.get 0 br_if 0 i32.const 99 local.set 1 end
         local.get 1 call $local))
+  WAT
+
+  ARITY_EDGE_WAT = <<~WAT.freeze
+    (module
+      (func $two (param i32 i32) (result i32) (local i32)
+        block local.get 0 br_if 0 local.get 1 return end
+        local.get 0 local.set 2
+        local.get 0 i32.const 1 i32.sub
+        local.get 1 i32.const 1 i32.add call $two
+        local.get 2 i32.add)
+      (func $three (param i32 i32 i32) (result i32) (local i32)
+        block local.get 0 br_if 0 local.get 1 return end
+        local.get 0 local.set 3
+        local.get 0 i32.const 1 i32.sub
+        local.get 1 local.get 2 i32.add local.get 2 call $three
+        local.get 3 i32.add)
+      (func $ordered (param i32 i32 i32) (result i32)
+        local.get 0 i32.const 11 i32.mul
+        local.get 1 i32.const 3 i32.mul i32.sub local.get 2 i32.add)
+      (func (export "two") (param i32 i32) (result i32)
+        local.get 0 local.get 1 call $two)
+      (func (export "three") (param i32 i32) (result i32)
+        local.get 0 local.get 1 i32.const 3 call $three)
+      (func (export "permuted") (param i32 i32 i32) (result i32)
+        local.get 2 local.get 0 local.get 1 call $ordered)
+      (func (export "duplicate") (param i32) (result i32)
+        local.get 0 local.get 0 local.get 0 call $ordered))
   WAT
 
   # Independent arithmetic reference: modulo rather than MIR register operations.

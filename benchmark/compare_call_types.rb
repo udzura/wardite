@@ -10,14 +10,20 @@ require "shellwords"
 Dir.chdir(File.expand_path("..", __dir__))
 $stdout.sync = true
 ablation = ENV["INLINE_ABLATION"] == "1"
-output = File.expand_path(ablation ? "build/benchmark/inlining" : "build/benchmark/call-types")
+arities = ENV["CALL_ARITIES"] == "1"
+experiment = ENV["CALL_ARITY_EXPERIMENT"] == "1"
+abort "Choose either CALL_ARITIES or INLINE_ABLATION" if arities && ablation
+abort "CALL_ARITY_EXPERIMENT requires CALL_ARITIES=1" if experiment && !arities
+output = File.expand_path("build/benchmark/#{arities ? 'call-arities' : (ablation ? 'inlining' : 'call-types')}")
 FileUtils.mkdir_p(output)
 rounds = Integer(ARGV.fetch(0, "1000000"), 10)
 seed = Integer(ARGV.fetch(1, "123"), 10)
 runs = Integer(ENV.fetch("RUNS", "7"))
 warmups = Integer(ENV.fetch("WARMUPS", "2"))
 abort "invalid inputs" unless (0..0x7fffffff).cover?(rounds) && (0..0xffffffff).cover?(seed) && runs > 1 && warmups >= 0
-exports = %w[empty_loop call_identity call_add_one inline_mix call_mix]
+exports = arities ? %w[empty_loop call_zero call_one call_two call_three call_four] :
+  %w[empty_loop call_identity call_add_one inline_mix call_mix]
+fixture = arities ? "benchmark/i32_call_arities.wat" : "benchmark/i32_calls.wat"
 runtimes = ENV.fetch("RUNTIMES", "Spinel").split(",").uniq
 abort "invalid RUNTIMES" if runtimes.empty? || !(runtimes - %w[Spinel CRuby YJIT]).empty?
 if runtimes.include?("YJIT")
@@ -30,7 +36,7 @@ version, status = Open3.capture2e(*compiler, "--version")
 abort version unless status.success?
 baseline = nil
 unless ablation
-  baseline, status = Open3.capture2e("git", "rev-parse", "--verify", "--end-of-options", "#{ENV.fetch("BASELINE_REF", "fa4b14e")}^{commit}")
+  baseline, status = Open3.capture2e("git", "rev-parse", "--verify", "--end-of-options", "#{ENV.fetch("BASELINE_REF", arities ? "8eb02af" : "fa4b14e")}^{commit}")
   abort baseline unless status.success?
   baseline = baseline.strip
 end
@@ -40,6 +46,8 @@ def run!(command, log)
 end
 
 def reference(name, rounds, seed)
+  increments = {"call_zero" => 7, "call_one" => 0, "call_two" => 1, "call_three" => 3, "call_four" => 6}
+  return (seed + increments.fetch(name) * rounds) % (2**32) if increments.key?(name)
   return seed if %w[empty_loop call_identity].include?(name)
   return (seed + rounds) % (2**32) if name == "call_add_one"
   x = seed
@@ -75,8 +83,8 @@ def statistics(values)
   {mean: mean, sd: Math.sqrt(values.sum { |value| (value - mean)**2 } / (values.size - 1)), min: values.min, max: values.max}
 end
 
-wasm = "#{output}/i32_calls.wasm"
-run!(["wasm-tools", "parse", "benchmark/i32_calls.wat", "-o", wasm], "#{output}/wat-build.log")
+wasm = "#{output}/#{File.basename(fixture, '.wat')}.wasm"
+run!(["wasm-tools", "parse", fixture, "-o", wasm], "#{output}/wat-build.log")
 archive = "#{output}/baseline.tar"
 run!(["git", "archive", "--output", archive, baseline, "lib", "exe", "benchmark/call_cost_worker.rb"], "#{output}/archive.log") unless ablation
 snapshots = {}
@@ -90,6 +98,15 @@ snapshots = {}
     FileUtils.cp_r(["lib", "exe"], directory)
     FileUtils.mkdir_p("#{directory}/benchmark")
     FileUtils.cp("benchmark/call_cost_worker.rb", "#{directory}/benchmark")
+    if experiment
+      # Replay the rejected prototype only in the copied library, never lib/.
+      recorded = JSON.parse(File.read("benchmark/results/call_arities_spinel_2026-11-04.json"))
+      patch = "#{output}/experiment.patch"
+      File.write(patch, recorded.fetch("patches").fetch("lib/wardite/efflorescence/ir.rb"))
+      prefix = directory.delete_prefix("#{Dir.pwd}/")
+      run!(["git", "apply", "--check", "--directory=#{prefix}", patch], "#{output}/patch-check.log")
+      run!(["git", "apply", "--directory=#{prefix}", patch], "#{output}/patch.log")
+    end
   end
   sources = Dir["#{directory}/{lib,exe,benchmark}/**/*"].select { |path| File.file?(path) }.sort.to_h do |path|
     [path.delete_prefix("#{directory}/"), Digest::SHA256.file(path).hexdigest]
@@ -129,9 +146,9 @@ rows = runtimes.flat_map do |runtime|
       cli = runtime == "Spinel" ? ["#{directory}/wardite"] : [*ruby, "#{directory}/exe/wardite"]
       cli += ["--mir-disable", "inline"] unless disabled.empty?
       cli += ["--new-engine", "--no-wasi", "--invoke", name, "--", wasm, rounds.to_s, seed.to_s]
-      # Only the acceptance exports get separate CLI timings. All controls use
-      # the same phase worker and public unboxed boundary as previous experiments.
-      cli = nil unless %w[inline_mix call_mix].include?(name)
+      # Arity mode times every CLI; historical mode times acceptance exports.
+      # All controls use the same phase worker and public unboxed boundary.
+      cli = nil unless arities || %w[inline_mix call_mix].include?(name)
       {runtime: runtime, variant: variant, disabled: disabled, export: name, worker: worker, cli: cli,
         metrics: profile.fetch(:metrics), mir: profile.fetch(:mir), samples: []}
     end
@@ -181,6 +198,8 @@ rows.each do |row|
 end
 snapshots.each_value { |snapshot| snapshot.delete(:directory) }
 report = {comparison: ablation ? "same binary, inline off/on" : "commits", baseline_commit: baseline,
+  fixture: fixture, fixture_sha256: Digest::SHA256.file(fixture).hexdigest,
+  call_arity_experiment: experiment,
   rounds: rounds, seed: seed, runs: runs, warmups: warmups,
   spinel: version.strip, spinel_flags: flags, ruby: RUBY_DESCRIPTION, checksums: checksums, snapshots: snapshots, results: rows}
 File.write("#{output}/results.json", JSON.pretty_generate(report) + "\n")

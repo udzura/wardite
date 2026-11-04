@@ -1,0 +1,1200 @@
+{
+  "comparison": "commits",
+  "baseline_commit": "8eb02af365b6138dd960887105caa4437e68a66a",
+  "fixture": "benchmark/i32_call_arities.wat",
+  "fixture_sha256": "72e4b9c5f437261f2e1f2f16cee84ca780da1166391cf62a6c9e7a3637d36892",
+  "rounds": 5000000,
+  "seed": 123,
+  "runs": 7,
+  "warmups": 2,
+  "spinel": "spinel 2026.10.25+1967 (6e7fc1355) [apple clang 21.0.0 (cc)]",
+  "spinel_flags": [
+    "-O2"
+  ],
+  "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+  "checksums": {
+    "empty_loop": 123,
+    "call_zero": 35000123,
+    "call_one": 123,
+    "call_two": 5000123,
+    "call_three": 15000123,
+    "call_four": 30000123
+  },
+  "snapshots": {
+    "baseline": {
+      "source_sha256": {
+        "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+        "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+        "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+        "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+        "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+        "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+        "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+        "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+        "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+        "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+        "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+        "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+        "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+        "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+        "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+        "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+        "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+        "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+        "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+        "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+        "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+        "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+        "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+        "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+        "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+        "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+        "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+        "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+        "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+      },
+      "binary_sha256": {
+        "wardite": "2668e180a97c5af5c332d4533a3b1a64357b61686dde2474205d860d8b5ab4a1",
+        "worker": "64668cdebc5775795fd181326c719d24c4b876bcec0cea90dff7237e35fcb15a"
+      }
+    },
+    "current": {
+      "source_sha256": {
+        "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+        "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+        "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+        "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+        "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+        "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+        "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+        "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+        "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+        "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+        "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+        "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+        "lib/wardite/efflorescence/ir.rb": "a2236aecec294b78159e083a58acc1b755f404157a1b9e65917212fa7a9598f9",
+        "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+        "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+        "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+        "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+        "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+        "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+        "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+        "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+        "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+        "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+        "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+        "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+        "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+        "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+        "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+        "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+      },
+      "binary_sha256": {
+        "wardite": "c2e8ba0893cfc2ad6867d25018f1036f54c552758e397496a556b4eeeb8d8721",
+        "worker": "0b6755d1a9bda81ae12253c130cb6fcd52d79a796cfedac0a492e0baa08da56e"
+      }
+    }
+  },
+  "results": [
+    {
+      "runtime": "Spinel",
+      "variant": "baseline",
+      "disabled": "inline",
+      "export": "empty_loop",
+      "metrics": "dispatches=15000003 copies=1 register_reads=10000003 register_writes=5000001 function_entries=1 frames_created=1",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.09683900000527501,
+          "load": 0.00011399993672966957,
+          "translate": 0.00021399976685643196,
+          "execute": 0.09254699992015958,
+          "cli_e2e": 0.0969969998113811
+        },
+        {
+          "worker_e2e": 0.0972820003516972,
+          "load": 0.00010799989104270935,
+          "translate": 0.00020999973639845848,
+          "execute": 0.09307800000533462,
+          "cli_e2e": 0.09748700028285384
+        },
+        {
+          "worker_e2e": 0.09798899991437793,
+          "load": 0.00012199999764561653,
+          "translate": 0.0002009999006986618,
+          "execute": 0.09355300012975931,
+          "cli_e2e": 0.09813700011000037
+        },
+        {
+          "worker_e2e": 0.09728299966081977,
+          "load": 0.00011499971151351929,
+          "translate": 0.0002109999768435955,
+          "execute": 0.0930340001359582,
+          "cli_e2e": 0.11183900013566017
+        },
+        {
+          "worker_e2e": 0.09750099992379546,
+          "load": 0.00012700026854872704,
+          "translate": 0.00022999988868832588,
+          "execute": 0.09308299981057644,
+          "cli_e2e": 0.0973229999653995
+        },
+        {
+          "worker_e2e": 0.09778599999845028,
+          "load": 0.00011700019240379333,
+          "translate": 0.00022299960255622864,
+          "execute": 0.09281800035387278,
+          "cli_e2e": 0.09688799967989326
+        },
+        {
+          "worker_e2e": 0.09712700033560395,
+          "load": 0.00011699972674250603,
+          "translate": 0.00021500000730156898,
+          "execute": 0.09290600009262562,
+          "cli_e2e": 0.09780199965462089
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 97.40100002714566,
+          "sd": 0.3922103367193702,
+          "min": 96.83900000527501,
+          "max": 97.98899991437793
+        },
+        "load": {
+          "mean": 0.11714281780379159,
+          "sd": 0.006039675267721992,
+          "min": 0.10799989104270935,
+          "max": 0.12700026854872704
+        },
+        "translate": {
+          "mean": 0.21485698276332446,
+          "sd": 0.009370638472870379,
+          "min": 0.2009999006986618,
+          "max": 0.22999988868832588
+        },
+        "execute": {
+          "mean": 93.00271434975522,
+          "sd": 0.3074235607965597,
+          "min": 92.54699992015958,
+          "max": 93.55300012975931
+        },
+        "cli_e2e": {
+          "mean": 99.49614280568701,
+          "sd": 5.460019027799225,
+          "min": 96.88799967989326,
+          "max": 111.83900013566017
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "current",
+      "disabled": "inline",
+      "export": "empty_loop",
+      "metrics": "dispatches=15000003 copies=1 register_reads=10000003 register_writes=5000001 function_entries=1 frames_created=1",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.09687200002372265,
+          "load": 0.00010899966582655907,
+          "translate": 0.00019900035113096237,
+          "execute": 0.09277499979361892,
+          "cli_e2e": 0.0970890000462532
+        },
+        {
+          "worker_e2e": 0.09712899988517165,
+          "load": 0.00010800035670399666,
+          "translate": 0.00020299991592764854,
+          "execute": 0.09306100010871887,
+          "cli_e2e": 0.0969509999267757
+        },
+        {
+          "worker_e2e": 0.09718099981546402,
+          "load": 0.0001300000585615635,
+          "translate": 0.00020499993115663528,
+          "execute": 0.09288399992510676,
+          "cli_e2e": 0.09676500037312508
+        },
+        {
+          "worker_e2e": 0.09736000001430511,
+          "load": 0.00010700011625885963,
+          "translate": 0.000205999705940485,
+          "execute": 0.09328600019216537,
+          "cli_e2e": 0.09652299992740154
+        },
+        {
+          "worker_e2e": 0.09716500015929341,
+          "load": 0.00010599987581372261,
+          "translate": 0.00020200014114379883,
+          "execute": 0.09280900005251169,
+          "cli_e2e": 0.0974029996432364
+        },
+        {
+          "worker_e2e": 0.09713800018653274,
+          "load": 0.00012100022286176682,
+          "translate": 0.00021500000730156898,
+          "execute": 0.09281199984252453,
+          "cli_e2e": 0.09695899998769164
+        },
+        {
+          "worker_e2e": 0.09790699975565076,
+          "load": 0.00010800035670399666,
+          "translate": 0.0002009999006986618,
+          "execute": 0.09378300001844764,
+          "cli_e2e": 0.0974010000936687
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 97.25028569144862,
+          "sd": 0.32295589925768853,
+          "min": 96.87200002372265,
+          "max": 97.90699975565076
+        },
+        "load": {
+          "mean": 0.11271437896149498,
+          "sd": 0.009159970746817516,
+          "min": 0.10599987581372261,
+          "max": 0.1300000585615635
+        },
+        "translate": {
+          "mean": 0.2044285647571087,
+          "sd": 0.005223502349506492,
+          "min": 0.19900035113096237,
+          "max": 0.21500000730156898
+        },
+        "execute": {
+          "mean": 93.0585714190134,
+          "sd": 0.36753639810517397,
+          "min": 92.77499979361892,
+          "max": 93.78300001844764
+        },
+        "cli_e2e": {
+          "mean": 97.01299999973604,
+          "sd": 0.320620153745738,
+          "min": 96.52299992740154,
+          "max": 97.4029996432364
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "baseline",
+      "disabled": "inline",
+      "export": "call_zero",
+      "metrics": "dispatches=30000003 copies=1 register_reads=25000003 register_writes=15000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.30101099982857704,
+          "load": 0.00010100007057189941,
+          "translate": 0.00019800011068582535,
+          "execute": 0.2968500000424683,
+          "cli_e2e": 0.299261000007391
+        },
+        {
+          "worker_e2e": 0.35256699984893203,
+          "load": 0.00010799989104270935,
+          "translate": 0.0002010003663599491,
+          "execute": 0.34820299968123436,
+          "cli_e2e": 0.2974490001797676
+        },
+        {
+          "worker_e2e": 0.3026419999077916,
+          "load": 0.0001300000585615635,
+          "translate": 0.0002310001291334629,
+          "execute": 0.2981949998065829,
+          "cli_e2e": 0.2996270000003278
+        },
+        {
+          "worker_e2e": 0.3031450002454221,
+          "load": 0.00011199992150068283,
+          "translate": 0.0002109999768435955,
+          "execute": 0.2991130002774298,
+          "cli_e2e": 0.2976959999650717
+        },
+        {
+          "worker_e2e": 0.3019479997456074,
+          "load": 0.00011599995195865631,
+          "translate": 0.00022199982777237892,
+          "execute": 0.2977360002696514,
+          "cli_e2e": 0.2985749999061227
+        },
+        {
+          "worker_e2e": 0.3047919999808073,
+          "load": 0.00011299969628453255,
+          "translate": 0.0002210000529885292,
+          "execute": 0.30061900010332465,
+          "cli_e2e": 0.29718100000172853
+        },
+        {
+          "worker_e2e": 0.3025539997033775,
+          "load": 0.00011100014671683311,
+          "translate": 0.00020999973639845848,
+          "execute": 0.29827600019052625,
+          "cli_e2e": 0.3000650000758469
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 309.80842846578787,
+          "sd": 18.890150795048076,
+          "min": 301.01099982857704,
+          "max": 352.566999848932
+        },
+        "load": {
+          "mean": 0.11299996237669672,
+          "sd": 0.008869429415660768,
+          "min": 0.10100007057189941,
+          "max": 0.1300000585615635
+        },
+        "translate": {
+          "mean": 0.2134286000260285,
+          "sd": 0.011900322628222715,
+          "min": 0.19800011068582535,
+          "max": 0.2310001291334629
+        },
+        "execute": {
+          "mean": 305.5702857673168,
+          "sd": 18.83605106681776,
+          "min": 296.8500000424683,
+          "max": 348.20299968123436
+        },
+        "cli_e2e": {
+          "mean": 298.5505714480366,
+          "sd": 1.1384913708899296,
+          "min": 297.18100000172853,
+          "max": 300.0650000758469
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "current",
+      "disabled": "inline",
+      "export": "call_zero",
+      "metrics": "dispatches=30000003 copies=1 register_reads=25000003 register_writes=15000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.29899200005456805,
+          "load": 0.00012699980288743973,
+          "translate": 0.00023500015959143639,
+          "execute": 0.29464099975302815,
+          "cli_e2e": 0.29443700006231666
+        },
+        {
+          "worker_e2e": 0.30128000024706125,
+          "load": 0.00012299977242946625,
+          "translate": 0.00021299999207258224,
+          "execute": 0.29714900022372603,
+          "cli_e2e": 0.3026019996032119
+        },
+        {
+          "worker_e2e": 0.30225299997255206,
+          "load": 0.00011300016194581985,
+          "translate": 0.00020299991592764854,
+          "execute": 0.2977400003001094,
+          "cli_e2e": 0.29460400016978383
+        },
+        {
+          "worker_e2e": 0.30188800022006035,
+          "load": 0.00010800035670399666,
+          "translate": 0.0002009999006986618,
+          "execute": 0.29777099983766675,
+          "cli_e2e": 0.2959249997511506
+        },
+        {
+          "worker_e2e": 0.3008179999887943,
+          "load": 0.00011899974197149277,
+          "translate": 0.00021700002253055573,
+          "execute": 0.2964500002563,
+          "cli_e2e": 0.2996660000644624
+        },
+        {
+          "worker_e2e": 0.30140799982473254,
+          "load": 0.00010999990627169609,
+          "translate": 0.00019800011068582535,
+          "execute": 0.29713999992236495,
+          "cli_e2e": 0.2962650000117719
+        },
+        {
+          "worker_e2e": 0.3021049997769296,
+          "load": 0.0001100003719329834,
+          "translate": 0.00019999966025352478,
+          "execute": 0.2979210000485182,
+          "cli_e2e": 0.2956079998984933
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 301.2491428692426,
+          "sd": 1.1146841424267433,
+          "min": 298.99200005456805,
+          "max": 302.25299997255206
+        },
+        "load": {
+          "mean": 0.11571430202041354,
+          "sd": 0.007341770325554591,
+          "min": 0.10800035670399666,
+          "max": 0.12699980288743973
+        },
+        "translate": {
+          "mean": 0.2095713945371764,
+          "sd": 0.013264799483426735,
+          "min": 0.19800011068582535,
+          "max": 0.23500015959143639
+        },
+        "execute": {
+          "mean": 296.97314290595904,
+          "sd": 1.1470553667927488,
+          "min": 294.64099975302815,
+          "max": 297.9210000485182
+        },
+        "cli_e2e": {
+          "mean": 297.0152856515987,
+          "sd": 3.0119655544556254,
+          "min": 294.43700006231666,
+          "max": 302.6019996032119
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "baseline",
+      "disabled": "inline",
+      "export": "call_one",
+      "metrics": "dispatches=25000003 copies=1 register_reads=20000003 register_writes=15000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.2518809996545315,
+          "load": 0.000124999787658453,
+          "translate": 0.00020400015637278557,
+          "execute": 0.2476249998435378,
+          "cli_e2e": 0.25851700035855174
+        },
+        {
+          "worker_e2e": 0.25316499965265393,
+          "load": 0.00010600034147500992,
+          "translate": 0.00019899988546967506,
+          "execute": 0.24891099985688925,
+          "cli_e2e": 0.25834299996495247
+        },
+        {
+          "worker_e2e": 0.2542060003615916,
+          "load": 0.00011900020763278008,
+          "translate": 0.00022299960255622864,
+          "execute": 0.24959200015291572,
+          "cli_e2e": 0.256715000141412
+        },
+        {
+          "worker_e2e": 0.25225500017404556,
+          "load": 0.00010599987581372261,
+          "translate": 0.0002000001259148121,
+          "execute": 0.2479779999703169,
+          "cli_e2e": 0.2597819999791682
+        },
+        {
+          "worker_e2e": 0.2529740002937615,
+          "load": 0.00012099975720047951,
+          "translate": 0.00022900011390447617,
+          "execute": 0.24875999987125397,
+          "cli_e2e": 0.2569880001246929
+        },
+        {
+          "worker_e2e": 0.2586520002223551,
+          "load": 0.00011799996718764305,
+          "translate": 0.0002210000529885292,
+          "execute": 0.2539909998886287,
+          "cli_e2e": 0.25695200031623244
+        },
+        {
+          "worker_e2e": 0.2569630001671612,
+          "load": 0.00012300023809075356,
+          "translate": 0.00021399976685643196,
+          "execute": 0.2524480000138283,
+          "cli_e2e": 0.25768200028687716
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 254.29942864658577,
+          "sd": 2.553442037771057,
+          "min": 251.88099965453148,
+          "max": 258.6520002223551
+        },
+        "load": {
+          "mean": 0.11685716786554881,
+          "sd": 0.007776574813598179,
+          "min": 0.10599987581372261,
+          "max": 0.12499978765845299
+        },
+        "translate": {
+          "mean": 0.21285710058041982,
+          "sd": 0.012019777136894665,
+          "min": 0.19899988546967506,
+          "max": 0.22900011390447617
+        },
+        "execute": {
+          "mean": 249.9007142281958,
+          "sd": 2.396903415409091,
+          "min": 247.6249998435378,
+          "max": 253.99099988862872
+        },
+        "cli_e2e": {
+          "mean": 257.8541430245553,
+          "sd": 1.1019934974377128,
+          "min": 256.715000141412,
+          "max": 259.7819999791682
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "current",
+      "disabled": "inline",
+      "export": "call_one",
+      "metrics": "dispatches=25000003 copies=1 register_reads=20000003 register_writes=15000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.26308800000697374,
+          "load": 0.00010699965059757233,
+          "translate": 0.0002109999768435955,
+          "execute": 0.2589630000293255,
+          "cli_e2e": 0.2754930001683533
+        },
+        {
+          "worker_e2e": 0.25536599988117814,
+          "load": 0.00011399993672966957,
+          "translate": 0.00021399976685643196,
+          "execute": 0.25108200032263994,
+          "cli_e2e": 0.2705220002681017
+        },
+        {
+          "worker_e2e": 0.2559249997138977,
+          "load": 0.00012099975720047951,
+          "translate": 0.000216000247746706,
+          "execute": 0.2515210001729429,
+          "cli_e2e": 0.2778280000202358
+        },
+        {
+          "worker_e2e": 0.2544499998912215,
+          "load": 0.00010900013148784637,
+          "translate": 0.00023500015959143639,
+          "execute": 0.25035199988633394,
+          "cli_e2e": 0.272968000266701
+        },
+        {
+          "worker_e2e": 0.25770500022917986,
+          "load": 0.00012199999764561653,
+          "translate": 0.00022300006821751595,
+          "execute": 0.25362399965524673,
+          "cli_e2e": 0.2530940002761781
+        },
+        {
+          "worker_e2e": 0.2568520000204444,
+          "load": 0.00010699965059757233,
+          "translate": 0.00021700002253055573,
+          "execute": 0.2526340000331402,
+          "cli_e2e": 0.27635199995711446
+        },
+        {
+          "worker_e2e": 0.2578039998188615,
+          "load": 0.00011300016194581985,
+          "translate": 0.0002109999768435955,
+          "execute": 0.25312400003895164,
+          "cli_e2e": 0.2539610001258552
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 257.312857080251,
+          "sd": 2.824653807704927,
+          "min": 254.44999989122152,
+          "max": 263.08800000697374
+        },
+        "load": {
+          "mean": 0.1132856123149395,
+          "sd": 0.006237417462822336,
+          "min": 0.10699965059757233,
+          "max": 0.12199999764561653
+        },
+        "translate": {
+          "mean": 0.218142888375691,
+          "sd": 0.008493768954317978,
+          "min": 0.2109999768435955,
+          "max": 0.23500015959143639
+        },
+        "execute": {
+          "mean": 253.0428571626544,
+          "sd": 2.8566089337684235,
+          "min": 250.35199988633394,
+          "max": 258.9630000293255
+        },
+        "cli_e2e": {
+          "mean": 268.6025715832199,
+          "sd": 10.5693956690143,
+          "min": 253.09400027617812,
+          "max": 277.8280000202358
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "baseline",
+      "disabled": "inline",
+      "export": "call_two",
+      "metrics": "dispatches=30000003 copies=1 register_reads=35000003 register_writes=25000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.31259500002488494,
+          "load": 0.00011900020763278008,
+          "translate": 0.0002109999768435955,
+          "execute": 0.3082019998691976,
+          "cli_e2e": 0.324925999622792
+        },
+        {
+          "worker_e2e": 0.31973899994045496,
+          "load": 0.00011599995195865631,
+          "translate": 0.00021299999207258224,
+          "execute": 0.31536700017750263,
+          "cli_e2e": 0.3259399998933077
+        },
+        {
+          "worker_e2e": 0.31632700003683567,
+          "load": 0.0001150001771748066,
+          "translate": 0.00021199975162744522,
+          "execute": 0.31132900016382337,
+          "cli_e2e": 0.32807599985972047
+        },
+        {
+          "worker_e2e": 0.3143180003389716,
+          "load": 0.00012900028377771378,
+          "translate": 0.00020899996161460876,
+          "execute": 0.31003399984911084,
+          "cli_e2e": 0.32631299970671535
+        },
+        {
+          "worker_e2e": 0.31518200039863586,
+          "load": 0.0001050001010298729,
+          "translate": 0.0002009999006986618,
+          "execute": 0.31107799988240004,
+          "cli_e2e": 0.32466599997133017
+        },
+        {
+          "worker_e2e": 0.3138580000959337,
+          "load": 0.00011100014671683311,
+          "translate": 0.00021299999207258224,
+          "execute": 0.3094440000131726,
+          "cli_e2e": 0.3301220000721514
+        },
+        {
+          "worker_e2e": 0.3138239998370409,
+          "load": 0.00011799996718764305,
+          "translate": 0.00020999973639845848,
+          "execute": 0.3096360000781715,
+          "cli_e2e": 0.3251849999651313
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 315.1204286675368,
+          "sd": 2.3482951551021847,
+          "min": 312.59500002488494,
+          "max": 319.73899994045496
+        },
+        "load": {
+          "mean": 0.11614297649690083,
+          "sd": 0.007403392835182057,
+          "min": 0.1050001010298729,
+          "max": 0.12900028377771378
+        },
+        "translate": {
+          "mean": 0.20985704447541917,
+          "sd": 0.0041804639980099175,
+          "min": 0.2009999006986618,
+          "max": 0.21299999207258224
+        },
+        "execute": {
+          "mean": 310.7271428619112,
+          "sd": 2.298820396216261,
+          "min": 308.2019998691976,
+          "max": 315.36700017750263
+        },
+        "cli_e2e": {
+          "mean": 326.46114272730694,
+          "sd": 1.979516712083885,
+          "min": 324.66599997133017,
+          "max": 330.1220000721514
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "current",
+      "disabled": "inline",
+      "export": "call_two",
+      "metrics": "dispatches=30000003 copies=1 register_reads=35000003 register_writes=25000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.31566799990832806,
+          "load": 0.00012199999764561653,
+          "translate": 0.00019800011068582535,
+          "execute": 0.31148200016468763,
+          "cli_e2e": 0.33031999971717596
+        },
+        {
+          "worker_e2e": 0.3164769997820258,
+          "load": 0.00013300031423568726,
+          "translate": 0.0002259998582303524,
+          "execute": 0.3118849997408688,
+          "cli_e2e": 0.3323540003038943
+        },
+        {
+          "worker_e2e": 0.31612499989569187,
+          "load": 0.00011499971151351929,
+          "translate": 0.0002109999768435955,
+          "execute": 0.31187700014561415,
+          "cli_e2e": 0.3367560002952814
+        },
+        {
+          "worker_e2e": 0.313487000297755,
+          "load": 0.0001359996385872364,
+          "translate": 0.0002360004000365734,
+          "execute": 0.30916399974375963,
+          "cli_e2e": 0.33076700009405613
+        },
+        {
+          "worker_e2e": 0.313382999971509,
+          "load": 0.0001150001771748066,
+          "translate": 0.00019899988546967506,
+          "execute": 0.3091469998471439,
+          "cli_e2e": 0.33356499997898936
+        },
+        {
+          "worker_e2e": 0.31590399984270334,
+          "load": 0.00012099975720047951,
+          "translate": 0.00021799979731440544,
+          "execute": 0.31139700021594763,
+          "cli_e2e": 0.33474599989131093
+        },
+        {
+          "worker_e2e": 0.31295299995690584,
+          "load": 0.00011199992150068283,
+          "translate": 0.0002009999006986618,
+          "execute": 0.3087920001707971,
+          "cli_e2e": 0.3350709998048842
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 314.85671423641696,
+          "sd": 1.5089148093794047,
+          "min": 312.95299995690584,
+          "max": 316.4769997820258
+        },
+        "load": {
+          "mean": 0.12199993112257548,
+          "sd": 0.009273622161381983,
+          "min": 0.11199992150068283,
+          "max": 0.1359996385872364
+        },
+        "translate": {
+          "mean": 0.21271427561129844,
+          "sd": 0.014671080295491473,
+          "min": 0.19800011068582535,
+          "max": 0.2360004000365734
+        },
+        "execute": {
+          "mean": 310.5348571469741,
+          "sd": 1.4205369738282385,
+          "min": 308.7920001707971,
+          "max": 311.8849997408688
+        },
+        "cli_e2e": {
+          "mean": 333.36842858365605,
+          "sd": 2.3593836540209523,
+          "min": 330.31999971717596,
+          "max": 336.7560002952814
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "baseline",
+      "disabled": "inline",
+      "export": "call_three",
+      "metrics": "dispatches=35000003 copies=1 register_reads=50000003 register_writes=35000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.36516799964010715,
+          "load": 0.00011499971151351929,
+          "translate": 0.0002010003663599491,
+          "execute": 0.36093399999663234,
+          "cli_e2e": 0.382039999589324
+        },
+        {
+          "worker_e2e": 0.3649900001473725,
+          "load": 0.00010700011625885963,
+          "translate": 0.00020299991592764854,
+          "execute": 0.3609240003861487,
+          "cli_e2e": 0.38151099998503923
+        },
+        {
+          "worker_e2e": 0.3671419997699559,
+          "load": 0.00013799965381622314,
+          "translate": 0.00022800033912062645,
+          "execute": 0.36256100004538894,
+          "cli_e2e": 0.3813109998591244
+        },
+        {
+          "worker_e2e": 0.3627090002410114,
+          "load": 0.00010900013148784637,
+          "translate": 0.00020299991592764854,
+          "execute": 0.35867900028824806,
+          "cli_e2e": 0.38148099975660443
+        },
+        {
+          "worker_e2e": 0.36373599991202354,
+          "load": 0.00011700019240379333,
+          "translate": 0.0002109999768435955,
+          "execute": 0.3595110001042485,
+          "cli_e2e": 0.37890700018033385
+        },
+        {
+          "worker_e2e": 0.3649439997971058,
+          "load": 0.00011499971151351929,
+          "translate": 0.00021200021728873253,
+          "execute": 0.36066100001335144,
+          "cli_e2e": 0.3790850001387298
+        },
+        {
+          "worker_e2e": 0.3665029997937381,
+          "load": 0.00013800011947751045,
+          "translate": 0.0002259998582303524,
+          "execute": 0.36199699994176626,
+          "cli_e2e": 0.380816999822855
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 365.02742847161636,
+          "sd": 1.512158565540483,
+          "min": 362.7090002410114,
+          "max": 367.1419997699559
+        },
+        "load": {
+          "mean": 0.11985709092446736,
+          "sd": 0.012889579626967393,
+          "min": 0.10700011625885963,
+          "max": 0.13800011947751045
+        },
+        "translate": {
+          "mean": 0.21200008424265043,
+          "sd": 0.011075512746520473,
+          "min": 0.2010003663599491,
+          "max": 0.22800033912062645
+        },
+        "execute": {
+          "mean": 360.7524286822549,
+          "sd": 1.3373420410272847,
+          "min": 358.67900028824806,
+          "max": 362.56100004538894
+        },
+        "cli_e2e": {
+          "mean": 380.73599990457296,
+          "sd": 1.242597496822496,
+          "min": 378.90700018033385,
+          "max": 382.039999589324
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "current",
+      "disabled": "inline",
+      "export": "call_three",
+      "metrics": "dispatches=35000003 copies=1 register_reads=50000003 register_writes=35000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.36719699995592237,
+          "load": 0.00013399962335824966,
+          "translate": 0.00022300006821751595,
+          "execute": 0.36283200001344085,
+          "cli_e2e": 0.38581399992108345
+        },
+        {
+          "worker_e2e": 0.3677460001781583,
+          "load": 0.00011300016194581985,
+          "translate": 0.00021800026297569275,
+          "execute": 0.3635099995881319,
+          "cli_e2e": 0.3856449997983873
+        },
+        {
+          "worker_e2e": 0.36473500030115247,
+          "load": 0.00011799996718764305,
+          "translate": 0.00021199975162744522,
+          "execute": 0.36035600025206804,
+          "cli_e2e": 0.3826779997907579
+        },
+        {
+          "worker_e2e": 0.3744379999116063,
+          "load": 0.00011300016194581985,
+          "translate": 0.00021399976685643196,
+          "execute": 0.37007400020956993,
+          "cli_e2e": 0.36744699999690056
+        },
+        {
+          "worker_e2e": 0.36695599975064397,
+          "load": 0.00011599995195865631,
+          "translate": 0.00021299999207258224,
+          "execute": 0.3626999999396503,
+          "cli_e2e": 0.3818109999410808
+        },
+        {
+          "worker_e2e": 0.36924399994313717,
+          "load": 0.00012400001287460327,
+          "translate": 0.00021900003775954247,
+          "execute": 0.36451900005340576,
+          "cli_e2e": 0.3840710003860295
+        },
+        {
+          "worker_e2e": 0.3778459997847676,
+          "load": 0.00012199999764561653,
+          "translate": 0.00020699994638562202,
+          "execute": 0.3734400002285838,
+          "cli_e2e": 0.3862120001576841
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 369.737428546484,
+          "sd": 4.677391889672837,
+          "min": 364.73500030115247,
+          "max": 377.8459997847676
+        },
+        "load": {
+          "mean": 0.11999998241662979,
+          "sd": 0.007460848129884518,
+          "min": 0.11300016194581985,
+          "max": 0.13399962335824966
+        },
+        "translate": {
+          "mean": 0.21514283227069037,
+          "sd": 0.005273566318035304,
+          "min": 0.20699994638562202,
+          "max": 0.22300006821751595
+        },
+        "execute": {
+          "mean": 365.34728575497866,
+          "sd": 4.657310566375634,
+          "min": 360.35600025206804,
+          "max": 373.4400002285838
+        },
+        "cli_e2e": {
+          "mean": 381.9539999988462,
+          "sd": 6.609753004507071,
+          "min": 367.44699999690056,
+          "max": 386.2120001576841
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "baseline",
+      "disabled": "inline",
+      "export": "call_four",
+      "metrics": "dispatches=40000003 copies=1 register_reads=65000003 register_writes=45000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.4281949996948242,
+          "load": 0.00011799996718764305,
+          "translate": 0.00021400023251771927,
+          "execute": 0.4236929998733103,
+          "cli_e2e": 0.43573900032788515
+        },
+        {
+          "worker_e2e": 0.4170010001398623,
+          "load": 0.00011599995195865631,
+          "translate": 0.0002259998582303524,
+          "execute": 0.41277100006118417,
+          "cli_e2e": 0.43454100005328655
+        },
+        {
+          "worker_e2e": 0.427156999707222,
+          "load": 0.00011700019240379333,
+          "translate": 0.00021799979731440544,
+          "execute": 0.42283499985933304,
+          "cli_e2e": 0.43286100029945374
+        },
+        {
+          "worker_e2e": 0.41664200043305755,
+          "load": 0.00011600041761994362,
+          "translate": 0.00022499961778521538,
+          "execute": 0.41225400008261204,
+          "cli_e2e": 0.4342689998447895
+        },
+        {
+          "worker_e2e": 0.41399799985811114,
+          "load": 0.00011700019240379333,
+          "translate": 0.00020200014114379883,
+          "execute": 0.40956899989396334,
+          "cli_e2e": 0.43055699998512864
+        },
+        {
+          "worker_e2e": 0.41266500018537045,
+          "load": 0.00011300016194581985,
+          "translate": 0.00021299999207258224,
+          "execute": 0.4084549997933209,
+          "cli_e2e": 0.43459799978882074
+        },
+        {
+          "worker_e2e": 0.42868700018152595,
+          "load": 0.00011499971151351929,
+          "translate": 0.00021299999207258224,
+          "execute": 0.42416399996727705,
+          "cli_e2e": 0.4346769996918738
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 420.62071431428194,
+          "sd": 7.085713588835355,
+          "min": 412.66500018537045,
+          "max": 428.68700018152595
+        },
+        "load": {
+          "mean": 0.11600008500473839,
+          "sd": 0.0016330056120789245,
+          "min": 0.11300016194581985,
+          "max": 0.11799996718764305
+        },
+        "translate": {
+          "mean": 0.2158570901623794,
+          "sd": 0.008193917711325823,
+          "min": 0.20200014114379883,
+          "max": 0.2259998582303524
+        },
+        "execute": {
+          "mean": 416.2487142187144,
+          "sd": 7.010243703847186,
+          "min": 408.4549997933209,
+          "max": 424.16399996727705
+        },
+        "cli_e2e": {
+          "mean": 433.8917142844626,
+          "sd": 1.6967903667260955,
+          "min": 430.55699998512864,
+          "max": 435.73900032788515
+        }
+      }
+    },
+    {
+      "runtime": "Spinel",
+      "variant": "current",
+      "disabled": "inline",
+      "export": "call_four",
+      "metrics": "dispatches=40000003 copies=1 register_reads=65000003 register_writes=45000001 function_entries=5000001 frames_created=2",
+      "mir": "instructions=47 copies=6 registers=73",
+      "samples": [
+        {
+          "worker_e2e": 0.4100889996625483,
+          "load": 0.00011400040239095688,
+          "translate": 0.0002159997820854187,
+          "execute": 0.4060430000536144,
+          "cli_e2e": 0.4164939997717738
+        },
+        {
+          "worker_e2e": 0.41239900002256036,
+          "load": 0.00011799996718764305,
+          "translate": 0.00021199975162744522,
+          "execute": 0.4079129998572171,
+          "cli_e2e": 0.4168699998408556
+        },
+        {
+          "worker_e2e": 0.4109090003184974,
+          "load": 0.00011699972674250603,
+          "translate": 0.00023999996483325958,
+          "execute": 0.40648100012913346,
+          "cli_e2e": 0.41546399984508753
+        },
+        {
+          "worker_e2e": 0.41079000011086464,
+          "load": 0.00011399993672966957,
+          "translate": 0.00021399976685643196,
+          "execute": 0.40681800013408065,
+          "cli_e2e": 0.4310150002129376
+        },
+        {
+          "worker_e2e": 0.41124700009822845,
+          "load": 0.00010799989104270935,
+          "translate": 0.00020499993115663528,
+          "execute": 0.4069730001501739,
+          "cli_e2e": 0.4185819998383522
+        },
+        {
+          "worker_e2e": 0.41113699972629547,
+          "load": 0.0001259995624423027,
+          "translate": 0.0002260003238916397,
+          "execute": 0.4067449998110533,
+          "cli_e2e": 0.41432899981737137
+        },
+        {
+          "worker_e2e": 0.40932099986821413,
+          "load": 0.0001200004480779171,
+          "translate": 0.00021299999207258224,
+          "execute": 0.4051229995675385,
+          "cli_e2e": 0.4162689996883273
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 410.84171425817266,
+          "sd": 0.9628899519188334,
+          "min": 409.32099986821413,
+          "max": 412.39900002256036
+        },
+        "load": {
+          "mean": 0.11671427637338638,
+          "sd": 0.005618766294330751,
+          "min": 0.10799989104270935,
+          "max": 0.1259995624423027
+        },
+        "translate": {
+          "mean": 0.21799993036048754,
+          "sd": 0.011532643681086113,
+          "min": 0.20499993115663528,
+          "max": 0.23999996483325958
+        },
+        "execute": {
+          "mean": 406.58514281468734,
+          "sd": 0.8598489960539453,
+          "min": 405.1229995675385,
+          "max": 407.9129998572171
+        },
+        "cli_e2e": {
+          "mean": 418.4318570021008,
+          "sd": 5.699009991735896,
+          "min": 414.32899981737137,
+          "max": 431.0150002129376
+        }
+      }
+    }
+  ],
+  "runtime_adopted": false,
+  "experiment": "shared transfer prefix for zero/two/three arguments",
+  "patches": {
+    "lib/wardite/efflorescence/ir.rb": "diff --git a/lib/wardite/efflorescence/ir.rb b/lib/wardite/efflorescence/ir.rb\nindex 5d9d96c..5bc87b9 100644\n--- a/lib/wardite/efflorescence/ir.rb\n+++ b/lib/wardite/efflorescence/ir.rb\n@@ -232,18 +232,28 @@ module Wardite\n         @pool_index = callee.index\n       end\n \n-      # Keep the generic argument loop out of the interpreter's live locals.\n-      # The common single-argument path copies directly from the CALL operand.\n+      # Keep multi-argument transfer out of the interpreter's live locals.\n+      # Small arities copy directly; only larger calls loop.\n       # @rbs target: Array[Integer]\n       # @rbs source: Array[Integer]\n       # @rbs return: void\n       def copy_arguments(target, source)\n-        argument = 0\n         count = @arguments.size\n-        while argument < count\n-          target[argument] = source[@arguments.fetch(argument)]\n-          argument += 1\n+        return if count == 0\n+        if count <= 3\n+          target[0] = source[@arguments.fetch(0)]\n+          target[1] = source[@arguments.fetch(1)] if count >= 2\n+          target[2] = source[@arguments.fetch(2)] if count == 3\n+        else\n+          argument = 0\n+          while argument < count\n+            target[argument] = source[@arguments.fetch(argument)]\n+            argument += 1\n+          end\n         end\n+        # The transfer has no result. Avoid boxing the last copied value in\n+        # Spinel's generated C when returning from a specialized transfer.\n+        nil\n       end\n     end\n \n",
+    "lib/wardite/efflorescence/optimizer.rb": "",
+    "lib/wardite/efflorescence/vm.rb": ""
+  }
+}

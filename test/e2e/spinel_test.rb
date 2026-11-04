@@ -46,6 +46,10 @@ class WarditeSpinelTest < Test::Unit::TestCase
       assert_not_nil function_layout
       assert_match(/sp_PtrArray \* iv_calls;/, function_layout,
         "resolved call sites must stay a pointer array")
+      transfer = code[/^static [^\n]+sp_CallSite_copy_arguments\([^;\n]*\) \{.*?(?=^static |\z)/m]
+      assert_not_nil transfer
+      assert_not_match(/sp_box_oint|sp_PolyArray_/, transfer,
+        "argument transfer must stay unboxed and must not box an unused return value")
     end
   end
 
@@ -198,7 +202,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
     Dir.mktmpdir("wardite-spinel-call-protocol") do |dir|
       wasm = File.join(dir, "calls.wasm")
       File.binwrite(wasm, compile_efflorescence_wat(CALL_PROTOCOL_WAT))
-      [[], ["--mir-disable", "all"], ["--mir-disable", "flat"],
+      [[], ["--mir-disable", "inline"], ["--mir-disable", "all"], ["--mir-disable", "flat"],
        ["--mir-disable", "frames"], ["--mir-profile"]].each do |options|
         [["run", 0, -19], ["run", 123, 1247], ["run", 0xffffffff, -25],
          ["alias", 123, -1], ["mutual", 200, 20127]].each do |name, argument, expected|
@@ -207,6 +211,36 @@ class WarditeSpinelTest < Test::Unit::TestCase
           assert status.success?, err
           assert_equal "", out
           assert_include err, "return value: I32(#{expected})\n"
+        end
+      end
+    end
+  end
+
+  test "Efflorescence zero through four argument calls and recursive transfers on native engine" do
+    Dir.mktmpdir("wardite-spinel-arities") do |dir|
+      loops = File.join(dir, "loops.wasm")
+      edges = File.join(dir, "edges.wasm")
+      File.binwrite(loops, compile_efflorescence_wat(File.read(ARITY_WAT)))
+      File.binwrite(edges, compile_efflorescence_wat(ARITY_EDGE_WAT))
+      [[], ["--mir-disable", "inline"], ["--mir-disable", "all"],
+       ["--mir-disable", "inline", "--mir-disable", "flat"],
+       ["--mir-disable", "inline", "--mir-disable", "frames"],
+       ["--mir-disable", "inline", "--mir-profile"]].each do |options|
+        cases = []
+        {"call_zero" => 7, "call_one" => 0, "call_two" => 1, "call_three" => 3, "call_four" => 6}.each do |name, step|
+          [[0, 123], [1, 0xffffffff], [1000, 0xffffffff]].each do |rounds, seed|
+            cases << [loops, name, [rounds, seed], (seed + step * rounds) % (2**32)]
+          end
+        end
+        cases += [[edges, "two", [200, 123], 20423], [edges, "three", [200, 123], 20823],
+          [edges, "permuted", [17, 23, 31], 313], [edges, "duplicate", [0xffffffff], 0xfffffff7]]
+        cases.each do |wasm, name, arguments, expected|
+          expected -= 2**32 if expected >= 2**31
+          out, err, status = Open3.capture3(@binary, "--new-engine", *options,
+            "--invoke", name, "--", wasm, *arguments.map(&:to_s))
+          assert status.success?, err
+          assert_equal "", out
+          assert_include err, "return value: I32(#{expected})\n", "#{options.inspect}, #{name}#{arguments}"
         end
       end
     end

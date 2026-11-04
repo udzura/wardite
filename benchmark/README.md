@@ -26,6 +26,25 @@ This keeps the historical MIR-counter equality check for commit comparisons.
 
 ## Investigate internal call costs
 
+To reproduce the zero/two/three-argument CALL experiment (not adopted):
+
+```sh
+CALL_ARITIES=1 CALL_ARITY_EXPERIMENT=1 BASELINE_REF=8eb02af SPINELFLAGS=-O2 RUNS=7 WARMUPS=2 \
+  ruby benchmark/compare_call_types.rb 5000000 123
+```
+
+The prototype is replayed only in a copied library under `build/`, with a patch
+check and source fingerprints. Production argument transfer remains unchanged:
+the best prototype still measured about 1.3% slower for one and three arguments.
+This uses `i32_call_arities.wat`, disables inlining on both versions and checks
+equal MIR counters as well as independent checksums. It measures worker phases
+and CLI processes for every arity; four arguments exercise the generic fallback.
+Results and source/binary hashes go to `build/benchmark/call-arities/results.json`.
+`8eb02af` is the default baseline for `CALL_ARITIES=1` and must exist locally.
+Use `RUNTIMES=CRuby,YJIT` to compare Ruby execution.
+Omit `CALL_ARITY_EXPERIMENT=1` to compare the production source at each commit.
+[Implementation, experiments and measurements (日本語)](../docs/efflorescence-call-arities.md).
+
 To compare operand decoding at a fixed `-O2` against `5924537`:
 
 ```sh
