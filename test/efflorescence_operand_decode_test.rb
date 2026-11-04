@@ -22,12 +22,29 @@ class EfflorescenceOperandDecodeTest < Test::Unit::TestCase
     end
   end
 
+  class InterruptingFetch < Array
+    def fetch(_index)
+      raise StopIteration, "MIR fetch interrupted"
+    end
+  end
+
   def tracked_vm(wat, index: 0, **options)
     vm = load_efflorescence(wat, **options).runtime
     function = vm.ir.function_at(index)
     code = FetchLog.new(function.bytecode)
     function.install_code(code, function.calls)
     [vm, code]
+  end
+
+  test "flat execution propagates StopIteration and allows a later invocation" do
+    vm = load_efflorescence('(module (func (export "run") (result i32) i32.const 42))').runtime
+    function = vm.ir.function_at(0)
+    original = function.bytecode
+    function.install_code(InterruptingFetch.new(original), function.calls)
+    error = assert_raise(StopIteration) { vm.call_unboxed("run", []) }
+    assert_equal "MIR fetch interrupted", error.message
+    function.install_code(original, function.calls)
+    assert_equal 42, vm.call_unboxed("run", [])
   end
 
   test "RETURN BR and TRAP leave b and c padding unread" do

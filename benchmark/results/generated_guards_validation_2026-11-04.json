@@ -1,0 +1,256 @@
+{
+  "driver_source": "# frozen_string_literal: true\n# rbs_inline: enabled\nrequire \"wardite\"\n\n# @rbs directory: String\n# @rbs name: String\n# @rbs return: Wardite::Efflorescence::VM\ndef vm_for(directory, name)\n  instance = File.open(\"#{directory}/#{name}.wasm\", \"rb\") do |file|\n    Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false)\n  end\n  Wardite::Efflorescence::VM.new(instance, disabled_optimizations: [:inline, :frames])\nend\n\n# @rbs expected: Integer\n# @rbs actual: Integer?\n# @rbs return: void\ndef check(expected, actual)\n  raise \"checksum #{actual} != #{expected}\" unless expected == actual\nend\n\ndirectory = ARGV.fetch(0)\nreset = vm_for(directory, \"reset\")\nprotocol = vm_for(directory, \"protocol\")\nedges = vm_for(directory, \"edges\")\ninlined = vm_for(directory, \"inline\")\n3.times do\n  [0, 1, 123, 0xffffffff].each do |seed|\n    check((seed * 128) % 0x100000000, reset.call_unboxed(\"run\", [seed]))\n    check(930, reset.call_unboxed(\"recursive\", [30]))\n    trapped = false\n    begin\n      reset.call_unboxed(\"fail\", [])\n    rescue Wardite::Unreachable\n      trapped = true\n    end\n    raise \"missing trap\" unless trapped\n    check((seed * 128) % 0x100000000, reset.call_unboxed(\"run\", [seed]))\n    check(((seed + 18) % 0x100000000) ^ ((9 * seed - 1) % 0x100000000), protocol.call_unboxed(\"run\", [seed]))\n    check(0xffffffff, protocol.call_unboxed(\"alias\", [seed]))\n    check(492, protocol.call_unboxed(\"mutual\", [30]))\n    check((seed + 495) % 0x100000000, edges.call_unboxed(\"two\", [30, seed]))\n    check((seed + 555) % 0x100000000, edges.call_unboxed(\"three\", [30, seed]))\n    check(313, edges.call_unboxed(\"permuted\", [17, 23, 31]))\n    check((9 * seed) % 0x100000000, edges.call_unboxed(\"duplicate\", [seed]))\n    check((seed + 1) % 0x100000000, inlined.call_unboxed(\"snapshot\", [seed]))\n    check((10 * seed) % 0x100000000, inlined.call_unboxed(\"loop\", [10, seed]))\n    check(seed, inlined.call_unboxed(\"void\", [seed]))\n  end\nend\nputs \"validation ok\"\n",
+  "driver_sha256": "48c024f39043b43f51ed332cdbc32b254c84336efe8900db967469174e6f1dd1",
+  "fixtures": {
+    "simple": {
+      "source": "(module (func (export \"run\") (result i32) i32.const 42))",
+      "sha256": "661ab5f783347f1d225146a4e3c29edb24d83ad6e024054b3c33dcb6b33401c9"
+    },
+    "inline": {
+      "source": "(module\n  (func $mutate (param i32 i32) (result i32)\n    local.get 0 local.get 1 local.set 0 local.get 0 i32.sub)\n  (func $local (param i32) (result i32) (local i32)\n    local.get 1 local.get 0 local.set 1 local.get 1 i32.add)\n  (func $constant (result i32) i32.const -1)\n  (func $void (param i32)\n    local.get 0 i32.const 10 local.set 0 drop)\n  (func $empty)\n  (func (export \"snapshot\") (param i32) (result i32)\n    local.get 0\n    local.get 0 local.get 0 i32.const 1 i32.add call $mutate local.set 0\n    local.get 0 i32.sub)\n  (func (export \"loop\") (param i32 i32) (result i32) (local i32)\n    block $done\n      loop $repeat\n        local.get 0 i32.eqz br_if $done\n        local.get 2 local.get 1 call $local i32.add local.set 2\n        local.get 0 i32.const 1 i32.sub local.set 0 br $repeat\n      end\n    end\n    local.get 2)\n  (func (export \"constant\") (result i32) call $constant)\n  (func (export \"void\") (param i32) (result i32)\n    call $empty local.get 0 call $void local.get 0)\n  (func (export \"branch\") (param i32 i32) (result i32)\n    block local.get 0 br_if 0 i32.const 99 local.set 1 end\n    local.get 1 call $local))\n",
+      "sha256": "f1da0010cbb60f303456ec1d89cf3550e70accb81f48a6733135a69eb21adda5"
+    },
+    "reset": {
+      "source": "(module\n  (func $leaf (param i32 i32) (result i32) (local i32 i32)\n    block\n      local.get 0 i32.eqz br_if 0\n      local.get 1 local.set 2\n      i32.const 99 local.set 3\n    end\n    local.get 2 local.get 3 i32.add\n    block (result i32)\n      local.get 1 i32.const 13 i32.shr_u\n      local.get 0 br_if 0\n      drop local.get 1 i32.const 7 i32.shl\n    end\n    i32.xor)\n  (func $sum (param i32) (result i32) (local i32)\n    block\n      local.get 0 br_if 0\n      local.get 1 return\n    end\n    local.get 0 local.set 1\n    local.get 0 i32.const 1 i32.sub call $sum\n    local.get 1 i32.add)\n  (func (export \"run\") (param i32) (result i32)\n    i32.const 1 local.get 0 call $leaf drop\n    i32.const 0 local.get 0 call $leaf)\n  (func (export \"recursive\") (param i32) (result i32)\n    local.get 0 call $sum\n    i32.const 0 call $sum i32.add\n    local.get 0 call $sum i32.add)\n  (func (export \"fail\")\n    i32.const 1 i32.const 123 call $leaf drop\n    unreachable))\n",
+      "sha256": "939c87558b64484fb8579739e0d2a6853f015f76111977bb323599a1f61e4044"
+    },
+    "edges": {
+      "source": "(module\n  (func $two (param i32 i32) (result i32) (local i32)\n    block local.get 0 br_if 0 local.get 1 return end\n    local.get 0 local.set 2\n    local.get 0 i32.const 1 i32.sub\n    local.get 1 i32.const 1 i32.add call $two\n    local.get 2 i32.add)\n  (func $three (param i32 i32 i32) (result i32) (local i32)\n    block local.get 0 br_if 0 local.get 1 return end\n    local.get 0 local.set 3\n    local.get 0 i32.const 1 i32.sub\n    local.get 1 local.get 2 i32.add local.get 2 call $three\n    local.get 3 i32.add)\n  (func $ordered (param i32 i32 i32) (result i32)\n    local.get 0 i32.const 11 i32.mul\n    local.get 1 i32.const 3 i32.mul i32.sub local.get 2 i32.add)\n  (func (export \"two\") (param i32 i32) (result i32)\n    local.get 0 local.get 1 call $two)\n  (func (export \"three\") (param i32 i32) (result i32)\n    local.get 0 local.get 1 i32.const 3 call $three)\n  (func (export \"permuted\") (param i32 i32 i32) (result i32)\n    local.get 2 local.get 0 local.get 1 call $ordered)\n  (func (export \"duplicate\") (param i32) (result i32)\n    local.get 0 local.get 0 local.get 0 call $ordered))\n",
+      "sha256": "6f1834a801ef6078f9f9b95a0845353966d95efb693096badbce0838eb64aff5"
+    },
+    "protocol": {
+      "source": "(module\n  (func $zero (result i32) i32.const 17)\n  (func $one (param i32) (result i32) local.get 0 i32.const 1 i32.add)\n  (func $many (param i32 i32 i32) (result i32)\n    local.get 0 i32.const 11 i32.mul\n    local.get 1 i32.const 3 i32.mul i32.sub\n    local.get 2 i32.add)\n  (func $void (param i32 i32)\n    block\n      local.get 0 local.get 1 i32.xor i32.eqz br_if 0\n      unreachable\n    end)\n  (func $empty)\n  (func (export \"run\") (param i32) (result i32)\n    call $empty\n    local.get 0 local.get 0 call $void\n    call $zero\n    local.get 0 call $one i32.add\n    local.get 0\n    local.get 0 i32.const 1 i32.add\n    local.get 0 i32.const 2 i32.add\n    call $many i32.xor)\n  (func (export \"alias\") (param i32) (result i32)\n    local.get 0\n    local.get 0 call $one local.set 0\n    local.get 0 i32.sub)\n  (func $a (param i32) (result i32) (local i32)\n    block\n      local.get 0 br_if 0\n      local.get 1 i32.const 7 i32.add return\n    end\n    local.get 0 local.set 1\n    local.get 0 i32.const 1 i32.sub call $b\n    local.get 1 i32.add)\n  (func $b (param i32) (result i32) (local i32)\n    block\n      local.get 0 br_if 0\n      local.get 1 i32.const 7 i32.add return\n    end\n    local.get 0 local.set 1\n    local.get 0 i32.const 1 i32.sub call $a\n    local.get 1 i32.add)\n  (func (export \"mutual\") (param i32) (result i32)\n    local.get 0 call $a\n    i32.const 0 call $a i32.add\n    i32.const 3 call $b i32.add))\n",
+      "sha256": "d9058d218e2a24b1d0da1c0d5df6dcfac8260e2e2380f9a13023cc6100bea71b"
+    }
+  },
+  "variants": [
+    {
+      "variant": "baseline",
+      "returncode": 0,
+      "stdout": "validation ok\n",
+      "stderr": "[gc] 1 collections (1 full) in 0.00s of 0.0s wall (0.0%), 0.25ms avg; live 0.0 MB obj + 0.0 MB str; trigger 0.0 MB obj + 0.25 MB str/worker x 1; mark share 1.00; old obj in str trigger 0.00 MB\n[gc] 23564 collections (189 full) in 0.15s of 0.2s wall (95.2%), 0.01ms avg; live 0.5 MB obj + 0.0 MB str; trigger 0.0 MB obj + 0.25 MB str/worker x 1; mark share 1.00; old obj in str trigger 0.00 MB\n",
+      "collections": 23564,
+      "environment": {
+        "SPINEL_GC_STRESS": "1",
+        "SPINEL_GC_VERIFY": "1",
+        "SPINEL_GC_STATS": "1"
+      },
+      "spinel_command": [
+        "spinel",
+        "-I/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/lib",
+        "--strict-require",
+        "-O2",
+        "--no-line-map",
+        "-c",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/validation/driver.rb",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/validation.c"
+      ],
+      "compile_command": [
+        "clang",
+        "-O2",
+        "-ffp-contract=off",
+        "-falign-functions=64",
+        "-falign-loops=64",
+        "-I/Users/udzura/.local/lib/spinel/lib",
+        "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+        "-DSP_INT_OVERFLOW_MODE_RAISE",
+        "-DSP_ONE_STRING",
+        "-c",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/validation.c",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/validation.o"
+      ],
+      "link_command": [
+        "clang",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/validation.o",
+        "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+        "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+        "-lm",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/validation"
+      ],
+      "binary_sha256": "8c3cea921ea687eda80fa22fdd60ca34b7c9ae2490b8ff996ef38074f6f6289e"
+    },
+    {
+      "variant": "while_loop",
+      "returncode": 0,
+      "stdout": "validation ok\n",
+      "stderr": "[gc] 1 collections (1 full) in 0.00s of 0.0s wall (0.0%), 0.16ms avg; live 0.0 MB obj + 0.0 MB str; trigger 0.0 MB obj + 0.25 MB str/worker x 1; mark share 1.00; old obj in str trigger 0.00 MB\n[gc] 23564 collections (189 full) in 0.14s of 0.1s wall (95.9%), 0.01ms avg; live 0.5 MB obj + 0.0 MB str; trigger 0.0 MB obj + 0.25 MB str/worker x 1; mark share 1.00; old obj in str trigger 0.00 MB\n",
+      "collections": 23564,
+      "environment": {
+        "SPINEL_GC_STRESS": "1",
+        "SPINEL_GC_VERIFY": "1",
+        "SPINEL_GC_STATS": "1"
+      },
+      "spinel_command": [
+        "spinel",
+        "-I/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/lib",
+        "--strict-require",
+        "-O2",
+        "--no-line-map",
+        "-c",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/validation/driver.rb",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/validation.c"
+      ],
+      "compile_command": [
+        "clang",
+        "-O2",
+        "-ffp-contract=off",
+        "-falign-functions=64",
+        "-falign-loops=64",
+        "-I/Users/udzura/.local/lib/spinel/lib",
+        "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+        "-DSP_INT_OVERFLOW_MODE_RAISE",
+        "-DSP_ONE_STRING",
+        "-c",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/validation.c",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/validation.o"
+      ],
+      "link_command": [
+        "clang",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/validation.o",
+        "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+        "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+        "-lm",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/validation"
+      ],
+      "binary_sha256": "5c3aa5d76df15cbae8e6c88aadfee9deb73bbb1b40c39df085fe4c6b01fe8ad5"
+    },
+    {
+      "variant": "c_root_elision",
+      "returncode": 0,
+      "stdout": "validation ok\n",
+      "stderr": "[gc] 1 collections (1 full) in 0.00s of 0.0s wall (0.0%), 0.09ms avg; live 0.0 MB obj + 0.0 MB str; trigger 0.0 MB obj + 0.25 MB str/worker x 1; mark share 1.00; old obj in str trigger 0.00 MB\n[gc] 23564 collections (189 full) in 0.14s of 0.1s wall (95.9%), 0.01ms avg; live 0.5 MB obj + 0.0 MB str; trigger 0.0 MB obj + 0.25 MB str/worker x 1; mark share 1.00; old obj in str trigger 0.00 MB\n",
+      "collections": 23564,
+      "environment": {
+        "SPINEL_GC_STRESS": "1",
+        "SPINEL_GC_VERIFY": "1",
+        "SPINEL_GC_STATS": "1"
+      },
+      "spinel_command": [
+        "spinel",
+        "-I/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/lib",
+        "--strict-require",
+        "-O2",
+        "--no-line-map",
+        "-c",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/validation/driver.rb",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/validation.c"
+      ],
+      "compile_command": [
+        "clang",
+        "-O2",
+        "-ffp-contract=off",
+        "-falign-functions=64",
+        "-falign-loops=64",
+        "-I/Users/udzura/.local/lib/spinel/lib",
+        "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+        "-DSP_INT_OVERFLOW_MODE_RAISE",
+        "-DSP_ONE_STRING",
+        "-c",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/validation.c",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/validation.o"
+      ],
+      "link_command": [
+        "clang",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/validation.o",
+        "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+        "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+        "-lm",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/validation"
+      ],
+      "binary_sha256": "d0f8b5fae5d9f8f62f5bd4eb8d2dc690850fd44cc2e21d9c31fa4e4b798603a6"
+    },
+    {
+      "variant": "while_c_root_elision",
+      "returncode": 0,
+      "stdout": "validation ok\n",
+      "stderr": "[gc] 1 collections (1 full) in 0.00s of 0.0s wall (0.0%), 0.18ms avg; live 0.0 MB obj + 0.0 MB str; trigger 0.0 MB obj + 0.25 MB str/worker x 1; mark share 1.00; old obj in str trigger 0.00 MB\n[gc] 23564 collections (189 full) in 0.14s of 0.1s wall (95.7%), 0.01ms avg; live 0.5 MB obj + 0.0 MB str; trigger 0.0 MB obj + 0.25 MB str/worker x 1; mark share 1.00; old obj in str trigger 0.00 MB\n",
+      "collections": 23564,
+      "environment": {
+        "SPINEL_GC_STRESS": "1",
+        "SPINEL_GC_VERIFY": "1",
+        "SPINEL_GC_STATS": "1"
+      },
+      "spinel_command": [
+        "spinel",
+        "-I/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/lib",
+        "--strict-require",
+        "-O2",
+        "--no-line-map",
+        "-c",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/validation/driver.rb",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/validation.c"
+      ],
+      "compile_command": [
+        "clang",
+        "-O2",
+        "-ffp-contract=off",
+        "-falign-functions=64",
+        "-falign-loops=64",
+        "-I/Users/udzura/.local/lib/spinel/lib",
+        "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+        "-DSP_INT_OVERFLOW_MODE_RAISE",
+        "-DSP_ONE_STRING",
+        "-c",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/validation.c",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/validation.o"
+      ],
+      "link_command": [
+        "clang",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/validation.o",
+        "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+        "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+        "-lm",
+        "-o",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/validation"
+      ],
+      "binary_sha256": "5ee8ef52a2b7f9e69fee21e68797ceed09640eba538e83d9d0289f45861da5e5"
+    }
+  ],
+  "runner_source": "from pathlib import Path\nimport hashlib\nimport json\nimport os\nimport re\nimport subprocess\n\nbase = Path(__file__).resolve().parent.parent\nmeasured = json.loads((base / \"final/results.json\").read_text())\nentry = base / \"validation/driver.rb\"\nreport = {\"driver_source\": entry.read_text(), \"driver_sha256\": hashlib.sha256(entry.read_bytes()).hexdigest(),\n          \"fixtures\": {}, \"variants\": []}\nfor source in (base / \"validation\").glob(\"*.wat\"):\n    report[\"fixtures\"][source.stem] = {\"source\": source.read_text(), \"sha256\": hashlib.sha256(source.read_bytes()).hexdigest()}\nenvironment = dict(os.environ, SPINEL_GC_STRESS=\"1\", SPINEL_GC_VERIFY=\"1\", SPINEL_GC_STATS=\"1\")\nfor name, snapshot in measured[\"snapshots\"].items():\n    directory = base / \"final\" / name\n    generated, obj, binary = [directory / f\"validation{suffix}\" for suffix in [\".c\", \".o\", \"\"]]\n    spinel = [\"spinel\", \"-I\" + str(directory / \"lib\"), \"--strict-require\", \"-O2\", \"--no-line-map\",\n              \"-c\", str(entry), \"-o\", str(generated)]\n    with (directory / \"validation-spinel.log\").open(\"w\") as log:\n        subprocess.run(spinel, stdout=log, stderr=subprocess.STDOUT, check=True)\n    code = generated.read_text()\n    body = re.search(r\"^static [^\\n]+sp_(?:Wardite__Efflorescence__)?VM_execute_flat\\([^;\\n]*\\) \\{.*?(?=^static |\\Z)\", code, re.M | re.S).group()\n    assert \"SP_GC_ENTRY_PTR(lv_instructions)\" in body\n    assert not re.search(r\"sp_PolyArray_|sp_pd_[a-f0-9]+\\(\", body)\n    if \"c_root_elision\" in name:\n        edited, count = re.subn(r\"(sp_IntArray \\*(_t\\d+) = lv_instructions; )SP_GC_ROOT\\(\\2\\);( sp_int _t\\d+ = (?:lv_pc|sp_int_add\\(lv_pc, [123]LL\\));)\", r\"\\1\\3\", body)\n        assert count == 38, count\n        generated.write_text(code.replace(body, edited, 1))\n    artifact = snapshot[\"artifacts\"][\"worker\"]\n    compile_command = [str(generated) if arg == str(directory / \"worker.c\") else str(obj) if arg == str(directory / \"worker.o\") else arg for arg in artifact[\"compile_command\"]]\n    link_command = [str(obj) if arg == str(directory / \"worker.o\") else str(binary) if arg == str(directory / \"worker\") else arg for arg in artifact[\"link_command\"]]\n    with (directory / \"validation-clang.log\").open(\"w\") as log:\n        subprocess.run(compile_command, stdout=log, stderr=subprocess.STDOUT, check=True)\n        subprocess.run(link_command, stdout=log, stderr=subprocess.STDOUT, check=True)\n    result = subprocess.run([str(binary), str(base / \"validation\")], env=environment, capture_output=True, text=True)\n    (directory / \"validation.stdout\").write_text(result.stdout)\n    (directory / \"validation.stderr\").write_text(result.stderr)\n    counts = re.findall(r\"\\[gc\\] (\\d+) collections\", result.stderr)\n    report[\"variants\"].append({\"variant\": name, \"returncode\": result.returncode, \"stdout\": result.stdout,\n        \"stderr\": result.stderr, \"collections\": int(counts[-1]) if counts else 0,\n        \"environment\": {key: environment[key] for key in [\"SPINEL_GC_STRESS\", \"SPINEL_GC_VERIFY\", \"SPINEL_GC_STATS\"]},\n        \"spinel_command\": spinel, \"compile_command\": compile_command, \"link_command\": link_command,\n        \"binary_sha256\": hashlib.sha256(binary.read_bytes()).hexdigest()})\n    (base / \"validation/results.json\").write_text(json.dumps(report, indent=2) + \"\\n\")\n    print(name, result.returncode, result.stdout.strip(), \"collections\", report[\"variants\"][-1][\"collections\"], flush=True)\n    assert result.returncode == 0 and result.stdout == \"validation ok\\n\" and counts and int(counts[-1]) > 0\n",
+  "full_suite": [
+    {
+      "variant": "while_loop",
+      "tests": 116,
+      "assertions": 10888,
+      "failures": 0,
+      "errors": 0,
+      "omissions": 0,
+      "test_contract_adjustment": "Allow C argument identifier lv_frame as well as lv_frame__in; concrete Frame/pool type checks unchanged."
+    },
+    {
+      "variant": "c_root_elision",
+      "tests": 116,
+      "assertions": 10888,
+      "failures": 0,
+      "errors": 0,
+      "omissions": 0,
+      "test_contract_adjustment": "Allow C argument identifier lv_frame as well as lv_frame__in; concrete Frame/pool type checks unchanged."
+    },
+    {
+      "variant": "while_c_root_elision",
+      "tests": 116,
+      "assertions": 10888,
+      "failures": 0,
+      "errors": 0,
+      "omissions": 0,
+      "test_contract_adjustment": "Allow C argument identifier lv_frame as well as lv_frame__in; concrete Frame/pool type checks unchanged."
+    }
+  ],
+  "ruby_invalid_pc_driver": "# frozen_string_literal: true\n# rbs_inline: enabled\nrequire \"wardite\"\n\n# @rbs directory: String\n# @rbs name: String\n# @rbs return: Wardite::Efflorescence::VM\ndef vm_for(directory, name)\n  instance = File.open(\"#{directory}/#{name}.wasm\", \"rb\") do |file|\n    Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false)\n  end\n  Wardite::Efflorescence::VM.new(instance, disabled_optimizations: [:inline, :frames])\nend\n\n# @rbs expected: Integer\n# @rbs actual: Integer?\n# @rbs return: void\ndef check(expected, actual)\n  raise \"checksum #{actual} != #{expected}\" unless expected == actual\nend\n\ndirectory = ARGV.fetch(0)\nreset = vm_for(directory, \"reset\")\nprotocol = vm_for(directory, \"protocol\")\nedges = vm_for(directory, \"edges\")\ninlined = vm_for(directory, \"inline\")\nsimple = vm_for(directory, \"simple\")\n3.times do\n  [0, 1, 123, 0xffffffff].each do |seed|\n    check((seed * 128) % 0x100000000, reset.call_unboxed(\"run\", [seed]))\n    check(930, reset.call_unboxed(\"recursive\", [30]))\n    trapped = false\n    begin\n      reset.call_unboxed(\"fail\", [])\n    rescue Wardite::Unreachable\n      trapped = true\n    end\n    raise \"missing trap\" unless trapped\n    check((seed * 128) % 0x100000000, reset.call_unboxed(\"run\", [seed]))\n    check(((seed + 18) % 0x100000000) ^ ((9 * seed - 1) % 0x100000000), protocol.call_unboxed(\"run\", [seed]))\n    check(0xffffffff, protocol.call_unboxed(\"alias\", [seed]))\n    check(492, protocol.call_unboxed(\"mutual\", [30]))\n    check((seed + 495) % 0x100000000, edges.call_unboxed(\"two\", [30, seed]))\n    check((seed + 555) % 0x100000000, edges.call_unboxed(\"three\", [30, seed]))\n    check(313, edges.call_unboxed(\"permuted\", [17, 23, 31]))\n    check((9 * seed) % 0x100000000, edges.call_unboxed(\"duplicate\", [seed]))\n    check((seed + 1) % 0x100000000, inlined.call_unboxed(\"snapshot\", [seed]))\n    check((10 * seed) % 0x100000000, inlined.call_unboxed(\"loop\", [10, seed]))\n    check(seed, inlined.call_unboxed(\"void\", [seed]))\n  end\nend\n# Exercise allocation/exception paths with the current instruction buffer held\n# only by the normal VM roots. Check recovery in the same VM and native process.\nfunction = simple.ir.function_at(0)\noriginal = function.bytecode\n3.times do\n  [-1000000, 1000000].each do |target|\n    function.install_code([8, target, 0, 0], function.calls)\n    caught = false\n    begin\n      simple.call_unboxed(\"run\", [])\n    rescue IndexError\n      caught = true\n    end\n    raise \"missing invalid PC error\" unless caught\n    function.install_code(original, function.calls)\n    check(42, simple.call_unboxed(\"run\", []))\n  end\n  function.install_code([11, 0, 0, 0], function.calls)\n  check(0, simple.call_unboxed(\"run\", []))\n  function.install_code(original, function.calls)\n  check(42, simple.call_unboxed(\"run\", []))\nend\nputs \"validation ok\"\n",
+  "ruby_invalid_pc_variants": [
+    "baseline",
+    "while_loop"
+  ],
+  "note": "Native driver excludes host bytecode mutation because it widened bytecode to a boxed field. Its typed instruction array and function-scoped root are checked before C root elision. The full suites use copied tests and isolated Bundler paths."
+}

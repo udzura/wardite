@@ -1,0 +1,592 @@
+{
+  "commit": "999fde3d898a3a2ef8a2825ec3567835cb546cd5",
+  "spinel": "spinel 2026.10.25+1967 (6e7fc1355) [apple clang 21.0.0 (cc)]",
+  "cc": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+  "native_flags": [
+    "-O2",
+    "-g",
+    "-fno-omit-frame-pointer"
+  ],
+  "rounds": 50000000,
+  "seed": 123,
+  "checksum": 3380275835,
+  "note": "One Time Profiler capture per variant. Sampled CPU weights are not wall-clock attribution. Performance comparisons use the separate uninstrumented -O2 matrix.",
+  "variants": {
+    "baseline": {
+      "stdout": "0.0008240002207458019,0.001042999792844057,2.762023000046611,3380275835",
+      "artifact": {
+        "before": {
+          "bytes": 31088,
+          "temporary_roots": 40,
+          "instruction_roots": 38,
+          "rooted_instructions": true,
+          "root_frames": 1,
+          "setjmps": 1,
+          "volatile_lines": 17,
+          "generic_array_ops": 0,
+          "polymorphic_calls": 0
+        },
+        "after": {
+          "bytes": 31088,
+          "temporary_roots": 40,
+          "instruction_roots": 38,
+          "rooted_instructions": true,
+          "root_frames": 1,
+          "setjmps": 1,
+          "volatile_lines": 17,
+          "generic_array_ops": 0,
+          "polymorphic_calls": 0
+        },
+        "c_sha256": "44a5c800b2eda3602478f63f50680bc450099a8fa375ec41a2426878cec2ac3d",
+        "binary_sha256": "a24dc461b4cac2763835e6e56af28d81088e343dac2264fb9df13a221634edae",
+        "compile_command": [
+          "clang",
+          "-O2",
+          "-g",
+          "-fno-omit-frame-pointer",
+          "-ffp-contract=off",
+          "-falign-functions=64",
+          "-falign-loops=64",
+          "-I/Users/udzura/.local/lib/spinel/lib",
+          "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+          "-DSP_INT_OVERFLOW_MODE_RAISE",
+          "-DSP_ONE_STRING",
+          "-c",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/baseline/worker.c",
+          "-o",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/baseline/worker.o"
+        ],
+        "link_command": [
+          "clang",
+          "-g",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/baseline/worker.o",
+          "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+          "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+          "-lm",
+          "-o",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/baseline/worker"
+        ]
+      },
+      "profile": {
+        "sampled_cpu_ms": 2766.0,
+        "stack_samples": 2766,
+        "missing_stack_rows": 1,
+        "note": "Inclusive percentages overlap; these are sampled CPU weights, not wall-clock attribution.",
+        "functions": [
+          {
+            "name": "sp_VM_execute_flat",
+            "self_ms": 1729.0,
+            "self_percent": 62.50903832248735,
+            "inclusive_percent": 99.78308026030369
+          },
+          {
+            "name": "_sp_gc_root_push",
+            "self_ms": 385.0,
+            "self_percent": 13.919016630513378,
+            "inclusive_percent": 13.919016630513378
+          },
+          {
+            "name": "sp_IntArray_length",
+            "self_ms": 207.0,
+            "self_percent": 7.483731019522777,
+            "inclusive_percent": 7.483731019522777
+          },
+          {
+            "name": "sp_IntArray_set",
+            "self_ms": 165.0,
+            "self_percent": 5.96529284164859,
+            "inclusive_percent": 5.96529284164859
+          },
+          {
+            "name": "sp_IntArray_get",
+            "self_ms": 112.0,
+            "self_percent": 4.0491684743311644,
+            "inclusive_percent": 4.0491684743311644
+          },
+          {
+            "name": "sp_IntArray_oget",
+            "self_ms": 66.0,
+            "self_percent": 2.386117136659436,
+            "inclusive_percent": 2.386117136659436
+          },
+          {
+            "name": "sp_IntArray_get_ck",
+            "self_ms": 30.0,
+            "self_percent": 1.0845986984815619,
+            "inclusive_percent": 1.0845986984815619
+          },
+          {
+            "name": "sp_int_add_overflow_p",
+            "self_ms": 21.0,
+            "self_percent": 0.7592190889370932,
+            "inclusive_percent": 0.7592190889370932
+          },
+          {
+            "name": "_sp_gc_root_pop",
+            "self_ms": 21.0,
+            "self_percent": 0.7592190889370932,
+            "inclusive_percent": 0.7592190889370932
+          },
+          {
+            "name": "sp_int_shl_ck",
+            "self_ms": 14.0,
+            "self_percent": 0.5061460592913956,
+            "inclusive_percent": 0.5061460592913956
+          },
+          {
+            "name": "sp_oint_arg",
+            "self_ms": 4.0,
+            "self_percent": 0.14461315979754158,
+            "inclusive_percent": 0.14461315979754158
+          },
+          {
+            "name": "sp_int_shr_ck",
+            "self_ms": 3.0,
+            "self_percent": 0.10845986984815618,
+            "inclusive_percent": 0.10845986984815618
+          },
+          {
+            "name": "sp_int_mul_overflow_p",
+            "self_ms": 3.0,
+            "self_percent": 0.10845986984815618,
+            "inclusive_percent": 0.10845986984815618
+          },
+          {
+            "name": "0x101228c4d",
+            "self_ms": 1.0,
+            "self_percent": 0.036153289949385395,
+            "inclusive_percent": 0.036153289949385395
+          },
+          {
+            "name": "dup",
+            "self_ms": 1.0,
+            "self_percent": 0.036153289949385395,
+            "inclusive_percent": 0.036153289949385395
+          },
+          {
+            "name": "dyld4::Loader::LoaderRef::loader(dyld4::RuntimeState const&) const",
+            "self_ms": 1.0,
+            "self_percent": 0.036153289949385395,
+            "inclusive_percent": 0.036153289949385395
+          },
+          {
+            "name": "mach_o::GenericTrie::find(CString, bool) const",
+            "self_ms": 1.0,
+            "self_percent": 0.036153289949385395,
+            "inclusive_percent": 0.036153289949385395
+          },
+          {
+            "name": "access",
+            "self_ms": 1.0,
+            "self_percent": 0.036153289949385395,
+            "inclusive_percent": 0.036153289949385395
+          },
+          {
+            "name": "_kernelrpc_mach_vm_map_trap",
+            "self_ms": 1.0,
+            "self_percent": 0.036153289949385395,
+            "inclusive_percent": 0.036153289949385395
+          }
+        ]
+      },
+      "xml_sha256": "5c80f5bec044d2d7cc5926cd8477deae3d7c4d25697cd9e88aa1758ba8465079",
+      "record_command": [
+        "xcrun",
+        "xctrace",
+        "record",
+        "--template",
+        "Time Profiler",
+        "--no-prompt",
+        "--time-limit",
+        "10s",
+        "--output",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/baseline/time-profile.trace",
+        "--target-stdout",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/baseline/time-profile.stdout",
+        "--launch",
+        "--",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/baseline/worker",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/i32_mix.wasm",
+        "call_mix",
+        "50000000",
+        "123"
+      ]
+    },
+    "while_loop": {
+      "stdout": "0.0008399998769164085,0.0010700002312660217,1.7722489996813238,3380275835",
+      "artifact": {
+        "before": {
+          "bytes": 24493,
+          "temporary_roots": 40,
+          "instruction_roots": 38,
+          "rooted_instructions": true,
+          "root_frames": 1,
+          "setjmps": 0,
+          "volatile_lines": 0,
+          "generic_array_ops": 0,
+          "polymorphic_calls": 0
+        },
+        "after": {
+          "bytes": 24493,
+          "temporary_roots": 40,
+          "instruction_roots": 38,
+          "rooted_instructions": true,
+          "root_frames": 1,
+          "setjmps": 0,
+          "volatile_lines": 0,
+          "generic_array_ops": 0,
+          "polymorphic_calls": 0
+        },
+        "c_sha256": "c9ab278a86c2e380fa9b2fe2c5afc76ba6f0d1c590b9183529ee68f439455dfe",
+        "binary_sha256": "6cc131899adfe0f88ac10680fb6ad5e91f6c46927509c9f5efa80ca36b96cf6c",
+        "compile_command": [
+          "clang",
+          "-O2",
+          "-g",
+          "-fno-omit-frame-pointer",
+          "-ffp-contract=off",
+          "-falign-functions=64",
+          "-falign-loops=64",
+          "-I/Users/udzura/.local/lib/spinel/lib",
+          "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+          "-DSP_INT_OVERFLOW_MODE_RAISE",
+          "-DSP_ONE_STRING",
+          "-c",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_loop/worker.c",
+          "-o",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_loop/worker.o"
+        ],
+        "link_command": [
+          "clang",
+          "-g",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_loop/worker.o",
+          "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+          "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+          "-lm",
+          "-o",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_loop/worker"
+        ]
+      },
+      "profile": {
+        "sampled_cpu_ms": 1779.0,
+        "stack_samples": 1779,
+        "missing_stack_rows": 0,
+        "note": "Inclusive percentages overlap; these are sampled CPU weights, not wall-clock attribution.",
+        "functions": [
+          {
+            "name": "sp_VM_execute_flat",
+            "self_ms": 792.0,
+            "self_percent": 44.51939291736931,
+            "inclusive_percent": 99.6627318718381
+          },
+          {
+            "name": "sp_int_add_overflow_p",
+            "self_ms": 220.0,
+            "self_percent": 12.366498032602586,
+            "inclusive_percent": 12.366498032602586
+          },
+          {
+            "name": "sp_IntArray_length",
+            "self_ms": 190.0,
+            "self_percent": 10.680157391793141,
+            "inclusive_percent": 10.680157391793141
+          },
+          {
+            "name": "_sp_gc_root_push",
+            "self_ms": 126.0,
+            "self_percent": 7.082630691399663,
+            "inclusive_percent": 7.082630691399663
+          },
+          {
+            "name": "sp_IntArray_set",
+            "self_ms": 112.0,
+            "self_percent": 6.295671725688589,
+            "inclusive_percent": 6.295671725688589
+          },
+          {
+            "name": "sp_IntArray_get",
+            "self_ms": 105.0,
+            "self_percent": 5.902192242833053,
+            "inclusive_percent": 5.902192242833053
+          },
+          {
+            "name": "sp_IntArray_oget",
+            "self_ms": 91.0,
+            "self_percent": 5.115233277121979,
+            "inclusive_percent": 5.115233277121979
+          },
+          {
+            "name": "_sp_gc_root_pop",
+            "self_ms": 64.0,
+            "self_percent": 3.5975267003934794,
+            "inclusive_percent": 3.5975267003934794
+          },
+          {
+            "name": "sp_IntArray_get_ck",
+            "self_ms": 43.0,
+            "self_percent": 2.417088251826869,
+            "inclusive_percent": 2.417088251826869
+          },
+          {
+            "name": "sp_int_shl_ck",
+            "self_ms": 12.0,
+            "self_percent": 0.6745362563237775,
+            "inclusive_percent": 0.6745362563237775
+          },
+          {
+            "name": "sp_int_shl",
+            "self_ms": 9.0,
+            "self_percent": 0.5059021922428331,
+            "inclusive_percent": 0.5059021922428331
+          },
+          {
+            "name": "sp_int_shr_ck",
+            "self_ms": 8.0,
+            "self_percent": 0.44969083754918493,
+            "inclusive_percent": 0.44969083754918493
+          },
+          {
+            "name": "0x100c62451",
+            "self_ms": 1.0,
+            "self_percent": 0.056211354693648116,
+            "inclusive_percent": 0.056211354693648116
+          },
+          {
+            "name": "fsgetpath",
+            "self_ms": 1.0,
+            "self_percent": 0.056211354693648116,
+            "inclusive_percent": 0.056211354693648116
+          },
+          {
+            "name": "dyld4::Loader::dependent(dyld4::RuntimeState const&, unsigned int, mach_o::LinkedDylibAttributes*) const",
+            "self_ms": 1.0,
+            "self_percent": 0.056211354693648116,
+            "inclusive_percent": 0.056211354693648116
+          },
+          {
+            "name": "std::__1::pair<std::byte*, std::__1::back_insert_iterator<ByteStream>> std::__1::__copy_impl::operator()[abi:fqn220106]<std::byte*, std::byte*, std::__1::back_insert_iterator<ByteStream>, 0>(std::byte*, std::byte*, std::__1::back_insert_iterator<ByteStream>) const",
+            "self_ms": 1.0,
+            "self_percent": 0.056211354693648116,
+            "inclusive_percent": 0.056211354693648116
+          },
+          {
+            "name": "mach_msg2_trap",
+            "self_ms": 1.0,
+            "self_percent": 0.056211354693648116,
+            "inclusive_percent": 0.056211354693648116
+          },
+          {
+            "name": "sp_File_open",
+            "self_ms": 1.0,
+            "self_percent": 0.056211354693648116,
+            "inclusive_percent": 0.056211354693648116
+          },
+          {
+            "name": "sp_int_mul_overflow_p",
+            "self_ms": 1.0,
+            "self_percent": 0.056211354693648116,
+            "inclusive_percent": 0.056211354693648116
+          }
+        ]
+      },
+      "xml_sha256": "a06b4a18b440794391b4177e0aa0f514e88d9c08bab1cb1763d7314d7a08210c",
+      "record_command": [
+        "xcrun",
+        "xctrace",
+        "record",
+        "--template",
+        "Time Profiler",
+        "--no-prompt",
+        "--time-limit",
+        "10s",
+        "--output",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_loop/time-profile.trace",
+        "--target-stdout",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_loop/time-profile.stdout",
+        "--launch",
+        "--",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_loop/worker",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/i32_mix.wasm",
+        "call_mix",
+        "50000000",
+        "123"
+      ]
+    },
+    "while_c_root_elision": {
+      "stdout": "0.0007910002022981644,0.0012119999155402184,1.0398439997807145,3380275835",
+      "artifact": {
+        "before": {
+          "bytes": 24493,
+          "temporary_roots": 40,
+          "instruction_roots": 38,
+          "rooted_instructions": true,
+          "root_frames": 1,
+          "setjmps": 0,
+          "volatile_lines": 0,
+          "generic_array_ops": 0,
+          "polymorphic_calls": 0
+        },
+        "after": {
+          "bytes": 23835,
+          "temporary_roots": 2,
+          "instruction_roots": 0,
+          "rooted_instructions": true,
+          "root_frames": 1,
+          "setjmps": 0,
+          "volatile_lines": 0,
+          "generic_array_ops": 0,
+          "polymorphic_calls": 0
+        },
+        "c_sha256": "a530a5b307ecf8adb4cd35267dfb60c03fbea0dbd111e6023e0a8b15f0c81bbe",
+        "binary_sha256": "b3d0af90dacdcf44a6365350fcca3578b720572f2daaca74cf7c7bbc65f86670",
+        "compile_command": [
+          "clang",
+          "-O2",
+          "-g",
+          "-fno-omit-frame-pointer",
+          "-ffp-contract=off",
+          "-falign-functions=64",
+          "-falign-loops=64",
+          "-I/Users/udzura/.local/lib/spinel/lib",
+          "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+          "-DSP_INT_OVERFLOW_MODE_RAISE",
+          "-DSP_ONE_STRING",
+          "-c",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_c_root_elision/worker.c",
+          "-o",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_c_root_elision/worker.o"
+        ],
+        "link_command": [
+          "clang",
+          "-g",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_c_root_elision/worker.o",
+          "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+          "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+          "-lm",
+          "-o",
+          "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_c_root_elision/worker"
+        ]
+      },
+      "profile": {
+        "sampled_cpu_ms": 1046.0,
+        "stack_samples": 1046,
+        "missing_stack_rows": 1,
+        "note": "Inclusive percentages overlap; these are sampled CPU weights, not wall-clock attribution.",
+        "functions": [
+          {
+            "name": "sp_VM_execute_flat",
+            "self_ms": 611.0,
+            "self_percent": 58.41300191204589,
+            "inclusive_percent": 99.4263862332696
+          },
+          {
+            "name": "sp_int_add_overflow_p",
+            "self_ms": 144.0,
+            "self_percent": 13.766730401529637,
+            "inclusive_percent": 13.766730401529637
+          },
+          {
+            "name": "sp_IntArray_set",
+            "self_ms": 93.0,
+            "self_percent": 8.891013384321223,
+            "inclusive_percent": 8.891013384321223
+          },
+          {
+            "name": "sp_IntArray_oget",
+            "self_ms": 87.0,
+            "self_percent": 8.317399617590823,
+            "inclusive_percent": 8.317399617590823
+          },
+          {
+            "name": "sp_IntArray_get_ck",
+            "self_ms": 49.0,
+            "self_percent": 4.684512428298279,
+            "inclusive_percent": 4.684512428298279
+          },
+          {
+            "name": "sp_IntArray_length",
+            "self_ms": 37.0,
+            "self_percent": 3.537284894837476,
+            "inclusive_percent": 3.537284894837476
+          },
+          {
+            "name": "sp_int_shl",
+            "self_ms": 10.0,
+            "self_percent": 0.9560229445506692,
+            "inclusive_percent": 0.9560229445506692
+          },
+          {
+            "name": "sp_int_sub_overflow_p",
+            "self_ms": 5.0,
+            "self_percent": 0.4780114722753346,
+            "inclusive_percent": 0.4780114722753346
+          },
+          {
+            "name": "sp_int_shl_ck",
+            "self_ms": 4.0,
+            "self_percent": 0.3824091778202677,
+            "inclusive_percent": 0.3824091778202677
+          },
+          {
+            "name": "0x18c8f3fa5",
+            "self_ms": 1.0,
+            "self_percent": 0.09560229445506692,
+            "inclusive_percent": 0.09560229445506692
+          },
+          {
+            "name": "dyld4::PrebuiltLoader::dependent(dyld4::RuntimeState const&, unsigned int, mach_o::LinkedDylibAttributes*) const",
+            "self_ms": 1.0,
+            "self_percent": 0.09560229445506692,
+            "inclusive_percent": 0.09560229445506692
+          },
+          {
+            "name": "mach_o::GenericTrie::find(CString, bool) const",
+            "self_ms": 1.0,
+            "self_percent": 0.09560229445506692,
+            "inclusive_percent": 0.09560229445506692
+          },
+          {
+            "name": "_xzm_initialize_xzone_data",
+            "self_ms": 1.0,
+            "self_percent": 0.09560229445506692,
+            "inclusive_percent": 0.09560229445506692
+          },
+          {
+            "name": "sp_alloc_floors_from_env",
+            "self_ms": 1.0,
+            "self_percent": 0.09560229445506692,
+            "inclusive_percent": 0.09560229445506692
+          },
+          {
+            "name": "sp_File_open_perm",
+            "self_ms": 1.0,
+            "self_percent": 0.09560229445506692,
+            "inclusive_percent": 0.09560229445506692
+          }
+        ]
+      },
+      "xml_sha256": "5fab689a3b0e8636e33fcd6ac92f45f49a79ea5143b443b1bcd742cd542905f1",
+      "record_command": [
+        "xcrun",
+        "xctrace",
+        "record",
+        "--template",
+        "Time Profiler",
+        "--no-prompt",
+        "--time-limit",
+        "10s",
+        "--output",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_c_root_elision/time-profile.trace",
+        "--target-stdout",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_c_root_elision/time-profile.stdout",
+        "--launch",
+        "--",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/while_c_root_elision/worker",
+        "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/profile/i32_mix.wasm",
+        "call_mix",
+        "50000000",
+        "123"
+      ]
+    }
+  }
+}

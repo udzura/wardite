@@ -1,0 +1,324 @@
+{
+  "setup": {
+    "baseline": {
+      "spinel_branch": "master",
+      "spinel_commit": "6e7fc13556709bf7d7ba4af5bd1d12bebc00733e",
+      "saved_patch_commit": "6f1a2c259f99c9fe460ee6de1d6f18a05008ca8d",
+      "compiler_sha256": "accef97125716f36d9e953411958974907fc7fae6163e3790c9e739b556a4682",
+      "wardite_binary_sha256": "9de55acde45698bd19b1969b24ec88b1c1d7476b4407245a974e37ba7fcc5041",
+      "vm_source_sha256": "72c12862e9c3f83bd4418129a99c849710ec77fd74ad0a795d42cc57ca4feb99",
+      "native_flags": [
+        "-O2"
+      ],
+      "codegen": {
+        "setjmps": 0,
+        "volatile_lines": 0,
+        "instruction_temporary_roots": 38,
+        "function_instruction_root": true
+      },
+      "performance_measurements": "Pending user measurement; no benchmark run in this stage.",
+      "generated_c_sha256": "d2d22a4ca092eab9a1889535468e3b9185a68342d182bacda5175116fe22f636",
+      "validation": {
+        "tests": 117,
+        "assertions": 10893,
+        "failures": 0,
+        "errors": 0,
+        "omissions": 0,
+        "typecheck": "passed",
+        "test_log": "/tmp/wardite-while-master-tests.log",
+        "typecheck_log": "/tmp/wardite-while-typecheck.log"
+      }
+    },
+    "patched": {
+      "spinel_commit": "6f1a2c259f99c9fe460ee6de1d6f18a05008ca8d",
+      "spinel_version": "spinel 2026.10.25+1968 (6f1a2c259) [apple clang 21.0.0 (cc)]",
+      "compiler_sha256": "fa3fff8c94592d435a728ba8abe4870ac1f2f8a9a8991f6fc686933e7ec62f1e",
+      "binary_sha256": "f4f2c2066adb7f8a8bf3da83c6ee373b5c96d093be17797303f7a399be4316a3",
+      "vm_source_sha256": "72c12862e9c3f83bd4418129a99c849710ec77fd74ad0a795d42cc57ca4feb99",
+      "codegen": {
+        "setjmps": 0,
+        "volatile_lines": 0,
+        "instruction_temporary_roots": 0,
+        "function_instruction_root": true
+      }
+    }
+  },
+  "seed": 123456789,
+  "runs": 7,
+  "warmups": 2,
+  "fixture_sha256": "c056fc8b3084432daae83bfac1b1a9bc53f12f12a18a37d85b41f3d031028407",
+  "units": "raw samples seconds; summaries milliseconds; full CLI process times",
+  "runner_source": "from pathlib import Path\nimport hashlib,json,statistics,subprocess,time\nbase=Path(__file__).resolve().parent\nroot=base.parents[2]\nsetup=json.loads((base/'setup.json').read_text())\nwasm=root/'build/benchmark/i32_mix.wasm'\nseed=123456789\n\ndef reference(rounds):\n    x=seed\n    for _ in range(rounds):\n        x ^= x//8192\n        x=(x*1664525+1013904223)%(2**32)\n        x=(x^(x*128))%(2**32)\n    return x\n\ndef invoke(row,rounds,expected):\n    command=[str(base/('wardite-'+row['compiler'])),'--new-engine','--no-wasi']\n    if row['disabled']:command+=['--mir-disable',row['disabled']]\n    command+=['--invoke',row['export'],'--',str(wasm),str(rounds),str(seed)]\n    started=time.monotonic()\n    result=subprocess.run(command,capture_output=True,text=True,check=True)\n    elapsed=time.monotonic()-started\n    signed=expected if expected<2**31 else expected-2**32\n    assert result.stdout=='' and result.stderr==f'return value: I32({signed})\\n',(command,result.stdout,result.stderr)\n    return elapsed\n\nrows=[dict(compiler=compiler,export=export,disabled=disabled) for compiler in ['unpatched','patched'] for export,disabled in [('inline_mix',''),('call_mix',''),('call_mix','inline')]]\nreport=dict(setup=setup,seed=seed,runs=7,warmups=2,fixture_sha256=hashlib.sha256(wasm.read_bytes()).hexdigest(),units='raw samples seconds; summaries milliseconds; full CLI process times',runner_source=Path(__file__).read_text(),measurements=[])\nfor n in [100000,5000000]:\n    expected=reference(n)\n    current=[dict(**r,samples=[]) for r in rows]\n    for iteration in range(9):\n        order=current[iteration%len(current):]+current[:iteration%len(current)]\n        if iteration%2:order.reverse()\n        for row in order:\n            elapsed=invoke(row,n,expected)\n            if iteration>=2:row['samples'].append(elapsed)\n        print(n,'warmup' if iteration<2 else 'sample',iteration+1 if iteration<2 else iteration-1,flush=True)\n    for row in current:\n        values=[x*1000 for x in row['samples']]\n        row['statistics_ms']=dict(mean=statistics.mean(values),sd=statistics.stdev(values),min=min(values),max=max(values))\n        print(n,row['compiler'],row['export'],row['disabled'] or 'inline-on',row['statistics_ms'],flush=True)\n    report['measurements'].append(dict(rounds=n,checksum=expected,results=current))\n    (base/'comparison.json').write_text(json.dumps(report,indent=2)+'\\n')\n",
+  "measurements": [
+    {
+      "rounds": 100000,
+      "checksum": 261279018,
+      "results": [
+        {
+          "compiler": "unpatched",
+          "export": "inline_mix",
+          "disabled": "",
+          "samples": [
+            0.012105833971872926,
+            0.013669957872480154,
+            0.012875374872237444,
+            0.012237749993801117,
+            0.011871791910380125,
+            0.012139666127040982,
+            0.01172012509778142
+          ],
+          "statistics_ms": {
+            "mean": 12.374357120799166,
+            "sd": 0.6777459549719651,
+            "min": 11.72012509778142,
+            "max": 13.669957872480154
+          }
+        },
+        {
+          "compiler": "unpatched",
+          "export": "call_mix",
+          "disabled": "",
+          "samples": [
+            0.011432750150561333,
+            0.012520667165517807,
+            0.012328749988228083,
+            0.012876665918156505,
+            0.012278083013370633,
+            0.017423084005713463,
+            0.013303957879543304
+          ],
+          "statistics_ms": {
+            "mean": 13.166279731584448,
+            "sd": 1.9636489815559537,
+            "min": 11.432750150561333,
+            "max": 17.423084005713463
+          }
+        },
+        {
+          "compiler": "unpatched",
+          "export": "call_mix",
+          "disabled": "inline",
+          "samples": [
+            0.01520095905289054,
+            0.014682709006592631,
+            0.01467554084956646,
+            0.014697792008519173,
+            0.015075332950800657,
+            0.023450791835784912,
+            0.01761366706341505
+          ],
+          "statistics_ms": {
+            "mean": 16.485256109652774,
+            "sd": 3.2441890299079543,
+            "min": 14.67554084956646,
+            "max": 23.450791835784912
+          }
+        },
+        {
+          "compiler": "patched",
+          "export": "inline_mix",
+          "disabled": "",
+          "samples": [
+            0.010610665893182158,
+            0.010094583965837955,
+            0.009877874981611967,
+            0.009786707814782858,
+            0.010499083902686834,
+            0.060366040794178843,
+            0.011833291966468096
+          ],
+          "statistics_ms": {
+            "mean": 17.58117847410696,
+            "sd": 18.878870495430274,
+            "min": 9.786707814782858,
+            "max": 60.36604079417884
+          }
+        },
+        {
+          "compiler": "patched",
+          "export": "call_mix",
+          "disabled": "",
+          "samples": [
+            0.009381500072777271,
+            0.009783333167433739,
+            0.009961667004972696,
+            0.010105000110343099,
+            0.009883499937132001,
+            0.009449834004044533,
+            0.010271749924868345
+          ],
+          "statistics_ms": {
+            "mean": 9.833797745938812,
+            "sd": 0.326272305143872,
+            "min": 9.381500072777271,
+            "max": 10.271749924868345
+          }
+        },
+        {
+          "compiler": "patched",
+          "export": "call_mix",
+          "disabled": "inline",
+          "samples": [
+            0.01281204097904265,
+            0.013584499945864081,
+            0.01211949996650219,
+            0.013069540960714221,
+            0.01423175004310906,
+            0.012994457967579365,
+            0.01371483295224607
+          ],
+          "statistics_ms": {
+            "mean": 13.218088973579663,
+            "sd": 0.6894889972703457,
+            "min": 12.11949996650219,
+            "max": 14.23175004310906
+          }
+        }
+      ]
+    },
+    {
+      "rounds": 5000000,
+      "checksum": 3529121449,
+      "results": [
+        {
+          "compiler": "unpatched",
+          "export": "inline_mix",
+          "disabled": "",
+          "samples": [
+            0.25834833295084536,
+            0.2577199579682201,
+            0.2686772500164807,
+            0.25837966706603765,
+            0.2683194170240313,
+            0.25890183285810053,
+            0.26041758386418223
+          ],
+          "statistics_ms": {
+            "mean": 261.5377202496997,
+            "sd": 4.828521243332895,
+            "min": 257.7199579682201,
+            "max": 268.6772500164807
+          }
+        },
+        {
+          "compiler": "unpatched",
+          "export": "call_mix",
+          "disabled": "",
+          "samples": [
+            0.25795770809054375,
+            0.2579352909233421,
+            0.26163187506608665,
+            0.25852137501351535,
+            0.2584341671317816,
+            0.2582358329091221,
+            0.25859199999831617
+          ],
+          "statistics_ms": {
+            "mean": 258.7583213046725,
+            "sd": 1.2934158985735185,
+            "min": 257.9352909233421,
+            "max": 261.63187506608665
+          }
+        },
+        {
+          "compiler": "unpatched",
+          "export": "call_mix",
+          "disabled": "inline",
+          "samples": [
+            0.3960579999256879,
+            0.3923466659616679,
+            0.39889533282257617,
+            0.39389812503941357,
+            0.39145595906302333,
+            0.39271562499925494,
+            0.41006183391436934
+          ],
+          "statistics_ms": {
+            "mean": 396.49022024657046,
+            "sd": 6.501787357811138,
+            "min": 391.45595906302333,
+            "max": 410.06183391436934
+          }
+        },
+        {
+          "compiler": "patched",
+          "export": "inline_mix",
+          "disabled": "",
+          "samples": [
+            0.15452295797877014,
+            0.16502520791254938,
+            0.15663799992762506,
+            0.15651704114861786,
+            0.15448733395896852,
+            0.1544816659297794,
+            0.19461329211480916
+          ],
+          "statistics_ms": {
+            "mean": 162.32649985301708,
+            "sd": 14.718005008416993,
+            "min": 154.4816659297794,
+            "max": 194.61329211480916
+          }
+        },
+        {
+          "compiler": "patched",
+          "export": "call_mix",
+          "disabled": "",
+          "samples": [
+            0.15437362506054342,
+            0.15573320793919265,
+            0.21854749997146428,
+            0.16210887487977743,
+            0.1550795000512153,
+            0.15416533290408552,
+            0.15952020790427923
+          ],
+          "statistics_ms": {
+            "mean": 165.64689267293684,
+            "sd": 23.51379665189588,
+            "min": 154.16533290408552,
+            "max": 218.54749997146428
+          }
+        },
+        {
+          "compiler": "patched",
+          "export": "call_mix",
+          "disabled": "inline",
+          "samples": [
+            0.28843954205513,
+            0.28897324996069074,
+            0.293068417115137,
+            0.2891997080296278,
+            0.28910995880141854,
+            0.2874136660248041,
+            0.30049154185689986
+          ],
+          "statistics_ms": {
+            "mean": 290.956583406244,
+            "sd": 4.558751292496556,
+            "min": 287.4136660248041,
+            "max": 300.49154185689986
+          }
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "unpatched": {
+      "tests": 117,
+      "assertions": 10893,
+      "failures": 0,
+      "errors": 0,
+      "omissions": 0
+    },
+    "patched": {
+      "tests": 117,
+      "assertions": 10893,
+      "failures": 0,
+      "errors": 0,
+      "omissions": 0,
+      "log": "/Users/udzura/ghq/github.com/udzura/wardite/test/value_test.rb:8: warning: ambiguous first argument; put parentheses or a space even after `-` operator\n/Users/udzura/ghq/github.com/udzura/wardite/test/value_test.rb:10: warning: ambiguous first argument; put parentheses or a space even after `-` operator\n/Users/udzura/ghq/github.com/udzura/wardite/test/value_test.rb:18: warning: ambiguous first argument; put parentheses or a space even after `-` operator\n/Users/udzura/ghq/github.com/udzura/wardite/test/value_test.rb:19: warning: ambiguous first argument; put parentheses or a space even after `-` operator\n/Users/udzura/ghq/github.com/udzura/wardite/test/value_test.rb:21: warning: ambiguous first argument; put parentheses or a space even after `-` operator\nLoaded suite /Users/udzura/.rbenv/versions/4.0.9/lib/ruby/gems/4.0.0/gems/rake-13.2.1/lib/rake/rake_test_loader\nStarted\nHello, World!\nFinished in 54.401849 seconds.\n-------------------------------------------------------------------------------\n117 tests, 10893 assertions, 0 failures, 0 errors, 0 pendings, 0 omissions, 0 notifications\n100% passed\n-------------------------------------------------------------------------------\n2.15 tests/s, 200.23 assertions/s\n"
+    },
+    "typecheck": "passed with identical Ruby source"
+  }
+}

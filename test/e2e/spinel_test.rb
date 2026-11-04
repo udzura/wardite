@@ -29,7 +29,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
         assert_equal (0...Wardite::Efflorescence::Opcode::NAMES.size).to_a,
           body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
           "execute_#{name} should dispatch every opcode through the literal switch"
-        assert_match(/Frame \* lv_frame__in, sp_PtrArray \* lv_pools/, body,
+        assert_match(/Frame \* lv_frame(?:__in)?, sp_PtrArray \* lv_pools/, body,
           "execute_#{name} must retain the concrete current frame and pool element types")
         assert_match(/sp_PtrArray \* lv_frames =/, body,
           "execute_#{name} must keep an unboxed frame stack")
@@ -37,6 +37,10 @@ class WarditeSpinelTest < Test::Unit::TestCase
           "CALL/RETURN must not box the frame stack or call-site table")
         assert_not_match(/sp_pd_[a-f0-9]+\(/, body) if name == "flat"
         if name == "flat"
+          assert_not_match(/\bsetjmp\(/, body,
+            "flat dispatch must not install Kernel#loop's StopIteration handler")
+          assert_not_match(/\bvolatile\b/, body,
+            "flat dispatch must not need variables preserved across that handler")
           prelude = body.split(/^\s*case \d+LL:/, 2).first
           assert_equal 2, prelude.scan(/sp_IntArray\s*\*\s*\w+\s*=\s*lv_instructions\b/).size,
             "only opcode and a should be fetched before opcode dispatch"

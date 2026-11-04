@@ -6,6 +6,31 @@ enabled in the script. See [Run](#run) for the complete
 matrix and options. The scripts below provide additional optimization-specific
 comparisons.
 
+## Investigate generated C guards
+
+```sh
+VARIANTS=baseline,while_loop,c_root_elision,while_c_root_elision \
+  CLI=1 RUNS=7 WARMUPS=2 GUARDS_DIR=build/benchmark/generated-guards/final \
+  ruby benchmark/investigate_generated_guards.rb 5000000 123
+```
+
+This fixes native compilation at `-O2` and compares copied sources and generated
+C under `build/`. It reconstructs the old `loop do` baseline alongside the
+`while true` variants; the production flat VM now uses `while true`.
+It isolates `loop do` versus `while true`, and a narrowly checked removal of
+duplicate fetch-receiver GC roots. Bounds/overflow checks and the collector stay
+enabled. Every checksum and the separate MIR counters are verified.
+`PROFILE=1` adds debug symbols and a dSYM; omit `VARIANTS` to include the slower
+guarded-index experiments. Results go to `GUARDS_DIR/results.json`.
+[Investigation, safety conditions, GC stress validation and profiles (日本語)](../docs/efflorescence-generated-c-guards.md).
+
+The production while loop works with the unmodified Spinel revision pinned in
+CI. The separately recorded fetch-root compiler patch is an optional local
+experiment; select that compiler explicitly with `SPINEL=/path/to/bin/spinel`.
+For the C root-removal ablation, use an unmodified compiler. With the patched
+compiler, select `VARIANTS=baseline,while_loop`, since fetch roots are already
+removed by the compiler and the C-editing variants intentionally refuse a no-op.
+
 ## Small-function inlining
 
 ```sh

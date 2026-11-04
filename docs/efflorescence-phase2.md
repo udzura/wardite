@@ -77,6 +77,14 @@ in the current code, not the exact Phase 1 binary: setup code and Spinel's
 whole-program inference can differ. The benchmark can also run commit `67fbfae`
 as an independently built baseline.
 
+The flat interpreter uses `while true` so Spinel does not generate
+`Kernel#loop`'s StopIteration handler or the associated volatile locals.
+Instruction exceptions, including StopIteration, propagate to the Ruby caller;
+`Array#fetch` bounds checks and integer overflow checks remain enabled.
+This works with the unmodified Spinel revision used by CI. Additional fetch-root
+elision is a separate compiler experiment, not a Wardite dependency.
+[Generated C investigation and measurements (日本語)](efflorescence-generated-c-guards.md).
+
 ## Inspection and metrics
 
 `VM#semantic_ir` is the original translation. `optimized_ir` is the result of

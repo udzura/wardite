@@ -77,6 +77,12 @@ puts vm.metrics.report
 Phase 1のバイナリそのものではありません。初期化処理やSpinelのプログラム全体の型推論結果は異なる場合があります。
 比較スクリプトでは、コミット `67fbfae` を独立してビルドしたものも基準として使えます。
 
+flat実行器には `while true` を使い、Spinelによる `Kernel#loop` のStopIteration捕捉と、
+それに伴うvolatile変数の生成を避けます。StopIterationを含む命令実行中の例外はRubyの呼び出し元へ伝播します。
+命令フェッチの `Array#fetch` と境界検査、整数overflowチェックは維持します。
+CIで使う未改造のSpinelで動作します。fetchの重複GCルートを省くSpinelパッチは、独立したコンパイラ側の実験です。
+[生成Cの調査と測定結果](efflorescence-generated-c-guards.md)に詳細を記録しています。
+
 ## MIRの表示と計測
 
 `VM#semantic_ir` は変換直後のMIR、`optimized_ir` は最適化パスを適用したMIRです。

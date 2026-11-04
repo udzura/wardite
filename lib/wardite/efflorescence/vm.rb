@@ -231,7 +231,8 @@ module Wardite
         registers = frame.registers
         instructions = frame.function.bytecode
         pc = 0
-        loop do
+        # Avoid Kernel#loop's StopIteration handler in the native hot loop.
+        while true
           opcode = instructions.fetch(pc)
           a = instructions.fetch(pc + 1)
           # PCs still advance by four words, but short instructions do not
@@ -372,6 +373,8 @@ module Wardite
           end
           pc += Lowerer::WIDTH
         end
+        # Steep treats while as possibly nil; execution always returns or raises.
+        raise Wardite::EvalError, "Efflorescence: MIR execution ended without RETURN"
       end
     end
   end
