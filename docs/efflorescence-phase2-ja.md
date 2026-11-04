@@ -165,6 +165,8 @@ ABLATIONS=1 RUNS=3 WARMUPS=1 ruby benchmark/compare_optimizations.rb 100000 123
 MIR命令は変更せず、96テスト・5,021 assertionsが成功しました。
 続く[引数搬送の軽量化](efflorescence-call-transfer.md)では、flat CALLの第4スロットを1引数のソース番号に使い、
 一般の引数コピーを実行器の外へ分離し、poolのインデックスを保持します。99テスト・5,703 assertionsが成功しました。
+続く[オペランド読み出しの軽量化](efflorescence-operand-decoding.md)では、4ワードのPC表現を保ちながら使わないb/cを読み出さなくしました。
+`-O2` 固定で比較し、105テスト・5,741 assertionsが成功しています。
 
 2026年11月4日に、CRuby 4.0.9でSpinelのネイティブテストも有効にして全体を検証し、
 **88テスト、4,466 assertions、失敗・エラー・省略はいずれも0件**でした。

@@ -234,19 +234,25 @@ module Wardite
         loop do
           opcode = instructions.fetch(pc)
           a = instructions.fetch(pc + 1)
-          b = instructions.fetch(pc + 2)
-          c = instructions.fetch(pc + 3)
-          pc += Lowerer::WIDTH
+          # PCs still advance by four words, but short instructions do not
+          # read their unused b/c padding. Control transfers skip the increment.
           # Integer literal labels let Spinel emit a C switch. Keep the
           # Opcode comments in sync; the dispatch contract test checks them.
           case opcode
           when 0 # Opcode::COPY
+            b = instructions.fetch(pc + 2)
             registers[a] = registers[b]
           when 1 # Opcode::I32_ADD
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = (registers[b] + registers[c]) & 0xffffffff
           when 2 # Opcode::I32_SUB
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = (registers[b] - registers[c]) & 0xffffffff
           when 3 # Opcode::I32_MUL
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             # A full unsigned i32 product can overflow Spinel's native signed
             # word. Split into 16-bit limbs; all intermediates fit in 49 bits.
             left = registers[b]
@@ -255,43 +261,77 @@ module Wardite
             high = (((left >> 16) * right) & 0xffff) << 16
             registers[a] = (low + high) & 0xffffffff
           when 4 # Opcode::I32_XOR
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = registers[b] ^ registers[c]
           when 5 # Opcode::I32_SHL
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = (registers[b] << (registers[c] & 31)) & 0xffffffff
           when 6 # Opcode::I32_SHR_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = registers[b] >> (registers[c] & 31)
           when 7 # Opcode::I32_EQZ
+            b = instructions.fetch(pc + 2)
             registers[a] = registers[b] == 0 ? 1 : 0
           when 13 # Opcode::I32_ADD_IMM
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = (registers[b] + c) & 0xffffffff
           when 14 # Opcode::I32_SUB_IMM
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = (registers[b] - c) & 0xffffffff
           when 15 # Opcode::I32_MUL_IMM
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             left = registers[b]
             right = c
             low = (left & 0xffff) * right
             high = (((left >> 16) * right) & 0xffff) << 16
             registers[a] = (low + high) & 0xffffffff
           when 16 # Opcode::I32_XOR_IMM
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = registers[b] ^ c
           when 17 # Opcode::I32_SHL_IMM
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = (registers[b] << (c & 31)) & 0xffffffff
           when 18 # Opcode::I32_SHR_U_IMM
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             registers[a] = registers[b] >> (c & 31)
           when 20 # Opcode::I32_XOR_SHR_U_IMM
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             value = registers[b]
             registers[a] = value ^ (value >> c)
           when 21 # Opcode::I32_XOR_SHL_IMM
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             value = registers[b]
             registers[a] = (value ^ (value << c)) & 0xffffffff
           when 8 # Opcode::BR
             pc = a
+            next
           when 9 # Opcode::BR_IF
-            pc = b if registers[a] != 0
+            b = instructions.fetch(pc + 2)
+            if registers[a] != 0
+              pc = b
+              next
+            end
           when 19 # Opcode::BR_IF_ZERO
-            pc = b if registers[a] == 0
+            b = instructions.fetch(pc + 2)
+            if registers[a] == 0
+              pc = b
+              next
+            end
           when 10 # Opcode::CALL
-            frame.pc = pc
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            frame.pc = pc + Lowerer::WIDTH
             site = frame.function.call_site(b)
             pool = pools[site.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
@@ -306,6 +346,7 @@ module Wardite
             registers = frame.registers
             instructions = frame.function.bytecode
             pc = 0
+            next
           when 11 # Opcode::RETURN
             value = a < 0 ? 0 : registers[a]
             destination = frame.return_register
@@ -319,13 +360,17 @@ module Wardite
             registers[destination] = value if destination >= 0
             instructions = frame.function.bytecode
             pc = frame.pc
+            next
           when 12 # Opcode::TRAP
             raise Wardite::Unreachable, "unreachable op"
           when 22 # Opcode::PROFILE
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
             @metrics.record(a, b, c)
           else
             raise Wardite::EvalError, "Efflorescence: invalid MIR opcode #{opcode}"
           end
+          pc += Lowerer::WIDTH
         end
       end
     end

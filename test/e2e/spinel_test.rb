@@ -36,6 +36,11 @@ class WarditeSpinelTest < Test::Unit::TestCase
         assert_not_match(/sp_PolyArray_(?:get|push|pop|new)/, body,
           "CALL/RETURN must not box the frame stack or call-site table")
         assert_not_match(/sp_pd_[a-f0-9]+\(/, body) if name == "flat"
+        if name == "flat"
+          prelude = body.split(/^\s*case \d+LL:/, 2).first
+          assert_equal 2, prelude.scan(/sp_IntArray\s*\*\s*\w+\s*=\s*lv_instructions\b/).size,
+            "only opcode and a should be fetched before opcode dispatch"
+        end
       end
       function_layout = code[/struct sp_Function(?:_s)? \{.*?^\};/m]
       assert_not_nil function_layout

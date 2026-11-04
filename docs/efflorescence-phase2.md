@@ -175,6 +175,9 @@ The [argument-transfer follow-up](efflorescence-call-transfer.md) uses the fourt
 flat CALL word for a single source register (or -1 for the general path), keeps
 generic copies outside the interpreter's live locals, and caches pool indices.
 Its suite passed with 99 tests and 5,703 assertions.
+The [operand-decoding follow-up](efflorescence-operand-decoding.md) skips unused
+b/c padding while retaining four-word PCs and checked reads. At a fixed -O2,
+its full CRuby/native Spinel suite passed with 105 tests and 5,741 assertions.
 
 On 2026-11-04 the full suite passed on CRuby 4.0.9 with the Spinel native tests
 enabled: **88 tests, 4,466 assertions, no failures/errors/omissions**.

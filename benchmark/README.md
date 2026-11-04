@@ -8,6 +8,17 @@ comparisons.
 
 ## Investigate internal call costs
 
+To compare operand decoding at a fixed `-O2` against `5924537`:
+
+```sh
+BASELINE_REF=5924537 SPINELFLAGS=-O2 RUNS=7 WARMUPS=2 ruby benchmark/compare_call_types.rb 5000000 123
+```
+
+RETURN/BR skip unused b/c words; COPY, EQZ and conditional branches skip c.
+The four-word layout and MIR counts are unchanged. Spinel `call_identity`
+execution fell by 8.3%, `call_mix` by 4.4%, and CLI `call_mix` by 6.4%.
+[Implementation, tests, exploratory variants and all samples (日本語)](../docs/efflorescence-operand-decoding.md).
+
 The subsequent argument-transfer / pool-index comparison uses `83a4b9c`:
 
 ```sh
