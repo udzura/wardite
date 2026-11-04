@@ -78,7 +78,7 @@ class EfflorescenceOperandDecodeTest < Test::Unit::TestCase
     vm, code = tracked_vm('(module
       (func $id (param i32) (result i32) local.get 0)
       (func (export "run") (param i32) (result i32)
-        local.get 0 call $id i32.const 7 i32.add))', index: 1)
+        local.get 0 call $id i32.const 7 i32.add))', index: 1, disabled_optimizations: [:inline])
     assert_equal 12, vm.call_unboxed("run", [5])
     assert_equal (0...10).to_a, code.reads
   end
@@ -93,7 +93,7 @@ class EfflorescenceOperandDecodeTest < Test::Unit::TestCase
   test "complete mix loops keep four-word PCs while decoding fewer words" do
     %w[inline_mix call_mix].each do |name|
       [0, 1, 10].each do |rounds|
-        vm = load_efflorescence(File.read(MIX_WAT)).runtime
+        vm = load_efflorescence(File.read(MIX_WAT), disabled_optimizations: [:inline]).runtime
         codes = vm.ir.functions.map do |function|
           code = FetchLog.new(function.bytecode)
           function.install_code(code, function.calls)

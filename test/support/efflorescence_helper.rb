@@ -93,6 +93,37 @@ module EfflorescenceHelper
         i32.const 3 call $b i32.add))
   WAT
 
+  INLINE_WAT = <<~WAT.freeze
+    (module
+      (func $mutate (param i32 i32) (result i32)
+        local.get 0 local.get 1 local.set 0 local.get 0 i32.sub)
+      (func $local (param i32) (result i32) (local i32)
+        local.get 1 local.get 0 local.set 1 local.get 1 i32.add)
+      (func $constant (result i32) i32.const -1)
+      (func $void (param i32)
+        local.get 0 i32.const 10 local.set 0 drop)
+      (func $empty)
+      (func (export "snapshot") (param i32) (result i32)
+        local.get 0
+        local.get 0 local.get 0 i32.const 1 i32.add call $mutate local.set 0
+        local.get 0 i32.sub)
+      (func (export "loop") (param i32 i32) (result i32) (local i32)
+        block $done
+          loop $repeat
+            local.get 0 i32.eqz br_if $done
+            local.get 2 local.get 1 call $local i32.add local.set 2
+            local.get 0 i32.const 1 i32.sub local.set 0 br $repeat
+          end
+        end
+        local.get 2)
+      (func (export "constant") (result i32) call $constant)
+      (func (export "void") (param i32) (result i32)
+        call $empty local.get 0 call $void local.get 0)
+      (func (export "branch") (param i32 i32) (result i32)
+        block local.get 0 br_if 0 i32.const 99 local.set 1 end
+        local.get 1 call $local))
+  WAT
+
   # Independent arithmetic reference: modulo rather than MIR register operations.
   def reference_mix(rounds, seed)
     x = seed % (2**32)

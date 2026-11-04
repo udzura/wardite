@@ -1,0 +1,241 @@
+{
+  "command": "SPINELFLAGS=-O2 RUNS=5 WARMUPS=2 ruby benchmark/compare.rb",
+  "rounds": 100000,
+  "seed": 123456789,
+  "runs": 5,
+  "warmups": 2,
+  "spinel_flags": [
+    "-O2"
+  ],
+  "spinel": "2026.10.25+1967 (6e7fc1355)",
+  "wasmtime": "49.0.0 (17830bd3c 2026-09-21)",
+  "iwasm": "2.4.5",
+  "cli_sha256": "2668e180a97c5af5c332d4533a3b1a64357b61686dde2474205d860d8b5ab4a1",
+  "source_sha256": {
+    "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+    "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+    "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+    "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+    "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+    "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+    "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+    "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+    "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+    "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+    "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+    "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+    "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+    "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+    "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+    "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+    "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+    "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+    "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+    "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+    "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+    "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+    "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+    "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+    "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+    "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+    "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+    "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+    "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+  },
+  "hyperfine": {
+    "results": [
+      {
+        "command": "New VM / Spinel / inline_mix",
+        "mean": 0.0083565084,
+        "stddev": 0.00029883491724161046,
+        "median": 0.008441042000000001,
+        "user": 0.0067821999999999995,
+        "system": 0.0008378,
+        "min": 0.008033042,
+        "max": 0.008766834000000001,
+        "times": [
+          0.008094208,
+          0.008447416000000001,
+          0.008766834000000001,
+          0.008441042000000001,
+          0.008033042
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "iwasm (WAMR interpreter) / inline_mix",
+        "mean": 0.0035448335999999996,
+        "stddev": 0.0001933879340827653,
+        "median": 0.003494459,
+        "user": 0.0018841999999999997,
+        "system": 0.0009674,
+        "min": 0.0033594170000000004,
+        "max": 0.0038328340000000002,
+        "times": [
+          0.0033996250000000003,
+          0.003637833,
+          0.0038328340000000002,
+          0.0033594170000000004,
+          0.003494459
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "Wasmtime (Pulley) / inline_mix",
+        "mean": 0.005829633400000001,
+        "stddev": 0.0005013430532692164,
+        "median": 0.0055549580000000005,
+        "user": 0.005105,
+        "system": 0.0042686,
+        "min": 0.005403583,
+        "max": 0.006426375000000001,
+        "times": [
+          0.006426375000000001,
+          0.006321459000000001,
+          0.0055549580000000005,
+          0.005403583,
+          0.005441792
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "Wasmtime / inline_mix",
+        "mean": 0.004561083400000001,
+        "stddev": 0.0003247552632903739,
+        "median": 0.0044726670000000005,
+        "user": 0.0037682,
+        "system": 0.0036017999999999996,
+        "min": 0.00423775,
+        "max": 0.005072958000000001,
+        "times": [
+          0.00465675,
+          0.005072958000000001,
+          0.0044726670000000005,
+          0.004365292000000001,
+          0.00423775
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "New VM / Spinel / call_mix",
+        "mean": 0.0083117502,
+        "stddev": 0.0002810219283289115,
+        "median": 0.008325959,
+        "user": 0.0067538,
+        "system": 0.0008290000000000001,
+        "min": 0.007906875,
+        "max": 0.008597416,
+        "times": [
+          0.008597416,
+          0.008184459,
+          0.007906875,
+          0.008325959,
+          0.008544042
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "iwasm (WAMR interpreter) / call_mix",
+        "mean": 0.0038740834,
+        "stddev": 0.00023802653562113622,
+        "median": 0.003798833,
+        "user": 0.0022536,
+        "system": 0.0008899999999999998,
+        "min": 0.0036662920000000002,
+        "max": 0.0042822500000000005,
+        "times": [
+          0.0037705420000000004,
+          0.0036662920000000002,
+          0.0038525000000000005,
+          0.003798833,
+          0.0042822500000000005
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "Wasmtime (Pulley) / call_mix",
+        "mean": 0.0066289334,
+        "stddev": 0.00033837290414762816,
+        "median": 0.006842458,
+        "user": 0.0057032,
+        "system": 0.0040838,
+        "min": 0.006242209,
+        "max": 0.006937625,
+        "times": [
+          0.006242209,
+          0.006279792,
+          0.006937625,
+          0.006842583,
+          0.006842458
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "Wasmtime / call_mix",
+        "mean": 0.004567750000000001,
+        "stddev": 0.0004005918259712747,
+        "median": 0.004424166,
+        "user": 0.003779,
+        "system": 0.0037199999999999998,
+        "min": 0.004184875,
+        "max": 0.005159959,
+        "times": [
+          0.004781667000000001,
+          0.005159959,
+          0.004424166,
+          0.004288083000000001,
+          0.004184875
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

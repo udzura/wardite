@@ -6,6 +6,24 @@ enabled in the script. See [Run](#run) for the complete
 matrix and options. The scripts below provide additional optimization-specific
 comparisons.
 
+## Small-function inlining
+
+```sh
+INLINE_ABLATION=1 SPINELFLAGS=-O2 RUNS=7 WARMUPS=2 ruby benchmark/compare_call_types.rb 5000000 123
+```
+
+This compares `--mir-disable inline` with default execution using **the same
+compiled CLI and worker binaries**. Checksums are checked against an independent
+reference, and separate counters verify that the leaf calls disappear. Results,
+phase timings, MIR sizes and source/binary hashes are saved to
+`build/benchmark/inlining/results.json`. Set `RUNTIMES=CRuby,YJIT` for Ruby runs.
+[Implementation, limits and recorded results (日本語)](../docs/efflorescence-inlining.md).
+
+Default `ruby benchmark/compare.rb` also includes inlining. To measure the actual
+CALL mechanism, `compare_call_types.rb` without `INLINE_ABLATION=1` and
+`investigate_calls.rb` explicitly disable inlining on versions that support it.
+This keeps the historical MIR-counter equality check for commit comparisons.
+
 ## Investigate internal call costs
 
 To compare operand decoding at a fixed `-O2` against `5924537`:

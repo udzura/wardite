@@ -44,7 +44,7 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     instance = load_efflorescence(File.read(MIX_WAT))
     vm = instance.runtime
     assert_equal [9, 16, 10], vm.semantic_ir.functions.map { |fn| fn.instructions.size }
-    assert_equal [5, 9, 6], vm.optimized_ir.functions.map { |fn| fn.instructions.size }
+    assert_equal [5, 9, 9], vm.optimized_ir.functions.map { |fn| fn.instructions.size }
     assert_equal [2, 5, 4], vm.semantic_ir.functions.map { |fn| fn.instructions.count { |i| i[0] == OP::COPY } }
     assert_include vm.dump_mir, "I32_XOR_SHR_U_IMM"
     assert_include vm.dump_mir, "I32_MUL_IMM"
@@ -67,21 +67,22 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
 
   test "instruction and register access counters are separate from ordinary execution" do
     bytes = compile_efflorescence_wat(File.read(MIX_WAT))
-    [[], [:all], [:flat]].each do |disabled|
+    [[], [:all], [:flat], [:inline]].each do |disabled|
       vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
         engine: :efflorescence, disabled_optimizations: disabled, mir_profile: true).runtime
       %w[inline_mix call_mix].each do |export|
         assert_equal reference_mix(10, 123), vm.call_unboxed(export, [10, 123])
         inline = export == "inline_mix"
         optimized = disabled != [:all]
-        dispatches = optimized ? (inline ? 73 : 93) : (inline ? 135 : 165)
+        expanded = optimized && disabled != [:inline]
+        dispatches = optimized ? (inline || expanded ? 73 : 93) : (inline ? 135 : 165)
         assert_equal dispatches, vm.metrics.dispatches
         assert_equal optimized ? 1 : (inline ? 32 : 42), vm.metrics.copies
-        assert_equal inline ? 1 : (optimized ? 2 : 11), vm.metrics.frames_created
-        assert_equal inline ? 1 : 11, vm.metrics.function_entries
+        assert_equal inline || expanded ? 1 : (optimized ? 2 : 11), vm.metrics.frames_created
+        assert_equal inline || expanded ? 1 : 11, vm.metrics.function_entries
         if optimized
-          assert_equal inline ? 63 : 83, vm.metrics.register_reads
-          assert_equal inline ? 51 : 71, vm.metrics.register_writes
+          assert_equal inline || expanded ? 63 : 83, vm.metrics.register_reads
+          assert_equal inline || expanded ? 51 : 71, vm.metrics.register_writes
         end
       end
     end

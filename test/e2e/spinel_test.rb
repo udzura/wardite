@@ -91,10 +91,29 @@ class WarditeSpinelTest < Test::Unit::TestCase
       assert status.success?, err
       assert_equal "", out
       assert_include err, "Semantic MIR (instructions=35 copies=11 registers=37)"
-      assert_include err, "Optimized MIR (instructions=20 copies=2 registers=37)"
+      assert_include err, "Optimized MIR (instructions=23 copies=2 registers=49)"
       assert_include err, "I32_XOR_SHR_U_IMM"
-      assert_include err, "dispatches=93 copies=1 register_reads=83 register_writes=71 function_entries=11 frames_created=2"
+      assert_include err, "dispatches=73 copies=1 register_reads=63 register_writes=51 function_entries=1 frames_created=1"
       assert_include err, "return value: I32(483678737)"
+    end
+  end
+
+  test "Efflorescence inlined leaves preserve argument snapshots and per-call local initialization" do
+    Dir.mktmpdir("wardite-spinel-inline") do |dir|
+      wasm = File.join(dir, "inline.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(INLINE_WAT))
+      [[], ["--mir-disable", "inline"], ["--mir-disable", "copy"],
+       ["--mir-disable", "immediate"], ["--mir-disable", "flat"], ["--mir-profile"]].each do |options|
+        [["snapshot", [0xffffffff], 0], ["snapshot", [123], 124], ["loop", [1000, 123], 123000],
+         ["loop", [10, 0xffffffff], -10], ["constant", [], -1], ["void", [123], 123],
+         ["branch", [0, 123], 99], ["branch", [1, 123], 123]].each do |name, arguments, expected|
+          out, err, status = Open3.capture3(@binary, "--new-engine", *options,
+            "--invoke", name, "--", wasm, *arguments.map(&:to_s))
+          assert status.success?, err
+          assert_equal "", out
+          assert_include err, "return value: I32(#{expected})\n"
+        end
+      end
     end
   end
 

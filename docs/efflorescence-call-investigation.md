@@ -139,7 +139,7 @@ ruby benchmark/build_call_profile.rb
 xcrun xctrace record --template 'Time Profiler' --no-prompt \
   --time-limit 15s --output build/benchmark/call-cost/profile/call-mix.trace \
   --launch -- "$PWD/build/benchmark/call-cost/profile/worker" \
-  "$PWD/build/benchmark/call-cost/call_cost.wasm" call_mix 50000000 123
+  "$PWD/build/benchmark/call-cost/call_cost.wasm" call_mix 50000000 123 inline
 
 xcrun xctrace export \
   --input build/benchmark/call-cost/profile/call-mix.trace \

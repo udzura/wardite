@@ -10,7 +10,7 @@ class EfflorescenceCallProtocolTest < Test::Unit::TestCase
   test "flat calls encode a single source including slot zero or the generic sentinel" do
     [[], [:all], [:copy], [:immediate]].each do |disabled|
       # Disabling all selects semantic execution; lower a copy to inspect it.
-      vm = load_efflorescence(CALL_PROTOCOL_WAT, disabled_optimizations: disabled).runtime
+      vm = load_efflorescence(CALL_PROTOCOL_WAT, disabled_optimizations: disabled + [:inline]).runtime
       ir = vm.optimized_ir.copy
       E::Lowerer.new.compile(ir)
       counts = []
@@ -32,7 +32,8 @@ class EfflorescenceCallProtocolTest < Test::Unit::TestCase
       assert_include counts, 3
     end
     fn = load_efflorescence('(module (func $id (param i32) (result i32) local.get 0)
-      (func (export "run") (param i32) (result i32) local.get 0 call $id))').runtime.ir.functions[1]
+      (func (export "run") (param i32) (result i32) local.get 0 call $id))',
+      disabled_optimizations: [:inline]).runtime.ir.functions[1]
     call_pc = fn.instructions.index { |instruction| instruction[0] == E::Opcode::CALL }
     assert_not_nil call_pc
     assert_equal 0, fn.bytecode[call_pc * 4 + 3]
@@ -41,7 +42,7 @@ class EfflorescenceCallProtocolTest < Test::Unit::TestCase
   test "mixed arities void calls argument snapshots and mutual recursion agree with the stack VM" do
     bytes = compile_efflorescence_wat(CALL_PROTOCOL_WAT)
     old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
-    [[], [:all], [:flat], [:copy], [:immediate], [:frames]].each do |disabled|
+    [[], [:all], [:flat], [:copy], [:immediate], [:frames], [:inline]].each do |disabled|
       [false, true].each do |profile|
         vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
           engine: :efflorescence, disabled_optimizations: disabled, mir_profile: profile).runtime

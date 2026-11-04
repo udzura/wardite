@@ -49,6 +49,43 @@ module Wardite
     end
 
     module Passes
+      # Expand only small, straight-line leaves from a snapshot of the IR.
+      # One round avoids transitive/exponential expansion and keeps recursion
+      # on the ordinary CALL path. Existing local passes clean up the copies.
+      class Inlining
+        MAX_INSTRUCTIONS: ::Integer
+
+        MAX_REGISTERS: ::Integer
+
+        MAX_ADDED_INSTRUCTIONS: ::Integer
+
+        MAX_ADDED_REGISTERS: ::Integer
+
+        # @rbs ir: Wardite::Efflorescence::IR
+        # @rbs return: Array[Integer]
+        def run: (Wardite::Efflorescence::IR ir) -> Array[Integer]
+
+        private
+
+        # Explicit whitelist: new opcodes must opt into inlining. In particular,
+        # traps, profiling records, control flow and nested calls stay intact.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: bool
+        def eligible?: (Wardite::Efflorescence::Function function) -> bool
+
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs callees: Wardite::Efflorescence::IR
+        # @rbs return: bool
+        def expand_calls: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR callees) -> bool
+
+        # @rbs caller: Wardite::Efflorescence::Function
+        # @rbs callee: Wardite::Efflorescence::Function
+        # @rbs call: Wardite::Efflorescence::Instruction
+        # @rbs rewrite: Wardite::Efflorescence::Rewrite
+        # @rbs return: void
+        def expand: (Wardite::Efflorescence::Function caller, Wardite::Efflorescence::Function callee, Wardite::Efflorescence::Instruction call, Wardite::Efflorescence::Rewrite rewrite) -> void
+      end
+
       class CopyPropagation
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
@@ -66,6 +103,13 @@ module Wardite
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
         def propagate: (Wardite::Efflorescence::Function function) -> void
+
+        # Backward liveness inside each basic block removes copies overwritten
+        # before any read (e.g. an inlined parameter initializer). All registers
+        # are conservatively live across edges; no value moves across a branch.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def remove_overwritten_copies: (Wardite::Efflorescence::Function function) -> void
 
         # Keep snapshot and join copies unless their destination has no reads
         # anywhere. Iteration also removes copies feeding another dead copy.
@@ -102,6 +146,12 @@ module Wardite
       # @rbs ir: Wardite::Efflorescence::IR
       # @rbs return: Wardite::Efflorescence::IR
       def optimize: (Wardite::Efflorescence::IR ir) -> Wardite::Efflorescence::IR
+
+      private
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def optimize_function: (Wardite::Efflorescence::Function function) -> void
     end
 
     class Lowerer

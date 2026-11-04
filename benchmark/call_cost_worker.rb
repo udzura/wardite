@@ -21,4 +21,7 @@ translated = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 result = vm.call_unboxed(export, [rounds, seed]) || raise("missing checksum")
 finished = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 puts "#{loaded - started},#{translated - loaded},#{finished - translated},#{result}"
-puts vm.metrics.report if profile
+if profile
+  puts vm.metrics.report
+  puts Wardite::Efflorescence::Inspection.new.statistics(vm.optimized_ir)
+end

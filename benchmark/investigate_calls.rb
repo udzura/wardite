@@ -138,7 +138,7 @@ variants.each do |variant|
   end
   worker = "#{directory}/worker"
   run!([*compiler, "-I#{library}", "--strict-require", *flags, "benchmark/call_cost_worker.rb", "-o", worker], "#{directory}/build.log")
-  workers[variant] = {binary: worker, library: library, disabled: variant == "fresh" ? "frames" : ""}
+  workers[variant] = {binary: worker, library: library, disabled: variant == "fresh" ? "inline,frames" : "inline"}
   puts "Built #{variant}"
 end
 

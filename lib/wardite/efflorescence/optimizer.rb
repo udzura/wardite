@@ -4,7 +4,7 @@
 module Wardite
   module Efflorescence
     class Configuration
-      FEATURES = %i[copy immediate branch superinstruction flat frames].freeze
+      FEATURES = %i[copy immediate branch superinstruction inline flat frames].freeze
       attr_reader :disabled #: Array[Symbol]
 
       # @rbs disabled: Array[Symbol]
@@ -94,12 +94,137 @@ module Wardite
     end
 
     module Passes
+      # Expand only small, straight-line leaves from a snapshot of the IR.
+      # One round avoids transitive/exponential expansion and keeps recursion
+      # on the ordinary CALL path. Existing local passes clean up the copies.
+      class Inlining
+        MAX_INSTRUCTIONS = 8
+        MAX_REGISTERS = 32
+        MAX_ADDED_INSTRUCTIONS = 64
+        MAX_ADDED_REGISTERS = 256
+
+        # @rbs ir: Wardite::Efflorescence::IR
+        # @rbs return: Array[Integer]
+        def run(ir)
+          callees = ir.copy
+          changed = [] #: Array[Integer]
+          index = 0
+          while index < ir.functions.size
+            function = ir.function_at(index)
+            changed << index if expand_calls(function, callees)
+            index += 1
+          end
+          changed
+        end
+
+        private
+
+        # Explicit whitelist: new opcodes must opt into inlining. In particular,
+        # traps, profiling records, control flow and nested calls stay intact.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: bool
+        def eligible?(function)
+          instructions = function.instructions
+          return false if instructions.empty? || instructions.size > MAX_INSTRUCTIONS || function.register_count > MAX_REGISTERS
+          return false unless instructions.last[0] == Opcode::RETURN
+          index = 0
+          while index < instructions.size - 1
+            opcode = instructions[index][0]
+            return false unless (opcode >= Opcode::COPY && opcode <= Opcode::I32_EQZ) ||
+              (opcode >= Opcode::I32_ADD_IMM && opcode <= Opcode::I32_SHR_U_IMM) ||
+              opcode == Opcode::I32_XOR_SHR_U_IMM || opcode == Opcode::I32_XOR_SHL_IMM
+            index += 1
+          end
+          true
+        end
+
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs callees: Wardite::Efflorescence::IR
+        # @rbs return: bool
+        def expand_calls(function, callees)
+          rewrite = Rewrite.new(function)
+          added_instructions = 0
+          added_registers = 0
+          changed = false
+          function.instructions.each_with_index do |instruction, pc|
+            rewrite.mark(pc)
+            if instruction[0] == Opcode::CALL
+              callee = callees.function_at(instruction[2])
+              # Count the expansion before copy cleanup, conservatively.
+              growth = callee.parameter_count + callee.local_count + callee.instructions.size - 2
+              growth += 1 if instruction[1] >= 0
+              growth = 0 if growth < 0
+              registers = callee.register_count + (callee.local_count > 0 ? 1 : 0)
+              if eligible?(callee) && added_instructions + growth <= MAX_ADDED_INSTRUCTIONS &&
+                  added_registers + registers <= MAX_ADDED_REGISTERS
+                expand(function, callee, instruction, rewrite)
+                added_instructions += growth
+                added_registers += registers
+                changed = true
+                next
+              end
+            end
+            rewrite.emit(instruction.copy)
+          end
+          rewrite.finish
+          changed
+        end
+
+        # @rbs caller: Wardite::Efflorescence::Function
+        # @rbs callee: Wardite::Efflorescence::Function
+        # @rbs call: Wardite::Efflorescence::Instruction
+        # @rbs rewrite: Wardite::Efflorescence::Rewrite
+        # @rbs return: void
+        def expand(caller, callee, call, rewrite)
+          registers = [] #: Array[Integer]
+          index = 0
+          while index < callee.register_count
+            registers << if callee.constant_registers.include?(index)
+              caller.allocate_constant(callee.initial_value(index))
+            else
+              caller.allocate_register(0)
+            end
+            index += 1
+          end
+          # Fresh slots preserve argument snapshots even if the callee mutates
+          # a parameter, or the CALL destination aliases a caller argument.
+          index = 0
+          while index < callee.parameter_count
+            rewrite.emit(Instruction.new([Opcode::COPY, registers.fetch(index), call[3 + index]]))
+            index += 1
+          end
+          if callee.local_count > 0
+            zero = caller.allocate_constant(0)
+            while index < callee.parameter_count + callee.local_count
+              rewrite.emit(Instruction.new([Opcode::COPY, registers.fetch(index), zero]))
+              index += 1
+            end
+          end
+          callee.instructions.each do |original|
+            if original[0] == Opcode::RETURN
+              if call[1] >= 0
+                rewrite.emit(Instruction.new([Opcode::COPY, call[1], registers.fetch(original[1])]))
+              end
+            else
+              instruction = original.copy
+              Opcode.read_positions(original).each do |position|
+                instruction[position] = registers.fetch(original[position])
+              end
+              destination = Opcode.destination(original)
+              instruction[1] = registers.fetch(destination) if destination >= 0
+              rewrite.emit(instruction)
+            end
+          end
+        end
+      end
+
       class CopyPropagation
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
         def run(function)
           coalesce_results(function)
           propagate(function)
+          remove_overwritten_copies(function)
           remove_dead_copies(function)
         end
 
@@ -154,6 +279,36 @@ module Wardite
               end
             end
             rewrite.emit(instruction)
+          end
+          rewrite.finish
+        end
+
+        # Backward liveness inside each basic block removes copies overwritten
+        # before any read (e.g. an inlined parameter initializer). All registers
+        # are conservatively live across edges; no value moves across a branch.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def remove_overwritten_copies(function)
+          analysis = Analysis.new(function)
+          live = Array.new(function.register_count, 1)
+          removed = Array.new(function.instructions.size, 0)
+          pc = function.instructions.size - 1
+          while pc >= 0
+            live.fill(1) if pc + 1 < analysis.leaders.size && analysis.leaders[pc + 1] == 1
+            instruction = function.instructions[pc]
+            destination = Opcode.destination(instruction)
+            if instruction[0] == Opcode::COPY && live[destination] == 0
+              removed[pc] = 1
+            else
+              live[destination] = 0 if destination >= 0
+              Opcode.read_positions(instruction).each { |position| live[instruction[position]] = 1 }
+            end
+            pc -= 1
+          end
+          rewrite = Rewrite.new(function)
+          function.instructions.each_with_index do |instruction, index|
+            rewrite.mark(index)
+            rewrite.emit(instruction.copy) if removed[index] == 0
           end
           rewrite.finish
         end
@@ -271,12 +426,25 @@ module Wardite
       def optimize(ir)
         output = ir.copy
         output.functions.each do |function|
-          Passes::CopyPropagation.new.run(function) if @configuration.enabled?(:copy)
-          Passes::ImmediateSpecialization.new.run(function) if @configuration.enabled?(:immediate)
-          Passes::BranchFusion.new.run(function) if @configuration.enabled?(:branch)
-          Passes::Superinstructions.new.run(function) if @configuration.enabled?(:superinstruction)
+          optimize_function(function)
+        end
+        if @configuration.enabled?(:inline)
+          Passes::Inlining.new.run(output).each do |index|
+            optimize_function(output.function_at(index))
+          end
         end
         output
+      end
+
+      private
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def optimize_function(function)
+        Passes::CopyPropagation.new.run(function) if @configuration.enabled?(:copy)
+        Passes::ImmediateSpecialization.new.run(function) if @configuration.enabled?(:immediate)
+        Passes::BranchFusion.new.run(function) if @configuration.enabled?(:branch)
+        Passes::Superinstructions.new.run(function) if @configuration.enabled?(:superinstruction)
       end
     end
 

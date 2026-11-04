@@ -15,12 +15,13 @@ Wasm → Translator → semantic MIR (retained)
                   → ImmediateSpecialization
                   → BranchFusion
                   → Superinstructions
+                  → Inlining → local passes again on changed functions
                   → optimized MIR (retained)
                   → optional profiling instrumentation
                   → Lowerer → executable integer array → VM
 ```
 
-Each pass operates on a function. `Optimizer` copies the semantic MIR before
+Local passes operate on a function; inlining reads a module snapshot. `Optimizer` copies the semantic MIR before
 changing it. `Rewrite` maps old instruction ordinals to new ones and repairs all
 branch targets after each rewrite. `Analysis` identifies basic-block entries
 and counts register definitions and uses across the whole function.
@@ -32,14 +33,14 @@ ruby -Ilib exe/wardite --new-engine --no-wasi --invoke call_mix build/benchmark/
 # Disable one feature, or several by repeating the option
 ruby -Ilib exe/wardite --new-engine --mir-disable copy --mir-disable flat --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
 
-# Semantic MIR execution with all six features disabled
+# Semantic MIR execution with all seven features disabled
 ruby -Ilib exe/wardite --new-engine --mir-disable all --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
 
 # Inspect before/after MIR, or collect counters separately from timing
 ruby -Ilib exe/wardite --new-engine --mir-dump --mir-profile --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 10 123
 ```
 
-`copy`, `immediate`, `branch`, `superinstruction`, `flat` and `frames` can be
+`copy`, `immediate`, `branch`, `superinstruction`, `inline`, `flat` and `frames` can be
 disabled independently. Unknown names raise an error. MIR CLI options require
 `--new-engine`. The normal checksum output is unchanged unless inspection or
 profiling is explicitly requested.
@@ -61,10 +62,11 @@ Direct `VM.new` accepts `disabled_optimizations:` and `profile:`.
 
 | Feature | Implementation | Correctness boundary |
 | --- | --- | --- |
-| COPY reduction | Redirect an adjacent producer into its COPY destination; propagate copies locally; remove self-copies and globally unread copies | Producer temporaries must have one definition and one use. No incoming edge may target an absorbed COPY. Aliases reset at basic-block boundaries and are invalidated whenever their source is overwritten. |
+| COPY reduction | Redirect an adjacent producer into its COPY destination; propagate copies locally; remove self-copies, globally unread copies and copies overwritten before a read within a basic block | Producer temporaries must have one definition and one use. No incoming edge may target an absorbed COPY. Aliases reset at basic-block boundaries and are invalidated whenever their source is overwritten. Backward copy liveness conservatively treats all registers as live across edges. |
 | Immediates | Embed immutable constant-register values in ADD/SUB/MUL/XOR/SHL/SHR_U operands | Only ADD/MUL/XOR may swap a constant left operand. Shift counts remain masked; multiplication still uses bounded 16-bit limbs. |
 | Branch fusion | `I32_EQZ tmp, src; BR_IF tmp, pc` → `BR_IF_ZERO src, pc` | The temporary is not a local, has one definition/use, and the second instruction has no incoming edge. |
-| Superinstructions | Fuse immediate logical-right/left shift followed by XOR with the original source | The intermediate has one definition/use and the XOR is not a basic-block entry. No benchmark-specific whole-function instruction or function inlining is used. |
+| Superinstructions | Fuse immediate logical-right/left shift followed by XOR with the original source | The intermediate has one definition/use and the XOR is not a basic-block entry. No benchmark-specific whole-function instruction is used. |
+| Inlining | Expand small straight-line leaf functions, then clean up with the enabled local passes | At most 8 callee instructions and 32 slots. Fresh renamed registers preserve arguments; explicit local zeroing runs at each call site. No branches, traps or nested calls. One snapshot round, at most 64 added instructions and 256 added slots per caller before cleanup. Disable with `--mir-disable inline`. |
 | Flat execution | Lower to four integers per instruction: opcode and three operands | Branch ordinals become offsets multiplied by four. CALL uses an out-of-line `CallSite` with the resolved callee and argument-register array, allowing any supported arity. |
 | Frame reuse | Per-function free lists owned by one public invocation | Active frames are never pooled. New frames copy the register template; reused frames zero only non-parameter locals and reset PC/return destination. CALL supplies parameters, constants remain immutable, and load-time definite-assignment validation ensures temporaries are written before use. Recursion and overlapping invocations have independent active frames. |
 
@@ -90,7 +92,7 @@ Ruby boundary setup and instruction fetches. They are not hardware memory-access
 counters. `metrics` reports the most recent public invocation. Counter-enabled
 execution is deliberately excluded from all timing measurements.
 
-At 100,000 rounds and seed 123, both exports return unsigned `3870791521`:
+The following original Phase 2 counters predate inlining. At 100,000 rounds and seed 123, both exports return unsigned `3870791521`:
 
 | Metric | Inline unoptimized | Inline optimized | Call unoptimized | Call optimized |
 | --- | ---: | ---: | ---: | ---: |
@@ -103,6 +105,9 @@ At 100,000 rounds and seed 123, both exports return unsigned `3870791521`:
 Across the three functions, static MIR falls from 35 to 20 instructions and
 from 11 to 2 COPYs. Register count remains 37: unused temporary and constant
 slots are not compacted in this phase.
+With inlining, static MIR is now 23 instructions / 49 slots, and `call_mix`
+has the same 700,003 dynamic dispatches as `inline_mix`, with one frame and
+one function entry. See [inlining measurements and limits (日本語)](efflorescence-inlining.md).
 
 Spinel's generated C was inspected with:
 
@@ -178,6 +183,9 @@ Its suite passed with 99 tests and 5,703 assertions.
 The [operand-decoding follow-up](efflorescence-operand-decoding.md) skips unused
 b/c padding while retaining four-word PCs and checked reads. At a fixed -O2,
 its full CRuby/native Spinel suite passed with 105 tests and 5,741 assertions.
+The [small-function inlining follow-up (日本語)](efflorescence-inlining.md) adds
+an independent pass and same-binary off/on measurements; its full suite passed
+with 112 tests and 9,028 assertions.
 
 On 2026-11-04 the full suite passed on CRuby 4.0.9 with the Spinel native tests
 enabled: **88 tests, 4,466 assertions, no failures/errors/omissions**.

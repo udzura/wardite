@@ -168,23 +168,25 @@ class EfflorescenceTest < Test::Unit::TestCase
   end
 
   test "only Ruby return boundary boxes i32 and Runtime never executes" do
-    instance = load_efflorescence(File.read(MIX_WAT))
-    boxes = 0
-    runtime_calls = 0
-    frames = 0
-    trace = TracePoint.new(:call) do |event|
-      boxes += 1 if event.defined_class == Wardite::I32 && event.method_id == :initialize
-      runtime_calls += 1 if event.defined_class == Wardite::Runtime
-      if event.defined_class == Wardite::Efflorescence::Frame && event.method_id == :initialize
-        frames += 1
+    [[], [:inline]].each do |disabled|
+      instance = load_efflorescence(File.read(MIX_WAT), disabled_optimizations: disabled)
+      boxes = 0
+      runtime_calls = 0
+      frames = 0
+      trace = TracePoint.new(:call) do |event|
+        boxes += 1 if event.defined_class == Wardite::I32 && event.method_id == :initialize
+        runtime_calls += 1 if event.defined_class == Wardite::Runtime
+        if event.defined_class == Wardite::Efflorescence::Frame && event.method_id == :initialize
+          frames += 1
+        end
       end
+      result = trace.enable { instance.runtime.call("call_mix", [1000, 123]) }
+      assert_equal reference_mix(1000, 123), result.value
+      assert_equal 1, boxes
+      assert_equal 0, runtime_calls
+      assert_equal disabled.empty? ? 1 : 2, frames
+      assert instance.runtime.ir.functions.all? { |fn| fn.initial_registers.all? { |v| v.is_a?(Integer) } }
     end
-    result = trace.enable { instance.runtime.call("call_mix", [1000, 123]) }
-    assert_equal reference_mix(1000, 123), result.value
-    assert_equal 1, boxes
-    assert_equal 0, runtime_calls
-    assert_equal 2, frames
-    assert instance.runtime.ir.functions.all? { |fn| fn.initial_registers.all? { |v| v.is_a?(Integer) } }
   end
 
   test "start function is run by selected engine" do
