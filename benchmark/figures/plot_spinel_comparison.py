@@ -25,7 +25,6 @@ plt.rcParams.update({
     'axes.unicode_minus': False,
     'font.size': 11,
     'svg.fonttype': 'path',
-    'pdf.fonttype': 42,
 })
 
 ENGINES = [
@@ -37,16 +36,16 @@ ENGINES = [
 # mean, standard deviation, minimum, maximum, runs; all times in milliseconds.
 VALUES = {
     'inline_mix': [
-        (13.4, 0.4, 13.0, 13.7, 5),
-        (9.6, 1.7, 7.7, 12.1, 5),
-        (8.6, 0.6, 7.9, 9.1, 5),
-        (6.8, 0.3, 6.2, 7.1, 5),
+        (8.1, 0.3, 7.8, 8.6, 5),
+        (3.5, 0.2, 3.3, 3.8, 5),
+        (5.8, 0.3, 5.5, 6.2, 5),
+        (4.8, 0.3, 4.4, 5.2, 5),
     ],
     'call_mix': [
-        (25.8, 0.6, 25.1, 26.7, 5),
-        (6.0, 0.5, 5.5, 6.8, 5),
-        (9.9, 0.3, 9.7, 10.3, 5),
-        (7.2, 0.4, 6.5, 7.4, 5),
+        (8.1, 0.2, 7.9, 8.3, 5),
+        (3.8, 0.2, 3.5, 3.9, 5),
+        (6.9, 0.4, 6.4, 7.3, 5),
+        (4.7, 0.4, 4.3, 5.2, 5),
     ],
 }
 
@@ -77,9 +76,9 @@ fig.text(0.075, 0.894, '各5回の計測  ·  小さいほど高速', fontsize=1
 for ax, (export, values) in zip(axes, VALUES.items()):
     ax.set_facecolor('white')
     ax.set_title(export, loc='left', pad=18, fontsize=17, weight='bold', color='#17273D')
-    ax.set_ylim(0, 30)
+    ax.set_ylim(0, 10)
     ax.set_xlim(-0.55, 3.55)
-    ax.set_yticks(range(0, 31, 5))
+    ax.set_yticks(range(0, 11, 2))
     ax.set_axisbelow(True)
     ax.grid(axis='y', color='#DFE5EE', linewidth=0.8)
     for spine in ('top', 'right'):
@@ -97,7 +96,7 @@ for ax, (export, values) in zip(axes, VALUES.items()):
         ax.hlines([minimum, maximum], x - 0.10, x + 0.10,
                   color='#283950', linewidth=1.7, zorder=5)
         ax.hlines(mean, x - 0.24, x + 0.24, color=color, linewidth=2.8, zorder=6)
-        label_y = max(mean + sd, maximum) + 0.8
+        label_y = max(mean + sd, maximum) + 0.35
         ax.text(x, label_y, f'{mean:.1f} ± {sd:.1f} ms', ha='center', va='bottom',
                 fontsize=12.0, weight='bold', color=color)
     for label, (_, _, color) in zip(ax.get_xticklabels(), ENGINES):
@@ -117,7 +116,7 @@ fig.text(0.075, 0.12, '2つのパネルは同じ縦軸。ラベルは平均 ± �
 fig.text(0.075, 0.075, '平均 ± σ が実測の最小〜最大を超える箇所も、そのまま表示しています。',
          fontsize=10, color='#6E7C90')
 
-for suffix in ('png', 'svg', 'pdf'):
+for suffix in ('png', 'svg'):
     fig.savefig(OUT / f'spinel_new_vm_candlestick.{suffix}', dpi=180,
                 facecolor=fig.get_facecolor(), metadata={'Creator': 'Wardite benchmark plot'})
 svg = OUT / 'spinel_new_vm_candlestick.svg'
