@@ -1,0 +1,4320 @@
+{
+  "fixture_source": "(module\n  ;; Arity-specific CALL transfer. Disable MIR inlining to keep every call.\n  (func $zero (result i32) i32.const 7)\n  (func $one (param i32) (result i32) local.get 0)\n  (func $two (param i32 i32) (result i32)\n    local.get 0 local.get 1 i32.add)\n  (func $three (param i32 i32 i32) (result i32)\n    local.get 0 local.get 1 i32.add local.get 2 i32.sub)\n  (func $four (param i32 i32 i32 i32) (result i32)\n    local.get 0 local.get 1 i32.add local.get 2 i32.sub local.get 3 i32.add)\n\n  (func (export \"empty_loop\") (param $rounds i32) (param $seed i32) (result i32)\n    (local $x i32)\n    local.get $seed local.set $x\n    block $done\n      loop $repeat\n        local.get $rounds i32.eqz br_if $done\n        \n        local.get $rounds i32.const 1 i32.sub local.set $rounds\n        br $repeat\n      end\n    end\n    local.get $x)\n\n  (func (export \"call_zero\") (param $rounds i32) (param $seed i32) (result i32)\n    (local $x i32)\n    local.get $seed local.set $x\n    block $done\n      loop $repeat\n        local.get $rounds i32.eqz br_if $done\n        local.get $x call $zero i32.add local.set $x\n        local.get $rounds i32.const 1 i32.sub local.set $rounds\n        br $repeat\n      end\n    end\n    local.get $x)\n\n  (func (export \"call_one\") (param $rounds i32) (param $seed i32) (result i32)\n    (local $x i32)\n    local.get $seed local.set $x\n    block $done\n      loop $repeat\n        local.get $rounds i32.eqz br_if $done\n        local.get $x call $one local.set $x\n        local.get $rounds i32.const 1 i32.sub local.set $rounds\n        br $repeat\n      end\n    end\n    local.get $x)\n\n  (func (export \"call_two\") (param $rounds i32) (param $seed i32) (result i32)\n    (local $x i32)\n    local.get $seed local.set $x\n    block $done\n      loop $repeat\n        local.get $rounds i32.eqz br_if $done\n        local.get $x i32.const 1 call $two local.set $x\n        local.get $rounds i32.const 1 i32.sub local.set $rounds\n        br $repeat\n      end\n    end\n    local.get $x)\n\n  (func (export \"call_three\") (param $rounds i32) (param $seed i32) (result i32)\n    (local $x i32)\n    local.get $seed local.set $x\n    block $done\n      loop $repeat\n        local.get $rounds i32.eqz br_if $done\n        local.get $x i32.const 4 i32.const 1 call $three local.set $x\n        local.get $rounds i32.const 1 i32.sub local.set $rounds\n        br $repeat\n      end\n    end\n    local.get $x)\n\n  (func (export \"call_four\") (param $rounds i32) (param $seed i32) (result i32)\n    (local $x i32)\n    local.get $seed local.set $x\n    block $done\n      loop $repeat\n        local.get $rounds i32.eqz br_if $done\n        local.get $x i32.const 4 i32.const 1 i32.const 3 call $four local.set $x\n        local.get $rounds i32.const 1 i32.sub local.set $rounds\n        br $repeat\n      end\n    end\n    local.get $x)\n)\n",
+  "experiments": [
+    {
+      "comparison": "commits",
+      "baseline_commit": "8eb02af365b6138dd960887105caa4437e68a66a",
+      "fixture": "benchmark/i32_call_arities.wat",
+      "fixture_sha256": "e806c50e6839b9adaaa66ec967cde806b4d71e61ac4b73349fb8fd8b795c6cff",
+      "rounds": 1000000,
+      "seed": 123,
+      "runs": 3,
+      "warmups": 1,
+      "spinel": "spinel 2026.10.25+1967 (6e7fc1355) [apple clang 21.0.0 (cc)]",
+      "spinel_flags": [
+        "-O2"
+      ],
+      "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+      "checksums": {
+        "empty_loop": 123,
+        "call_zero": 7000123,
+        "call_one": 123,
+        "call_two": 1000123,
+        "call_three": 3000123,
+        "call_four": 6000123
+      },
+      "snapshots": {
+        "baseline": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+            "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "2668e180a97c5af5c332d4533a3b1a64357b61686dde2474205d860d8b5ab4a1",
+            "worker": "64668cdebc5775795fd181326c719d24c4b876bcec0cea90dff7237e35fcb15a"
+          }
+        },
+        "current": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "8e0c2f48f27eff43b0b25797af375a950d6c782f5a8cf4c61d50893cd26a037d",
+            "lib/wardite/efflorescence/optimizer.rb": "db7bcad0838c7270a77a5e0cf9f52f00c4a695b50f8374f5efd06c25d69f94b1",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "3dae20b389f565bb90764a47c37825845bc1abf5165d207d722df6df9bfb13a2",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "11ac407f0dbf974162063e354f3f46cf4b6a6f8ae0c91d148fd4853fb596d4dc",
+            "worker": "88464af4831d3c5bd04a0cd8521fe655a403b103ac9daded45cca3079d638c0d"
+          }
+        }
+      },
+      "results": [
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.02256800001487136,
+              "load": 0.0001050001010298729,
+              "translate": 0.00021399976685643196,
+              "execute": 0.018551000393927097,
+              "cli_e2e": 0.023225000128149986
+            },
+            {
+              "worker_e2e": 0.023064000066369772,
+              "load": 0.00011100014671683311,
+              "translate": 0.00021900003775954247,
+              "execute": 0.018786000087857246,
+              "cli_e2e": 0.023757999762892723
+            },
+            {
+              "worker_e2e": 0.023149000015109777,
+              "load": 0.00011299969628453255,
+              "translate": 0.0002000001259148121,
+              "execute": 0.018926000222563744,
+              "cli_e2e": 0.022886000107973814
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 22.92700003211697,
+              "sd": 0.31379453008013447,
+              "min": 22.56800001487136,
+              "max": 23.149000015109777
+            },
+            "load": {
+              "mean": 0.10966664801041286,
+              "sd": 0.004163177291397965,
+              "min": 0.1050001010298729,
+              "max": 0.11299969628453255
+            },
+            "translate": {
+              "mean": 0.2109999768435955,
+              "sd": 0.009848767314629605,
+              "min": 0.2000001259148121,
+              "max": 0.21900003775954247
+            },
+            "execute": {
+              "mean": 18.754333568116028,
+              "sd": 0.18949483957028804,
+              "min": 18.551000393927097,
+              "max": 18.926000222563744
+            },
+            "cli_e2e": {
+              "mean": 23.289666666338842,
+              "sd": 0.43958181310840433,
+              "min": 22.886000107973814,
+              "max": 23.757999762892723
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.02267999993637204,
+              "load": 0.00012400001287460327,
+              "translate": 0.0002310001291334629,
+              "execute": 0.0182480001822114,
+              "cli_e2e": 0.023163000121712685
+            },
+            {
+              "worker_e2e": 0.023142000194638968,
+              "load": 0.0001150001771748066,
+              "translate": 0.0002109999768435955,
+              "execute": 0.01871499978005886,
+              "cli_e2e": 0.023288000375032425
+            },
+            {
+              "worker_e2e": 0.02609799988567829,
+              "load": 0.00018699979409575462,
+              "translate": 0.00050400011241436,
+              "execute": 0.02131300000473857,
+              "cli_e2e": 0.02305199997499585
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 23.973333338896435,
+              "sd": 1.8544586840693256,
+              "min": 22.67999993637204,
+              "max": 26.09799988567829
+            },
+            "load": {
+              "mean": 0.14199999471505484,
+              "sd": 0.03922990847406167,
+              "min": 0.1150001771748066,
+              "max": 0.18699979409575462
+            },
+            "translate": {
+              "mean": 0.31533340613047284,
+              "sd": 0.16369589508571192,
+              "min": 0.2109999768435955,
+              "max": 0.50400011241436
+            },
+            "execute": {
+              "mean": 19.425333322336275,
+              "sd": 1.6513589204004628,
+              "min": 18.2480001822114,
+              "max": 21.31300000473857
+            },
+            "cli_e2e": {
+              "mean": 23.167666823913653,
+              "sd": 0.11806938970973833,
+              "min": 23.05199997499585,
+              "max": 23.288000375032425
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.064625000115484,
+              "load": 0.00011700019240379333,
+              "translate": 0.00020899996161460876,
+              "execute": 0.06022599991410971,
+              "cli_e2e": 0.06634199991822243
+            },
+            {
+              "worker_e2e": 0.06486400030553341,
+              "load": 0.00011200038716197014,
+              "translate": 0.00021399976685643196,
+              "execute": 0.06082799984142184,
+              "cli_e2e": 0.06339999986812472
+            },
+            {
+              "worker_e2e": 0.06396999955177307,
+              "load": 0.00010599987581372261,
+              "translate": 0.00020299991592764854,
+              "execute": 0.05984600028023124,
+              "cli_e2e": 0.06422899989411235
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 64.4863333242635,
+              "sd": 0.4628506197160771,
+              "min": 63.96999955177307,
+              "max": 64.86400030553341
+            },
+            "load": {
+              "mean": 0.11166681845982869,
+              "sd": 0.005507739312071019,
+              "min": 0.10599987581372261,
+              "max": 0.11700019240379333
+            },
+            "translate": {
+              "mean": 0.20866654813289642,
+              "sd": 0.005507499752719468,
+              "min": 0.20299991592764854,
+              "max": 0.21399976685643196
+            },
+            "execute": {
+              "mean": 60.30000001192093,
+              "sd": 0.49516441249517124,
+              "min": 59.84600028023124,
+              "max": 60.82799984142184
+            },
+            "cli_e2e": {
+              "mean": 64.6569998934865,
+              "sd": 1.5169802481548427,
+              "min": 63.39999986812472,
+              "max": 66.34199991822243
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06413199985399842,
+              "load": 0.00011599995195865631,
+              "translate": 0.000216000247746706,
+              "execute": 0.05990799982100725,
+              "cli_e2e": 0.06184299988672137
+            },
+            {
+              "worker_e2e": 0.06444300012663007,
+              "load": 0.00012099975720047951,
+              "translate": 0.00022999988868832588,
+              "execute": 0.05988900037482381,
+              "cli_e2e": 0.06293200002983212
+            },
+            {
+              "worker_e2e": 0.06340799992904067,
+              "load": 0.00010999990627169609,
+              "translate": 0.00020499993115663528,
+              "execute": 0.05918700015172362,
+              "cli_e2e": 0.06208499986678362
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 63.99433330322305,
+              "sd": 0.5310559402307005,
+              "min": 63.40799992904067,
+              "max": 64.44300012663007
+            },
+            "load": {
+              "mean": 0.11566653847694397,
+              "sd": 0.005507499752719468,
+              "min": 0.10999990627169609,
+              "max": 0.12099975720047951
+            },
+            "translate": {
+              "mean": 0.21700002253055573,
+              "sd": 0.012529929423600105,
+              "min": 0.20499993115663528,
+              "max": 0.22999988868832588
+            },
+            "execute": {
+              "mean": 59.661333449184895,
+              "sd": 0.41089451511206804,
+              "min": 59.18700015172362,
+              "max": 59.90799982100725
+            },
+            "cli_e2e": {
+              "mean": 62.286666594445705,
+              "sd": 0.5718237750463514,
+              "min": 61.84299988672137,
+              "max": 62.932000029832125
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.05403999984264374,
+              "load": 0.00011599995195865631,
+              "translate": 0.0002109999768435955,
+              "execute": 0.049930000212043524,
+              "cli_e2e": 0.05466700019314885
+            },
+            {
+              "worker_e2e": 0.05413499986752868,
+              "load": 0.00012099975720047951,
+              "translate": 0.0002060001716017723,
+              "execute": 0.04959399998188019,
+              "cli_e2e": 0.05580299999564886
+            },
+            {
+              "worker_e2e": 0.05340000009164214,
+              "load": 0.00011299969628453255,
+              "translate": 0.0002109999768435955,
+              "execute": 0.0492340000346303,
+              "cli_e2e": 0.05520400032401085
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 53.85833326727152,
+              "sd": 0.39976021074378704,
+              "min": 53.40000009164214,
+              "max": 54.13499986752868
+            },
+            "load": {
+              "mean": 0.1166664684812228,
+              "sd": 0.004041463456578088,
+              "min": 0.11299969628453255,
+              "max": 0.12099975720047951
+            },
+            "translate": {
+              "mean": 0.2093333750963211,
+              "sd": 0.0028866389022623243,
+              "min": 0.2060001716017723,
+              "max": 0.2109999768435955
+            },
+            "execute": {
+              "mean": 49.58600007618467,
+              "sd": 0.34806904574834446,
+              "min": 49.2340000346303,
+              "max": 49.930000212043524
+            },
+            "cli_e2e": {
+              "mean": 55.224666837602854,
+              "sd": 0.5682818107313057,
+              "min": 54.66700019314885,
+              "max": 55.80299999564886
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.05773599958047271,
+              "load": 0.00011999998241662979,
+              "translate": 0.00022500008344650269,
+              "execute": 0.05365800019353628,
+              "cli_e2e": 0.05499100033193827
+            },
+            {
+              "worker_e2e": 0.05833399994298816,
+              "load": 0.00012600002810359,
+              "translate": 0.00022200029343366623,
+              "execute": 0.05411599995568395,
+              "cli_e2e": 0.05544500006362796
+            },
+            {
+              "worker_e2e": 0.05798300029709935,
+              "load": 0.00011399993672966957,
+              "translate": 0.00020800018683075905,
+              "execute": 0.053656999953091145,
+              "cli_e2e": 0.05407499987632036
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 58.0176666068534,
+              "sd": 0.3005036158952588,
+              "min": 57.73599958047271,
+              "max": 58.33399994298816
+            },
+            "load": {
+              "mean": 0.11999998241662979,
+              "sd": 0.00600004568696022,
+              "min": 0.11399993672966957,
+              "max": 0.12600002810359
+            },
+            "translate": {
+              "mean": 0.218333521236976,
+              "sd": 0.009073755286170573,
+              "min": 0.20800018683075905,
+              "max": 0.22500008344650269
+            },
+            "execute": {
+              "mean": 53.810333367437124,
+              "sd": 0.26471550294245394,
+              "min": 53.656999953091145,
+              "max": 54.11599995568395
+            },
+            "cli_e2e": {
+              "mean": 54.83700009062886,
+              "sd": 0.6978625824961733,
+              "min": 54.07499987632036,
+              "max": 55.44500006362796
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06762499967589974,
+              "load": 0.00011499971151351929,
+              "translate": 0.00021400023251771927,
+              "execute": 0.06327599985525012,
+              "cli_e2e": 0.06954800011590123
+            },
+            {
+              "worker_e2e": 0.06621199985966086,
+              "load": 0.00011599995195865631,
+              "translate": 0.00020899996161460876,
+              "execute": 0.062062999699264765,
+              "cli_e2e": 0.07005099998787045
+            },
+            {
+              "worker_e2e": 0.06704699993133545,
+              "load": 0.0001300000585615635,
+              "translate": 0.00023999996483325958,
+              "execute": 0.06259900005534291,
+              "cli_e2e": 0.0699740001000464
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 66.96133315563202,
+              "sd": 0.7103845560802569,
+              "min": 66.21199985966086,
+              "max": 67.62499967589974
+            },
+            "load": {
+              "mean": 0.12033324067791303,
+              "sd": 0.00838663497678123,
+              "min": 0.11499971151351929,
+              "max": 0.1300000585615635
+            },
+            "translate": {
+              "mean": 0.2210000529885292,
+              "sd": 0.0166432618454667,
+              "min": 0.20899996161460876,
+              "max": 0.23999996483325958
+            },
+            "execute": {
+              "mean": 62.6459998699526,
+              "sd": 0.6078643611325908,
+              "min": 62.062999699264765,
+              "max": 63.27599985525012
+            },
+            "cli_e2e": {
+              "mean": 69.85766673460603,
+              "sd": 0.27092860080891323,
+              "min": 69.54800011590123,
+              "max": 70.05099998787045
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06911500031128526,
+              "load": 0.00013299984857439995,
+              "translate": 0.0002460000105202198,
+              "execute": 0.06466899998486042,
+              "cli_e2e": 0.0680829999037087
+            },
+            {
+              "worker_e2e": 0.0689159999601543,
+              "load": 0.00011300016194581985,
+              "translate": 0.00022500008344650269,
+              "execute": 0.0647579999640584,
+              "cli_e2e": 0.06892099976539612
+            },
+            {
+              "worker_e2e": 0.06899400008842349,
+              "load": 0.00011199992150068283,
+              "translate": 0.000216000247746706,
+              "execute": 0.06450499966740608,
+              "cli_e2e": 0.06891799997538328
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 69.00833345328768,
+              "sd": 0.10027147624728124,
+              "min": 68.9159999601543,
+              "max": 69.11500031128526
+            },
+            "load": {
+              "mean": 0.11933331067363422,
+              "sd": 0.011846130755728714,
+              "min": 0.11199992150068283,
+              "max": 0.13299984857439995
+            },
+            "translate": {
+              "mean": 0.22900011390447617,
+              "sd": 0.015394694682432408,
+              "min": 0.216000247746706,
+              "max": 0.2460000105202198
+            },
+            "execute": {
+              "mean": 64.6439998721083,
+              "sd": 0.12833955646936812,
+              "min": 64.50499966740608,
+              "max": 64.7579999640584
+            },
+            "cli_e2e": {
+              "mean": 68.6406665481627,
+              "sd": 0.4829558100255864,
+              "min": 68.0829999037087,
+              "max": 68.92099976539612
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.0785130001604557,
+              "load": 0.00010300008580088615,
+              "translate": 0.00019699987024068832,
+              "execute": 0.0743870004080236,
+              "cli_e2e": 0.08018199959769845
+            },
+            {
+              "worker_e2e": 0.0769550004042685,
+              "load": 0.00011599995195865631,
+              "translate": 0.0002210000529885292,
+              "execute": 0.07255799975246191,
+              "cli_e2e": 0.07945399964228272
+            },
+            {
+              "worker_e2e": 0.07730600005015731,
+              "load": 0.000135000329464674,
+              "translate": 0.00021900003775954247,
+              "execute": 0.0729569997638464,
+              "cli_e2e": 0.08019200013950467
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 77.59133353829384,
+              "sd": 0.8172528431635852,
+              "min": 76.9550004042685,
+              "max": 78.5130001604557
+            },
+            "load": {
+              "mean": 0.11800012240807216,
+              "sd": 0.016093613951051695,
+              "min": 0.10300008580088615,
+              "max": 0.135000329464674
+            },
+            "translate": {
+              "mean": 0.21233332032958666,
+              "sd": 0.013316757636549412,
+              "min": 0.19699987024068832,
+              "max": 0.2210000529885292
+            },
+            "execute": {
+              "mean": 73.30066664144397,
+              "sd": 0.9617125566298469,
+              "min": 72.55799975246191,
+              "max": 74.3870004080236
+            },
+            "cli_e2e": {
+              "mean": 79.94266645982862,
+              "sd": 0.42322741716118323,
+              "min": 79.45399964228272,
+              "max": 80.19200013950467
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.07862000027671456,
+              "load": 0.00011200038716197014,
+              "translate": 0.00021199975162744522,
+              "execute": 0.07422500010579824,
+              "cli_e2e": 0.07845199992880225
+            },
+            {
+              "worker_e2e": 0.0788020002655685,
+              "load": 0.00011599995195865631,
+              "translate": 0.00019899988546967506,
+              "execute": 0.07453700015321374,
+              "cli_e2e": 0.07829200010746717
+            },
+            {
+              "worker_e2e": 0.07953500002622604,
+              "load": 0.00011199992150068283,
+              "translate": 0.00023499969393014908,
+              "execute": 0.07534500025212765,
+              "cli_e2e": 0.07789599988609552
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 78.9856668561697,
+              "sd": 0.4843616394583918,
+              "min": 78.62000027671456,
+              "max": 79.53500002622604
+            },
+            "load": {
+              "mean": 0.11333342020710309,
+              "sd": 0.002309284248580328,
+              "min": 0.11199992150068283,
+              "max": 0.11599995195865631
+            },
+            "translate": {
+              "mean": 0.2153331103424231,
+              "sd": 0.01822992080453844,
+              "min": 0.19899988546967506,
+              "max": 0.23499969393014908
+            },
+            "execute": {
+              "mean": 74.7023335037132,
+              "sd": 0.5780150686054877,
+              "min": 74.22500010579824,
+              "max": 75.34500025212765
+            },
+            "cli_e2e": {
+              "mean": 78.21333330745499,
+              "sd": 0.28622606614455887,
+              "min": 77.89599988609552,
+              "max": 78.45199992880225
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08651100005954504,
+              "load": 0.00012100022286176682,
+              "translate": 0.00022300006821751595,
+              "execute": 0.08225199999287724,
+              "cli_e2e": 0.09114899998530746
+            },
+            {
+              "worker_e2e": 0.08628199994564056,
+              "load": 0.00011799996718764305,
+              "translate": 0.00021299999207258224,
+              "execute": 0.08167999982833862,
+              "cli_e2e": 0.09075199998915195
+            },
+            {
+              "worker_e2e": 0.08632700005546212,
+              "load": 0.00010799989104270935,
+              "translate": 0.00020200014114379883,
+              "execute": 0.08227200014516711,
+              "cli_e2e": 0.09064299985766411
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 86.37333335354924,
+              "sd": 0.1213274244587274,
+              "min": 86.28199994564056,
+              "max": 86.51100005954504
+            },
+            "load": {
+              "mean": 0.11566669369737308,
+              "sd": 0.0068070023311805165,
+              "min": 0.10799989104270935,
+              "max": 0.12100022286176682
+            },
+            "translate": {
+              "mean": 0.212666733811299,
+              "sd": 0.01050392926846399,
+              "min": 0.20200014114379883,
+              "max": 0.22300006821751595
+            },
+            "execute": {
+              "mean": 82.06799998879433,
+              "sd": 0.33616676651350197,
+              "min": 81.67999982833862,
+              "max": 82.27200014516711
+            },
+            "cli_e2e": {
+              "mean": 90.84799994404118,
+              "sd": 0.26631001820776423,
+              "min": 90.64299985766411,
+              "max": 91.14899998530746
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.09050500020384789,
+              "load": 0.0001150001771748066,
+              "translate": 0.00021399976685643196,
+              "execute": 0.0863769999705255,
+              "cli_e2e": 0.08961899997666478
+            },
+            {
+              "worker_e2e": 0.08751199999824166,
+              "load": 0.0001250002533197403,
+              "translate": 0.00022300006821751595,
+              "execute": 0.08315799990668893,
+              "cli_e2e": 0.08913099998608232
+            },
+            {
+              "worker_e2e": 0.08771299989894032,
+              "load": 0.00010599987581372261,
+              "translate": 0.00020499993115663528,
+              "execute": 0.0837840000167489,
+              "cli_e2e": 0.0886969999410212
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 88.5766667003433,
+              "sd": 1.6730071176100672,
+              "min": 87.51199999824166,
+              "max": 90.50500020384789
+            },
+            "load": {
+              "mean": 0.11533343543608983,
+              "sd": 0.009504571644441998,
+              "min": 0.10599987581372261,
+              "max": 0.1250002533197403
+            },
+            "translate": {
+              "mean": 0.21399992207686105,
+              "sd": 0.009000068531444213,
+              "min": 0.20499993115663528,
+              "max": 0.22300006821751595
+            },
+            "execute": {
+              "mean": 84.43966663132112,
+              "sd": 1.706726218478934,
+              "min": 83.15799990668893,
+              "max": 86.3769999705255
+            },
+            "cli_e2e": {
+              "mean": 89.14899996792276,
+              "sd": 0.46126349946790934,
+              "min": 88.6969999410212,
+              "max": 89.61899997666478
+            }
+          }
+        }
+      ],
+      "experiment": "cached sources in CallSite, zero sentinel in VM",
+      "patches": {
+        "lib/wardite/efflorescence/ir.rb": "diff --git a/lib/wardite/efflorescence/ir.rb b/lib/wardite/efflorescence/ir.rb\nindex 5d9d96c..62e8e2a 100644\n--- a/lib/wardite/efflorescence/ir.rb\n+++ b/lib/wardite/efflorescence/ir.rb\n@@ -230,19 +230,36 @@ module Wardite\n         @callee = callee\n         @arguments = arguments\n         @pool_index = callee.index\n+        @argument_count = arguments.size\n+        @argument0 = arguments.size > 0 ? arguments.fetch(0) : -1\n+        @argument1 = arguments.size > 1 ? arguments.fetch(1) : -1\n+        @argument2 = arguments.size > 2 ? arguments.fetch(2) : -1\n       end\n \n-      # Keep the generic argument loop out of the interpreter's live locals.\n-      # The common single-argument path copies directly from the CALL operand.\n+      # Keep multi-argument transfer out of the interpreter's live locals.\n+      # Small arities use cached register indices; only larger calls loop.\n       # @rbs target: Array[Integer]\n       # @rbs source: Array[Integer]\n       # @rbs return: void\n       def copy_arguments(target, source)\n-        argument = 0\n-        count = @arguments.size\n-        while argument < count\n-          target[argument] = source[@arguments.fetch(argument)]\n-          argument += 1\n+        case @argument_count\n+        when 0\n+          # Flat zero-argument CALLs bypass this method altogether.\n+        when 1\n+          target[0] = source[@argument0]\n+        when 2\n+          target[0] = source[@argument0]\n+          target[1] = source[@argument1]\n+        when 3\n+          target[0] = source[@argument0]\n+          target[1] = source[@argument1]\n+          target[2] = source[@argument2]\n+        else\n+          argument = 0\n+          while argument < @argument_count\n+            target[argument] = source[@arguments.fetch(argument)]\n+            argument += 1\n+          end\n         end\n       end\n     end\n",
+        "lib/wardite/efflorescence/optimizer.rb": "diff --git a/lib/wardite/efflorescence/optimizer.rb b/lib/wardite/efflorescence/optimizer.rb\nindex 0487256..c1d3a64 100644\n--- a/lib/wardite/efflorescence/optimizer.rb\n+++ b/lib/wardite/efflorescence/optimizer.rb\n@@ -473,10 +473,10 @@ module Wardite\n                 index += 1\n               end\n               b = calls.size\n-              # The fourth slot is already decoded on every dispatch. A single\n-              # argument can name its source here, bypassing the argument table\n-              # and loop; -1 selects the generic zero/multiple-argument path.\n-              c = arguments.size == 1 ? arguments.fetch(0) : -1\n+              # A single source stays in the fourth word. Zero arguments use\n+              # -2 to skip transfer; -1 delegates multiple arguments to the\n+              # call site (unrolled for 2/3, generic for larger arities).\n+              c = arguments.empty? ? -2 : (arguments.size == 1 ? arguments.fetch(0) : -1)\n               calls << CallSite.new(callee, arguments)\n             elsif opcode == Opcode::BR\n               a *= WIDTH\n",
+        "lib/wardite/efflorescence/vm.rb": "diff --git a/lib/wardite/efflorescence/vm.rb b/lib/wardite/efflorescence/vm.rb\nindex ad98fab..83ad880 100644\n--- a/lib/wardite/efflorescence/vm.rb\n+++ b/lib/wardite/efflorescence/vm.rb\n@@ -338,7 +338,7 @@ module Wardite\n             next_frame = pool.acquire(a)\n             if c >= 0\n               next_frame.registers[0] = registers[c]\n-            else\n+            elsif c != -2\n               site.copy_arguments(next_frame.registers, registers)\n             end\n             frames << next_frame\n"
+      }
+    },
+    {
+      "comparison": "commits",
+      "baseline_commit": "8eb02af365b6138dd960887105caa4437e68a66a",
+      "fixture": "benchmark/i32_call_arities.wat",
+      "fixture_sha256": "e806c50e6839b9adaaa66ec967cde806b4d71e61ac4b73349fb8fd8b795c6cff",
+      "rounds": 1000000,
+      "seed": 123,
+      "runs": 3,
+      "warmups": 1,
+      "spinel": "spinel 2026.10.25+1967 (6e7fc1355) [apple clang 21.0.0 (cc)]",
+      "spinel_flags": [
+        "-O2"
+      ],
+      "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+      "checksums": {
+        "empty_loop": 123,
+        "call_zero": 7000123,
+        "call_one": 123,
+        "call_two": 1000123,
+        "call_three": 3000123,
+        "call_four": 6000123
+      },
+      "snapshots": {
+        "baseline": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+            "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "2668e180a97c5af5c332d4533a3b1a64357b61686dde2474205d860d8b5ab4a1",
+            "worker": "64668cdebc5775795fd181326c719d24c4b876bcec0cea90dff7237e35fcb15a"
+          }
+        },
+        "current": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "ad8a7321a03035dc06ab904a49477dc5ab3acdb77c3d3369b4c4185689e3fbee",
+            "lib/wardite/efflorescence/optimizer.rb": "db7bcad0838c7270a77a5e0cf9f52f00c4a695b50f8374f5efd06c25d69f94b1",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "3dae20b389f565bb90764a47c37825845bc1abf5165d207d722df6df9bfb13a2",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "13f4fcca617495634256b28851fa673ea50157bb83d8dad3c3419afca258c6e3",
+            "worker": "c1560cb8dd4b2ec3fb61896ece409005230495327c7863b2f545d56b93ebbfbe"
+          }
+        }
+      },
+      "results": [
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.02225000038743019,
+              "load": 0.00012300023809075356,
+              "translate": 0.000205999705940485,
+              "execute": 0.018379000015556812,
+              "cli_e2e": 0.023316000122576952
+            },
+            {
+              "worker_e2e": 0.024102999828755856,
+              "load": 0.00011799996718764305,
+              "translate": 0.00020299991592764854,
+              "execute": 0.0193770001642406,
+              "cli_e2e": 0.023413999937474728
+            },
+            {
+              "worker_e2e": 0.023048999719321728,
+              "load": 0.00010299962013959885,
+              "translate": 0.00019800011068582535,
+              "execute": 0.018982999958097935,
+              "cli_e2e": 0.02282699989154935
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 23.13399997850259,
+              "sd": 0.9294194507507989,
+              "min": 22.25000038743019,
+              "max": 24.102999828755856
+            },
+            "load": {
+              "mean": 0.11466660847266515,
+              "sd": 0.010408632948137441,
+              "min": 0.10299962013959885,
+              "max": 0.12300023809075356
+            },
+            "translate": {
+              "mean": 0.20233324418465296,
+              "sd": 0.004041252215498914,
+              "min": 0.19800011068582535,
+              "max": 0.205999705940485
+            },
+            "execute": {
+              "mean": 18.913000045965116,
+              "sd": 0.5026689417172765,
+              "min": 18.379000015556812,
+              "max": 19.3770001642406
+            },
+            "cli_e2e": {
+              "mean": 23.185666650533676,
+              "sd": 0.31445567880106845,
+              "min": 22.82699989154935,
+              "max": 23.413999937474728
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.0226949998177588,
+              "load": 0.00010600034147500992,
+              "translate": 0.0002009999006986618,
+              "execute": 0.018544000107795,
+              "cli_e2e": 0.022652000188827515
+            },
+            {
+              "worker_e2e": 0.023454000242054462,
+              "load": 0.00011100014671683311,
+              "translate": 0.0002000001259148121,
+              "execute": 0.019373999908566475,
+              "cli_e2e": 0.024304999969899654
+            },
+            {
+              "worker_e2e": 0.022972000297158957,
+              "load": 0.00011700019240379333,
+              "translate": 0.0002409997396171093,
+              "execute": 0.018545000348240137,
+              "cli_e2e": 0.023169000167399645
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 23.040333452324074,
+              "sd": 0.38408654765737926,
+              "min": 22.6949998177588,
+              "max": 23.454000242054462
+            },
+            "load": {
+              "mean": 0.11133356019854546,
+              "sd": 0.005507499752719468,
+              "min": 0.10600034147500992,
+              "max": 0.11700019240379333
+            },
+            "translate": {
+              "mean": 0.21399992207686105,
+              "sd": 0.023387870741254483,
+              "min": 0.2000001259148121,
+              "max": 0.2409997396171093
+            },
+            "execute": {
+              "mean": 18.82100012153387,
+              "sd": 0.4789121249914396,
+              "min": 18.544000107795,
+              "max": 19.373999908566475
+            },
+            "cli_e2e": {
+              "mean": 23.375333442042272,
+              "sd": 0.8455957274162976,
+              "min": 22.652000188827515,
+              "max": 24.304999969899654
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06406999984756112,
+              "load": 0.00011200038716197014,
+              "translate": 0.00024299975484609604,
+              "execute": 0.059659000020474195,
+              "cli_e2e": 0.06285300012677908
+            },
+            {
+              "worker_e2e": 0.06631200015544891,
+              "load": 0.00011199992150068283,
+              "translate": 0.00021800026297569275,
+              "execute": 0.06180500006303191,
+              "cli_e2e": 0.06551600014790893
+            },
+            {
+              "worker_e2e": 0.0650059999898076,
+              "load": 0.00011100014671683311,
+              "translate": 0.0002000001259148121,
+              "execute": 0.06089199986308813,
+              "cli_e2e": 0.0639179996214807
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 65.12933333093922,
+              "sd": 1.1260771198804518,
+              "min": 64.06999984756112,
+              "max": 66.31200015544891
+            },
+            "load": {
+              "mean": 0.11166681845982869,
+              "sd": 0.0005773547123663945,
+              "min": 0.11100014671683311,
+              "max": 0.11200038716197014
+            },
+            "translate": {
+              "mean": 0.22033338124553362,
+              "sd": 0.02159455030100944,
+              "min": 0.2000001259148121,
+              "max": 0.24299975484609604
+            },
+            "execute": {
+              "mean": 60.78533331553141,
+              "sd": 1.0769690617377001,
+              "min": 59.659000020474195,
+              "max": 61.80500006303191
+            },
+            "cli_e2e": {
+              "mean": 64.09566663205624,
+              "sd": 1.3403605683246302,
+              "min": 62.85300012677908,
+              "max": 65.51600014790893
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06497099995613098,
+              "load": 0.00011100014671683311,
+              "translate": 0.00022300006821751595,
+              "execute": 0.060523999854922295,
+              "cli_e2e": 0.06317800004035234
+            },
+            {
+              "worker_e2e": 0.06452000001445413,
+              "load": 0.00010699965059757233,
+              "translate": 0.00020400015637278557,
+              "execute": 0.06025699991732836,
+              "cli_e2e": 0.06187899969518185
+            },
+            {
+              "worker_e2e": 0.06419900013133883,
+              "load": 0.00011799996718764305,
+              "translate": 0.00022500008344650269,
+              "execute": 0.060207999777048826,
+              "cli_e2e": 0.06178799970075488
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 64.56333336730798,
+              "sd": 0.38781988986118776,
+              "min": 64.19900013133883,
+              "max": 64.97099995613098
+            },
+            "load": {
+              "mean": 0.11199992150068283,
+              "sd": 0.005567890398010957,
+              "min": 0.10699965059757233,
+              "max": 0.11799996718764305
+            },
+            "translate": {
+              "mean": 0.21733343601226807,
+              "sd": 0.01159018009728596,
+              "min": 0.20400015637278557,
+              "max": 0.22500008344650269
+            },
+            "execute": {
+              "mean": 60.32966651643316,
+              "sd": 0.1700715680915038,
+              "min": 60.207999777048826,
+              "max": 60.523999854922295
+            },
+            "cli_e2e": {
+              "mean": 62.28166647876302,
+              "sd": 0.7775799894351539,
+              "min": 61.78799970075488,
+              "max": 63.178000040352345
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.05534800002351403,
+              "load": 0.0001250002533197403,
+              "translate": 0.000205999705940485,
+              "execute": 0.0511480001732707,
+              "cli_e2e": 0.0554619999602437
+            },
+            {
+              "worker_e2e": 0.05563700012862682,
+              "load": 0.00011999998241662979,
+              "translate": 0.0002209995873272419,
+              "execute": 0.05140800029039383,
+              "cli_e2e": 0.05500400019809604
+            },
+            {
+              "worker_e2e": 0.05689299991354346,
+              "load": 0.00011700019240379333,
+              "translate": 0.00022999988868832588,
+              "execute": 0.05239300010725856,
+              "cli_e2e": 0.05664800014346838
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 55.959333355228104,
+              "sd": 0.8213891871555976,
+              "min": 55.34800002351403,
+              "max": 56.89299991354346
+            },
+            "load": {
+              "mean": 0.12066680938005447,
+              "sd": 0.004041501863673722,
+              "min": 0.11700019240379333,
+              "max": 0.1250002533197403
+            },
+            "translate": {
+              "mean": 0.21899972731868425,
+              "sd": 0.012124428770990034,
+              "min": 0.205999705940485,
+              "max": 0.22999988868832588
+            },
+            "execute": {
+              "mean": 51.64966685697436,
+              "sd": 0.656740630659897,
+              "min": 51.1480001732707,
+              "max": 52.39300010725856
+            },
+            "cli_e2e": {
+              "mean": 55.70466676726937,
+              "sd": 0.848439355240015,
+              "min": 55.00400019809604,
+              "max": 56.64800014346838
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.05704599991440773,
+              "load": 0.00010700011625885963,
+              "translate": 0.0002009999006986618,
+              "execute": 0.05283300019800663,
+              "cli_e2e": 0.05750799970701337
+            },
+            {
+              "worker_e2e": 0.05723699973896146,
+              "load": 0.00010600034147500992,
+              "translate": 0.00019799964502453804,
+              "execute": 0.053378000389784575,
+              "cli_e2e": 0.05570399994030595
+            },
+            {
+              "worker_e2e": 0.059628999792039394,
+              "load": 0.00010800035670399666,
+              "translate": 0.00020699994638562202,
+              "execute": 0.05555699998512864,
+              "cli_e2e": 0.05850499961525202
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 57.97066648180286,
+              "sd": 1.4393304898892862,
+              "min": 57.04599991440773,
+              "max": 59.628999792039394
+            },
+            "load": {
+              "mean": 0.10700027147928874,
+              "sd": 0.0010000076235283193,
+              "min": 0.10600034147500992,
+              "max": 0.10800035670399666
+            },
+            "translate": {
+              "mean": 0.2019998307029406,
+              "sd": 0.004582712205416716,
+              "min": 0.19799964502453804,
+              "max": 0.20699994638562202
+            },
+            "execute": {
+              "mean": 53.922666857639946,
+              "sd": 1.441367365026948,
+              "min": 52.83300019800663,
+              "max": 55.55699998512864
+            },
+            "cli_e2e": {
+              "mean": 57.238999754190445,
+              "sd": 1.4197431196262402,
+              "min": 55.70399994030595,
+              "max": 58.50499961525202
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06614500004798174,
+              "load": 0.00010900013148784637,
+              "translate": 0.00021200021728873253,
+              "execute": 0.061978999990969896,
+              "cli_e2e": 0.06782899983227253
+            },
+            {
+              "worker_e2e": 0.06720300018787384,
+              "load": 0.00011999998241662979,
+              "translate": 0.00020399969071149826,
+              "execute": 0.06299300026148558,
+              "cli_e2e": 0.06932999985292554
+            },
+            {
+              "worker_e2e": 0.06681400025263429,
+              "load": 0.00010700011625885963,
+              "translate": 0.00019899988546967506,
+              "execute": 0.06282699992880225,
+              "cli_e2e": 0.06943099992349744
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 66.72066682949662,
+              "sd": 0.5351396265544837,
+              "min": 66.14500004798174,
+              "max": 67.20300018787384
+            },
+            "load": {
+              "mean": 0.11200007672111194,
+              "sd": 0.006999920255397844,
+              "min": 0.10700011625885963,
+              "max": 0.11999998241662979
+            },
+            "translate": {
+              "mean": 0.20499993115663528,
+              "sd": 0.006557630483830682,
+              "min": 0.19899988546967506,
+              "max": 0.21200021728873253
+            },
+            "execute": {
+              "mean": 62.59966672708591,
+              "sd": 0.5438836507962167,
+              "min": 61.978999990969896,
+              "max": 62.99300026148558
+            },
+            "cli_e2e": {
+              "mean": 68.8633332028985,
+              "sd": 0.8971813611286998,
+              "min": 67.82899983227253,
+              "max": 69.43099992349744
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06695299968123436,
+              "load": 0.00011799996718764305,
+              "translate": 0.00021299999207258224,
+              "execute": 0.06266500009223819,
+              "cli_e2e": 0.06558000016957521
+            },
+            {
+              "worker_e2e": 0.06781999999657273,
+              "load": 0.0001300000585615635,
+              "translate": 0.00023299967870116234,
+              "execute": 0.06326500000432134,
+              "cli_e2e": 0.06779199978336692
+            },
+            {
+              "worker_e2e": 0.06748299999162555,
+              "load": 0.00010700011625885963,
+              "translate": 0.0002000001259148121,
+              "execute": 0.0633349996060133,
+              "cli_e2e": 0.06653699977323413
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 67.41866655647755,
+              "sd": 0.43706576147951254,
+              "min": 66.95299968123436,
+              "max": 67.81999999657273
+            },
+            "load": {
+              "mean": 0.11833338066935539,
+              "sd": 0.011503595520282659,
+              "min": 0.10700011625885963,
+              "max": 0.1300000585615635
+            },
+            "translate": {
+              "mean": 0.21533326556285223,
+              "sd": 0.016623048604575415,
+              "min": 0.2000001259148121,
+              "max": 0.23299967870116234
+            },
+            "execute": {
+              "mean": 63.08833323419094,
+              "sd": 0.3682841265462722,
+              "min": 62.66500009223819,
+              "max": 63.3349996060133
+            },
+            "cli_e2e": {
+              "mean": 66.63633324205875,
+              "sd": 1.1093403113450857,
+              "min": 65.58000016957521,
+              "max": 67.79199978336692
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.080335000064224,
+              "load": 0.00011699972674250603,
+              "translate": 0.00020400015637278557,
+              "execute": 0.07574100000783801,
+              "cli_e2e": 0.08037000009790063
+            },
+            {
+              "worker_e2e": 0.0800000000745058,
+              "load": 0.00011599995195865631,
+              "translate": 0.0002210000529885292,
+              "execute": 0.07550200028344989,
+              "cli_e2e": 0.08234700001776218
+            },
+            {
+              "worker_e2e": 0.07686699973419309,
+              "load": 0.0001050001010298729,
+              "translate": 0.0002060001716017723,
+              "execute": 0.07276299968361855,
+              "cli_e2e": 0.08016999997198582
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 79.0673332909743,
+              "sd": 1.9128923307653503,
+              "min": 76.86699973419309,
+              "max": 80.335000064224
+            },
+            "load": {
+              "mean": 0.1126665932436784,
+              "sd": 0.006658169009034007,
+              "min": 0.1050001010298729,
+              "max": 0.11699972674250603
+            },
+            "translate": {
+              "mean": 0.21033346032102904,
+              "sd": 0.00929151034976667,
+              "min": 0.20400015637278557,
+              "max": 0.2210000529885292
+            },
+            "execute": {
+              "mean": 74.66866665830214,
+              "sd": 1.6546767602357313,
+              "min": 72.76299968361855,
+              "max": 75.74100000783801
+            },
+            "cli_e2e": {
+              "mean": 80.96233336254954,
+              "sd": 1.2033188779931971,
+              "min": 80.16999997198582,
+              "max": 82.34700001776218
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.07809500023722649,
+              "load": 0.00011100014671683311,
+              "translate": 0.00019999966025352478,
+              "execute": 0.07391000026836991,
+              "cli_e2e": 0.08074400015175343
+            },
+            {
+              "worker_e2e": 0.0768860001116991,
+              "load": 0.00011799996718764305,
+              "translate": 0.00021399976685643196,
+              "execute": 0.07234600000083447,
+              "cli_e2e": 0.07902200007811189
+            },
+            {
+              "worker_e2e": 0.07677200017496943,
+              "load": 0.00010599987581372261,
+              "translate": 0.0002060001716017723,
+              "execute": 0.07269300008192658,
+              "cli_e2e": 0.07823799969628453
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 77.25100017463167,
+              "sd": 0.7331446485098463,
+              "min": 76.77200017496943,
+              "max": 78.09500023722649
+            },
+            "load": {
+              "mean": 0.1116666632393996,
+              "sd": 0.00602774679724941,
+              "min": 0.10599987581372261,
+              "max": 0.11799996718764305
+            },
+            "translate": {
+              "mean": 0.20666653290390968,
+              "sd": 0.0070238005568161585,
+              "min": 0.19999966025352478,
+              "max": 0.21399976685643196
+            },
+            "execute": {
+              "mean": 72.98300011704366,
+              "sd": 0.8213398958340357,
+              "min": 72.34600000083447,
+              "max": 73.91000026836991
+            },
+            "cli_e2e": {
+              "mean": 79.33466664204995,
+              "sd": 1.2819242785188991,
+              "min": 78.23799969628453,
+              "max": 80.74400015175343
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08591399993747473,
+              "load": 0.00010900013148784637,
+              "translate": 0.00019800011068582535,
+              "execute": 0.08176199998706579,
+              "cli_e2e": 0.0904320003464818
+            },
+            {
+              "worker_e2e": 0.08665500022470951,
+              "load": 0.00010999990627169609,
+              "translate": 0.00022399984300136566,
+              "execute": 0.08261100016534328,
+              "cli_e2e": 0.09111399995163083
+            },
+            {
+              "worker_e2e": 0.0866340002976358,
+              "load": 0.00012099975720047951,
+              "translate": 0.0002000001259148121,
+              "execute": 0.0822529997676611,
+              "cli_e2e": 0.09121800027787685
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 86.40100015327334,
+              "sd": 0.42188524135740935,
+              "min": 85.91399993747473,
+              "max": 86.65500022470951
+            },
+            "load": {
+              "mean": 0.113333264986674,
+              "sd": 0.006658169009034007,
+              "min": 0.10900013148784637,
+              "max": 0.12099975720047951
+            },
+            "translate": {
+              "mean": 0.20733335986733437,
+              "sd": 0.014468198238611363,
+              "min": 0.19800011068582535,
+              "max": 0.22399984300136566
+            },
+            "execute": {
+              "mean": 82.2086666400234,
+              "sd": 0.4262327947652659,
+              "min": 81.76199998706579,
+              "max": 82.61100016534328
+            },
+            "cli_e2e": {
+              "mean": 90.92133352532983,
+              "sd": 0.426953436461117,
+              "min": 90.4320003464818,
+              "max": 91.21800027787685
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08662499999627471,
+              "load": 0.00010999990627169609,
+              "translate": 0.00019699987024068832,
+              "execute": 0.08251000009477139,
+              "cli_e2e": 0.08567100018262863
+            },
+            {
+              "worker_e2e": 0.09009300032630563,
+              "load": 0.00013400008901953697,
+              "translate": 0.00021999981254339218,
+              "execute": 0.08519000001251698,
+              "cli_e2e": 0.08966700034216046
+            },
+            {
+              "worker_e2e": 0.08787199994549155,
+              "load": 0.00011599995195865631,
+              "translate": 0.00022999988868832588,
+              "execute": 0.08391600009053946,
+              "cli_e2e": 0.08655100036412477
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 88.19666675602396,
+              "sd": 1.756648221947014,
+              "min": 86.62499999627471,
+              "max": 90.09300032630563
+            },
+            "load": {
+              "mean": 0.11999998241662979,
+              "sd": 0.012490091101788506,
+              "min": 0.10999990627169609,
+              "max": 0.13400008901953697
+            },
+            "translate": {
+              "mean": 0.21566652382413545,
+              "sd": 0.016921387287377857,
+              "min": 0.19699987024068832,
+              "max": 0.22999988868832588
+            },
+            "execute": {
+              "mean": 83.8720000659426,
+              "sd": 1.3405416410550197,
+              "min": 82.51000009477139,
+              "max": 85.19000001251698
+            },
+            "cli_e2e": {
+              "mean": 87.29633362963796,
+              "sd": 2.099677493391548,
+              "min": 85.67100018262863,
+              "max": 89.66700034216046
+            }
+          }
+        }
+      ],
+      "experiment": "integer cached indices and explicit nil return, zero sentinel in VM",
+      "patches": {
+        "lib/wardite/efflorescence/ir.rb": "diff --git a/lib/wardite/efflorescence/ir.rb b/lib/wardite/efflorescence/ir.rb\nindex 5d9d96c..e0b7407 100644\n--- a/lib/wardite/efflorescence/ir.rb\n+++ b/lib/wardite/efflorescence/ir.rb\n@@ -230,20 +230,40 @@ module Wardite\n         @callee = callee\n         @arguments = arguments\n         @pool_index = callee.index\n+        @argument_count = arguments.size\n+        @argument0 = arguments[0] || -1\n+        @argument1 = arguments[1] || -1\n+        @argument2 = arguments[2] || -1\n       end\n \n-      # Keep the generic argument loop out of the interpreter's live locals.\n-      # The common single-argument path copies directly from the CALL operand.\n+      # Keep multi-argument transfer out of the interpreter's live locals.\n+      # Small arities use cached register indices; only larger calls loop.\n       # @rbs target: Array[Integer]\n       # @rbs source: Array[Integer]\n       # @rbs return: void\n       def copy_arguments(target, source)\n-        argument = 0\n-        count = @arguments.size\n-        while argument < count\n-          target[argument] = source[@arguments.fetch(argument)]\n-          argument += 1\n+        case @argument_count\n+        when 0\n+          # Flat zero-argument CALLs bypass this method altogether.\n+        when 1\n+          target[0] = source[@argument0]\n+        when 2\n+          target[0] = source[@argument0]\n+          target[1] = source[@argument1]\n+        when 3\n+          target[0] = source[@argument0]\n+          target[1] = source[@argument1]\n+          target[2] = source[@argument2]\n+        else\n+          argument = 0\n+          while argument < @argument_count\n+            target[argument] = source[@arguments.fetch(argument)]\n+            argument += 1\n+          end\n         end\n+        # The transfer has no result. Avoid boxing the last copied value in\n+        # Spinel's generated C when returning from a specialized case arm.\n+        nil\n       end\n     end\n \n",
+        "lib/wardite/efflorescence/optimizer.rb": "diff --git a/lib/wardite/efflorescence/optimizer.rb b/lib/wardite/efflorescence/optimizer.rb\nindex 0487256..c1d3a64 100644\n--- a/lib/wardite/efflorescence/optimizer.rb\n+++ b/lib/wardite/efflorescence/optimizer.rb\n@@ -473,10 +473,10 @@ module Wardite\n                 index += 1\n               end\n               b = calls.size\n-              # The fourth slot is already decoded on every dispatch. A single\n-              # argument can name its source here, bypassing the argument table\n-              # and loop; -1 selects the generic zero/multiple-argument path.\n-              c = arguments.size == 1 ? arguments.fetch(0) : -1\n+              # A single source stays in the fourth word. Zero arguments use\n+              # -2 to skip transfer; -1 delegates multiple arguments to the\n+              # call site (unrolled for 2/3, generic for larger arities).\n+              c = arguments.empty? ? -2 : (arguments.size == 1 ? arguments.fetch(0) : -1)\n               calls << CallSite.new(callee, arguments)\n             elsif opcode == Opcode::BR\n               a *= WIDTH\n",
+        "lib/wardite/efflorescence/vm.rb": "diff --git a/lib/wardite/efflorescence/vm.rb b/lib/wardite/efflorescence/vm.rb\nindex ad98fab..83ad880 100644\n--- a/lib/wardite/efflorescence/vm.rb\n+++ b/lib/wardite/efflorescence/vm.rb\n@@ -338,7 +338,7 @@ module Wardite\n             next_frame = pool.acquire(a)\n             if c >= 0\n               next_frame.registers[0] = registers[c]\n-            else\n+            elsif c != -2\n               site.copy_arguments(next_frame.registers, registers)\n             end\n             frames << next_frame\n"
+      }
+    },
+    {
+      "comparison": "commits",
+      "baseline_commit": "8eb02af365b6138dd960887105caa4437e68a66a",
+      "fixture": "benchmark/i32_call_arities.wat",
+      "fixture_sha256": "e806c50e6839b9adaaa66ec967cde806b4d71e61ac4b73349fb8fd8b795c6cff",
+      "rounds": 1000000,
+      "seed": 123,
+      "runs": 3,
+      "warmups": 1,
+      "spinel": "spinel 2026.10.25+1967 (6e7fc1355) [apple clang 21.0.0 (cc)]",
+      "spinel_flags": [
+        "-O2"
+      ],
+      "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+      "checksums": {
+        "empty_loop": 123,
+        "call_zero": 7000123,
+        "call_one": 123,
+        "call_two": 1000123,
+        "call_three": 3000123,
+        "call_four": 6000123
+      },
+      "snapshots": {
+        "baseline": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+            "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "2668e180a97c5af5c332d4533a3b1a64357b61686dde2474205d860d8b5ab4a1",
+            "worker": "64668cdebc5775795fd181326c719d24c4b876bcec0cea90dff7237e35fcb15a"
+          }
+        },
+        "current": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "ce28c684f5b0352d7d6c366b91ae2ae1bed03ae5a5789e59997c8b600b52a9bc",
+            "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "1c7521c2cc3db8fec26535e85e5fb020590e4ac9cd8f67ca2e8a1818e3d082fe",
+            "worker": "5b4f2ac7794feb235d5bb3dc2e4bfa880ab833ec4fb8f3d6e1c826da80b1f0c5"
+          }
+        }
+      },
+      "results": [
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.024066000245511532,
+              "load": 0.00012099975720047951,
+              "translate": 0.000216000247746706,
+              "execute": 0.01964999968186021,
+              "cli_e2e": 0.024984000250697136
+            },
+            {
+              "worker_e2e": 0.024683000054210424,
+              "load": 0.00014999974519014359,
+              "translate": 0.00025400007143616676,
+              "execute": 0.01963499980047345,
+              "cli_e2e": 0.024674000218510628
+            },
+            {
+              "worker_e2e": 0.023025000002235174,
+              "load": 0.00011700019240379333,
+              "translate": 0.00022500008344650269,
+              "execute": 0.0188099998049438,
+              "cli_e2e": 0.0236219996586442
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 23.924666767319042,
+              "sd": 0.8379871163275561,
+              "min": 23.025000002235174,
+              "max": 24.683000054210424
+            },
+            "load": {
+              "mean": 0.1293332315981388,
+              "sd": 0.01800910096804145,
+              "min": 0.11700019240379333,
+              "max": 0.14999974519014359
+            },
+            "translate": {
+              "mean": 0.2316668008764585,
+              "sd": 0.01985775644617697,
+              "min": 0.216000247746706,
+              "max": 0.25400007143616676
+            },
+            "execute": {
+              "mean": 19.36499976242582,
+              "sd": 0.48070257302638525,
+              "min": 18.8099998049438,
+              "max": 19.64999968186021
+            },
+            "cli_e2e": {
+              "mean": 24.42666670928399,
+              "sd": 0.7138920098851862,
+              "min": 23.6219996586442,
+              "max": 24.984000250697136
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.023397000040858984,
+              "load": 0.00010799989104270935,
+              "translate": 0.00021400023251771927,
+              "execute": 0.01896699983626604,
+              "cli_e2e": 0.024304999969899654
+            },
+            {
+              "worker_e2e": 0.024201999884098768,
+              "load": 0.00012099975720047951,
+              "translate": 0.000216000247746706,
+              "execute": 0.019796999637037516,
+              "cli_e2e": 0.024637000169605017
+            },
+            {
+              "worker_e2e": 0.02322200033813715,
+              "load": 0.00012800004333257675,
+              "translate": 0.00022999988868832588,
+              "execute": 0.01877199998125434,
+              "cli_e2e": 0.023918000049889088
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 23.6070000876983,
+              "sd": 0.5226612595894505,
+              "min": 23.22200033813715,
+              "max": 24.20199988409877
+            },
+            "load": {
+              "mean": 0.11899989719192187,
+              "sd": 0.010148945903139063,
+              "min": 0.10799989104270935,
+              "max": 0.12800004333257675
+            },
+            "translate": {
+              "mean": 0.2200001229842504,
+              "sd": 0.0087175971936852,
+              "min": 0.21400023251771927,
+              "max": 0.22999988868832588
+            },
+            "execute": {
+              "mean": 19.17866648485263,
+              "sd": 0.5442960142990366,
+              "min": 18.77199998125434,
+              "max": 19.796999637037516
+            },
+            "cli_e2e": {
+              "mean": 24.28666672979792,
+              "sd": 0.35985048812993287,
+              "min": 23.918000049889088,
+              "max": 24.637000169605017
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06727999961003661,
+              "load": 0.0001409999094903469,
+              "translate": 0.00045400019735097885,
+              "execute": 0.06152300024405122,
+              "cli_e2e": 0.06409900030121207
+            },
+            {
+              "worker_e2e": 0.06933199986815453,
+              "load": 0.00016300007700920105,
+              "translate": 0.0002310001291334629,
+              "execute": 0.06423599971458316,
+              "cli_e2e": 0.06577500002458692
+            },
+            {
+              "worker_e2e": 0.06744399992749095,
+              "load": 0.00013800011947751045,
+              "translate": 0.00034799985587596893,
+              "execute": 0.06272800033912063,
+              "cli_e2e": 0.06666000001132488
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 68.0186664685607,
+              "sd": 1.1403321840138496,
+              "min": 67.27999961003661,
+              "max": 69.33199986815453
+            },
+            "load": {
+              "mean": 0.14733336865901947,
+              "sd": 0.01365042116300868,
+              "min": 0.13800011947751045,
+              "max": 0.16300007700920105
+            },
+            "translate": {
+              "mean": 0.3443333941201369,
+              "sd": 0.11154523661998941,
+              "min": 0.2310001291334629,
+              "max": 0.45400019735097885
+            },
+            "execute": {
+              "mean": 62.829000099251665,
+              "sd": 1.3593168304102408,
+              "min": 61.52300024405122,
+              "max": 64.23599971458316
+            },
+            "cli_e2e": {
+              "mean": 65.51133344570796,
+              "sd": 1.3006997837367296,
+              "min": 64.09900030121207,
+              "max": 66.66000001132488
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.0729659995995462,
+              "load": 0.00014700042083859444,
+              "translate": 0.0002649999223649502,
+              "execute": 0.06737799989059567,
+              "cli_e2e": 0.06780700013041496
+            },
+            {
+              "worker_e2e": 0.06707899970933795,
+              "load": 0.00013400008901953697,
+              "translate": 0.00023900019004940987,
+              "execute": 0.06246199971064925,
+              "cli_e2e": 0.06406399980187416
+            },
+            {
+              "worker_e2e": 0.06860500015318394,
+              "load": 0.00011899974197149277,
+              "translate": 0.0002210000529885292,
+              "execute": 0.06428400008007884,
+              "cli_e2e": 0.06639500008895993
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 69.54999982068937,
+              "sd": 3.0551530576252626,
+              "min": 67.07899970933795,
+              "max": 72.9659995995462
+            },
+            "load": {
+              "mean": 0.13333341727654138,
+              "sd": 0.014012239031087077,
+              "min": 0.11899974197149277,
+              "max": 0.14700042083859444
+            },
+            "translate": {
+              "mean": 0.24166672180096307,
+              "sd": 0.022120802878106804,
+              "min": 0.2210000529885292,
+              "max": 0.2649999223649502
+            },
+            "execute": {
+              "mean": 64.70799989377458,
+              "sd": 2.48527590496887,
+              "min": 62.46199971064925,
+              "max": 67.37799989059567
+            },
+            "cli_e2e": {
+              "mean": 66.08866667374969,
+              "sd": 1.8902097729669896,
+              "min": 64.06399980187416,
+              "max": 67.80700013041496
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.05741300014778972,
+              "load": 0.00011399993672966957,
+              "translate": 0.00019800011068582535,
+              "execute": 0.052742999978363514,
+              "cli_e2e": 0.059173999819904566
+            },
+            {
+              "worker_e2e": 0.055629000067710876,
+              "load": 0.0001459997147321701,
+              "translate": 0.0002210000529885292,
+              "execute": 0.05082400003448129,
+              "cli_e2e": 0.05716400034725666
+            },
+            {
+              "worker_e2e": 0.05602400004863739,
+              "load": 0.00016699964180588722,
+              "translate": 0.0002300003543496132,
+              "execute": 0.05108099989593029,
+              "cli_e2e": 0.056671999860554934
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 56.35533342137933,
+              "sd": 0.9370167684464019,
+              "min": 55.62900006771088,
+              "max": 57.41300014778972
+            },
+            "load": {
+              "mean": 0.14233309775590897,
+              "sd": 0.026689421960384745,
+              "min": 0.11399993672966957,
+              "max": 0.16699964180588722
+            },
+            "translate": {
+              "mean": 0.21633350600798926,
+              "sd": 0.016502617797690113,
+              "min": 0.19800011068582535,
+              "max": 0.2300003543496132
+            },
+            "execute": {
+              "mean": 51.54933330292503,
+              "sd": 1.041701651738862,
+              "min": 50.82400003448129,
+              "max": 52.742999978363514
+            },
+            "cli_e2e": {
+              "mean": 57.67000000923872,
+              "sd": 1.3255292122736713,
+              "min": 56.67199986055493,
+              "max": 59.173999819904566
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06709000002592802,
+              "load": 0.00012299977242946625,
+              "translate": 0.00021700002253055573,
+              "execute": 0.06263200007379055,
+              "cli_e2e": 0.06204700004309416
+            },
+            {
+              "worker_e2e": 0.07054600026458502,
+              "load": 0.00011999998241662979,
+              "translate": 0.0002359999343752861,
+              "execute": 0.0632710000500083,
+              "cli_e2e": 0.05647600023075938
+            },
+            {
+              "worker_e2e": 0.058064999990165234,
+              "load": 0.00012199999764561653,
+              "translate": 0.0002200002782046795,
+              "execute": 0.053473999723792076,
+              "cli_e2e": 0.06105600018054247
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 65.23366676022609,
+              "sd": 6.444247190908367,
+              "min": 58.064999990165234,
+              "max": 70.54600026458502
+            },
+            "load": {
+              "mean": 0.12166658416390419,
+              "sd": 0.0015274352498940817,
+              "min": 0.11999998241662979,
+              "max": 0.12299977242946625
+            },
+            "translate": {
+              "mean": 0.2243334117035071,
+              "sd": 0.010214264386918814,
+              "min": 0.21700002253055573,
+              "max": 0.2359999343752861
+            },
+            "execute": {
+              "mean": 59.79233328253031,
+              "sd": 5.481157219238458,
+              "min": 53.473999723792076,
+              "max": 63.2710000500083
+            },
+            "cli_e2e": {
+              "mean": 59.859666818132006,
+              "sd": 2.971938738058168,
+              "min": 56.47600023075938,
+              "max": 62.04700004309416
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.07010300038382411,
+              "load": 0.00016299961134791374,
+              "translate": 0.00024900026619434357,
+              "execute": 0.06487100012600422,
+              "cli_e2e": 0.07751900004222989
+            },
+            {
+              "worker_e2e": 0.06897999998182058,
+              "load": 0.00012300023809075356,
+              "translate": 0.00022500008344650269,
+              "execute": 0.06426399992778897,
+              "cli_e2e": 0.0745979999192059
+            },
+            {
+              "worker_e2e": 0.07046500034630299,
+              "load": 0.00013200007379055023,
+              "translate": 0.00023199990391731262,
+              "execute": 0.06576600018888712,
+              "cli_e2e": 0.07016200013458729
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 69.84933357064922,
+              "sd": 0.7743168987617042,
+              "min": 68.97999998182058,
+              "max": 70.46500034630299
+            },
+            "load": {
+              "mean": 0.1393333077430725,
+              "sd": 0.020983796257903968,
+              "min": 0.12300023809075356,
+              "max": 0.16299961134791374
+            },
+            "translate": {
+              "mean": 0.23533341785271963,
+              "sd": 0.012342464476376033,
+              "min": 0.22500008344650269,
+              "max": 0.24900026619434357
+            },
+            "execute": {
+              "mean": 64.96700008089344,
+              "sd": 0.7555879760747745,
+              "min": 64.26399992778897,
+              "max": 65.76600018888712
+            },
+            "cli_e2e": {
+              "mean": 74.0930000320077,
+              "sd": 3.7044069126941186,
+              "min": 70.16200013458729,
+              "max": 77.51900004222989
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.07231599977239966,
+              "load": 0.00017399992793798447,
+              "translate": 0.00024900026619434357,
+              "execute": 0.06767500005662441,
+              "cli_e2e": 0.06962800025939941
+            },
+            {
+              "worker_e2e": 0.07401799969375134,
+              "load": 0.00011899974197149277,
+              "translate": 0.00022300006821751595,
+              "execute": 0.06925000017508864,
+              "cli_e2e": 0.07139699999243021
+            },
+            {
+              "worker_e2e": 0.07237999979406595,
+              "load": 0.0001400001347064972,
+              "translate": 0.0002460000105202198,
+              "execute": 0.06780399987474084,
+              "cli_e2e": 0.06888699997216463
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 72.90466642007232,
+              "sd": 0.9647057760809514,
+              "min": 72.31599977239966,
+              "max": 74.01799969375134
+            },
+            "load": {
+              "mean": 0.1443332682053248,
+              "sd": 0.027754948180930984,
+              "min": 0.11899974197149277,
+              "max": 0.17399992793798447
+            },
+            "translate": {
+              "mean": 0.23933344831069311,
+              "sd": 0.014224445946281174,
+              "min": 0.22300006821751595,
+              "max": 0.24900026619434357
+            },
+            "execute": {
+              "mean": 68.24300003548463,
+              "sd": 0.8744696673643934,
+              "min": 67.67500005662441,
+              "max": 69.25000017508864
+            },
+            "cli_e2e": {
+              "mean": 69.97066674133141,
+              "sd": 1.289608569998294,
+              "min": 68.88699997216463,
+              "max": 71.39699999243021
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08039500005543232,
+              "load": 0.00014399969950318336,
+              "translate": 0.0002260003238916397,
+              "execute": 0.07543199975043535,
+              "cli_e2e": 0.08302399981766939
+            },
+            {
+              "worker_e2e": 0.0833429996855557,
+              "load": 0.00011900020763278008,
+              "translate": 0.0002659996971487999,
+              "execute": 0.07890200009569526,
+              "cli_e2e": 0.08616300020366907
+            },
+            {
+              "worker_e2e": 0.08065499970689416,
+              "load": 0.0001150001771748066,
+              "translate": 0.00022500008344650269,
+              "execute": 0.07640000013634562,
+              "cli_e2e": 0.08184600016102195
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 81.46433314929406,
+              "sd": 1.6321583625806795,
+              "min": 80.39500005543232,
+              "max": 83.3429996855557
+            },
+            "load": {
+              "mean": 0.12600002810359,
+              "sd": 0.015715953320946937,
+              "min": 0.1150001771748066,
+              "max": 0.14399969950318336
+            },
+            "translate": {
+              "mean": 0.23900003482898077,
+              "sd": 0.02338774132478846,
+              "min": 0.22500008344650269,
+              "max": 0.2659996971487999
+            },
+            "execute": {
+              "mean": 76.91133332749207,
+              "sd": 1.790620513481842,
+              "min": 75.43199975043535,
+              "max": 78.90200009569526
+            },
+            "cli_e2e": {
+              "mean": 83.67766672745347,
+              "sd": 2.2314978520634554,
+              "min": 81.84600016102195,
+              "max": 86.16300020366907
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08240999979898334,
+              "load": 0.0001850002445280552,
+              "translate": 0.00023399991914629936,
+              "execute": 0.0774249997921288,
+              "cli_e2e": 0.07861700002104044
+            },
+            {
+              "worker_e2e": 0.08425799990072846,
+              "load": 0.00012900028377771378,
+              "translate": 0.0002159997820854187,
+              "execute": 0.07875700015574694,
+              "cli_e2e": 0.08117899997159839
+            },
+            {
+              "worker_e2e": 0.08294600015506148,
+              "load": 0.00011799996718764305,
+              "translate": 0.000216000247746706,
+              "execute": 0.07875100011005998,
+              "cli_e2e": 0.07873099995777011
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 83.20466661825776,
+              "sd": 0.9507667160767435,
+              "min": 82.40999979898334,
+              "max": 84.25799990072846
+            },
+            "load": {
+              "mean": 0.14400016516447067,
+              "sd": 0.03593058059836521,
+              "min": 0.11799996718764305,
+              "max": 0.1850002445280552
+            },
+            "translate": {
+              "mean": 0.22199998299280801,
+              "sd": 0.010392249555323018,
+              "min": 0.2159997820854187,
+              "max": 0.23399991914629936
+            },
+            "execute": {
+              "mean": 78.3110000193119,
+              "sd": 0.7673045692966025,
+              "min": 77.4249997921288,
+              "max": 78.75700015574694
+            },
+            "cli_e2e": {
+              "mean": 79.50899998346965,
+              "sd": 1.4473852170918735,
+              "min": 78.61700002104044,
+              "max": 81.17899997159839
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.09064400009810925,
+              "load": 0.00012299977242946625,
+              "translate": 0.0004010000266134739,
+              "execute": 0.08577500004321337,
+              "cli_e2e": 0.09353799978271127
+            },
+            {
+              "worker_e2e": 0.0953150000423193,
+              "load": 0.0001449999399483204,
+              "translate": 0.0002469997853040695,
+              "execute": 0.08998400019481778,
+              "cli_e2e": 0.09870699979364872
+            },
+            {
+              "worker_e2e": 0.0888050002977252,
+              "load": 0.0001309998333454132,
+              "translate": 0.00022700009867548943,
+              "execute": 0.08432399993762374,
+              "cli_e2e": 0.09330900013446808
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 91.58800014605124,
+              "sd": 3.3560953854948283,
+              "min": 88.8050002977252,
+              "max": 95.3150000423193
+            },
+            "load": {
+              "mean": 0.13299984857439995,
+              "sd": 0.011135613517069697,
+              "min": 0.12299977242946625,
+              "max": 0.1449999399483204
+            },
+            "translate": {
+              "mean": 0.2916666368643443,
+              "sd": 0.09521207618698724,
+              "min": 0.22700009867548943,
+              "max": 0.4010000266134739
+            },
+            "execute": {
+              "mean": 86.69433339188497,
+              "sd": 2.939860724990888,
+              "min": 84.32399993762374,
+              "max": 89.98400019481778
+            },
+            "cli_e2e": {
+              "mean": 95.18466657027602,
+              "sd": 3.0525782073650793,
+              "min": 93.30900013446808,
+              "max": 98.70699979364872
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.09437099983915687,
+              "load": 0.00012699980288743973,
+              "translate": 0.00023799994960427284,
+              "execute": 0.08981200028210878,
+              "cli_e2e": 0.09380799997597933
+            },
+            {
+              "worker_e2e": 0.09640299994498491,
+              "load": 0.00012199999764561653,
+              "translate": 0.00022399984300136566,
+              "execute": 0.09157300041988492,
+              "cli_e2e": 0.09246199997141957
+            },
+            {
+              "worker_e2e": 0.09396599978208542,
+              "load": 0.00011899974197149277,
+              "translate": 0.00021200021728873253,
+              "execute": 0.08938799984753132,
+              "cli_e2e": 0.09187599970027804
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 94.9133331887424,
+              "sd": 1.3058853491204878,
+              "min": 93.96599978208542,
+              "max": 96.40299994498491
+            },
+            "load": {
+              "mean": 0.12266651416818301,
+              "sd": 0.004041463456578088,
+              "min": 0.11899974197149277,
+              "max": 0.12699980288743973
+            },
+            "translate": {
+              "mean": 0.22466666996479034,
+              "sd": 0.013012686646857384,
+              "min": 0.21200021728873253,
+              "max": 0.23799994960427284
+            },
+            "execute": {
+              "mean": 90.25766684984167,
+              "sd": 1.158672038366553,
+              "min": 89.38799984753132,
+              "max": 91.57300041988492
+            },
+            "cli_e2e": {
+              "mean": 92.71533321589231,
+              "sd": 0.9906006086681829,
+              "min": 91.87599970027804,
+              "max": 93.80799997597933
+            }
+          }
+        }
+      ],
+      "experiment": "integer cached indices and nil return, unchanged VM and Lowerer",
+      "patches": {
+        "lib/wardite/efflorescence/ir.rb": "diff --git a/lib/wardite/efflorescence/ir.rb b/lib/wardite/efflorescence/ir.rb\nindex 5d9d96c..739ab8f 100644\n--- a/lib/wardite/efflorescence/ir.rb\n+++ b/lib/wardite/efflorescence/ir.rb\n@@ -230,20 +230,40 @@ module Wardite\n         @callee = callee\n         @arguments = arguments\n         @pool_index = callee.index\n+        @argument_count = arguments.size\n+        @argument0 = arguments[0] || -1\n+        @argument1 = arguments[1] || -1\n+        @argument2 = arguments[2] || -1\n       end\n \n-      # Keep the generic argument loop out of the interpreter's live locals.\n-      # The common single-argument path copies directly from the CALL operand.\n+      # Keep multi-argument transfer out of the interpreter's live locals.\n+      # Small arities use cached register indices; only larger calls loop.\n       # @rbs target: Array[Integer]\n       # @rbs source: Array[Integer]\n       # @rbs return: void\n       def copy_arguments(target, source)\n-        argument = 0\n-        count = @arguments.size\n-        while argument < count\n-          target[argument] = source[@arguments.fetch(argument)]\n-          argument += 1\n+        case @argument_count\n+        when 0\n+          # No register transfer for zero arguments.\n+        when 1\n+          target[0] = source[@argument0]\n+        when 2\n+          target[0] = source[@argument0]\n+          target[1] = source[@argument1]\n+        when 3\n+          target[0] = source[@argument0]\n+          target[1] = source[@argument1]\n+          target[2] = source[@argument2]\n+        else\n+          argument = 0\n+          while argument < @argument_count\n+            target[argument] = source[@arguments.fetch(argument)]\n+            argument += 1\n+          end\n         end\n+        # The transfer has no result. Avoid boxing the last copied value in\n+        # Spinel's generated C when returning from a specialized case arm.\n+        nil\n       end\n     end\n \n",
+        "lib/wardite/efflorescence/optimizer.rb": "",
+        "lib/wardite/efflorescence/vm.rb": ""
+      }
+    },
+    {
+      "comparison": "commits",
+      "baseline_commit": "8eb02af365b6138dd960887105caa4437e68a66a",
+      "fixture": "benchmark/i32_call_arities.wat",
+      "fixture_sha256": "e806c50e6839b9adaaa66ec967cde806b4d71e61ac4b73349fb8fd8b795c6cff",
+      "rounds": 1000000,
+      "seed": 123,
+      "runs": 3,
+      "warmups": 1,
+      "spinel": "spinel 2026.10.25+1967 (6e7fc1355) [apple clang 21.0.0 (cc)]",
+      "spinel_flags": [
+        "-O2"
+      ],
+      "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+      "checksums": {
+        "empty_loop": 123,
+        "call_zero": 7000123,
+        "call_one": 123,
+        "call_two": 1000123,
+        "call_three": 3000123,
+        "call_four": 6000123
+      },
+      "snapshots": {
+        "baseline": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+            "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "2668e180a97c5af5c332d4533a3b1a64357b61686dde2474205d860d8b5ab4a1",
+            "worker": "64668cdebc5775795fd181326c719d24c4b876bcec0cea90dff7237e35fcb15a"
+          }
+        },
+        "current": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "1188a0c422bbd1808be3f2422c52ab3ac6b2f3e8b51469406413435abe9eda2a",
+            "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "7585f12c060ceacd6ccaf69d6867dce2f803b833777cbeb12ee042f5a24f7dea",
+            "worker": "9ab11362f212fc0a24c948a83f502ba00df1d3539560b8e09ecf06b5a616faa2"
+          }
+        }
+      },
+      "results": [
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.023018999956548214,
+              "load": 0.0001349998638033867,
+              "translate": 0.0002260003238916397,
+              "execute": 0.01890499982982874,
+              "cli_e2e": 0.023074999917298555
+            },
+            {
+              "worker_e2e": 0.023603999987244606,
+              "load": 0.00011900020763278008,
+              "translate": 0.00021999981254339218,
+              "execute": 0.01889700023457408,
+              "cli_e2e": 0.02404399961233139
+            },
+            {
+              "worker_e2e": 0.023827000055462122,
+              "load": 0.00010400032624602318,
+              "translate": 0.00022899964824318886,
+              "execute": 0.019387000240385532,
+              "cli_e2e": 0.02461199974641204
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 23.483333333084982,
+              "sd": 0.4172965025383992,
+              "min": 23.018999956548214,
+              "max": 23.827000055462122
+            },
+            "load": {
+              "mean": 0.11933346589406331,
+              "sd": 0.015502455547239375,
+              "min": 0.10400032624602318,
+              "max": 0.1349998638033867
+            },
+            "translate": {
+              "mean": 0.2249999282260736,
+              "sd": 0.004582559794655854,
+              "min": 0.21999981254339218,
+              "max": 0.22899964824318886
+            },
+            "execute": {
+              "mean": 19.063000101596117,
+              "sd": 0.2806208578005739,
+              "min": 18.89700023457408,
+              "max": 19.387000240385532
+            },
+            "cli_e2e": {
+              "mean": 23.910333092013996,
+              "sd": 0.7771693333270684,
+              "min": 23.074999917298555,
+              "max": 24.61199974641204
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.02276200009509921,
+              "load": 0.00011300016194581985,
+              "translate": 0.00020999973639845848,
+              "execute": 0.018496000207960606,
+              "cli_e2e": 0.024271999951452017
+            },
+            {
+              "worker_e2e": 0.02331099985167384,
+              "load": 0.0001360001042485237,
+              "translate": 0.0002210000529885292,
+              "execute": 0.018937999848276377,
+              "cli_e2e": 0.02339999983087182
+            },
+            {
+              "worker_e2e": 0.02313900040462613,
+              "load": 0.00011299969628453255,
+              "translate": 0.00020899996161460876,
+              "execute": 0.0188790000975132,
+              "cli_e2e": 0.023510999977588654
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 23.070666783799727,
+              "sd": 0.2808065098625492,
+              "min": 22.76200009509921,
+              "max": 23.31099985167384
+            },
+            "load": {
+              "mean": 0.12066665415962537,
+              "sd": 0.013279157306687895,
+              "min": 0.11299969628453255,
+              "max": 0.1360001042485237
+            },
+            "translate": {
+              "mean": 0.2133332503338655,
+              "sd": 0.006658437099933772,
+              "min": 0.20899996161460876,
+              "max": 0.2210000529885292
+            },
+            "execute": {
+              "mean": 18.77100005125006,
+              "sd": 0.23997693223401242,
+              "min": 18.496000207960606,
+              "max": 18.937999848276377
+            },
+            "cli_e2e": {
+              "mean": 23.727666586637497,
+              "sd": 0.47466237177652126,
+              "min": 23.39999983087182,
+              "max": 24.271999951452017
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06584100006148219,
+              "load": 0.00013699987903237343,
+              "translate": 0.000216000247746706,
+              "execute": 0.061706000007689,
+              "cli_e2e": 0.06403600005432963
+            },
+            {
+              "worker_e2e": 0.06489200005307794,
+              "load": 0.00011599995195865631,
+              "translate": 0.0002260003238916397,
+              "execute": 0.06046399986371398,
+              "cli_e2e": 0.06348600005730987
+            },
+            {
+              "worker_e2e": 0.06569400010630488,
+              "load": 0.00011699972674250603,
+              "translate": 0.0002200002782046795,
+              "execute": 0.06134000001475215,
+              "cli_e2e": 0.0646730000153184
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 65.47566674028833,
+              "sd": 0.510786010012907,
+              "min": 64.89200005307794,
+              "max": 65.84100006148219
+            },
+            "load": {
+              "mean": 0.12333318591117859,
+              "sd": 0.011846255233460539,
+              "min": 0.11599995195865631,
+              "max": 0.13699987903237343
+            },
+            "translate": {
+              "mean": 0.22066694994767508,
+              "sd": 0.005033261282290001,
+              "min": 0.216000247746706,
+              "max": 0.2260003238916397
+            },
+            "execute": {
+              "mean": 61.16999996205171,
+              "sd": 0.6382132111192204,
+              "min": 60.46399986371398,
+              "max": 61.706000007689
+            },
+            "cli_e2e": {
+              "mean": 64.0650000423193,
+              "sd": 0.5940311225479791,
+              "min": 63.486000057309866,
+              "max": 64.6730000153184
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06661499990150332,
+              "load": 0.0001360001042485237,
+              "translate": 0.0002620001323521137,
+              "execute": 0.06184599967673421,
+              "cli_e2e": 0.07268500002101064
+            },
+            {
+              "worker_e2e": 0.06306100031360984,
+              "load": 0.00011700019240379333,
+              "translate": 0.0002310001291334629,
+              "execute": 0.05852800002321601,
+              "cli_e2e": 0.06853199983015656
+            },
+            {
+              "worker_e2e": 0.06772999977692962,
+              "load": 0.00015700003132224083,
+              "translate": 0.0002469997853040695,
+              "execute": 0.062138000037521124,
+              "cli_e2e": 0.07067300006747246
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 65.8019999973476,
+              "sd": 2.4383633097301183,
+              "min": 63.06100031360984,
+              "max": 67.72999977692962
+            },
+            "load": {
+              "mean": 0.1366667759915193,
+              "sd": 0.020008251217563177,
+              "min": 0.11700019240379333,
+              "max": 0.15700003132224083
+            },
+            "translate": {
+              "mean": 0.2466666822632154,
+              "sd": 0.015502685835556366,
+              "min": 0.2310001291334629,
+              "max": 0.2620001323521137
+            },
+            "execute": {
+              "mean": 60.83733324582378,
+              "sd": 2.0052633249663043,
+              "min": 58.52800002321601,
+              "max": 62.138000037521124
+            },
+            "cli_e2e": {
+              "mean": 70.62999997287989,
+              "sd": 2.0768339852789675,
+              "min": 68.53199983015656,
+              "max": 72.68500002101064
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.05377200013026595,
+              "load": 0.00012800004333257675,
+              "translate": 0.00023300014436244965,
+              "execute": 0.049507999792695045,
+              "cli_e2e": 0.05594700016081333
+            },
+            {
+              "worker_e2e": 0.05451999977231026,
+              "load": 0.00012199999764561653,
+              "translate": 0.00021900003775954247,
+              "execute": 0.050219000317156315,
+              "cli_e2e": 0.05561999976634979
+            },
+            {
+              "worker_e2e": 0.056955999694764614,
+              "load": 0.00011899974197149277,
+              "translate": 0.000216000247746706,
+              "execute": 0.0519599998369813,
+              "cli_e2e": 0.05819900007918477
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 55.08266653244694,
+              "sd": 1.6649050179826936,
+              "min": 53.77200013026595,
+              "max": 56.955999694764614
+            },
+            "load": {
+              "mean": 0.12299992764989535,
+              "sd": 0.004582712205416716,
+              "min": 0.11899974197149277,
+              "max": 0.12800004333257675
+            },
+            "translate": {
+              "mean": 0.2226668099562327,
+              "sd": 0.009073755286170573,
+              "min": 0.216000247746706,
+              "max": 0.23300014436244965
+            },
+            "execute": {
+              "mean": 50.562333315610886,
+              "sd": 1.2615404136078239,
+              "min": 49.507999792695045,
+              "max": 51.9599998369813
+            },
+            "cli_e2e": {
+              "mean": 56.58866666878263,
+              "sd": 1.4041412265110178,
+              "min": 55.61999976634979,
+              "max": 58.19900007918477
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.05911599984392524,
+              "load": 0.00011199992150068283,
+              "translate": 0.00020799972116947174,
+              "execute": 0.054979000240564346,
+              "cli_e2e": 0.05915099987760186
+            },
+            {
+              "worker_e2e": 0.058725000359117985,
+              "load": 0.00012300023809075356,
+              "translate": 0.0002210000529885292,
+              "execute": 0.054192000068724155,
+              "cli_e2e": 0.059344999957829714
+            },
+            {
+              "worker_e2e": 0.05831999983638525,
+              "load": 0.00015700003132224083,
+              "translate": 0.00020299991592764854,
+              "execute": 0.05386300012469292,
+              "cli_e2e": 0.06058100005611777
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 58.72033334647616,
+              "sd": 0.3980205255463144,
+              "min": 58.31999983638525,
+              "max": 59.11599984392524
+            },
+            "load": {
+              "mean": 0.13066673030455908,
+              "sd": 0.02345919431984666,
+              "min": 0.11199992150068283,
+              "max": 0.15700003132224083
+            },
+            "translate": {
+              "mean": 0.21066656336188316,
+              "sd": 0.009291677405723989,
+              "min": 0.20299991592764854,
+              "max": 0.2210000529885292
+            },
+            "execute": {
+              "mean": 54.34466681132714,
+              "sd": 0.5734495752714578,
+              "min": 53.86300012469292,
+              "max": 54.979000240564346
+            },
+            "cli_e2e": {
+              "mean": 59.69233329718312,
+              "sd": 0.7756967604087784,
+              "min": 59.15099987760186,
+              "max": 60.58100005611777
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08964199991896749,
+              "load": 0.00013800011947751045,
+              "translate": 0.00021400023251771927,
+              "execute": 0.06264599971473217,
+              "cli_e2e": 0.06811100011691451
+            },
+            {
+              "worker_e2e": 0.07211299985647202,
+              "load": 0.0001400001347064972,
+              "translate": 0.00021399976685643196,
+              "execute": 0.06701300013810396,
+              "cli_e2e": 0.07393600000068545
+            },
+            {
+              "worker_e2e": 0.06710299989208579,
+              "load": 0.00013699987903237343,
+              "translate": 0.00022500008344650269,
+              "execute": 0.06263200007379055,
+              "cli_e2e": 0.06970899971202016
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 76.2859998891751,
+              "sd": 11.834782528954564,
+              "min": 67.10299989208579,
+              "max": 89.64199991896749
+            },
+            "load": {
+              "mean": 0.1383333777387937,
+              "sd": 0.0015276384811411063,
+              "min": 0.13699987903237343,
+              "max": 0.1400001347064972
+            },
+            "translate": {
+              "mean": 0.21766669427355131,
+              "sd": 0.006350901323881557,
+              "min": 0.21399976685643196,
+              "max": 0.22500008344650269
+            },
+            "execute": {
+              "mean": 64.09699997554223,
+              "sd": 2.5253399194032613,
+              "min": 62.63200007379055,
+              "max": 67.01300013810396
+            },
+            "cli_e2e": {
+              "mean": 70.58533327654004,
+              "sd": 3.009755189165884,
+              "min": 68.11100011691451,
+              "max": 73.93600000068545
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.0859179999679327,
+              "load": 0.00011499971151351929,
+              "translate": 0.00021299999207258224,
+              "execute": 0.06554999994114041,
+              "cli_e2e": 0.10219200002029538
+            },
+            {
+              "worker_e2e": 0.07383299991488457,
+              "load": 0.00011999998241662979,
+              "translate": 0.00021700002253055573,
+              "execute": 0.06912000011652708,
+              "cli_e2e": 0.07496000034734607
+            },
+            {
+              "worker_e2e": 0.07101499987766147,
+              "load": 0.00012400001287460327,
+              "translate": 0.0002109999768435955,
+              "execute": 0.0664649996906519,
+              "cli_e2e": 0.07277099974453449
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 76.92199992015958,
+              "sd": 7.917151867755088,
+              "min": 71.01499987766147,
+              "max": 85.9179999679327
+            },
+            "load": {
+              "mean": 0.11966656893491745,
+              "sd": 0.004509404568224414,
+              "min": 0.11499971151351929,
+              "max": 0.12400001287460327
+            },
+            "translate": {
+              "mean": 0.21366666381557783,
+              "sd": 0.0030550737259653913,
+              "min": 0.2109999768435955,
+              "max": 0.21700002253055573
+            },
+            "execute": {
+              "mean": 67.04499991610646,
+              "sd": 1.854326160418043,
+              "min": 65.54999994114041,
+              "max": 69.12000011652708
+            },
+            "cli_e2e": {
+              "mean": 83.30766670405865,
+              "sd": 16.390895781159244,
+              "min": 72.77099974453449,
+              "max": 102.19200002029538
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08043800015002489,
+              "load": 0.0001309998333454132,
+              "translate": 0.00021800026297569275,
+              "execute": 0.07595499977469444,
+              "cli_e2e": 0.10287000006064773
+            },
+            {
+              "worker_e2e": 0.0786850000731647,
+              "load": 0.0001509999856352806,
+              "translate": 0.00021700002253055573,
+              "execute": 0.07387800002470613,
+              "cli_e2e": 0.0804379996843636
+            },
+            {
+              "worker_e2e": 0.07876900024712086,
+              "load": 0.00011399993672966957,
+              "translate": 0.00020299991592764854,
+              "execute": 0.07448700023815036,
+              "cli_e2e": 0.0800640000961721
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 79.29733349010348,
+              "sd": 0.9887387567494061,
+              "min": 78.6850000731647,
+              "max": 80.43800015002489
+            },
+            "load": {
+              "mean": 0.13199991857012114,
+              "sd": 0.0185202870549274,
+              "min": 0.11399993672966957,
+              "max": 0.1509999856352806
+            },
+            "translate": {
+              "mean": 0.212666733811299,
+              "sd": 0.008386634976781228,
+              "min": 0.20299991592764854,
+              "max": 0.21800026297569275
+            },
+            "execute": {
+              "mean": 74.7733333458503,
+              "sd": 1.0676947020505052,
+              "min": 73.87800002470613,
+              "max": 75.95499977469444
+            },
+            "cli_e2e": {
+              "mean": 87.79066661372781,
+              "sd": 13.06042464185373,
+              "min": 80.0640000961721,
+              "max": 102.87000006064773
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08028099965304136,
+              "load": 0.00011599995195865631,
+              "translate": 0.00021500000730156898,
+              "execute": 0.0760709997266531,
+              "cli_e2e": 0.08315399987623096
+            },
+            {
+              "worker_e2e": 0.08134400006383657,
+              "load": 0.00012900028377771378,
+              "translate": 0.00021700002253055573,
+              "execute": 0.0766380000859499,
+              "cli_e2e": 0.08282300038263202
+            },
+            {
+              "worker_e2e": 0.08443599985912442,
+              "load": 0.00011899974197149277,
+              "translate": 0.00021500000730156898,
+              "execute": 0.079969999846071,
+              "cli_e2e": 0.08531499980017543
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 82.02033319200079,
+              "sd": 2.158489414689555,
+              "min": 80.28099965304136,
+              "max": 84.43599985912442
+            },
+            "load": {
+              "mean": 0.12133332590262096,
+              "sd": 0.006807082144657448,
+              "min": 0.11599995195865631,
+              "max": 0.12900028377771378
+            },
+            "translate": {
+              "mean": 0.21566667904456457,
+              "sd": 0.0011547093308388453,
+              "min": 0.21500000730156898,
+              "max": 0.21700002253055573
+            },
+            "execute": {
+              "mean": 77.55966655289133,
+              "sd": 2.1065735899840865,
+              "min": 76.0709997266531,
+              "max": 79.969999846071
+            },
+            "cli_e2e": {
+              "mean": 83.76400001967947,
+              "sd": 1.3533626289781238,
+              "min": 82.82300038263202,
+              "max": 85.31499980017543
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08641300024464726,
+              "load": 0.00011900020763278008,
+              "translate": 0.00021999981254339218,
+              "execute": 0.08216700004413724,
+              "cli_e2e": 0.09027299983426929
+            },
+            {
+              "worker_e2e": 0.0888229999691248,
+              "load": 0.00014299992471933365,
+              "translate": 0.0002260003238916397,
+              "execute": 0.08425599988549948,
+              "cli_e2e": 0.09538399986922741
+            },
+            {
+              "worker_e2e": 0.09411599999293685,
+              "load": 0.00013299984857439995,
+              "translate": 0.0002310001291334629,
+              "execute": 0.08939599990844727,
+              "cli_e2e": 0.09472599998116493
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 89.78400006890297,
+              "sd": 3.940392388375503,
+              "min": 86.41300024464726,
+              "max": 94.11599999293685
+            },
+            "load": {
+              "mean": 0.1316666603088379,
+              "sd": 0.012055274707455951,
+              "min": 0.11900020763278008,
+              "max": 0.14299992471933365
+            },
+            "translate": {
+              "mean": 0.22566675518949827,
+              "sd": 0.005507739312071019,
+              "min": 0.21999981254339218,
+              "max": 0.2310001291334629
+            },
+            "execute": {
+              "mean": 85.272999946028,
+              "sd": 3.720258942853958,
+              "min": 82.16700004413724,
+              "max": 89.39599990844727
+            },
+            "cli_e2e": {
+              "mean": 93.46099989488721,
+              "sd": 2.780422495421779,
+              "min": 90.27299983426929,
+              "max": 95.38399986922741
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08972799964249134,
+              "load": 0.00011199992150068283,
+              "translate": 0.0002100002020597458,
+              "execute": 0.08563200011849403,
+              "cli_e2e": 0.0918109999038279
+            },
+            {
+              "worker_e2e": 0.09572599967941642,
+              "load": 0.00014400016516447067,
+              "translate": 0.00022700009867548943,
+              "execute": 0.09049300011247396,
+              "cli_e2e": 0.0957969999872148
+            },
+            {
+              "worker_e2e": 0.0952050001360476,
+              "load": 0.00012400001287460327,
+              "translate": 0.00022300006821751595,
+              "execute": 0.09081100020557642,
+              "cli_e2e": 0.09810499986633658
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 93.55299981931846,
+              "sd": 3.3227744274315723,
+              "min": 89.72799964249134,
+              "max": 95.72599967941642
+            },
+            "load": {
+              "mean": 0.1266666998465856,
+              "sd": 0.016165930631743836,
+              "min": 0.11199992150068283,
+              "max": 0.14400016516447067
+            },
+            "translate": {
+              "mean": 0.2200001229842504,
+              "sd": 0.00888813111899445,
+              "min": 0.2100002020597458,
+              "max": 0.22700009867548943
+            },
+            "execute": {
+              "mean": 88.97866681218147,
+              "sd": 2.902656452937706,
+              "min": 85.63200011849403,
+              "max": 90.81100020557642
+            },
+            "cli_e2e": {
+              "mean": 95.2376665857931,
+              "sd": 3.184061757013248,
+              "min": 91.8109999038279,
+              "max": 98.10499986633658
+            }
+          }
+        }
+      ],
+      "experiment": "table indices and nil return, unchanged VM and Lowerer",
+      "patches": {
+        "lib/wardite/efflorescence/ir.rb": "diff --git a/lib/wardite/efflorescence/ir.rb b/lib/wardite/efflorescence/ir.rb\nindex 5d9d96c..d882fa4 100644\n--- a/lib/wardite/efflorescence/ir.rb\n+++ b/lib/wardite/efflorescence/ir.rb\n@@ -232,18 +232,33 @@ module Wardite\n         @pool_index = callee.index\n       end\n \n-      # Keep the generic argument loop out of the interpreter's live locals.\n-      # The common single-argument path copies directly from the CALL operand.\n+      # Keep multi-argument transfer out of the interpreter's live locals.\n+      # Small arities copy directly; only larger calls loop.\n       # @rbs target: Array[Integer]\n       # @rbs source: Array[Integer]\n       # @rbs return: void\n       def copy_arguments(target, source)\n-        argument = 0\n         count = @arguments.size\n-        while argument < count\n-          target[argument] = source[@arguments.fetch(argument)]\n-          argument += 1\n+        case count\n+        when 0\n+          # No register transfer for zero arguments.\n+        when 2\n+          target[0] = source[@arguments.fetch(0)]\n+          target[1] = source[@arguments.fetch(1)]\n+        when 3\n+          target[0] = source[@arguments.fetch(0)]\n+          target[1] = source[@arguments.fetch(1)]\n+          target[2] = source[@arguments.fetch(2)]\n+        else\n+          argument = 0\n+          while argument < count\n+            target[argument] = source[@arguments.fetch(argument)]\n+            argument += 1\n+          end\n         end\n+        # The transfer has no result. Avoid boxing the last copied value in\n+        # Spinel's generated C when returning from a specialized case arm.\n+        nil\n       end\n     end\n \n",
+        "lib/wardite/efflorescence/optimizer.rb": "",
+        "lib/wardite/efflorescence/vm.rb": ""
+      }
+    },
+    {
+      "comparison": "commits",
+      "baseline_commit": "8eb02af365b6138dd960887105caa4437e68a66a",
+      "fixture": "benchmark/i32_call_arities.wat",
+      "fixture_sha256": "e806c50e6839b9adaaa66ec967cde806b4d71e61ac4b73349fb8fd8b795c6cff",
+      "rounds": 1000000,
+      "seed": 123,
+      "runs": 3,
+      "warmups": 1,
+      "spinel": "spinel 2026.10.25+1967 (6e7fc1355) [apple clang 21.0.0 (cc)]",
+      "spinel_flags": [
+        "-O2"
+      ],
+      "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+      "checksums": {
+        "empty_loop": 123,
+        "call_zero": 7000123,
+        "call_one": 123,
+        "call_two": 1000123,
+        "call_three": 3000123,
+        "call_four": 6000123
+      },
+      "snapshots": {
+        "baseline": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+            "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "2668e180a97c5af5c332d4533a3b1a64357b61686dde2474205d860d8b5ab4a1",
+            "worker": "64668cdebc5775795fd181326c719d24c4b876bcec0cea90dff7237e35fcb15a"
+          }
+        },
+        "current": {
+          "source_sha256": {
+            "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+            "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+            "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+            "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+            "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+            "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+            "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+            "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+            "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+            "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+            "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+            "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+            "lib/wardite/efflorescence/ir.rb": "a2236aecec294b78159e083a58acc1b755f404157a1b9e65917212fa7a9598f9",
+            "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+            "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+            "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+            "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+            "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+            "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+            "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+            "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+            "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+            "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+            "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+            "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+            "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+            "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+            "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+            "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+          },
+          "binary_sha256": {
+            "wardite": "c2e8ba0893cfc2ad6867d25018f1036f54c552758e397496a556b4eeeb8d8721",
+            "worker": "0b6755d1a9bda81ae12253c130cb6fcd52d79a796cfedac0a492e0baa08da56e"
+          }
+        }
+      },
+      "results": [
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.022992999758571386,
+              "load": 0.00010900013148784637,
+              "translate": 0.00023199990391731262,
+              "execute": 0.018698000349104404,
+              "cli_e2e": 0.023100000340491533
+            },
+            {
+              "worker_e2e": 0.02290600026026368,
+              "load": 0.00010999990627169609,
+              "translate": 0.00020200014114379883,
+              "execute": 0.018403000198304653,
+              "cli_e2e": 0.023004000075161457
+            },
+            {
+              "worker_e2e": 0.022671000100672245,
+              "load": 0.00010399986058473587,
+              "translate": 0.0002109999768435955,
+              "execute": 0.01853200001642108,
+              "cli_e2e": 0.02315999986603856
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 22.856666706502438,
+              "sd": 0.16657219025643555,
+              "min": 22.671000100672245,
+              "max": 22.992999758571386
+            },
+            "load": {
+              "mean": 0.10766663278142612,
+              "sd": 0.0032146230201099586,
+              "min": 0.10399986058473587,
+              "max": 0.10999990627169609
+            },
+            "translate": {
+              "mean": 0.21500000730156898,
+              "sd": 0.015394694682432408,
+              "min": 0.20200014114379883,
+              "max": 0.23199990391731262
+            },
+            "execute": {
+              "mean": 18.544333521276712,
+              "sd": 0.14788630345467066,
+              "min": 18.403000198304653,
+              "max": 18.698000349104404
+            },
+            "cli_e2e": {
+              "mean": 23.088000093897183,
+              "sd": 0.07868918685034766,
+              "min": 23.004000075161457,
+              "max": 23.15999986603856
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "empty_loop",
+          "metrics": "dispatches=3000003 copies=1 register_reads=2000003 register_writes=1000001 function_entries=1 frames_created=1",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.023049999959766865,
+              "load": 0.00011600041761994362,
+              "translate": 0.00021199975162744522,
+              "execute": 0.018693000078201294,
+              "cli_e2e": 0.0231929998844862
+            },
+            {
+              "worker_e2e": 0.02308400021865964,
+              "load": 0.00010800035670399666,
+              "translate": 0.00020199967548251152,
+              "execute": 0.018804999999701977,
+              "cli_e2e": 0.023168999701738358
+            },
+            {
+              "worker_e2e": 0.023182000033557415,
+              "load": 0.00010999990627169609,
+              "translate": 0.00020200014114379883,
+              "execute": 0.01899300003424287,
+              "cli_e2e": 0.022915000095963478
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 23.10533340399464,
+              "sd": 0.06853709555839656,
+              "min": 23.049999959766865,
+              "max": 23.182000033557415
+            },
+            "load": {
+              "mean": 0.11133356019854546,
+              "sd": 0.004163438274091028,
+              "min": 0.10800035670399666,
+              "max": 0.11600041761994362
+            },
+            "translate": {
+              "mean": 0.20533318941791853,
+              "sd": 0.005773412234054244,
+              "min": 0.20199967548251152,
+              "max": 0.21199975162744522
+            },
+            "execute": {
+              "mean": 18.83033337071538,
+              "sd": 0.15159593718636954,
+              "min": 18.693000078201294,
+              "max": 18.99300003424287
+            },
+            "cli_e2e": {
+              "mean": 23.09233322739601,
+              "sd": 0.15404311675869692,
+              "min": 22.915000095963478,
+              "max": 23.1929998844862
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06367299985140562,
+              "load": 0.00011899974197149277,
+              "translate": 0.0002200002782046795,
+              "execute": 0.05919699976220727,
+              "cli_e2e": 0.06359999999403954
+            },
+            {
+              "worker_e2e": 0.06451399996876717,
+              "load": 0.00011399993672966957,
+              "translate": 0.00021500000730156898,
+              "execute": 0.06005199998617172,
+              "cli_e2e": 0.06331299990415573
+            },
+            {
+              "worker_e2e": 0.06490700040012598,
+              "load": 0.00011300016194581985,
+              "translate": 0.0002109999768435955,
+              "execute": 0.060353999957442284,
+              "cli_e2e": 0.06310699973255396
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 64.3646667400996,
+              "sd": 0.630408318828955,
+              "min": 63.67299985140562,
+              "max": 64.90700040012598
+            },
+            "load": {
+              "mean": 0.11533328021566074,
+              "sd": 0.003214357441206507,
+              "min": 0.11300016194581985,
+              "max": 0.11899974197149277
+            },
+            "translate": {
+              "mean": 0.21533342078328133,
+              "sd": 0.004509404568224414,
+              "min": 0.2109999768435955,
+              "max": 0.2200002782046795
+            },
+            "execute": {
+              "mean": 59.86766656860709,
+              "sd": 0.600122045559699,
+              "min": 59.19699976220727,
+              "max": 60.353999957442284
+            },
+            "cli_e2e": {
+              "mean": 63.33999987691641,
+              "sd": 0.24760667065533537,
+              "min": 63.10699973255396,
+              "max": 63.599999994039536
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_zero",
+          "metrics": "dispatches=6000003 copies=1 register_reads=5000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06332099996507168,
+              "load": 0.00010799989104270935,
+              "translate": 0.0002009999006986618,
+              "execute": 0.059237999841570854,
+              "cli_e2e": 0.06327899964526296
+            },
+            {
+              "worker_e2e": 0.06292299972847104,
+              "load": 0.00011700019240379333,
+              "translate": 0.00021399976685643196,
+              "execute": 0.05872899992391467,
+              "cli_e2e": 0.06264299992471933
+            },
+            {
+              "worker_e2e": 0.0634800000116229,
+              "load": 0.00011700019240379333,
+              "translate": 0.00021399976685643196,
+              "execute": 0.05907500023022294,
+              "cli_e2e": 0.06326500000432134
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 63.24133323505521,
+              "sd": 0.28691883828262704,
+              "min": 62.92299972847104,
+              "max": 63.480000011622906
+            },
+            "load": {
+              "mean": 0.11400009195009868,
+              "sd": 0.005196326413609594,
+              "min": 0.10799989104270935,
+              "max": 0.11700019240379333
+            },
+            "translate": {
+              "mean": 0.20966647813717523,
+              "sd": 0.007505476225617706,
+              "min": 0.2009999006986618,
+              "max": 0.21399976685643196
+            },
+            "execute": {
+              "mean": 59.01399999856949,
+              "sd": 0.2599249896409182,
+              "min": 58.72899992391467,
+              "max": 59.237999841570854
+            },
+            "cli_e2e": {
+              "mean": 63.06233319143454,
+              "sd": 0.3632207165308166,
+              "min": 62.642999924719334,
+              "max": 63.27899964526296
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.054256999865174294,
+              "load": 0.00011399993672966957,
+              "translate": 0.0002100002020597458,
+              "execute": 0.04964300012215972,
+              "cli_e2e": 0.05533199990168214
+            },
+            {
+              "worker_e2e": 0.054312000051140785,
+              "load": 0.00011799996718764305,
+              "translate": 0.000216000247746706,
+              "execute": 0.04994199983775616,
+              "cli_e2e": 0.05609200010076165
+            },
+            {
+              "worker_e2e": 0.05512400018051267,
+              "load": 0.00011200038716197014,
+              "translate": 0.0002109999768435955,
+              "execute": 0.05101199960336089,
+              "cli_e2e": 0.05595499975606799
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 54.56433336560925,
+              "sd": 0.4854652025554354,
+              "min": 54.25699986517429,
+              "max": 55.12400018051267
+            },
+            "load": {
+              "mean": 0.11466676369309425,
+              "sd": 0.0030548704997881634,
+              "min": 0.11200038716197014,
+              "max": 0.11799996718764305
+            },
+            "translate": {
+              "mean": 0.21233347555001578,
+              "sd": 0.0032146230201099586,
+              "min": 0.2100002020597458,
+              "max": 0.216000247746706
+            },
+            "execute": {
+              "mean": 50.19899985442559,
+              "sd": 0.7197754172714819,
+              "min": 49.64300012215972,
+              "max": 51.01199960336089
+            },
+            "cli_e2e": {
+              "mean": 55.79299991950393,
+              "sd": 0.40507164296617043,
+              "min": 55.33199990168214,
+              "max": 56.09200010076165
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_one",
+          "metrics": "dispatches=5000003 copies=1 register_reads=4000003 register_writes=3000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.054691999685019255,
+              "load": 0.00011599995195865631,
+              "translate": 0.00021299999207258224,
+              "execute": 0.0504640000872314,
+              "cli_e2e": 0.058335000183433294
+            },
+            {
+              "worker_e2e": 0.055321999825537205,
+              "load": 0.00012199999764561653,
+              "translate": 0.00021799979731440544,
+              "execute": 0.05094800004735589,
+              "cli_e2e": 0.059489999897778034
+            },
+            {
+              "worker_e2e": 0.055333999916911125,
+              "load": 0.00011799996718764305,
+              "translate": 0.00023199990391731262,
+              "execute": 0.050850000232458115,
+              "cli_e2e": 0.059086999855935574
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 55.11599980915586,
+              "sd": 0.3672438964763596,
+              "min": 54.691999685019255,
+              "max": 55.333999916911125
+            },
+            "load": {
+              "mean": 0.11866663893063863,
+              "sd": 0.0030550737259653913,
+              "min": 0.11599995195865631,
+              "max": 0.12199999764561653
+            },
+            "translate": {
+              "mean": 0.2209998977681001,
+              "sd": 0.009848838234841489,
+              "min": 0.21299999207258224,
+              "max": 0.23199990391731262
+            },
+            "execute": {
+              "mean": 50.754000122348465,
+              "sd": 0.2558827977921257,
+              "min": 50.4640000872314,
+              "max": 50.94800004735589
+            },
+            "cli_e2e": {
+              "mean": 58.97066664571563,
+              "sd": 0.5862219263079173,
+              "min": 58.335000183433294,
+              "max": 59.489999897778034
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.0663230000063777,
+              "load": 0.00011199992150068283,
+              "translate": 0.00020999973639845848,
+              "execute": 0.06211500009521842,
+              "cli_e2e": 0.06882699998095632
+            },
+            {
+              "worker_e2e": 0.06594299990683794,
+              "load": 0.00012299977242946625,
+              "translate": 0.000216000247746706,
+              "execute": 0.06146099977195263,
+              "cli_e2e": 0.06973599968478084
+            },
+            {
+              "worker_e2e": 0.06723899999633431,
+              "load": 0.00011499971151351929,
+              "translate": 0.00021299999207258224,
+              "execute": 0.0629750001244247,
+              "cli_e2e": 0.06820100033655763
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 66.50166663651665,
+              "sd": 0.6662172179834139,
+              "min": 65.94299990683794,
+              "max": 67.23899999633431
+            },
+            "load": {
+              "mean": 0.1166664684812228,
+              "sd": 0.00568618846028739,
+              "min": 0.11199992150068283,
+              "max": 0.12299977242946625
+            },
+            "translate": {
+              "mean": 0.21299999207258224,
+              "sd": 0.003000255674123764,
+              "min": 0.20999973639845848,
+              "max": 0.216000247746706
+            },
+            "execute": {
+              "mean": 62.183666663865246,
+              "sd": 0.7593323317617148,
+              "min": 61.46099977195263,
+              "max": 62.975000124424696
+            },
+            "cli_e2e": {
+              "mean": 68.92133333409826,
+              "sd": 0.7718353683899639,
+              "min": 68.20100033655763,
+              "max": 69.73599968478084
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_two",
+          "metrics": "dispatches=6000003 copies=1 register_reads=7000003 register_writes=5000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.06684299977496266,
+              "load": 0.00013800011947751045,
+              "translate": 0.0002410002052783966,
+              "execute": 0.06261299969628453,
+              "cli_e2e": 0.0671930001117289
+            },
+            {
+              "worker_e2e": 0.066641999874264,
+              "load": 0.00011700019240379333,
+              "translate": 0.0002159997820854187,
+              "execute": 0.06248100008815527,
+              "cli_e2e": 0.06972999963909388
+            },
+            {
+              "worker_e2e": 0.06671799998730421,
+              "load": 0.00012199999764561653,
+              "translate": 0.00021299999207258224,
+              "execute": 0.06237499974668026,
+              "cli_e2e": 0.07120500039309263
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 66.73433321217696,
+              "sd": 0.10149049559577386,
+              "min": 66.641999874264,
+              "max": 66.84299977496266
+            },
+            "load": {
+              "mean": 0.12566676984230676,
+              "sd": 0.010969646668520128,
+              "min": 0.11700019240379333,
+              "max": 0.13800011947751045
+            },
+            "translate": {
+              "mean": 0.2233333264787992,
+              "sd": 0.015373309335339187,
+              "min": 0.21299999207258224,
+              "max": 0.2410002052783966
+            },
+            "execute": {
+              "mean": 62.489666510373354,
+              "sd": 0.11923642127494301,
+              "min": 62.37499974668026,
+              "max": 62.61299969628453
+            },
+            "cli_e2e": {
+              "mean": 69.3760000479718,
+              "sd": 2.029291341158681,
+              "min": 67.1930001117289,
+              "max": 71.20500039309263
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.07831000024452806,
+              "load": 0.00010599987581372261,
+              "translate": 0.00020499993115663528,
+              "execute": 0.07407000008970499,
+              "cli_e2e": 0.07910800026729703
+            },
+            {
+              "worker_e2e": 0.07696799980476499,
+              "load": 0.00010699965059757233,
+              "translate": 0.00020700041204690933,
+              "execute": 0.07265899982303381,
+              "cli_e2e": 0.0778290000744164
+            },
+            {
+              "worker_e2e": 0.07682899991050363,
+              "load": 0.0001100003719329834,
+              "translate": 0.00021399976685643196,
+              "execute": 0.07243900001049042,
+              "cli_e2e": 0.08036899985745549
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 77.3689999865989,
+              "sd": 0.817888352232892,
+              "min": 76.82899991050363,
+              "max": 78.31000024452806
+            },
+            "load": {
+              "mean": 0.10766663278142612,
+              "sd": 0.002081980121240097,
+              "min": 0.10599987581372261,
+              "max": 0.1100003719329834
+            },
+            "translate": {
+              "mean": 0.20866670335332552,
+              "sd": 0.004725638125609315,
+              "min": 0.20499993115663528,
+              "max": 0.21399976685643196
+            },
+            "execute": {
+              "mean": 73.05599997440974,
+              "sd": 0.8850125167159326,
+              "min": 72.43900001049042,
+              "max": 74.07000008970499
+            },
+            "cli_e2e": {
+              "mean": 79.10200006638964,
+              "sd": 1.270010522109111,
+              "min": 77.8290000744164,
+              "max": 80.36899985745549
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_three",
+          "metrics": "dispatches=7000003 copies=1 register_reads=10000003 register_writes=7000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.07689900044351816,
+              "load": 0.00010799989104270935,
+              "translate": 0.00020999973639845848,
+              "execute": 0.07273600017651916,
+              "cli_e2e": 0.08002300001680851
+            },
+            {
+              "worker_e2e": 0.07770799985155463,
+              "load": 0.00011799996718764305,
+              "translate": 0.00021700002253055573,
+              "execute": 0.07359899999573827,
+              "cli_e2e": 0.08032300043851137
+            },
+            {
+              "worker_e2e": 0.07658599968999624,
+              "load": 0.00011599995195865631,
+              "translate": 0.00021299999207258224,
+              "execute": 0.07232199981808662,
+              "cli_e2e": 0.08087700000032783
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 77.06433332835634,
+              "sd": 0.5789838622457022,
+              "min": 76.58599968999624,
+              "max": 77.70799985155463
+            },
+            "load": {
+              "mean": 0.11399993672966957,
+              "sd": 0.005291542914240815,
+              "min": 0.10799989104270935,
+              "max": 0.11799996718764305
+            },
+            "translate": {
+              "mean": 0.2133332503338655,
+              "sd": 0.003512021822874026,
+              "min": 0.20999973639845848,
+              "max": 0.21700002253055573
+            },
+            "execute": {
+              "mean": 72.88566666344802,
+              "sd": 0.6515231434207096,
+              "min": 72.32199981808662,
+              "max": 73.59899999573827
+            },
+            "cli_e2e": {
+              "mean": 80.40766681854923,
+              "sd": 0.4332496853943288,
+              "min": 80.02300001680851,
+              "max": 80.87700000032783
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "baseline",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.08742699958384037,
+              "load": 0.00012600002810359,
+              "translate": 0.00023399991914629936,
+              "execute": 0.08302799984812737,
+              "cli_e2e": 0.0899180001579225
+            },
+            {
+              "worker_e2e": 0.08701799996197224,
+              "load": 0.00011599995195865631,
+              "translate": 0.0002200002782046795,
+              "execute": 0.08263800013810396,
+              "cli_e2e": 0.09084000019356608
+            },
+            {
+              "worker_e2e": 0.08640599995851517,
+              "load": 0.00011599995195865631,
+              "translate": 0.00021700002253055573,
+              "execute": 0.08202200010418892,
+              "cli_e2e": 0.08968000020831823
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 86.95033316810925,
+              "sd": 0.5138522695992714,
+              "min": 86.40599995851517,
+              "max": 87.42699958384037
+            },
+            "load": {
+              "mean": 0.11933331067363422,
+              "sd": 0.005773546654194227,
+              "min": 0.11599995195865631,
+              "max": 0.12600002810359
+            },
+            "translate": {
+              "mean": 0.22366673996051153,
+              "sd": 0.009073661201065819,
+              "min": 0.21700002253055573,
+              "max": 0.23399991914629936
+            },
+            "execute": {
+              "mean": 82.56266669680674,
+              "sd": 0.5072131866723452,
+              "min": 82.02200010418892,
+              "max": 83.02799984812737
+            },
+            "cli_e2e": {
+              "mean": 90.14600018660228,
+              "sd": 0.612689155487703,
+              "min": 89.68000020831823,
+              "max": 90.84000019356608
+            }
+          }
+        },
+        {
+          "runtime": "Spinel",
+          "variant": "current",
+          "disabled": "inline",
+          "export": "call_four",
+          "metrics": "dispatches=8000003 copies=1 register_reads=13000003 register_writes=9000001 function_entries=1000001 frames_created=2",
+          "mir": "instructions=47 copies=6 registers=73",
+          "samples": [
+            {
+              "worker_e2e": 0.0855050003156066,
+              "load": 0.00011299969628453255,
+              "translate": 0.00021299999207258224,
+              "execute": 0.0812940001487732,
+              "cli_e2e": 0.08647499978542328
+            },
+            {
+              "worker_e2e": 0.08687199978157878,
+              "load": 0.0001349998638033867,
+              "translate": 0.00022800033912062645,
+              "execute": 0.08245199965313077,
+              "cli_e2e": 0.08709800010547042
+            },
+            {
+              "worker_e2e": 0.08603100012987852,
+              "load": 0.00011799996718764305,
+              "translate": 0.00021899957209825516,
+              "execute": 0.0817990000359714,
+              "cli_e2e": 0.08727699983865023
+            }
+          ],
+          "statistics_ms": {
+            "worker_e2e": {
+              "mean": 86.13600007568796,
+              "sd": 0.6895220275357774,
+              "min": 85.5050003156066,
+              "max": 86.87199978157878
+            },
+            "load": {
+              "mean": 0.12199984242518742,
+              "sd": 0.011532610032050495,
+              "min": 0.11299969628453255,
+              "max": 0.1349998638033867
+            },
+            "translate": {
+              "mean": 0.21999996776382127,
+              "sd": 0.007550046126097823,
+              "min": 0.21299999207258224,
+              "max": 0.22800033912062645
+            },
+            "execute": {
+              "mean": 81.8483332792918,
+              "sd": 0.580573888230843,
+              "min": 81.2940001487732,
+              "max": 82.45199965313077
+            },
+            "cli_e2e": {
+              "mean": 86.94999990984797,
+              "sd": 0.420985824906514,
+              "min": 86.47499978542328,
+              "max": 87.27699983865023
+            }
+          }
+        }
+      ],
+      "experiment": "shared transfer prefix, no cached fields, unchanged VM and Lowerer",
+      "patches": {
+        "lib/wardite/efflorescence/ir.rb": "diff --git a/lib/wardite/efflorescence/ir.rb b/lib/wardite/efflorescence/ir.rb\nindex 5d9d96c..5bc87b9 100644\n--- a/lib/wardite/efflorescence/ir.rb\n+++ b/lib/wardite/efflorescence/ir.rb\n@@ -232,18 +232,28 @@ module Wardite\n         @pool_index = callee.index\n       end\n \n-      # Keep the generic argument loop out of the interpreter's live locals.\n-      # The common single-argument path copies directly from the CALL operand.\n+      # Keep multi-argument transfer out of the interpreter's live locals.\n+      # Small arities copy directly; only larger calls loop.\n       # @rbs target: Array[Integer]\n       # @rbs source: Array[Integer]\n       # @rbs return: void\n       def copy_arguments(target, source)\n-        argument = 0\n         count = @arguments.size\n-        while argument < count\n-          target[argument] = source[@arguments.fetch(argument)]\n-          argument += 1\n+        return if count == 0\n+        if count <= 3\n+          target[0] = source[@arguments.fetch(0)]\n+          target[1] = source[@arguments.fetch(1)] if count >= 2\n+          target[2] = source[@arguments.fetch(2)] if count == 3\n+        else\n+          argument = 0\n+          while argument < count\n+            target[argument] = source[@arguments.fetch(argument)]\n+            argument += 1\n+          end\n         end\n+        # The transfer has no result. Avoid boxing the last copied value in\n+        # Spinel's generated C when returning from a specialized transfer.\n+        nil\n       end\n     end\n \n",
+        "lib/wardite/efflorescence/optimizer.rb": "",
+        "lib/wardite/efflorescence/vm.rb": ""
+      }
+    }
+  ]
+}

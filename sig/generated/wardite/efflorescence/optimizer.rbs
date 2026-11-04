@@ -1,0 +1,165 @@
+# Generated from lib/wardite/efflorescence/optimizer.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class Configuration
+      FEATURES: untyped
+
+      attr_reader disabled: Array[Symbol]
+
+      # @rbs disabled: Array[Symbol]
+      def initialize: (Array[Symbol] disabled) -> untyped
+
+      # @rbs feature: Symbol
+      # @rbs return: bool
+      def enabled?: (Symbol feature) -> bool
+    end
+
+    # All transformations use instruction ordinals. Only the final lowering
+    # changes PCs to integer-array offsets. Every rewrite repairs branch edges.
+    class Rewrite
+      # @rbs function: Wardite::Efflorescence::Function
+      def initialize: (Wardite::Efflorescence::Function function) -> untyped
+
+      # @rbs pc: Integer
+      # @rbs return: void
+      def mark: (Integer pc) -> void
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: void
+      def emit: (Wardite::Efflorescence::Instruction instruction) -> void
+
+      # @rbs return: void
+      def finish: () -> void
+    end
+
+    class Analysis
+      attr_reader leaders: Array[Integer]
+
+      attr_reader reads: Array[Integer]
+
+      attr_reader writes: Array[Integer]
+
+      # @rbs function: Wardite::Efflorescence::Function
+      def initialize: (Wardite::Efflorescence::Function function) -> untyped
+
+      # @rbs register: Integer
+      # @rbs return: bool
+      def single_use?: (Integer register) -> bool
+    end
+
+    module Passes
+      # Expand only small, straight-line leaves from a snapshot of the IR.
+      # One round avoids transitive/exponential expansion and keeps recursion
+      # on the ordinary CALL path. Existing local passes clean up the copies.
+      class Inlining
+        MAX_INSTRUCTIONS: ::Integer
+
+        MAX_REGISTERS: ::Integer
+
+        MAX_ADDED_INSTRUCTIONS: ::Integer
+
+        MAX_ADDED_REGISTERS: ::Integer
+
+        # @rbs ir: Wardite::Efflorescence::IR
+        # @rbs return: Array[Integer]
+        def run: (Wardite::Efflorescence::IR ir) -> Array[Integer]
+
+        private
+
+        # Explicit whitelist: new opcodes must opt into inlining. In particular,
+        # traps, profiling records, control flow and nested calls stay intact.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: bool
+        def eligible?: (Wardite::Efflorescence::Function function) -> bool
+
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs callees: Wardite::Efflorescence::IR
+        # @rbs return: bool
+        def expand_calls: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR callees) -> bool
+
+        # @rbs caller: Wardite::Efflorescence::Function
+        # @rbs callee: Wardite::Efflorescence::Function
+        # @rbs call: Wardite::Efflorescence::Instruction
+        # @rbs rewrite: Wardite::Efflorescence::Rewrite
+        # @rbs return: void
+        def expand: (Wardite::Efflorescence::Function caller, Wardite::Efflorescence::Function callee, Wardite::Efflorescence::Instruction call, Wardite::Efflorescence::Rewrite rewrite) -> void
+      end
+
+      class CopyPropagation
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def run: (Wardite::Efflorescence::Function function) -> void
+
+        private
+
+        # Redirect an adjacent producer into the COPY destination. The producer
+        # temporary has one definition and one use in the entire function, and
+        # nobody can enter at the COPY. No value is moved across another op.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def coalesce_results: (Wardite::Efflorescence::Function function) -> void
+
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def propagate: (Wardite::Efflorescence::Function function) -> void
+
+        # Backward liveness inside each basic block removes copies overwritten
+        # before any read (e.g. an inlined parameter initializer). All registers
+        # are conservatively live across edges; no value moves across a branch.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def remove_overwritten_copies: (Wardite::Efflorescence::Function function) -> void
+
+        # Keep snapshot and join copies unless their destination has no reads
+        # anywhere. Iteration also removes copies feeding another dead copy.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def remove_dead_copies: (Wardite::Efflorescence::Function function) -> void
+      end
+
+      class ImmediateSpecialization
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def run: (Wardite::Efflorescence::Function function) -> void
+      end
+
+      class BranchFusion
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def run: (Wardite::Efflorescence::Function function) -> void
+      end
+
+      class Superinstructions
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: void
+        def run: (Wardite::Efflorescence::Function function) -> void
+      end
+    end
+
+    class Optimizer
+      # @rbs configuration: Wardite::Efflorescence::Configuration
+      def initialize: (Wardite::Efflorescence::Configuration configuration) -> untyped
+
+      # Never mutate the translator's semantic MIR; retain it for inspection
+      # and differential execution. Each pass can also be run independently.
+      # @rbs ir: Wardite::Efflorescence::IR
+      # @rbs return: Wardite::Efflorescence::IR
+      def optimize: (Wardite::Efflorescence::IR ir) -> Wardite::Efflorescence::IR
+
+      private
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def optimize_function: (Wardite::Efflorescence::Function function) -> void
+    end
+
+    class Lowerer
+      WIDTH: ::Integer
+
+      # @rbs ir: Wardite::Efflorescence::IR
+      # @rbs return: void
+      def compile: (Wardite::Efflorescence::IR ir) -> void
+    end
+  end
+end

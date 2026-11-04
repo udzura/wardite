@@ -1,0 +1,33 @@
+# Generated from lib/wardite/efflorescence/register_validation.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    # Verify definite assignment once, after optimization and before execution.
+    # This makes stale temporary slots harmless when a frame is reused. Keep
+    # states per basic block, rather than per instruction, to bound their size.
+    class RegisterValidation
+      class Block
+        attr_reader first: Integer
+
+        attr_reader limit: Integer
+
+        attr_reader defined: Array[Integer]
+
+        # @rbs first: Integer
+        # @rbs limit: Integer
+        # @rbs register_count: Integer
+        def initialize: (Integer first, Integer limit, Integer register_count) -> untyped
+
+        # Incoming facts only lose definitions after the first reachable edge.
+        # A backedge cannot establish a definition missing on initial entry.
+        # @rbs incoming: Array[Integer]
+        # @rbs return: bool
+        def merge: (Array[Integer] incoming) -> bool
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def validate: (Wardite::Efflorescence::Function function) -> void
+    end
+  end
+end

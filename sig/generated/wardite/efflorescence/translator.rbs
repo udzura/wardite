@@ -1,0 +1,100 @@
+# Generated from lib/wardite/efflorescence/translator.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    # Only the translator has a Wasm operand stack. The VM sees register sources
+    # and absolute MIR PCs, with no runtime labels or operand-stack unwinding.
+    class Translator
+      class Control
+        attr_reader kind: Symbol
+
+        attr_reader entry_stack: Array[Integer]
+
+        attr_reader start_pc: Integer
+
+        attr_reader result_register: Integer
+
+        attr_reader patches: Array[Integer]
+
+        attr_accessor has_branch: bool
+
+        # @rbs kind: Symbol
+        # @rbs entry_stack: Array[Integer]
+        # @rbs start_pc: Integer
+        # @rbs result_register: Integer
+        def initialize: (Symbol kind, Array[Integer] entry_stack, Integer start_pc, Integer result_register) -> untyped
+      end
+
+      @wasm_pc: Integer
+
+      @reachable: bool
+
+      @function: Wardite::Efflorescence::Function
+
+      @constants: Hash[Integer, Integer]
+
+      @controls: Array[Wardite::Efflorescence::Translator::Control]
+
+      @stack: Array[Integer]
+
+      @instance: Wardite::Instance
+
+      # @rbs instance: Wardite::Instance
+      def initialize: (Wardite::Instance instance) -> untyped
+
+      # @rbs return: Wardite::Efflorescence::IR
+      def translate: () -> Wardite::Efflorescence::IR
+
+      # @rbs wasm: Wardite::WasmFunction
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::Function
+      def translate_function: (Wardite::WasmFunction wasm, Integer index) -> Wardite::Efflorescence::Function
+
+      private
+
+      # @rbs function: Wardite::WasmFunction
+      # @rbs return: void
+      def check_signature: (Wardite::WasmFunction function) -> void
+
+      # @rbs value: Wardite::operandItem?
+      # @rbs return: Integer
+      def integer_operand: (Wardite::operandItem? value) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def register: (?Integer value) -> Integer
+
+      # @rbs instruction: Array[Integer]
+      # @rbs return: Integer
+      def emit: (Array[Integer] instruction) -> Integer
+
+      # @rbs return: Integer
+      def peek_value: () -> Integer
+
+      # @rbs return: Integer
+      def pop_value: () -> Integer
+
+      # @rbs local: Integer
+      # @rbs return: void
+      def preserve_local: (Integer local) -> void
+
+      # @rbs return: void
+      def snapshot_locals: () -> void
+
+      # @rbs return: void
+      def end_control: () -> void
+
+      # @rbs code: Symbol
+      # @rbs return: Integer
+      def binary_opcode: (Symbol code) -> Integer
+
+      # @rbs message: String
+      # @rbs return: String
+      def context: (String message) -> String
+
+      # @rbs message: String
+      # @rbs return: bot
+      def fail_translation: (String message) -> bot
+    end
+  end
+end

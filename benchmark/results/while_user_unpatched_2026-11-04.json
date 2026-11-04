@@ -1,0 +1,230 @@
+{
+  "provenance": "User supplied the matching console summary; raw hyperfine JSON was read before rebuilding the patched executable.",
+  "reported_inputs": "Not encoded by hyperfine command names; compare.rb defaults are 100000 rounds and seed 123456789.",
+  "hyperfine": {
+    "results": [
+      {
+        "command": "New VM / Spinel / inline_mix",
+        "mean": 0.009252258400000001,
+        "stddev": 0.00031352650594375543,
+        "median": 0.009355,
+        "user": 0.006943199999999999,
+        "system": 0.0013836,
+        "min": 0.008805209000000001,
+        "max": 0.009573,
+        "times": [
+          0.009573,
+          0.009463583000000001,
+          0.009064500000000001,
+          0.009355,
+          0.008805209000000001
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "iwasm (WAMR interpreter) / inline_mix",
+        "mean": 0.0053474416,
+        "stddev": 0.00021360778045825002,
+        "median": 0.005366542,
+        "user": 0.0028066,
+        "system": 0.0014921999999999997,
+        "min": 0.005115458000000001,
+        "max": 0.005565083,
+        "times": [
+          0.005565083,
+          0.005366542,
+          0.005143875,
+          0.005115458000000001,
+          0.00554625
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "Wasmtime (Pulley) / inline_mix",
+        "mean": 0.008522924800000001,
+        "stddev": 0.0003134739533927816,
+        "median": 0.008539792000000001,
+        "user": 0.0072959999999999995,
+        "system": 0.005533,
+        "min": 0.008224416,
+        "max": 0.008981375,
+        "times": [
+          0.008224416,
+          0.008539792000000001,
+          0.008631833,
+          0.008981375,
+          0.008237208000000001
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "Wasmtime / inline_mix",
+        "mean": 0.006842416800000001,
+        "stddev": 0.0004867220674231855,
+        "median": 0.006859250000000001,
+        "user": 0.005507799999999999,
+        "system": 0.0053441999999999995,
+        "min": 0.006371000000000001,
+        "max": 0.007595667,
+        "times": [
+          0.007595667,
+          0.006930875,
+          0.0064552920000000005,
+          0.006371000000000001,
+          0.006859250000000001
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "New VM / Spinel / call_mix",
+        "mean": 0.0094408164,
+        "stddev": 0.000399831475214621,
+        "median": 0.009319541,
+        "user": 0.0069394,
+        "system": 0.0014554,
+        "min": 0.009090208,
+        "max": 0.010111625,
+        "times": [
+          0.009319541,
+          0.009090208,
+          0.00921475,
+          0.010111625,
+          0.009467958
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "iwasm (WAMR interpreter) / call_mix",
+        "mean": 0.0060548916,
+        "stddev": 0.00042535221950966727,
+        "median": 0.005931167,
+        "user": 0.0033591999999999997,
+        "system": 0.0015902,
+        "min": 0.005570625,
+        "max": 0.006724625000000001,
+        "times": [
+          0.006724625000000001,
+          0.0061322500000000005,
+          0.005570625,
+          0.005915791,
+          0.005931167
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "Wasmtime (Pulley) / call_mix",
+        "mean": 0.010079600400000003,
+        "stddev": 0.0005076405645210986,
+        "median": 0.010160500000000001,
+        "user": 0.0088306,
+        "system": 0.0061084,
+        "min": 0.009343167000000001,
+        "max": 0.010559834,
+        "times": [
+          0.010510709,
+          0.009823792000000001,
+          0.009343167000000001,
+          0.010559834,
+          0.010160500000000001
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "command": "Wasmtime / call_mix",
+        "mean": 0.0075008416000000005,
+        "stddev": 0.0002734630164058752,
+        "median": 0.007535792,
+        "user": 0.0061338,
+        "system": 0.0062098,
+        "min": 0.007208125,
+        "max": 0.007835541,
+        "times": [
+          0.007241875,
+          0.007208125,
+          0.007535792,
+          0.0076828750000000005,
+          0.007835541
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "setup": {
+    "spinel_branch": "master",
+    "spinel_commit": "6e7fc13556709bf7d7ba4af5bd1d12bebc00733e",
+    "saved_patch_commit": "6f1a2c259f99c9fe460ee6de1d6f18a05008ca8d",
+    "compiler_sha256": "accef97125716f36d9e953411958974907fc7fae6163e3790c9e739b556a4682",
+    "wardite_binary_sha256": "9de55acde45698bd19b1969b24ec88b1c1d7476b4407245a974e37ba7fcc5041",
+    "vm_source_sha256": "72c12862e9c3f83bd4418129a99c849710ec77fd74ad0a795d42cc57ca4feb99",
+    "native_flags": [
+      "-O2"
+    ],
+    "codegen": {
+      "setjmps": 0,
+      "volatile_lines": 0,
+      "instruction_temporary_roots": 38,
+      "function_instruction_root": true
+    },
+    "performance_measurements": "Pending user measurement; no benchmark run in this stage.",
+    "generated_c_sha256": "d2d22a4ca092eab9a1889535468e3b9185a68342d182bacda5175116fe22f636",
+    "validation": {
+      "tests": 117,
+      "assertions": 10893,
+      "failures": 0,
+      "errors": 0,
+      "omissions": 0,
+      "typecheck": "passed",
+      "test_log": "/tmp/wardite-while-master-tests.log",
+      "typecheck_log": "/tmp/wardite-while-typecheck.log"
+    }
+  },
+  "binary_sha256": "9de55acde45698bd19b1969b24ec88b1c1d7476b4407245a974e37ba7fcc5041"
+}

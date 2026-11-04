@@ -12,7 +12,7 @@ module Wardite
 
     attr_accessor sections: Array[Section]
 
-    attr_accessor runtime: Runtime
+    attr_accessor runtime: Runtime | Efflorescence::VM
 
     attr_accessor types: Array[Type]
 
@@ -25,8 +25,11 @@ module Wardite
     attr_accessor wasi: ::Wardite::WasiSnapshotPreview1?
 
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
+    # @rbs engine: Symbol
+    # @rbs disabled_optimizations: Array[Symbol]
+    # @rbs mir_profile: bool
     # @rbs &blk: (Instance) -> void
-    def initialize: (Hash[Symbol, wasmModuleSrc] import_object) { (Instance) -> void } -> untyped
+    def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?mir_profile: bool) { (Instance) -> void } -> untyped
 
     # @rbs return: void
     def check_data_count: () -> void

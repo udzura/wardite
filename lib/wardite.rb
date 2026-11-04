@@ -29,7 +29,7 @@ module Wardite
 
     attr_accessor :sections #: Array[Section]
 
-    attr_accessor :runtime #: Runtime
+    attr_accessor :runtime #: Runtime | Efflorescence::VM
 
     attr_accessor :types #: Array[Type]
 
@@ -42,8 +42,11 @@ module Wardite
     attr_accessor :wasi #: ::Wardite::WasiSnapshotPreview1?
 
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
+    # @rbs engine: Symbol
+    # @rbs disabled_optimizations: Array[Symbol]
+    # @rbs mir_profile: bool
     # @rbs &blk: (Instance) -> void
-    def initialize(import_object, &blk)
+    def initialize(import_object, engine: :stack, disabled_optimizations: [], mir_profile: false, &blk)
       @wasi = nil
 
       blk.call(self)
@@ -55,9 +58,11 @@ module Wardite
 
       @import_object = import_object #: Hash[Symbol, wasmModule]
 
+      if engine == :efflorescence && !import_section.imports.empty?
+        raise Efflorescence::UnsupportedFeature, "Efflorescence: imports are not supported"
+      end
       @store = Store.new(self)
       @exports = Exports.new(self.export_section, store)
-      @runtime = Runtime.new(self)
 
       @types = []
       type_section = self.type_section
@@ -69,6 +74,11 @@ module Wardite
       end
 
       check_data_count
+      @runtime = case engine
+      when :stack then Runtime.new(self)
+      when :efflorescence then Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile)
+      else raise LoadError, "unknown engine: #{engine}"
+      end
     end
 
     # @rbs return: void
@@ -1383,3 +1393,5 @@ module Wardite
     Wardite::BinaryLoader::load_from_buffer(buffer, **options);
   end
 end
+
+require_relative "wardite/efflorescence"

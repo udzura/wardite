@@ -1,0 +1,454 @@
+{
+  "rounds": 5000000,
+  "seed": 123,
+  "checksums": {
+    "inline_mix": 1647235310,
+    "call_mix": 1647235310
+  },
+  "runs": 7,
+  "warmups": 2,
+  "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+  "spinel": "spinel 2026.10.25+1967 (6e7fc1355) [apple clang 21.0.0 (cc)]",
+  "spinel_flags": [
+    "-O2"
+  ],
+  "source_files_sha256": {
+    "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+    "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+    "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+    "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+    "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+    "lib/wardite/cli/cli.rb": "e6e7a12bcd77ed9ffee2e96f864e8da3ebfb66a3d1d7d1dffb3430d99c143a96",
+    "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+    "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+    "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+    "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+    "lib/wardite/efflorescence/ir.rb": "da739809460829ee1b1b5bec1c53532e346adbeb33b382f795e2f306cb02a9b9",
+    "lib/wardite/efflorescence/optimizer.rb": "92d68212bd64f299e4edfddb0eb35c9a863d1b61b7a72fd24f0790c39545a8c6",
+    "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+    "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+    "lib/wardite/efflorescence/vm.rb": "cb6992a4adda5bf9c104a74d290a7549091cec188deaa864c389ae5c8b9cbd7f",
+    "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+    "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+    "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+    "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+    "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+    "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+    "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+    "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+    "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+    "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+    "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+    "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+  },
+  "binary_sha256": {
+    "full_reset": "938fc6d4e3de8527d54f814a12b485eab629dda86bca087501ec2114a9715dd7",
+    "locals_only": "61ce4963a74b06e61a8dacb451883c3d263cfd2f4fce9de886156d02f5c8592b"
+  },
+  "source_commit": "86c6e832cb6cdbe1ef845f19608084d96a0e7f2d",
+  "allocations": [
+    {
+      "variant": "full_reset",
+      "export": "call_identity",
+      "rounds": 0,
+      "frames": 1,
+      "no_scan": 2081,
+      "total": 5912
+    },
+    {
+      "variant": "full_reset",
+      "export": "call_identity",
+      "rounds": 10000,
+      "frames": 2,
+      "no_scan": 2082,
+      "total": 5914
+    },
+    {
+      "variant": "full_reset",
+      "export": "call_mix",
+      "rounds": 0,
+      "frames": 1,
+      "no_scan": 2081,
+      "total": 5912
+    },
+    {
+      "variant": "full_reset",
+      "export": "call_mix",
+      "rounds": 10000,
+      "frames": 2,
+      "no_scan": 2082,
+      "total": 5914
+    },
+    {
+      "variant": "locals_only",
+      "export": "call_identity",
+      "rounds": 0,
+      "frames": 1,
+      "no_scan": 2081,
+      "total": 5912
+    },
+    {
+      "variant": "locals_only",
+      "export": "call_identity",
+      "rounds": 10000,
+      "frames": 2,
+      "no_scan": 2082,
+      "total": 5914
+    },
+    {
+      "variant": "locals_only",
+      "export": "call_mix",
+      "rounds": 0,
+      "frames": 1,
+      "no_scan": 2081,
+      "total": 5912
+    },
+    {
+      "variant": "locals_only",
+      "export": "call_mix",
+      "rounds": 10000,
+      "frames": 2,
+      "no_scan": 2082,
+      "total": 5914
+    }
+  ],
+  "note": "full_reset restores the old reset loop in a copy; locals_only is production; metadata_only is fixture-specific",
+  "results": [
+    {
+      "export": "inline_mix",
+      "variant": "full_reset",
+      "command": [
+        "{repo}/build/benchmark/call-cost/full_reset/worker",
+        "{repo}/build/benchmark/call-cost/call_cost.wasm",
+        "inline_mix",
+        "5000000",
+        "123",
+        ""
+      ],
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "e2e": 0.3304010001011193,
+          "load": 0.00011299969628453255,
+          "translate": 0.00018900027498602867,
+          "execute": 0.32609999971464276
+        },
+        {
+          "e2e": 0.3282150002196431,
+          "load": 0.00011599995195865631,
+          "translate": 0.00018800003454089165,
+          "execute": 0.323613999877125
+        },
+        {
+          "e2e": 0.3330769999884069,
+          "load": 0.00011700019240379333,
+          "translate": 0.00019400008022785187,
+          "execute": 0.32841800013557076
+        },
+        {
+          "e2e": 0.3287599999457598,
+          "load": 0.00011999998241662979,
+          "translate": 0.00019499985501170158,
+          "execute": 0.3242649999447167
+        },
+        {
+          "e2e": 0.33372499980032444,
+          "load": 0.00011699972674250603,
+          "translate": 0.0002010003663599491,
+          "execute": 0.3291029999963939
+        },
+        {
+          "e2e": 0.32848000014200807,
+          "load": 0.00011999998241662979,
+          "translate": 0.0001909998245537281,
+          "execute": 0.32359400019049644
+        },
+        {
+          "e2e": 0.3277119998820126,
+          "load": 0.00012800004333257675,
+          "translate": 0.00019699987024068832,
+          "execute": 0.3231460000388324
+        }
+      ],
+      "statistics_ms": {
+        "e2e": {
+          "mean": 330.05285715418205,
+          "sd": 2.4411051059417397,
+          "min": 327.7119998820126,
+          "max": 333.72499980032444
+        },
+        "load": {
+          "mean": 0.11871422507933208,
+          "sd": 0.004751022608750168,
+          "min": 0.11299969628453255,
+          "max": 0.12800004333257675
+        },
+        "translate": {
+          "mean": 0.1935714722744056,
+          "sd": 0.004613684302130473,
+          "min": 0.18800003454089165,
+          "max": 0.2010003663599491
+        },
+        "execute": {
+          "mean": 325.46285712825403,
+          "sd": 2.452993034484095,
+          "min": 323.1460000388324,
+          "max": 329.1029999963939
+        }
+      }
+    },
+    {
+      "export": "inline_mix",
+      "variant": "locals_only",
+      "command": [
+        "{repo}/build/benchmark/call-cost/locals_only/worker",
+        "{repo}/build/benchmark/call-cost/call_cost.wasm",
+        "inline_mix",
+        "5000000",
+        "123",
+        ""
+      ],
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "e2e": 0.3297469997778535,
+          "load": 0.00011900020763278008,
+          "translate": 0.00020400015637278557,
+          "execute": 0.3252399996854365
+        },
+        {
+          "e2e": 0.3295180001296103,
+          "load": 0.00012099975720047951,
+          "translate": 0.00020499993115663528,
+          "execute": 0.3249280001036823
+        },
+        {
+          "e2e": 0.33259900007396936,
+          "load": 0.00011299969628453255,
+          "translate": 0.00021400023251771927,
+          "execute": 0.32824999978765845
+        },
+        {
+          "e2e": 0.3296030000783503,
+          "load": 0.00011499971151351929,
+          "translate": 0.0002000001259148121,
+          "execute": 0.3252570000477135
+        },
+        {
+          "e2e": 0.33513899985700846,
+          "load": 0.00013400008901953697,
+          "translate": 0.00019800011068582535,
+          "execute": 0.33067299984395504
+        },
+        {
+          "e2e": 0.3340430003590882,
+          "load": 0.00012299977242946625,
+          "translate": 0.00019499985501170158,
+          "execute": 0.3295320002362132
+        },
+        {
+          "e2e": 0.3304090001620352,
+          "load": 0.00012400001287460327,
+          "translate": 0.0001960000954568386,
+          "execute": 0.3253139997832477
+        }
+      ],
+      "statistics_ms": {
+        "e2e": {
+          "mean": 331.5797143482736,
+          "sd": 2.3331921595823273,
+          "min": 329.5180001296103,
+          "max": 335.13899985700846
+        },
+        "load": {
+          "mean": 0.12128560670784541,
+          "sd": 0.006897318008037839,
+          "min": 0.11299969628453255,
+          "max": 0.13400008901953697
+        },
+        "translate": {
+          "mean": 0.20171435815947397,
+          "sd": 0.006600936163133251,
+          "min": 0.19499985501170158,
+          "max": 0.21400023251771927
+        },
+        "execute": {
+          "mean": 327.0277142125581,
+          "sd": 2.405913070545963,
+          "min": 324.9280001036823,
+          "max": 330.67299984395504
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "variant": "full_reset",
+      "command": [
+        "{repo}/build/benchmark/call-cost/full_reset/worker",
+        "{repo}/build/benchmark/call-cost/call_cost.wasm",
+        "call_mix",
+        "5000000",
+        "123",
+        ""
+      ],
+      "metrics": "dispatches=45000003 copies=1 register_reads=40000003 register_writes=35000001 function_entries=5000001 frames_created=2",
+      "samples": [
+        {
+          "e2e": 0.732708000112325,
+          "load": 0.00011399993672966957,
+          "translate": 0.00020299991592764854,
+          "execute": 0.7279090001247823
+        },
+        {
+          "e2e": 0.7443400002084672,
+          "load": 0.00012199999764561653,
+          "translate": 0.0001900000497698784,
+          "execute": 0.7396939997561276
+        },
+        {
+          "e2e": 0.742143000010401,
+          "load": 0.00011599995195865631,
+          "translate": 0.00019699987024068832,
+          "execute": 0.7376060001552105
+        },
+        {
+          "e2e": 0.7142630000598729,
+          "load": 0.00012400001287460327,
+          "translate": 0.0001960000954568386,
+          "execute": 0.7097900002263486
+        },
+        {
+          "e2e": 0.7144709997810423,
+          "load": 0.00011699972674250603,
+          "translate": 0.0002009999006986618,
+          "execute": 0.7100010002031922
+        },
+        {
+          "e2e": 0.7553909998387098,
+          "load": 0.0001200004480779171,
+          "translate": 0.00019699987024068832,
+          "execute": 0.7508779997006059
+        },
+        {
+          "e2e": 0.7238199999555945,
+          "load": 0.00015900004655122757,
+          "translate": 0.00020800018683075905,
+          "execute": 0.7188379997387528
+        }
+      ],
+      "statistics_ms": {
+        "e2e": {
+          "mean": 732.4479999952018,
+          "sd": 15.75949808992658,
+          "min": 714.2630000598729,
+          "max": 755.3909998387098
+        },
+        "load": {
+          "mean": 0.12457144579717092,
+          "sd": 0.01557626234180028,
+          "min": 0.11399993672966957,
+          "max": 0.15900004655122757
+        },
+        "translate": {
+          "mean": 0.19885712702359473,
+          "sd": 0.00575700984207571,
+          "min": 0.1900000497698784,
+          "max": 0.20800018683075905
+        },
+        "execute": {
+          "mean": 727.8165714150028,
+          "sd": 15.767640028789087,
+          "min": 709.7900002263486,
+          "max": 750.8779997006059
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "variant": "locals_only",
+      "command": [
+        "{repo}/build/benchmark/call-cost/locals_only/worker",
+        "{repo}/build/benchmark/call-cost/call_cost.wasm",
+        "call_mix",
+        "5000000",
+        "123",
+        ""
+      ],
+      "metrics": "dispatches=45000003 copies=1 register_reads=40000003 register_writes=35000001 function_entries=5000001 frames_created=2",
+      "samples": [
+        {
+          "e2e": 0.6074700001627207,
+          "load": 0.00012199999764561653,
+          "translate": 0.00019700033590197563,
+          "execute": 0.6025589997880161
+        },
+        {
+          "e2e": 0.6066500004380941,
+          "load": 0.00011399993672966957,
+          "translate": 0.0001900000497698784,
+          "execute": 0.6022570002824068
+        },
+        {
+          "e2e": 0.6108900001272559,
+          "load": 0.00013399962335824966,
+          "translate": 0.00019700033590197563,
+          "execute": 0.6063509997911751
+        },
+        {
+          "e2e": 0.605407000053674,
+          "load": 0.00012299977242946625,
+          "translate": 0.0001960000954568386,
+          "execute": 0.6010859999805689
+        },
+        {
+          "e2e": 0.5878039998933673,
+          "load": 0.0001460001803934574,
+          "translate": 0.00020699994638562202,
+          "execute": 0.582810000050813
+        },
+        {
+          "e2e": 0.6077680001035333,
+          "load": 0.00014699995517730713,
+          "translate": 0.00023399991914629936,
+          "execute": 0.6020729998126626
+        },
+        {
+          "e2e": 0.6326150000095367,
+          "load": 0.00011799996718764305,
+          "translate": 0.00020400015637278557,
+          "execute": 0.6285700001753867
+        }
+      ],
+      "statistics_ms": {
+        "e2e": {
+          "mean": 608.3720001125974,
+          "sd": 13.102422989940978,
+          "min": 587.8039998933673,
+          "max": 632.6150000095367
+        },
+        "load": {
+          "mean": 0.12914277613162994,
+          "sd": 0.01334705611860774,
+          "min": 0.11399993672966957,
+          "max": 0.14699995517730713
+        },
+        "translate": {
+          "mean": 0.2035715484193393,
+          "sd": 0.014524103563517455,
+          "min": 0.1900000497698784,
+          "max": 0.23399991914629936
+        },
+        "execute": {
+          "mean": 603.6722856972899,
+          "sd": 13.384043268605707,
+          "min": 582.810000050813,
+          "max": 628.5700001753867
+        }
+      }
+    }
+  ],
+  "measurement_date": "2026-11-04",
+  "platform": "macOS arm64",
+  "comparison": "Identical current constructor, load-time validation and MIR; full_reset restores only the full register reset loop in a copied library.",
+  "timing_boundary": "One call_unboxed per process; execution excludes load/translation; MIR counters and allocation reporting are separate."
+}

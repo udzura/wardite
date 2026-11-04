@@ -1,0 +1,53 @@
+# Generated from lib/wardite/efflorescence/inspection.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class Metrics
+      attr_reader opcode_counts: Array[Integer]
+
+      attr_reader register_reads: Integer
+
+      attr_reader register_writes: Integer
+
+      attr_accessor frames_created: Integer
+
+      def initialize: () -> untyped
+
+      # @rbs opcode: Integer
+      # @rbs reads: Integer
+      # @rbs writes: Integer
+      # @rbs return: void
+      def record: (Integer opcode, Integer reads, Integer writes) -> void
+
+      # @rbs return: Integer
+      def dispatches: () -> Integer
+
+      # @rbs return: Integer
+      def copies: () -> Integer
+
+      # @rbs return: Integer
+      def function_entries: () -> Integer
+
+      # @rbs return: String
+      def report: () -> String
+    end
+
+    # Profiling is compiled into a separate instrumented MIR. The ordinary
+    # dispatch loop never tests an enabled flag or updates per-instruction stats.
+    class Instrumentation
+      # @rbs ir: Wardite::Efflorescence::IR
+      # @rbs return: Wardite::Efflorescence::IR
+      def instrument: (Wardite::Efflorescence::IR ir) -> Wardite::Efflorescence::IR
+    end
+
+    class Inspection
+      # @rbs ir: Wardite::Efflorescence::IR
+      # @rbs return: String
+      def disassemble: (Wardite::Efflorescence::IR ir) -> String
+
+      # @rbs ir: Wardite::Efflorescence::IR
+      # @rbs return: String
+      def statistics: (Wardite::Efflorescence::IR ir) -> String
+    end
+  end
+end

@@ -1,0 +1,75 @@
+# Generated from lib/wardite/efflorescence/vm.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class VM
+      attr_reader instance: Wardite::Instance
+
+      attr_reader ir: Wardite::Efflorescence::IR
+
+      attr_reader semantic_ir: Wardite::Efflorescence::IR
+
+      attr_reader optimized_ir: Wardite::Efflorescence::IR
+
+      attr_reader metrics: Wardite::Efflorescence::Metrics
+
+      # @rbs instance: Wardite::Instance
+      # @rbs disabled_optimizations: Array[Symbol]
+      # @rbs profile: bool
+      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool) -> untyped
+
+      # @rbs name: String|Symbol
+      # @rbs return: bool
+      def callable?: (String | Symbol name) -> bool
+
+      # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
+      # @rbs name: String|Symbol
+      # @rbs arguments: Array[Object]
+      # @rbs return: Wardite::I32?
+      def call: (String | Symbol name, Array[Object] arguments) -> Wardite::I32?
+
+      # @rbs name: String|Symbol
+      # @rbs arguments: Array[Object]
+      # @rbs return: Integer?
+      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> Integer?
+
+      # @rbs name: Symbol
+      # @rbs *arguments: Object
+      # @rbs return: Wardite::I32?
+      def method_missing: (Symbol name, *Object arguments) -> Wardite::I32?
+
+      # @rbs name: String|Symbol
+      # @rbs include_private: bool
+      # @rbs return: bool
+      def respond_to_missing?: (String | Symbol name, ?bool include_private) -> bool
+
+      # @rbs return: String
+      def dump_mir: () -> String
+
+      private
+
+      # A concrete return type breaks the inference cycle between the current
+      # frame and the array it is restored from after every internal RETURN.
+      # @rbs return: Wardite::Efflorescence::Frame
+      def current_frame: (untyped frames) -> Wardite::Efflorescence::Frame
+
+      # No Wasm operand stack, boxed values, or recursive Ruby calls here.
+      # Every register array contains only normalized i32 Integers. Void calls
+      # use destination -1; execute returns an unused integer for a void entry.
+      # @rbs index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Integer
+      def execute: (Integer index, Array[Integer] arguments) -> Integer
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs return: Integer
+      def execute_semantic: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools) -> Integer
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs return: Integer
+      def execute_flat: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools) -> Integer
+    end
+  end
+end

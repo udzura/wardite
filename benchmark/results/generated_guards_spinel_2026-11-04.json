@@ -1,0 +1,1650 @@
+{
+  "commit": "999fde3d898a3a2ef8a2825ec3567835cb546cd5",
+  "spinel": "spinel 2026.10.25+1967 (6e7fc1355) [apple clang 21.0.0 (cc)]",
+  "cc": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+  "native_flags": [
+    "-O2"
+  ],
+  "rounds": 5000000,
+  "seed": 123,
+  "checksum": 1647235310,
+  "runs": 7,
+  "warmups": 2,
+  "cli": true,
+  "snapshots": {
+    "baseline": {
+      "source_sha256": {
+        "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+        "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+        "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+        "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+        "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+        "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+        "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+        "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+        "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+        "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+        "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+        "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+        "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+        "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+        "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+        "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+        "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+        "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+        "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+        "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+        "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+        "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+        "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+        "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+        "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+        "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+        "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+        "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+        "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+      },
+      "vm_source": "# frozen_string_literal: true\n# rbs_inline: enabled\n\nmodule Wardite\n  module Efflorescence\n    class VM\n      attr_reader :instance #: Wardite::Instance\n      attr_reader :ir #: Wardite::Efflorescence::IR\n      attr_reader :semantic_ir #: Wardite::Efflorescence::IR\n      attr_reader :optimized_ir #: Wardite::Efflorescence::IR\n      attr_reader :metrics #: Wardite::Efflorescence::Metrics\n\n      # @rbs instance: Wardite::Instance\n      # @rbs disabled_optimizations: Array[Symbol]\n      # @rbs profile: bool\n      def initialize(instance, disabled_optimizations: [], profile: false)\n        @instance = instance\n        configuration = Configuration.new(disabled_optimizations)\n        @flat = configuration.enabled?(:flat)\n        @reuse_frames = configuration.enabled?(:frames)\n        @profiling = profile\n        @metrics = Metrics.new\n        @semantic_ir = Translator.new(instance).translate\n        @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)\n        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function) }\n        @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir\n        Lowerer.new.compile(@ir) if @flat\n        start = instance.start_section\n        execute(start.func_index, []) if start\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs return: bool\n      def callable?(name)\n        export = @instance.export_section.exports[name.to_s]\n        !!export && export.kind == 0\n      end\n\n      # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.\n      # @rbs name: String|Symbol\n      # @rbs arguments: Array[Object]\n      # @rbs return: Wardite::I32?\n      def call(name, arguments)\n        result = call_unboxed(name, arguments)\n        result.nil? ? nil : Wardite::I32.new(result)\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs arguments: Array[Object]\n      # @rbs return: Integer?\n      def call_unboxed(name, arguments)\n        export = @instance.export_section.exports[name.to_s]\n        raise ::NoMethodError, \"function #{name} not found\" unless export\n        raise ::NoMethodError, \"#{name} is not a function\" unless export.kind == 0\n        function = @ir.functions[export.index] || raise(Wardite::EvalError, \"invalid function index\")\n        unless arguments.size == function.parameter_count\n          raise Wardite::ArgumentError, \"unmatch arg size\"\n        end\n        values = [] #: Array[Integer]\n        arguments.each do |value|\n          raise Wardite::ArgumentError, \"type mismatch: i32(#{value})\" unless value.is_a?(Integer)\n          values << (value & 0xffffffff)\n        end\n        result = execute(export.index, values)\n        function.result_types.empty? ? nil : result\n      end\n\n      # @rbs name: Symbol\n      # @rbs *arguments: Object\n      # @rbs return: Wardite::I32?\n      def method_missing(name, *arguments)\n        callable?(name) ? call(name, arguments) : super\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs include_private: bool\n      # @rbs return: bool\n      def respond_to_missing?(name, include_private = false)\n        callable?(name) || super\n      end\n\n      # @rbs return: String\n      def dump_mir\n        inspection = Inspection.new\n        \"Semantic MIR (#{inspection.statistics(@semantic_ir)})\\n#{inspection.disassemble(@semantic_ir)}\\n\" \\\n          \"Optimized MIR (#{inspection.statistics(@optimized_ir)})\\n#{inspection.disassemble(@optimized_ir)}\"\n      end\n\n      private\n\n      # A concrete return type breaks the inference cycle between the current\n      # frame and the array it is restored from after every internal RETURN.\n      # @rbs return: Wardite::Efflorescence::Frame\n      def current_frame(frames)\n        frames.last || raise(Wardite::EvalError, \"missing MIR caller\")\n      end\n\n      # No Wasm operand stack, boxed values, or recursive Ruby calls here.\n      # Every register array contains only normalized i32 Integers. Void calls\n      # use destination -1; execute returns an unused integer for a void entry.\n      # @rbs index: Integer\n      # @rbs arguments: Array[Integer]\n      # @rbs return: Integer\n      def execute(index, arguments)\n        pools = [] #: Array[Wardite::Efflorescence::FramePool]\n        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }\n        function = @ir.functions[index] || raise(Wardite::EvalError, \"invalid function index #{index}\")\n        pool = pools[function.index]\n        raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n        frame = pool.acquire(-1)\n        arguments.each_with_index { |value, i| frame.registers[i] = value }\n        @metrics = Metrics.new if @profiling\n        @flat ? execute_flat(frame, pools) : execute_semantic(frame, pools)\n      ensure\n        if @profiling\n          created = 0\n          pools.each { |pool| created += pool.created }\n          @metrics.frames_created = created\n        end\n      end\n\n      # @rbs frame: Wardite::Efflorescence::Frame\n      # @rbs pools: Array[Wardite::Efflorescence::FramePool]\n      # @rbs return: Integer\n      def execute_semantic(frame, pools)\n        frames = [] #: Array[Wardite::Efflorescence::Frame]\n        frames << frame\n        registers = frame.registers\n        instructions = frame.function.instructions\n        pc = 0\n        loop do\n          instruction = instructions[pc] || raise(Wardite::EvalError, \"Efflorescence: invalid MIR PC #{pc}\")\n          pc += 1\n          # Integer literal labels let Spinel emit a C switch. Keep the\n          # Opcode comments in sync; the dispatch contract test checks them.\n          case instruction[0]\n          when 0 # Opcode::COPY\n            registers[instruction[1]] = registers[instruction[2]]\n          when 1 # Opcode::I32_ADD\n            registers[instruction[1]] = (registers[instruction[2]] + registers[instruction[3]]) & 0xffffffff\n          when 2 # Opcode::I32_SUB\n            registers[instruction[1]] = (registers[instruction[2]] - registers[instruction[3]]) & 0xffffffff\n          when 3 # Opcode::I32_MUL\n            # A full unsigned i32 product can overflow Spinel's native signed\n            # word. Split into 16-bit limbs; all intermediates fit in 49 bits.\n            left = registers[instruction[2]]\n            right = registers[instruction[3]]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[instruction[1]] = (low + high) & 0xffffffff\n          when 4 # Opcode::I32_XOR\n            registers[instruction[1]] = registers[instruction[2]] ^ registers[instruction[3]]\n          when 5 # Opcode::I32_SHL\n            registers[instruction[1]] = (registers[instruction[2]] << (registers[instruction[3]] & 31)) & 0xffffffff\n          when 6 # Opcode::I32_SHR_U\n            registers[instruction[1]] = registers[instruction[2]] >> (registers[instruction[3]] & 31)\n          when 7 # Opcode::I32_EQZ\n            registers[instruction[1]] = registers[instruction[2]] == 0 ? 1 : 0\n          when 13 # Opcode::I32_ADD_IMM\n            registers[instruction[1]] = (registers[instruction[2]] + instruction[3]) & 0xffffffff\n          when 14 # Opcode::I32_SUB_IMM\n            registers[instruction[1]] = (registers[instruction[2]] - instruction[3]) & 0xffffffff\n          when 15 # Opcode::I32_MUL_IMM\n            left = registers[instruction[2]]\n            right = instruction[3]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[instruction[1]] = (low + high) & 0xffffffff\n          when 16 # Opcode::I32_XOR_IMM\n            registers[instruction[1]] = registers[instruction[2]] ^ instruction[3]\n          when 17 # Opcode::I32_SHL_IMM\n            registers[instruction[1]] = (registers[instruction[2]] << (instruction[3] & 31)) & 0xffffffff\n          when 18 # Opcode::I32_SHR_U_IMM\n            registers[instruction[1]] = registers[instruction[2]] >> (instruction[3] & 31)\n          when 20 # Opcode::I32_XOR_SHR_U_IMM\n            value = registers[instruction[2]]\n            registers[instruction[1]] = value ^ (value >> instruction[3])\n          when 21 # Opcode::I32_XOR_SHL_IMM\n            value = registers[instruction[2]]\n            registers[instruction[1]] = (value ^ (value << instruction[3])) & 0xffffffff\n          when 8 # Opcode::BR\n            pc = instruction[1]\n          when 9 # Opcode::BR_IF\n            pc = instruction[2] if registers[instruction[1]] != 0\n          when 19 # Opcode::BR_IF_ZERO\n            pc = instruction[2] if registers[instruction[1]] == 0\n          when 10 # Opcode::CALL\n            frame.pc = pc\n            callee = @ir.functions[instruction[2]] || raise(Wardite::EvalError, \"invalid MIR call target\")\n            pool = pools[callee.index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            next_frame = pool.acquire(instruction[1])\n            argument = 0\n            while argument < callee.parameter_count\n              next_frame.registers[argument] = registers[instruction[argument + 3]]\n              argument += 1\n            end\n            frames << next_frame\n            frame = next_frame\n            registers = frame.registers\n            instructions = frame.function.instructions\n            pc = 0\n          when 11 # Opcode::RETURN\n            value = instruction[1] < 0 ? 0 : registers[instruction[1]]\n            destination = frame.return_register\n            frames.pop\n            pool = pools[frame.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            pool.release(frame)\n            return value if frames.empty?\n            frame = current_frame(frames)\n            registers = frame.registers\n            registers[destination] = value if destination >= 0\n            instructions = frame.function.instructions\n            pc = frame.pc\n          when 12 # Opcode::TRAP\n            raise Wardite::Unreachable, \"unreachable op\"\n          when 22 # Opcode::PROFILE\n            @metrics.record(instruction[1], instruction[2], instruction[3])\n          else\n            raise Wardite::EvalError, \"Efflorescence: invalid MIR opcode #{instruction[0]}\"\n          end\n        end\n      end\n      # @rbs frame: Wardite::Efflorescence::Frame\n      # @rbs pools: Array[Wardite::Efflorescence::FramePool]\n      # @rbs return: Integer\n      def execute_flat(frame, pools)\n        frames = [] #: Array[Wardite::Efflorescence::Frame]\n        frames << frame\n        registers = frame.registers\n        instructions = frame.function.bytecode\n        pc = 0\n        loop do\n          opcode = instructions.fetch(pc)\n          a = instructions.fetch(pc + 1)\n          # PCs still advance by four words, but short instructions do not\n          # read their unused b/c padding. Control transfers skip the increment.\n          # Integer literal labels let Spinel emit a C switch. Keep the\n          # Opcode comments in sync; the dispatch contract test checks them.\n          case opcode\n          when 0 # Opcode::COPY\n            b = instructions.fetch(pc + 2)\n            registers[a] = registers[b]\n          when 1 # Opcode::I32_ADD\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] + registers[c]) & 0xffffffff\n          when 2 # Opcode::I32_SUB\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] - registers[c]) & 0xffffffff\n          when 3 # Opcode::I32_MUL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            # A full unsigned i32 product can overflow Spinel's native signed\n            # word. Split into 16-bit limbs; all intermediates fit in 49 bits.\n            left = registers[b]\n            right = registers[c]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[a] = (low + high) & 0xffffffff\n          when 4 # Opcode::I32_XOR\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] ^ registers[c]\n          when 5 # Opcode::I32_SHL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] << (registers[c] & 31)) & 0xffffffff\n          when 6 # Opcode::I32_SHR_U\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] >> (registers[c] & 31)\n          when 7 # Opcode::I32_EQZ\n            b = instructions.fetch(pc + 2)\n            registers[a] = registers[b] == 0 ? 1 : 0\n          when 13 # Opcode::I32_ADD_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] + c) & 0xffffffff\n          when 14 # Opcode::I32_SUB_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] - c) & 0xffffffff\n          when 15 # Opcode::I32_MUL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            left = registers[b]\n            right = c\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[a] = (low + high) & 0xffffffff\n          when 16 # Opcode::I32_XOR_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] ^ c\n          when 17 # Opcode::I32_SHL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] << (c & 31)) & 0xffffffff\n          when 18 # Opcode::I32_SHR_U_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] >> (c & 31)\n          when 20 # Opcode::I32_XOR_SHR_U_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            value = registers[b]\n            registers[a] = value ^ (value >> c)\n          when 21 # Opcode::I32_XOR_SHL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            value = registers[b]\n            registers[a] = (value ^ (value << c)) & 0xffffffff\n          when 8 # Opcode::BR\n            pc = a\n            next\n          when 9 # Opcode::BR_IF\n            b = instructions.fetch(pc + 2)\n            if registers[a] != 0\n              pc = b\n              next\n            end\n          when 19 # Opcode::BR_IF_ZERO\n            b = instructions.fetch(pc + 2)\n            if registers[a] == 0\n              pc = b\n              next\n            end\n          when 10 # Opcode::CALL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            frame.pc = pc + Lowerer::WIDTH\n            site = frame.function.call_site(b)\n            pool = pools[site.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            next_frame = pool.acquire(a)\n            if c >= 0\n              next_frame.registers[0] = registers[c]\n            else\n              site.copy_arguments(next_frame.registers, registers)\n            end\n            frames << next_frame\n            frame = next_frame\n            registers = frame.registers\n            instructions = frame.function.bytecode\n            pc = 0\n            next\n          when 11 # Opcode::RETURN\n            value = a < 0 ? 0 : registers[a]\n            destination = frame.return_register\n            frames.pop\n            pool = pools[frame.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            pool.release(frame)\n            return value if frames.empty?\n            frame = current_frame(frames)\n            registers = frame.registers\n            registers[destination] = value if destination >= 0\n            instructions = frame.function.bytecode\n            pc = frame.pc\n            next\n          when 12 # Opcode::TRAP\n            raise Wardite::Unreachable, \"unreachable op\"\n          when 22 # Opcode::PROFILE\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            @metrics.record(a, b, c)\n          else\n            raise Wardite::EvalError, \"Efflorescence: invalid MIR opcode #{opcode}\"\n          end\n          pc += Lowerer::WIDTH\n        end\n      end\n    end\n  end\nend\n",
+      "artifacts": {
+        "worker": {
+          "before": {
+            "bytes": 31088,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 1,
+            "volatile_lines": 17,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0
+          },
+          "after": {
+            "bytes": 31088,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 1,
+            "volatile_lines": 17,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0,
+            "boxed_local_names": [],
+            "iteration_resets": 13
+          },
+          "c_sha256": "a093cbfe2d80dc29f7e45c7d456b166d4c605d4356dd8616f7a9f2dd7373a819",
+          "binary_sha256": "49da7000db01f3547f34975763b7622c873e6e995290ac6834c2c0d49dbdf38e",
+          "compile_command": [
+            "clang",
+            "-O2",
+            "-ffp-contract=off",
+            "-falign-functions=64",
+            "-falign-loops=64",
+            "-I/Users/udzura/.local/lib/spinel/lib",
+            "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+            "-DSP_INT_OVERFLOW_MODE_RAISE",
+            "-DSP_ONE_STRING",
+            "-c",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/worker.c",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/worker.o"
+          ],
+          "link_command": [
+            "clang",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/worker.o",
+            "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+            "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+            "-lm",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/worker"
+          ]
+        },
+        "wardite": {
+          "before": {
+            "bytes": 31088,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 1,
+            "volatile_lines": 17,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0
+          },
+          "after": {
+            "bytes": 31088,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 1,
+            "volatile_lines": 17,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0,
+            "boxed_local_names": [],
+            "iteration_resets": 13
+          },
+          "c_sha256": "d0ec3ccf4f1c58b4902307f547033e0d2b17a7a78be143f759db492e3abbe821",
+          "binary_sha256": "73af597d29382d7ed323a8f0e720860cee27fe1d46982c906e72b346db80e40b",
+          "compile_command": [
+            "clang",
+            "-O2",
+            "-ffp-contract=off",
+            "-falign-functions=64",
+            "-falign-loops=64",
+            "-I/Users/udzura/.local/lib/spinel/lib",
+            "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+            "-DSP_INT_OVERFLOW_MODE_RAISE",
+            "-DSP_ONE_STRING",
+            "-c",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/wardite.c",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/wardite.o"
+          ],
+          "link_command": [
+            "clang",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/wardite.o",
+            "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+            "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+            "-lm",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/baseline/wardite"
+          ]
+        }
+      }
+    },
+    "while_loop": {
+      "source_sha256": {
+        "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+        "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+        "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+        "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+        "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+        "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+        "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+        "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+        "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+        "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+        "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+        "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+        "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+        "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+        "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+        "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+        "lib/wardite/efflorescence/vm.rb": "e0049518c51695d75000825c37b299b47fb54b0bb70bf451eb44b19576818cf5",
+        "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+        "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+        "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+        "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+        "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+        "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+        "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+        "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+        "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+        "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+        "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+        "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+      },
+      "vm_source": "# frozen_string_literal: true\n# rbs_inline: enabled\n\nmodule Wardite\n  module Efflorescence\n    class VM\n      attr_reader :instance #: Wardite::Instance\n      attr_reader :ir #: Wardite::Efflorescence::IR\n      attr_reader :semantic_ir #: Wardite::Efflorescence::IR\n      attr_reader :optimized_ir #: Wardite::Efflorescence::IR\n      attr_reader :metrics #: Wardite::Efflorescence::Metrics\n\n      # @rbs instance: Wardite::Instance\n      # @rbs disabled_optimizations: Array[Symbol]\n      # @rbs profile: bool\n      def initialize(instance, disabled_optimizations: [], profile: false)\n        @instance = instance\n        configuration = Configuration.new(disabled_optimizations)\n        @flat = configuration.enabled?(:flat)\n        @reuse_frames = configuration.enabled?(:frames)\n        @profiling = profile\n        @metrics = Metrics.new\n        @semantic_ir = Translator.new(instance).translate\n        @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)\n        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function) }\n        @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir\n        Lowerer.new.compile(@ir) if @flat\n        start = instance.start_section\n        execute(start.func_index, []) if start\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs return: bool\n      def callable?(name)\n        export = @instance.export_section.exports[name.to_s]\n        !!export && export.kind == 0\n      end\n\n      # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.\n      # @rbs name: String|Symbol\n      # @rbs arguments: Array[Object]\n      # @rbs return: Wardite::I32?\n      def call(name, arguments)\n        result = call_unboxed(name, arguments)\n        result.nil? ? nil : Wardite::I32.new(result)\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs arguments: Array[Object]\n      # @rbs return: Integer?\n      def call_unboxed(name, arguments)\n        export = @instance.export_section.exports[name.to_s]\n        raise ::NoMethodError, \"function #{name} not found\" unless export\n        raise ::NoMethodError, \"#{name} is not a function\" unless export.kind == 0\n        function = @ir.functions[export.index] || raise(Wardite::EvalError, \"invalid function index\")\n        unless arguments.size == function.parameter_count\n          raise Wardite::ArgumentError, \"unmatch arg size\"\n        end\n        values = [] #: Array[Integer]\n        arguments.each do |value|\n          raise Wardite::ArgumentError, \"type mismatch: i32(#{value})\" unless value.is_a?(Integer)\n          values << (value & 0xffffffff)\n        end\n        result = execute(export.index, values)\n        function.result_types.empty? ? nil : result\n      end\n\n      # @rbs name: Symbol\n      # @rbs *arguments: Object\n      # @rbs return: Wardite::I32?\n      def method_missing(name, *arguments)\n        callable?(name) ? call(name, arguments) : super\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs include_private: bool\n      # @rbs return: bool\n      def respond_to_missing?(name, include_private = false)\n        callable?(name) || super\n      end\n\n      # @rbs return: String\n      def dump_mir\n        inspection = Inspection.new\n        \"Semantic MIR (#{inspection.statistics(@semantic_ir)})\\n#{inspection.disassemble(@semantic_ir)}\\n\" \\\n          \"Optimized MIR (#{inspection.statistics(@optimized_ir)})\\n#{inspection.disassemble(@optimized_ir)}\"\n      end\n\n      private\n\n      # A concrete return type breaks the inference cycle between the current\n      # frame and the array it is restored from after every internal RETURN.\n      # @rbs return: Wardite::Efflorescence::Frame\n      def current_frame(frames)\n        frames.last || raise(Wardite::EvalError, \"missing MIR caller\")\n      end\n\n      # No Wasm operand stack, boxed values, or recursive Ruby calls here.\n      # Every register array contains only normalized i32 Integers. Void calls\n      # use destination -1; execute returns an unused integer for a void entry.\n      # @rbs index: Integer\n      # @rbs arguments: Array[Integer]\n      # @rbs return: Integer\n      def execute(index, arguments)\n        pools = [] #: Array[Wardite::Efflorescence::FramePool]\n        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }\n        function = @ir.functions[index] || raise(Wardite::EvalError, \"invalid function index #{index}\")\n        pool = pools[function.index]\n        raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n        frame = pool.acquire(-1)\n        arguments.each_with_index { |value, i| frame.registers[i] = value }\n        @metrics = Metrics.new if @profiling\n        @flat ? execute_flat(frame, pools) : execute_semantic(frame, pools)\n      ensure\n        if @profiling\n          created = 0\n          pools.each { |pool| created += pool.created }\n          @metrics.frames_created = created\n        end\n      end\n\n      # @rbs frame: Wardite::Efflorescence::Frame\n      # @rbs pools: Array[Wardite::Efflorescence::FramePool]\n      # @rbs return: Integer\n      def execute_semantic(frame, pools)\n        frames = [] #: Array[Wardite::Efflorescence::Frame]\n        frames << frame\n        registers = frame.registers\n        instructions = frame.function.instructions\n        pc = 0\n        loop do\n          instruction = instructions[pc] || raise(Wardite::EvalError, \"Efflorescence: invalid MIR PC #{pc}\")\n          pc += 1\n          # Integer literal labels let Spinel emit a C switch. Keep the\n          # Opcode comments in sync; the dispatch contract test checks them.\n          case instruction[0]\n          when 0 # Opcode::COPY\n            registers[instruction[1]] = registers[instruction[2]]\n          when 1 # Opcode::I32_ADD\n            registers[instruction[1]] = (registers[instruction[2]] + registers[instruction[3]]) & 0xffffffff\n          when 2 # Opcode::I32_SUB\n            registers[instruction[1]] = (registers[instruction[2]] - registers[instruction[3]]) & 0xffffffff\n          when 3 # Opcode::I32_MUL\n            # A full unsigned i32 product can overflow Spinel's native signed\n            # word. Split into 16-bit limbs; all intermediates fit in 49 bits.\n            left = registers[instruction[2]]\n            right = registers[instruction[3]]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[instruction[1]] = (low + high) & 0xffffffff\n          when 4 # Opcode::I32_XOR\n            registers[instruction[1]] = registers[instruction[2]] ^ registers[instruction[3]]\n          when 5 # Opcode::I32_SHL\n            registers[instruction[1]] = (registers[instruction[2]] << (registers[instruction[3]] & 31)) & 0xffffffff\n          when 6 # Opcode::I32_SHR_U\n            registers[instruction[1]] = registers[instruction[2]] >> (registers[instruction[3]] & 31)\n          when 7 # Opcode::I32_EQZ\n            registers[instruction[1]] = registers[instruction[2]] == 0 ? 1 : 0\n          when 13 # Opcode::I32_ADD_IMM\n            registers[instruction[1]] = (registers[instruction[2]] + instruction[3]) & 0xffffffff\n          when 14 # Opcode::I32_SUB_IMM\n            registers[instruction[1]] = (registers[instruction[2]] - instruction[3]) & 0xffffffff\n          when 15 # Opcode::I32_MUL_IMM\n            left = registers[instruction[2]]\n            right = instruction[3]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[instruction[1]] = (low + high) & 0xffffffff\n          when 16 # Opcode::I32_XOR_IMM\n            registers[instruction[1]] = registers[instruction[2]] ^ instruction[3]\n          when 17 # Opcode::I32_SHL_IMM\n            registers[instruction[1]] = (registers[instruction[2]] << (instruction[3] & 31)) & 0xffffffff\n          when 18 # Opcode::I32_SHR_U_IMM\n            registers[instruction[1]] = registers[instruction[2]] >> (instruction[3] & 31)\n          when 20 # Opcode::I32_XOR_SHR_U_IMM\n            value = registers[instruction[2]]\n            registers[instruction[1]] = value ^ (value >> instruction[3])\n          when 21 # Opcode::I32_XOR_SHL_IMM\n            value = registers[instruction[2]]\n            registers[instruction[1]] = (value ^ (value << instruction[3])) & 0xffffffff\n          when 8 # Opcode::BR\n            pc = instruction[1]\n          when 9 # Opcode::BR_IF\n            pc = instruction[2] if registers[instruction[1]] != 0\n          when 19 # Opcode::BR_IF_ZERO\n            pc = instruction[2] if registers[instruction[1]] == 0\n          when 10 # Opcode::CALL\n            frame.pc = pc\n            callee = @ir.functions[instruction[2]] || raise(Wardite::EvalError, \"invalid MIR call target\")\n            pool = pools[callee.index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            next_frame = pool.acquire(instruction[1])\n            argument = 0\n            while argument < callee.parameter_count\n              next_frame.registers[argument] = registers[instruction[argument + 3]]\n              argument += 1\n            end\n            frames << next_frame\n            frame = next_frame\n            registers = frame.registers\n            instructions = frame.function.instructions\n            pc = 0\n          when 11 # Opcode::RETURN\n            value = instruction[1] < 0 ? 0 : registers[instruction[1]]\n            destination = frame.return_register\n            frames.pop\n            pool = pools[frame.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            pool.release(frame)\n            return value if frames.empty?\n            frame = current_frame(frames)\n            registers = frame.registers\n            registers[destination] = value if destination >= 0\n            instructions = frame.function.instructions\n            pc = frame.pc\n          when 12 # Opcode::TRAP\n            raise Wardite::Unreachable, \"unreachable op\"\n          when 22 # Opcode::PROFILE\n            @metrics.record(instruction[1], instruction[2], instruction[3])\n          else\n            raise Wardite::EvalError, \"Efflorescence: invalid MIR opcode #{instruction[0]}\"\n          end\n        end\n      end\n      # @rbs frame: Wardite::Efflorescence::Frame\n      # @rbs pools: Array[Wardite::Efflorescence::FramePool]\n      # @rbs return: Integer\n      def execute_flat(frame, pools)\n        frames = [] #: Array[Wardite::Efflorescence::Frame]\n        frames << frame\n        registers = frame.registers\n        instructions = frame.function.bytecode\n        pc = 0\n        while true\n          opcode = instructions.fetch(pc)\n          a = instructions.fetch(pc + 1)\n          # PCs still advance by four words, but short instructions do not\n          # read their unused b/c padding. Control transfers skip the increment.\n          # Integer literal labels let Spinel emit a C switch. Keep the\n          # Opcode comments in sync; the dispatch contract test checks them.\n          case opcode\n          when 0 # Opcode::COPY\n            b = instructions.fetch(pc + 2)\n            registers[a] = registers[b]\n          when 1 # Opcode::I32_ADD\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] + registers[c]) & 0xffffffff\n          when 2 # Opcode::I32_SUB\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] - registers[c]) & 0xffffffff\n          when 3 # Opcode::I32_MUL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            # A full unsigned i32 product can overflow Spinel's native signed\n            # word. Split into 16-bit limbs; all intermediates fit in 49 bits.\n            left = registers[b]\n            right = registers[c]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[a] = (low + high) & 0xffffffff\n          when 4 # Opcode::I32_XOR\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] ^ registers[c]\n          when 5 # Opcode::I32_SHL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] << (registers[c] & 31)) & 0xffffffff\n          when 6 # Opcode::I32_SHR_U\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] >> (registers[c] & 31)\n          when 7 # Opcode::I32_EQZ\n            b = instructions.fetch(pc + 2)\n            registers[a] = registers[b] == 0 ? 1 : 0\n          when 13 # Opcode::I32_ADD_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] + c) & 0xffffffff\n          when 14 # Opcode::I32_SUB_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] - c) & 0xffffffff\n          when 15 # Opcode::I32_MUL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            left = registers[b]\n            right = c\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[a] = (low + high) & 0xffffffff\n          when 16 # Opcode::I32_XOR_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] ^ c\n          when 17 # Opcode::I32_SHL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] << (c & 31)) & 0xffffffff\n          when 18 # Opcode::I32_SHR_U_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] >> (c & 31)\n          when 20 # Opcode::I32_XOR_SHR_U_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            value = registers[b]\n            registers[a] = value ^ (value >> c)\n          when 21 # Opcode::I32_XOR_SHL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            value = registers[b]\n            registers[a] = (value ^ (value << c)) & 0xffffffff\n          when 8 # Opcode::BR\n            pc = a\n            next\n          when 9 # Opcode::BR_IF\n            b = instructions.fetch(pc + 2)\n            if registers[a] != 0\n              pc = b\n              next\n            end\n          when 19 # Opcode::BR_IF_ZERO\n            b = instructions.fetch(pc + 2)\n            if registers[a] == 0\n              pc = b\n              next\n            end\n          when 10 # Opcode::CALL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            frame.pc = pc + Lowerer::WIDTH\n            site = frame.function.call_site(b)\n            pool = pools[site.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            next_frame = pool.acquire(a)\n            if c >= 0\n              next_frame.registers[0] = registers[c]\n            else\n              site.copy_arguments(next_frame.registers, registers)\n            end\n            frames << next_frame\n            frame = next_frame\n            registers = frame.registers\n            instructions = frame.function.bytecode\n            pc = 0\n            next\n          when 11 # Opcode::RETURN\n            value = a < 0 ? 0 : registers[a]\n            destination = frame.return_register\n            frames.pop\n            pool = pools[frame.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            pool.release(frame)\n            return value if frames.empty?\n            frame = current_frame(frames)\n            registers = frame.registers\n            registers[destination] = value if destination >= 0\n            instructions = frame.function.bytecode\n            pc = frame.pc\n            next\n          when 12 # Opcode::TRAP\n            raise Wardite::Unreachable, \"unreachable op\"\n          when 22 # Opcode::PROFILE\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            @metrics.record(a, b, c)\n          else\n            raise Wardite::EvalError, \"Efflorescence: invalid MIR opcode #{opcode}\"\n          end\n          pc += Lowerer::WIDTH\n        end\n      end\n    end\n  end\nend\n",
+      "artifacts": {
+        "worker": {
+          "before": {
+            "bytes": 24493,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 0,
+            "volatile_lines": 0,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0
+          },
+          "after": {
+            "bytes": 24493,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 0,
+            "volatile_lines": 0,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0,
+            "boxed_local_names": [],
+            "iteration_resets": 0
+          },
+          "c_sha256": "59e17b1837a2981370611fdae444bdff31def177751d1b1750dbd7aa2f4a1eee",
+          "binary_sha256": "d1ba86cddc82a7e97cfee3f1ff073638b8257b44e237c93f37635cde92b89c9c",
+          "compile_command": [
+            "clang",
+            "-O2",
+            "-ffp-contract=off",
+            "-falign-functions=64",
+            "-falign-loops=64",
+            "-I/Users/udzura/.local/lib/spinel/lib",
+            "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+            "-DSP_INT_OVERFLOW_MODE_RAISE",
+            "-DSP_ONE_STRING",
+            "-c",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/worker.c",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/worker.o"
+          ],
+          "link_command": [
+            "clang",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/worker.o",
+            "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+            "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+            "-lm",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/worker"
+          ]
+        },
+        "wardite": {
+          "before": {
+            "bytes": 24493,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 0,
+            "volatile_lines": 0,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0
+          },
+          "after": {
+            "bytes": 24493,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 0,
+            "volatile_lines": 0,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0,
+            "boxed_local_names": [],
+            "iteration_resets": 0
+          },
+          "c_sha256": "ed3b44d4ab7fc3bbe8845a88d6880ab1619cf2a47954b501f5c59b62d39c287a",
+          "binary_sha256": "a1ae1b0f1e424a68452b13e79a3539dfb5c0ab946a467150fdc05ca61c1de7e3",
+          "compile_command": [
+            "clang",
+            "-O2",
+            "-ffp-contract=off",
+            "-falign-functions=64",
+            "-falign-loops=64",
+            "-I/Users/udzura/.local/lib/spinel/lib",
+            "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+            "-DSP_INT_OVERFLOW_MODE_RAISE",
+            "-DSP_ONE_STRING",
+            "-c",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/wardite.c",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/wardite.o"
+          ],
+          "link_command": [
+            "clang",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/wardite.o",
+            "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+            "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+            "-lm",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_loop/wardite"
+          ]
+        }
+      }
+    },
+    "c_root_elision": {
+      "source_sha256": {
+        "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+        "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+        "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+        "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+        "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+        "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+        "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+        "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+        "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+        "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+        "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+        "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+        "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+        "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+        "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+        "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+        "lib/wardite/efflorescence/vm.rb": "675c6c3cfc629f302a3c50ce951c4a161d04b0db3d806a60f8b8ed73ee405b90",
+        "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+        "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+        "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+        "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+        "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+        "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+        "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+        "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+        "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+        "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+        "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+        "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+      },
+      "vm_source": "# frozen_string_literal: true\n# rbs_inline: enabled\n\nmodule Wardite\n  module Efflorescence\n    class VM\n      attr_reader :instance #: Wardite::Instance\n      attr_reader :ir #: Wardite::Efflorescence::IR\n      attr_reader :semantic_ir #: Wardite::Efflorescence::IR\n      attr_reader :optimized_ir #: Wardite::Efflorescence::IR\n      attr_reader :metrics #: Wardite::Efflorescence::Metrics\n\n      # @rbs instance: Wardite::Instance\n      # @rbs disabled_optimizations: Array[Symbol]\n      # @rbs profile: bool\n      def initialize(instance, disabled_optimizations: [], profile: false)\n        @instance = instance\n        configuration = Configuration.new(disabled_optimizations)\n        @flat = configuration.enabled?(:flat)\n        @reuse_frames = configuration.enabled?(:frames)\n        @profiling = profile\n        @metrics = Metrics.new\n        @semantic_ir = Translator.new(instance).translate\n        @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)\n        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function) }\n        @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir\n        Lowerer.new.compile(@ir) if @flat\n        start = instance.start_section\n        execute(start.func_index, []) if start\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs return: bool\n      def callable?(name)\n        export = @instance.export_section.exports[name.to_s]\n        !!export && export.kind == 0\n      end\n\n      # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.\n      # @rbs name: String|Symbol\n      # @rbs arguments: Array[Object]\n      # @rbs return: Wardite::I32?\n      def call(name, arguments)\n        result = call_unboxed(name, arguments)\n        result.nil? ? nil : Wardite::I32.new(result)\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs arguments: Array[Object]\n      # @rbs return: Integer?\n      def call_unboxed(name, arguments)\n        export = @instance.export_section.exports[name.to_s]\n        raise ::NoMethodError, \"function #{name} not found\" unless export\n        raise ::NoMethodError, \"#{name} is not a function\" unless export.kind == 0\n        function = @ir.functions[export.index] || raise(Wardite::EvalError, \"invalid function index\")\n        unless arguments.size == function.parameter_count\n          raise Wardite::ArgumentError, \"unmatch arg size\"\n        end\n        values = [] #: Array[Integer]\n        arguments.each do |value|\n          raise Wardite::ArgumentError, \"type mismatch: i32(#{value})\" unless value.is_a?(Integer)\n          values << (value & 0xffffffff)\n        end\n        result = execute(export.index, values)\n        function.result_types.empty? ? nil : result\n      end\n\n      # @rbs name: Symbol\n      # @rbs *arguments: Object\n      # @rbs return: Wardite::I32?\n      def method_missing(name, *arguments)\n        callable?(name) ? call(name, arguments) : super\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs include_private: bool\n      # @rbs return: bool\n      def respond_to_missing?(name, include_private = false)\n        callable?(name) || super\n      end\n\n      # @rbs return: String\n      def dump_mir\n        inspection = Inspection.new\n        \"Semantic MIR (#{inspection.statistics(@semantic_ir)})\\n#{inspection.disassemble(@semantic_ir)}\\n\" \\\n          \"Optimized MIR (#{inspection.statistics(@optimized_ir)})\\n#{inspection.disassemble(@optimized_ir)}\"\n      end\n\n      private\n\n      # A concrete return type breaks the inference cycle between the current\n      # frame and the array it is restored from after every internal RETURN.\n      # @rbs return: Wardite::Efflorescence::Frame\n      def current_frame(frames)\n        frames.last || raise(Wardite::EvalError, \"missing MIR caller\")\n      end\n\n      # No Wasm operand stack, boxed values, or recursive Ruby calls here.\n      # Every register array contains only normalized i32 Integers. Void calls\n      # use destination -1; execute returns an unused integer for a void entry.\n      # @rbs index: Integer\n      # @rbs arguments: Array[Integer]\n      # @rbs return: Integer\n      def execute(index, arguments)\n        pools = [] #: Array[Wardite::Efflorescence::FramePool]\n        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }\n        function = @ir.functions[index] || raise(Wardite::EvalError, \"invalid function index #{index}\")\n        pool = pools[function.index]\n        raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n        frame = pool.acquire(-1)\n        arguments.each_with_index { |value, i| frame.registers[i] = value }\n        @metrics = Metrics.new if @profiling\n        @flat ? execute_flat(frame, pools) : execute_semantic(frame, pools)\n      ensure\n        if @profiling\n          created = 0\n          pools.each { |pool| created += pool.created }\n          @metrics.frames_created = created\n        end\n      end\n\n      # @rbs frame: Wardite::Efflorescence::Frame\n      # @rbs pools: Array[Wardite::Efflorescence::FramePool]\n      # @rbs return: Integer\n      def execute_semantic(frame, pools)\n        frames = [] #: Array[Wardite::Efflorescence::Frame]\n        frames << frame\n        registers = frame.registers\n        instructions = frame.function.instructions\n        pc = 0\n        loop do\n          instruction = instructions[pc] || raise(Wardite::EvalError, \"Efflorescence: invalid MIR PC #{pc}\")\n          pc += 1\n          # Integer literal labels let Spinel emit a C switch. Keep the\n          # Opcode comments in sync; the dispatch contract test checks them.\n          case instruction[0]\n          when 0 # Opcode::COPY\n            registers[instruction[1]] = registers[instruction[2]]\n          when 1 # Opcode::I32_ADD\n            registers[instruction[1]] = (registers[instruction[2]] + registers[instruction[3]]) & 0xffffffff\n          when 2 # Opcode::I32_SUB\n            registers[instruction[1]] = (registers[instruction[2]] - registers[instruction[3]]) & 0xffffffff\n          when 3 # Opcode::I32_MUL\n            # A full unsigned i32 product can overflow Spinel's native signed\n            # word. Split into 16-bit limbs; all intermediates fit in 49 bits.\n            left = registers[instruction[2]]\n            right = registers[instruction[3]]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[instruction[1]] = (low + high) & 0xffffffff\n          when 4 # Opcode::I32_XOR\n            registers[instruction[1]] = registers[instruction[2]] ^ registers[instruction[3]]\n          when 5 # Opcode::I32_SHL\n            registers[instruction[1]] = (registers[instruction[2]] << (registers[instruction[3]] & 31)) & 0xffffffff\n          when 6 # Opcode::I32_SHR_U\n            registers[instruction[1]] = registers[instruction[2]] >> (registers[instruction[3]] & 31)\n          when 7 # Opcode::I32_EQZ\n            registers[instruction[1]] = registers[instruction[2]] == 0 ? 1 : 0\n          when 13 # Opcode::I32_ADD_IMM\n            registers[instruction[1]] = (registers[instruction[2]] + instruction[3]) & 0xffffffff\n          when 14 # Opcode::I32_SUB_IMM\n            registers[instruction[1]] = (registers[instruction[2]] - instruction[3]) & 0xffffffff\n          when 15 # Opcode::I32_MUL_IMM\n            left = registers[instruction[2]]\n            right = instruction[3]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[instruction[1]] = (low + high) & 0xffffffff\n          when 16 # Opcode::I32_XOR_IMM\n            registers[instruction[1]] = registers[instruction[2]] ^ instruction[3]\n          when 17 # Opcode::I32_SHL_IMM\n            registers[instruction[1]] = (registers[instruction[2]] << (instruction[3] & 31)) & 0xffffffff\n          when 18 # Opcode::I32_SHR_U_IMM\n            registers[instruction[1]] = registers[instruction[2]] >> (instruction[3] & 31)\n          when 20 # Opcode::I32_XOR_SHR_U_IMM\n            value = registers[instruction[2]]\n            registers[instruction[1]] = value ^ (value >> instruction[3])\n          when 21 # Opcode::I32_XOR_SHL_IMM\n            value = registers[instruction[2]]\n            registers[instruction[1]] = (value ^ (value << instruction[3])) & 0xffffffff\n          when 8 # Opcode::BR\n            pc = instruction[1]\n          when 9 # Opcode::BR_IF\n            pc = instruction[2] if registers[instruction[1]] != 0\n          when 19 # Opcode::BR_IF_ZERO\n            pc = instruction[2] if registers[instruction[1]] == 0\n          when 10 # Opcode::CALL\n            frame.pc = pc\n            callee = @ir.functions[instruction[2]] || raise(Wardite::EvalError, \"invalid MIR call target\")\n            pool = pools[callee.index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            next_frame = pool.acquire(instruction[1])\n            argument = 0\n            while argument < callee.parameter_count\n              next_frame.registers[argument] = registers[instruction[argument + 3]]\n              argument += 1\n            end\n            frames << next_frame\n            frame = next_frame\n            registers = frame.registers\n            instructions = frame.function.instructions\n            pc = 0\n          when 11 # Opcode::RETURN\n            value = instruction[1] < 0 ? 0 : registers[instruction[1]]\n            destination = frame.return_register\n            frames.pop\n            pool = pools[frame.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            pool.release(frame)\n            return value if frames.empty?\n            frame = current_frame(frames)\n            registers = frame.registers\n            registers[destination] = value if destination >= 0\n            instructions = frame.function.instructions\n            pc = frame.pc\n          when 12 # Opcode::TRAP\n            raise Wardite::Unreachable, \"unreachable op\"\n          when 22 # Opcode::PROFILE\n            @metrics.record(instruction[1], instruction[2], instruction[3])\n          else\n            raise Wardite::EvalError, \"Efflorescence: invalid MIR opcode #{instruction[0]}\"\n          end\n        end\n      end\n      # @rbs frame: Wardite::Efflorescence::Frame\n      # @rbs pools: Array[Wardite::Efflorescence::FramePool]\n      # @rbs return: Integer\n      def execute_flat(frame, pools)\n        frames = [] #: Array[Wardite::Efflorescence::Frame]\n        frames << frame\n        registers = frame.registers\n        instructions = frame.function.bytecode\n        pc = 0\n        loop do\n          opcode = instructions.fetch(pc)\n          a = instructions.fetch(pc + 1)\n          # PCs still advance by four words, but short instructions do not\n          # read their unused b/c padding. Control transfers skip the increment.\n          # Integer literal labels let Spinel emit a C switch. Keep the\n          # Opcode comments in sync; the dispatch contract test checks them.\n          case opcode\n          when 0 # Opcode::COPY\n            b = instructions.fetch(pc + 2)\n            registers[a] = registers[b]\n          when 1 # Opcode::I32_ADD\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] + registers[c]) & 0xffffffff\n          when 2 # Opcode::I32_SUB\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] - registers[c]) & 0xffffffff\n          when 3 # Opcode::I32_MUL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            # A full unsigned i32 product can overflow Spinel's native signed\n            # word. Split into 16-bit limbs; all intermediates fit in 49 bits.\n            left = registers[b]\n            right = registers[c]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[a] = (low + high) & 0xffffffff\n          when 4 # Opcode::I32_XOR\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] ^ registers[c]\n          when 5 # Opcode::I32_SHL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] << (registers[c] & 31)) & 0xffffffff\n          when 6 # Opcode::I32_SHR_U\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] >> (registers[c] & 31)\n          when 7 # Opcode::I32_EQZ\n            b = instructions.fetch(pc + 2)\n            registers[a] = registers[b] == 0 ? 1 : 0\n          when 13 # Opcode::I32_ADD_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] + c) & 0xffffffff\n          when 14 # Opcode::I32_SUB_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] - c) & 0xffffffff\n          when 15 # Opcode::I32_MUL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            left = registers[b]\n            right = c\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[a] = (low + high) & 0xffffffff\n          when 16 # Opcode::I32_XOR_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] ^ c\n          when 17 # Opcode::I32_SHL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] << (c & 31)) & 0xffffffff\n          when 18 # Opcode::I32_SHR_U_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] >> (c & 31)\n          when 20 # Opcode::I32_XOR_SHR_U_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            value = registers[b]\n            registers[a] = value ^ (value >> c)\n          when 21 # Opcode::I32_XOR_SHL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            value = registers[b]\n            registers[a] = (value ^ (value << c)) & 0xffffffff\n          when 8 # Opcode::BR\n            pc = a\n            next\n          when 9 # Opcode::BR_IF\n            b = instructions.fetch(pc + 2)\n            if registers[a] != 0\n              pc = b\n              next\n            end\n          when 19 # Opcode::BR_IF_ZERO\n            b = instructions.fetch(pc + 2)\n            if registers[a] == 0\n              pc = b\n              next\n            end\n          when 10 # Opcode::CALL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            frame.pc = pc + Lowerer::WIDTH\n            site = frame.function.call_site(b)\n            pool = pools[site.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            next_frame = pool.acquire(a)\n            if c >= 0\n              next_frame.registers[0] = registers[c]\n            else\n              site.copy_arguments(next_frame.registers, registers)\n            end\n            frames << next_frame\n            frame = next_frame\n            registers = frame.registers\n            instructions = frame.function.bytecode\n            pc = 0\n            next\n          when 11 # Opcode::RETURN\n            value = a < 0 ? 0 : registers[a]\n            destination = frame.return_register\n            frames.pop\n            pool = pools[frame.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            pool.release(frame)\n            return value if frames.empty?\n            frame = current_frame(frames)\n            registers = frame.registers\n            registers[destination] = value if destination >= 0\n            instructions = frame.function.bytecode\n            pc = frame.pc\n            next\n          when 12 # Opcode::TRAP\n            raise Wardite::Unreachable, \"unreachable op\"\n          when 22 # Opcode::PROFILE\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            @metrics.record(a, b, c)\n          else\n            raise Wardite::EvalError, \"Efflorescence: invalid MIR opcode #{opcode}\"\n          end\n          pc += Lowerer::WIDTH\n        end\n      end\n    end\n  end\nend\n",
+      "artifacts": {
+        "worker": {
+          "before": {
+            "bytes": 31088,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 1,
+            "volatile_lines": 17,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0
+          },
+          "after": {
+            "bytes": 30430,
+            "temporary_roots": 2,
+            "instruction_roots": 0,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 1,
+            "volatile_lines": 17,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0,
+            "boxed_local_names": [],
+            "iteration_resets": 13
+          },
+          "c_sha256": "0bb49f458df5c086f84f5b13e8617e46a94caeeac409d463d34a4d81b6b4a744",
+          "binary_sha256": "db88f94b5fded7adba0b7d9cc1bf982e863b59cdafe777aea6616861e194077c",
+          "compile_command": [
+            "clang",
+            "-O2",
+            "-ffp-contract=off",
+            "-falign-functions=64",
+            "-falign-loops=64",
+            "-I/Users/udzura/.local/lib/spinel/lib",
+            "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+            "-DSP_INT_OVERFLOW_MODE_RAISE",
+            "-DSP_ONE_STRING",
+            "-c",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/worker.c",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/worker.o"
+          ],
+          "link_command": [
+            "clang",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/worker.o",
+            "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+            "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+            "-lm",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/worker"
+          ]
+        },
+        "wardite": {
+          "before": {
+            "bytes": 31088,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 1,
+            "volatile_lines": 17,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0
+          },
+          "after": {
+            "bytes": 30430,
+            "temporary_roots": 2,
+            "instruction_roots": 0,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 1,
+            "volatile_lines": 17,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0,
+            "boxed_local_names": [],
+            "iteration_resets": 13
+          },
+          "c_sha256": "4df690fbb73bc183dbb03464f760024f389fac8afca1875f01a92bd0ab59a814",
+          "binary_sha256": "eb9fb527a7764740f34ae7b5fda9c01e72d9021bb778ff6d9d2a95dc3e310304",
+          "compile_command": [
+            "clang",
+            "-O2",
+            "-ffp-contract=off",
+            "-falign-functions=64",
+            "-falign-loops=64",
+            "-I/Users/udzura/.local/lib/spinel/lib",
+            "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+            "-DSP_INT_OVERFLOW_MODE_RAISE",
+            "-DSP_ONE_STRING",
+            "-c",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/wardite.c",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/wardite.o"
+          ],
+          "link_command": [
+            "clang",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/wardite.o",
+            "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+            "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+            "-lm",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/c_root_elision/wardite"
+          ]
+        }
+      }
+    },
+    "while_c_root_elision": {
+      "source_sha256": {
+        "benchmark/call_cost_worker.rb": "4e04ed585bc9aa71c3c1f130f4d9954a6a5a7d63a96ece8d3e672203b4b85ae6",
+        "exe/wardite": "2f3995ccba16f2dee01d1c6fffbb52fa97050aa37c547aae24f93b04a2520cd0",
+        "lib/wardite.rb": "0c692293a62a3e5447ee3218ad2220c58e1442e2dbd0968f8f0d351dfc034f32",
+        "lib/wardite/alu_f32.generated.rb": "8f7513a0eedf822d646fee25466ae3299c62755f4df644719c388c757e0a1d0c",
+        "lib/wardite/alu_f64.generated.rb": "7ab9da56f49811f84e34d447ba7f6805beb23b5b850ed3910ed05a08f666af15",
+        "lib/wardite/alu_i32.generated.rb": "24f11c231a3a516da182a96c18f3567400b4dc50eaea83c47c029199a664406f",
+        "lib/wardite/alu_i64.generated.rb": "de661f710e0714436924fac7f5887c2b47870a9bf9644cdb1a1eea7cc4978470",
+        "lib/wardite/cli/cli.rb": "500e94432ec07174634bf590dd510e1d9dd6a8be0d1ce79d58af5b52e4b36346",
+        "lib/wardite/const.rb": "ca9531b1230ae85ce1d55e0853b09de8446570de5373a99d1803907683fcbe95",
+        "lib/wardite/convert.generated.rb": "54d5ebe5074f5bfb80df4ef3f07bc59eb04f61ff6c69212a55aa2e2a6fe9751f",
+        "lib/wardite/efflorescence.rb": "afd9614cee6b644c6aecdff42bec4212291acccb3d76881c7b0000bfe66ba0d3",
+        "lib/wardite/efflorescence/inspection.rb": "5728baa6b20ec4e729b491e47ba784d3951282a3a8341ffc07328133ad4d7226",
+        "lib/wardite/efflorescence/ir.rb": "c2a6600d7b6f987a135e82642b6e1f269d1e3d77b9fc0d6e3fda9582101f3d04",
+        "lib/wardite/efflorescence/optimizer.rb": "ae07a5c1a34a303d20abe956d53fc8725c36c5c70c4ed100c873ca0d6f31a471",
+        "lib/wardite/efflorescence/register_validation.rb": "818e437bdbacfb86fb12fa2553c756cc78de31acbd8351c7a61584a88c995019",
+        "lib/wardite/efflorescence/translator.rb": "654e508ed40c9f622cb3fdd481d44b6cf040b1808dd342165bd4a7d95284fcda",
+        "lib/wardite/efflorescence/vm.rb": "e0049518c51695d75000825c37b299b47fb54b0bb70bf451eb44b19576818cf5",
+        "lib/wardite/errors.rb": "fd6761677535e9128965899ab57a7a27182dc3c221ac24e33619327fae78d9bf",
+        "lib/wardite/instruction.rb": "c2614c735e9b2b3824fb75c90f535612aebe6000f54426aa2f6a753b35f44ac8",
+        "lib/wardite/leb128.rb": "b24b179e1e0943768bf2de8f76215482c4d9b6bbf9417f50a6651161fde05fac",
+        "lib/wardite/load.rb": "985bf6d88dc7cefed183c10168d0d68e7aec8ee6aaf9c286bcd4db835b055c81",
+        "lib/wardite/revisitor.rb": "e5637fb63e919bb451ad95175a1042a178cab66e170a7be56ca8cb19d4dd60da",
+        "lib/wardite/value.rb": "82d9f7f2aa75f1e9b767e01e451f10ab732a18c5a4e3fcdf5e61bb84b1257dea",
+        "lib/wardite/version.rb": "e5c5254c8f758ec74991d3b53dd33596c943a144fc1b44d9570c1a5eb894d8d9",
+        "lib/wardite/wasi.rb": "c2949b28da1ea1dd7ebd119c39988cb174d5e97d23a5e29a94fcd2fc601e56f4",
+        "lib/wardite/wasi/consts.rb": "66eb9d398990ec6be7428659b9dfbaf46fbd966bb0e7611067a7257d23ffa154",
+        "lib/wardite/wasi/dirent_cache.rb": "ea203f0008b9ad0755f78dd89b43cf8759c8963fb5ad4fa18cfdf6d37b52a762",
+        "lib/wardite/wasi/preopens.rb": "74a5d81548b5646b96861a18b8efba90e0ad1e5e5ff1eabd9520a2571cf35970",
+        "lib/wardite/wasm_module.rb": "202463cd20fd6d1b2e7f4093c324304d1c665def4724851bd26eea064588b231"
+      },
+      "vm_source": "# frozen_string_literal: true\n# rbs_inline: enabled\n\nmodule Wardite\n  module Efflorescence\n    class VM\n      attr_reader :instance #: Wardite::Instance\n      attr_reader :ir #: Wardite::Efflorescence::IR\n      attr_reader :semantic_ir #: Wardite::Efflorescence::IR\n      attr_reader :optimized_ir #: Wardite::Efflorescence::IR\n      attr_reader :metrics #: Wardite::Efflorescence::Metrics\n\n      # @rbs instance: Wardite::Instance\n      # @rbs disabled_optimizations: Array[Symbol]\n      # @rbs profile: bool\n      def initialize(instance, disabled_optimizations: [], profile: false)\n        @instance = instance\n        configuration = Configuration.new(disabled_optimizations)\n        @flat = configuration.enabled?(:flat)\n        @reuse_frames = configuration.enabled?(:frames)\n        @profiling = profile\n        @metrics = Metrics.new\n        @semantic_ir = Translator.new(instance).translate\n        @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)\n        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function) }\n        @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir\n        Lowerer.new.compile(@ir) if @flat\n        start = instance.start_section\n        execute(start.func_index, []) if start\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs return: bool\n      def callable?(name)\n        export = @instance.export_section.exports[name.to_s]\n        !!export && export.kind == 0\n      end\n\n      # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.\n      # @rbs name: String|Symbol\n      # @rbs arguments: Array[Object]\n      # @rbs return: Wardite::I32?\n      def call(name, arguments)\n        result = call_unboxed(name, arguments)\n        result.nil? ? nil : Wardite::I32.new(result)\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs arguments: Array[Object]\n      # @rbs return: Integer?\n      def call_unboxed(name, arguments)\n        export = @instance.export_section.exports[name.to_s]\n        raise ::NoMethodError, \"function #{name} not found\" unless export\n        raise ::NoMethodError, \"#{name} is not a function\" unless export.kind == 0\n        function = @ir.functions[export.index] || raise(Wardite::EvalError, \"invalid function index\")\n        unless arguments.size == function.parameter_count\n          raise Wardite::ArgumentError, \"unmatch arg size\"\n        end\n        values = [] #: Array[Integer]\n        arguments.each do |value|\n          raise Wardite::ArgumentError, \"type mismatch: i32(#{value})\" unless value.is_a?(Integer)\n          values << (value & 0xffffffff)\n        end\n        result = execute(export.index, values)\n        function.result_types.empty? ? nil : result\n      end\n\n      # @rbs name: Symbol\n      # @rbs *arguments: Object\n      # @rbs return: Wardite::I32?\n      def method_missing(name, *arguments)\n        callable?(name) ? call(name, arguments) : super\n      end\n\n      # @rbs name: String|Symbol\n      # @rbs include_private: bool\n      # @rbs return: bool\n      def respond_to_missing?(name, include_private = false)\n        callable?(name) || super\n      end\n\n      # @rbs return: String\n      def dump_mir\n        inspection = Inspection.new\n        \"Semantic MIR (#{inspection.statistics(@semantic_ir)})\\n#{inspection.disassemble(@semantic_ir)}\\n\" \\\n          \"Optimized MIR (#{inspection.statistics(@optimized_ir)})\\n#{inspection.disassemble(@optimized_ir)}\"\n      end\n\n      private\n\n      # A concrete return type breaks the inference cycle between the current\n      # frame and the array it is restored from after every internal RETURN.\n      # @rbs return: Wardite::Efflorescence::Frame\n      def current_frame(frames)\n        frames.last || raise(Wardite::EvalError, \"missing MIR caller\")\n      end\n\n      # No Wasm operand stack, boxed values, or recursive Ruby calls here.\n      # Every register array contains only normalized i32 Integers. Void calls\n      # use destination -1; execute returns an unused integer for a void entry.\n      # @rbs index: Integer\n      # @rbs arguments: Array[Integer]\n      # @rbs return: Integer\n      def execute(index, arguments)\n        pools = [] #: Array[Wardite::Efflorescence::FramePool]\n        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }\n        function = @ir.functions[index] || raise(Wardite::EvalError, \"invalid function index #{index}\")\n        pool = pools[function.index]\n        raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n        frame = pool.acquire(-1)\n        arguments.each_with_index { |value, i| frame.registers[i] = value }\n        @metrics = Metrics.new if @profiling\n        @flat ? execute_flat(frame, pools) : execute_semantic(frame, pools)\n      ensure\n        if @profiling\n          created = 0\n          pools.each { |pool| created += pool.created }\n          @metrics.frames_created = created\n        end\n      end\n\n      # @rbs frame: Wardite::Efflorescence::Frame\n      # @rbs pools: Array[Wardite::Efflorescence::FramePool]\n      # @rbs return: Integer\n      def execute_semantic(frame, pools)\n        frames = [] #: Array[Wardite::Efflorescence::Frame]\n        frames << frame\n        registers = frame.registers\n        instructions = frame.function.instructions\n        pc = 0\n        loop do\n          instruction = instructions[pc] || raise(Wardite::EvalError, \"Efflorescence: invalid MIR PC #{pc}\")\n          pc += 1\n          # Integer literal labels let Spinel emit a C switch. Keep the\n          # Opcode comments in sync; the dispatch contract test checks them.\n          case instruction[0]\n          when 0 # Opcode::COPY\n            registers[instruction[1]] = registers[instruction[2]]\n          when 1 # Opcode::I32_ADD\n            registers[instruction[1]] = (registers[instruction[2]] + registers[instruction[3]]) & 0xffffffff\n          when 2 # Opcode::I32_SUB\n            registers[instruction[1]] = (registers[instruction[2]] - registers[instruction[3]]) & 0xffffffff\n          when 3 # Opcode::I32_MUL\n            # A full unsigned i32 product can overflow Spinel's native signed\n            # word. Split into 16-bit limbs; all intermediates fit in 49 bits.\n            left = registers[instruction[2]]\n            right = registers[instruction[3]]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[instruction[1]] = (low + high) & 0xffffffff\n          when 4 # Opcode::I32_XOR\n            registers[instruction[1]] = registers[instruction[2]] ^ registers[instruction[3]]\n          when 5 # Opcode::I32_SHL\n            registers[instruction[1]] = (registers[instruction[2]] << (registers[instruction[3]] & 31)) & 0xffffffff\n          when 6 # Opcode::I32_SHR_U\n            registers[instruction[1]] = registers[instruction[2]] >> (registers[instruction[3]] & 31)\n          when 7 # Opcode::I32_EQZ\n            registers[instruction[1]] = registers[instruction[2]] == 0 ? 1 : 0\n          when 13 # Opcode::I32_ADD_IMM\n            registers[instruction[1]] = (registers[instruction[2]] + instruction[3]) & 0xffffffff\n          when 14 # Opcode::I32_SUB_IMM\n            registers[instruction[1]] = (registers[instruction[2]] - instruction[3]) & 0xffffffff\n          when 15 # Opcode::I32_MUL_IMM\n            left = registers[instruction[2]]\n            right = instruction[3]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[instruction[1]] = (low + high) & 0xffffffff\n          when 16 # Opcode::I32_XOR_IMM\n            registers[instruction[1]] = registers[instruction[2]] ^ instruction[3]\n          when 17 # Opcode::I32_SHL_IMM\n            registers[instruction[1]] = (registers[instruction[2]] << (instruction[3] & 31)) & 0xffffffff\n          when 18 # Opcode::I32_SHR_U_IMM\n            registers[instruction[1]] = registers[instruction[2]] >> (instruction[3] & 31)\n          when 20 # Opcode::I32_XOR_SHR_U_IMM\n            value = registers[instruction[2]]\n            registers[instruction[1]] = value ^ (value >> instruction[3])\n          when 21 # Opcode::I32_XOR_SHL_IMM\n            value = registers[instruction[2]]\n            registers[instruction[1]] = (value ^ (value << instruction[3])) & 0xffffffff\n          when 8 # Opcode::BR\n            pc = instruction[1]\n          when 9 # Opcode::BR_IF\n            pc = instruction[2] if registers[instruction[1]] != 0\n          when 19 # Opcode::BR_IF_ZERO\n            pc = instruction[2] if registers[instruction[1]] == 0\n          when 10 # Opcode::CALL\n            frame.pc = pc\n            callee = @ir.functions[instruction[2]] || raise(Wardite::EvalError, \"invalid MIR call target\")\n            pool = pools[callee.index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            next_frame = pool.acquire(instruction[1])\n            argument = 0\n            while argument < callee.parameter_count\n              next_frame.registers[argument] = registers[instruction[argument + 3]]\n              argument += 1\n            end\n            frames << next_frame\n            frame = next_frame\n            registers = frame.registers\n            instructions = frame.function.instructions\n            pc = 0\n          when 11 # Opcode::RETURN\n            value = instruction[1] < 0 ? 0 : registers[instruction[1]]\n            destination = frame.return_register\n            frames.pop\n            pool = pools[frame.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            pool.release(frame)\n            return value if frames.empty?\n            frame = current_frame(frames)\n            registers = frame.registers\n            registers[destination] = value if destination >= 0\n            instructions = frame.function.instructions\n            pc = frame.pc\n          when 12 # Opcode::TRAP\n            raise Wardite::Unreachable, \"unreachable op\"\n          when 22 # Opcode::PROFILE\n            @metrics.record(instruction[1], instruction[2], instruction[3])\n          else\n            raise Wardite::EvalError, \"Efflorescence: invalid MIR opcode #{instruction[0]}\"\n          end\n        end\n      end\n      # @rbs frame: Wardite::Efflorescence::Frame\n      # @rbs pools: Array[Wardite::Efflorescence::FramePool]\n      # @rbs return: Integer\n      def execute_flat(frame, pools)\n        frames = [] #: Array[Wardite::Efflorescence::Frame]\n        frames << frame\n        registers = frame.registers\n        instructions = frame.function.bytecode\n        pc = 0\n        while true\n          opcode = instructions.fetch(pc)\n          a = instructions.fetch(pc + 1)\n          # PCs still advance by four words, but short instructions do not\n          # read their unused b/c padding. Control transfers skip the increment.\n          # Integer literal labels let Spinel emit a C switch. Keep the\n          # Opcode comments in sync; the dispatch contract test checks them.\n          case opcode\n          when 0 # Opcode::COPY\n            b = instructions.fetch(pc + 2)\n            registers[a] = registers[b]\n          when 1 # Opcode::I32_ADD\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] + registers[c]) & 0xffffffff\n          when 2 # Opcode::I32_SUB\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] - registers[c]) & 0xffffffff\n          when 3 # Opcode::I32_MUL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            # A full unsigned i32 product can overflow Spinel's native signed\n            # word. Split into 16-bit limbs; all intermediates fit in 49 bits.\n            left = registers[b]\n            right = registers[c]\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[a] = (low + high) & 0xffffffff\n          when 4 # Opcode::I32_XOR\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] ^ registers[c]\n          when 5 # Opcode::I32_SHL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] << (registers[c] & 31)) & 0xffffffff\n          when 6 # Opcode::I32_SHR_U\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] >> (registers[c] & 31)\n          when 7 # Opcode::I32_EQZ\n            b = instructions.fetch(pc + 2)\n            registers[a] = registers[b] == 0 ? 1 : 0\n          when 13 # Opcode::I32_ADD_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] + c) & 0xffffffff\n          when 14 # Opcode::I32_SUB_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] - c) & 0xffffffff\n          when 15 # Opcode::I32_MUL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            left = registers[b]\n            right = c\n            low = (left & 0xffff) * right\n            high = (((left >> 16) * right) & 0xffff) << 16\n            registers[a] = (low + high) & 0xffffffff\n          when 16 # Opcode::I32_XOR_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] ^ c\n          when 17 # Opcode::I32_SHL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = (registers[b] << (c & 31)) & 0xffffffff\n          when 18 # Opcode::I32_SHR_U_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            registers[a] = registers[b] >> (c & 31)\n          when 20 # Opcode::I32_XOR_SHR_U_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            value = registers[b]\n            registers[a] = value ^ (value >> c)\n          when 21 # Opcode::I32_XOR_SHL_IMM\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            value = registers[b]\n            registers[a] = (value ^ (value << c)) & 0xffffffff\n          when 8 # Opcode::BR\n            pc = a\n            next\n          when 9 # Opcode::BR_IF\n            b = instructions.fetch(pc + 2)\n            if registers[a] != 0\n              pc = b\n              next\n            end\n          when 19 # Opcode::BR_IF_ZERO\n            b = instructions.fetch(pc + 2)\n            if registers[a] == 0\n              pc = b\n              next\n            end\n          when 10 # Opcode::CALL\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            frame.pc = pc + Lowerer::WIDTH\n            site = frame.function.call_site(b)\n            pool = pools[site.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            next_frame = pool.acquire(a)\n            if c >= 0\n              next_frame.registers[0] = registers[c]\n            else\n              site.copy_arguments(next_frame.registers, registers)\n            end\n            frames << next_frame\n            frame = next_frame\n            registers = frame.registers\n            instructions = frame.function.bytecode\n            pc = 0\n            next\n          when 11 # Opcode::RETURN\n            value = a < 0 ? 0 : registers[a]\n            destination = frame.return_register\n            frames.pop\n            pool = pools[frame.pool_index]\n            raise Wardite::EvalError, \"missing MIR frame pool\" unless pool\n            pool.release(frame)\n            return value if frames.empty?\n            frame = current_frame(frames)\n            registers = frame.registers\n            registers[destination] = value if destination >= 0\n            instructions = frame.function.bytecode\n            pc = frame.pc\n            next\n          when 12 # Opcode::TRAP\n            raise Wardite::Unreachable, \"unreachable op\"\n          when 22 # Opcode::PROFILE\n            b = instructions.fetch(pc + 2)\n            c = instructions.fetch(pc + 3)\n            @metrics.record(a, b, c)\n          else\n            raise Wardite::EvalError, \"Efflorescence: invalid MIR opcode #{opcode}\"\n          end\n          pc += Lowerer::WIDTH\n        end\n      end\n    end\n  end\nend\n",
+      "artifacts": {
+        "worker": {
+          "before": {
+            "bytes": 24493,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 0,
+            "volatile_lines": 0,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0
+          },
+          "after": {
+            "bytes": 23835,
+            "temporary_roots": 2,
+            "instruction_roots": 0,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 0,
+            "volatile_lines": 0,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0,
+            "boxed_local_names": [],
+            "iteration_resets": 0
+          },
+          "c_sha256": "76236e8967898652c36d7b930c066232333645be73d679130918566ef524d723",
+          "binary_sha256": "578de73a07b0052d05305907d78b5c7b9269df590aa5fe436c1f447f1d2eda95",
+          "compile_command": [
+            "clang",
+            "-O2",
+            "-ffp-contract=off",
+            "-falign-functions=64",
+            "-falign-loops=64",
+            "-I/Users/udzura/.local/lib/spinel/lib",
+            "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+            "-DSP_INT_OVERFLOW_MODE_RAISE",
+            "-DSP_ONE_STRING",
+            "-c",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/worker.c",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/worker.o"
+          ],
+          "link_command": [
+            "clang",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/worker.o",
+            "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+            "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+            "-lm",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/worker"
+          ]
+        },
+        "wardite": {
+          "before": {
+            "bytes": 24493,
+            "temporary_roots": 40,
+            "instruction_roots": 38,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 0,
+            "volatile_lines": 0,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0
+          },
+          "after": {
+            "bytes": 23835,
+            "temporary_roots": 2,
+            "instruction_roots": 0,
+            "rooted_instructions": true,
+            "root_frames": 1,
+            "setjmps": 0,
+            "volatile_lines": 0,
+            "generic_array_ops": 0,
+            "polymorphic_calls": 0,
+            "boxed_local_names": [],
+            "iteration_resets": 0
+          },
+          "c_sha256": "e7f6bf9a3563dc4e70d490a8579873f82583341d2b9b7ade81670dab10c0f831",
+          "binary_sha256": "419ff6ca56a5b386218bc6119dfb4788e88056ba7d761f89e9b3011878ed7a7e",
+          "compile_command": [
+            "clang",
+            "-O2",
+            "-ffp-contract=off",
+            "-falign-functions=64",
+            "-falign-loops=64",
+            "-I/Users/udzura/.local/lib/spinel/lib",
+            "-I/Users/udzura/.local/lib/spinel/lib/regexp",
+            "-DSP_INT_OVERFLOW_MODE_RAISE",
+            "-DSP_ONE_STRING",
+            "-c",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/wardite.c",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/wardite.o"
+          ],
+          "link_command": [
+            "clang",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/wardite.o",
+            "/Users/udzura/.local/lib/spinel/packages/stringio/sp_stringio.o",
+            "/Users/udzura/.local/lib/spinel/lib/libspinel_rt.a",
+            "-lm",
+            "-o",
+            "/Users/udzura/ghq/github.com/udzura/wardite/build/benchmark/generated-guards/final/while_c_root_elision/wardite"
+          ]
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "export": "inline_mix",
+      "disabled": "",
+      "variant": "baseline",
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "worker_e2e": 0.293870999943465,
+          "load": 0.00010599987581372261,
+          "translate": 0.0001400001347064972,
+          "execute": 0.28825000021606684,
+          "cli_e2e": 0.28971899999305606
+        },
+        {
+          "worker_e2e": 0.2831379999406636,
+          "load": 0.00011399993672966957,
+          "translate": 0.0001449999399483204,
+          "execute": 0.27852699998766184,
+          "cli_e2e": 0.27992699993774295
+        },
+        {
+          "worker_e2e": 0.28370200004428625,
+          "load": 9.900005534291267e-05,
+          "translate": 0.0001449999399483204,
+          "execute": 0.2791989999823272,
+          "cli_e2e": 0.2830860000103712
+        },
+        {
+          "worker_e2e": 0.28088600002229214,
+          "load": 9.600026533007622e-05,
+          "translate": 0.00013999966904520988,
+          "execute": 0.2764059999026358,
+          "cli_e2e": 0.2842009998857975
+        },
+        {
+          "worker_e2e": 0.2830880000256002,
+          "load": 0.00010300008580088615,
+          "translate": 0.00016200030222535133,
+          "execute": 0.2785099996253848,
+          "cli_e2e": 0.284252000041306
+        },
+        {
+          "worker_e2e": 0.280904000159353,
+          "load": 9.599979966878891e-05,
+          "translate": 0.0001400001347064972,
+          "execute": 0.276740999892354,
+          "cli_e2e": 0.2830790001899004
+        },
+        {
+          "worker_e2e": 0.2838379996828735,
+          "load": 9.799981489777565e-05,
+          "translate": 0.00013899989426136017,
+          "execute": 0.2792100002989173,
+          "cli_e2e": 0.28338799998164177
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 284.20385711693336,
+          "sd": 4.4369242879390685,
+          "min": 280.88600002229214,
+          "max": 293.870999943465
+        },
+        "load": {
+          "mean": 0.1017142619405474,
+          "sd": 0.006550146371161836,
+          "min": 0.09599979966878891,
+          "max": 0.11399993672966957
+        },
+        "translate": {
+          "mean": 0.1444285735487938,
+          "sd": 0.00814172855188186,
+          "min": 0.13899989426136017,
+          "max": 0.16200030222535133
+        },
+        "execute": {
+          "mean": 279.54899998647824,
+          "sd": 3.9965015031887816,
+          "min": 276.4059999026358,
+          "max": 288.25000021606684
+        },
+        "cli_e2e": {
+          "mean": 283.9502857199737,
+          "sd": 2.928056109687667,
+          "min": 279.92699993774295,
+          "max": 289.71899999305606
+        }
+      }
+    },
+    {
+      "export": "inline_mix",
+      "disabled": "",
+      "variant": "while_loop",
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "worker_e2e": 0.20035000005736947,
+          "load": 9.799981489777565e-05,
+          "translate": 0.00013800011947751045,
+          "execute": 0.19571399968117476,
+          "cli_e2e": 0.18575200019404292
+        },
+        {
+          "worker_e2e": 0.18143299967050552,
+          "load": 0.00010399986058473587,
+          "translate": 0.0001409999094903469,
+          "execute": 0.1771300002001226,
+          "cli_e2e": 0.18709899997338653
+        },
+        {
+          "worker_e2e": 0.18180399993434548,
+          "load": 0.00010300008580088615,
+          "translate": 0.000171000137925148,
+          "execute": 0.1771159996278584,
+          "cli_e2e": 0.18151699984446168
+        },
+        {
+          "worker_e2e": 0.18122699996456504,
+          "load": 0.00010200031101703644,
+          "translate": 0.00014699995517730713,
+          "execute": 0.17686099978163838,
+          "cli_e2e": 0.181146000046283
+        },
+        {
+          "worker_e2e": 0.1768570002168417,
+          "load": 9.700004011392593e-05,
+          "translate": 0.00014299992471933365,
+          "execute": 0.17248700000345707,
+          "cli_e2e": 0.18098800024017692
+        },
+        {
+          "worker_e2e": 0.18061699997633696,
+          "load": 9.699957445263863e-05,
+          "translate": 0.0001400001347064972,
+          "execute": 0.17650699988007545,
+          "cli_e2e": 0.1808589999563992
+        },
+        {
+          "worker_e2e": 0.18126600002869964,
+          "load": 9.800028055906296e-05,
+          "translate": 0.00013999966904520988,
+          "execute": 0.17702799988910556,
+          "cli_e2e": 0.18184400023892522
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 183.3648571212377,
+          "sd": 7.676175085101088,
+          "min": 176.8570002168417,
+          "max": 200.35000005736947
+        },
+        "load": {
+          "mean": 0.09985713820372309,
+          "sd": 0.0030237864864538495,
+          "min": 0.09699957445263863,
+          "max": 0.10399986058473587
+        },
+        "translate": {
+          "mean": 0.14571426436305046,
+          "sd": 0.011514028348997975,
+          "min": 0.13800011947751045,
+          "max": 0.171000137925148
+        },
+        "execute": {
+          "mean": 178.97757129477603,
+          "sd": 7.566361362336871,
+          "min": 172.48700000345707,
+          "max": 195.71399968117476
+        },
+        "cli_e2e": {
+          "mean": 182.7435714990965,
+          "sd": 2.5664496155469556,
+          "min": 180.8589999563992,
+          "max": 187.09899997338653
+        }
+      }
+    },
+    {
+      "export": "inline_mix",
+      "disabled": "",
+      "variant": "c_root_elision",
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "worker_e2e": 0.2064780001528561,
+          "load": 9.300000965595245e-05,
+          "translate": 0.00013999966904520988,
+          "execute": 0.20197500009089708,
+          "cli_e2e": 0.20605400018393993
+        },
+        {
+          "worker_e2e": 0.208791000302881,
+          "load": 0.00010900013148784637,
+          "translate": 0.0001559997908771038,
+          "execute": 0.20414500031620264,
+          "cli_e2e": 0.20629099989309907
+        },
+        {
+          "worker_e2e": 0.20728200022131205,
+          "load": 0.00010300008580088615,
+          "translate": 0.00014699995517730713,
+          "execute": 0.20263700000941753,
+          "cli_e2e": 0.20670199999585748
+        },
+        {
+          "worker_e2e": 0.20499500026926398,
+          "load": 9.50000248849392e-05,
+          "translate": 0.0001409999094903469,
+          "execute": 0.2008970002643764,
+          "cli_e2e": 0.20664800005033612
+        },
+        {
+          "worker_e2e": 0.20539100002497435,
+          "load": 0.00010100007057189941,
+          "translate": 0.0001449999399483204,
+          "execute": 0.2009290000423789,
+          "cli_e2e": 0.20696799969300628
+        },
+        {
+          "worker_e2e": 0.2056330000050366,
+          "load": 0.00011100014671683311,
+          "translate": 0.0001400001347064972,
+          "execute": 0.20156600000336766,
+          "cli_e2e": 0.20621899981051683
+        },
+        {
+          "worker_e2e": 0.20768100023269653,
+          "load": 9.400025010108948e-05,
+          "translate": 0.0001409999094903469,
+          "execute": 0.2030560001730919,
+          "cli_e2e": 0.2049489999189973
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 206.60728588700294,
+          "sd": 1.3797025386760864,
+          "min": 204.99500026926398,
+          "max": 208.791000302881
+        },
+        "load": {
+          "mean": 0.10085724560277802,
+          "sd": 0.0072670348745198145,
+          "min": 0.09300000965595245,
+          "max": 0.11100014671683311
+        },
+        "translate": {
+          "mean": 0.14428561553359032,
+          "sd": 0.005822745839598464,
+          "min": 0.13999966904520988,
+          "max": 0.1559997908771038
+        },
+        "execute": {
+          "mean": 202.172142985676,
+          "sd": 1.1879344538594037,
+          "min": 200.8970002643764,
+          "max": 204.14500031620264
+        },
+        "cli_e2e": {
+          "mean": 206.261571363679,
+          "sd": 0.6596657565167445,
+          "min": 204.9489999189973,
+          "max": 206.96799969300628
+        }
+      }
+    },
+    {
+      "export": "inline_mix",
+      "disabled": "",
+      "variant": "while_c_root_elision",
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "worker_e2e": 0.1094210003502667,
+          "load": 9.900005534291267e-05,
+          "translate": 0.00014699995517730713,
+          "execute": 0.10458400007337332,
+          "cli_e2e": 0.10880300030112267
+        },
+        {
+          "worker_e2e": 0.10772599978372455,
+          "load": 9.999983012676239e-05,
+          "translate": 0.0001449999399483204,
+          "execute": 0.10321399988606572,
+          "cli_e2e": 0.10835999995470047
+        },
+        {
+          "worker_e2e": 0.10857899999246001,
+          "load": 0.00010199984535574913,
+          "translate": 0.00014800019562244415,
+          "execute": 0.10415200004354119,
+          "cli_e2e": 0.10774700017645955
+        },
+        {
+          "worker_e2e": 0.107530000153929,
+          "load": 9.800028055906296e-05,
+          "translate": 0.00013899989426136017,
+          "execute": 0.10312800016254187,
+          "cli_e2e": 0.108043999876827
+        },
+        {
+          "worker_e2e": 0.10866900021210313,
+          "load": 0.0001050001010298729,
+          "translate": 0.0001509999856352806,
+          "execute": 0.1041129999794066,
+          "cli_e2e": 0.10972000006586313
+        },
+        {
+          "worker_e2e": 0.10778099996969104,
+          "load": 0.00010999990627169609,
+          "translate": 0.0001450004056096077,
+          "execute": 0.10336799966171384,
+          "cli_e2e": 0.10875499993562698
+        },
+        {
+          "worker_e2e": 0.1079289996996522,
+          "load": 9.300000965595245e-05,
+          "translate": 0.00014100037515163422,
+          "execute": 0.10364499967545271,
+          "cli_e2e": 0.10906600020825863
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 108.23357145168951,
+          "sd": 0.6793542201925945,
+          "min": 107.530000153929,
+          "max": 109.4210003502667
+        },
+        "load": {
+          "mean": 0.10100000404885837,
+          "sd": 0.005415980867145813,
+          "min": 0.09300000965595245,
+          "max": 0.10999990627169609
+        },
+        "translate": {
+          "mean": 0.1451429644865649,
+          "sd": 0.004099919067645562,
+          "min": 0.13899989426136017,
+          "max": 0.1509999856352806
+        },
+        "execute": {
+          "mean": 103.74342849744218,
+          "sd": 0.5507201492081707,
+          "min": 103.12800016254187,
+          "max": 104.58400007337332
+        },
+        "cli_e2e": {
+          "mean": 108.6421429312655,
+          "sd": 0.6606440184917336,
+          "min": 107.74700017645955,
+          "max": 109.72000006586313
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "disabled": "",
+      "variant": "baseline",
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "worker_e2e": 0.2809500000439584,
+          "load": 0.00010100007057189941,
+          "translate": 0.00018299976363778114,
+          "execute": 0.276312000118196,
+          "cli_e2e": 0.2837790003977716
+        },
+        {
+          "worker_e2e": 0.2930330000817776,
+          "load": 9.300000965595245e-05,
+          "translate": 0.00014200014993548393,
+          "execute": 0.2884780000895262,
+          "cli_e2e": 0.2863880000077188
+        },
+        {
+          "worker_e2e": 0.2812999999150634,
+          "load": 9.999983012676239e-05,
+          "translate": 0.0001409999094903469,
+          "execute": 0.2768709999509156,
+          "cli_e2e": 0.2829410000704229
+        },
+        {
+          "worker_e2e": 0.28147200029343367,
+          "load": 9.800028055906296e-05,
+          "translate": 0.0001400001347064972,
+          "execute": 0.27702599996700883,
+          "cli_e2e": 0.2847609999589622
+        },
+        {
+          "worker_e2e": 0.28113899985328317,
+          "load": 0.00011799996718764305,
+          "translate": 0.0001550000160932541,
+          "execute": 0.2766700000502169,
+          "cli_e2e": 0.28297699987888336
+        },
+        {
+          "worker_e2e": 0.28271499974653125,
+          "load": 0.00012199999764561653,
+          "translate": 0.00015900004655122757,
+          "execute": 0.2779219998046756,
+          "cli_e2e": 0.28698599990457296
+        },
+        {
+          "worker_e2e": 0.28148300014436245,
+          "load": 0.00010199984535574913,
+          "translate": 0.00014200014993548393,
+          "execute": 0.27698699990287423,
+          "cli_e2e": 0.28404599986970425
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 283.1560000112014,
+          "sd": 4.392490885607473,
+          "min": 280.9500000439584,
+          "max": 293.0330000817776
+        },
+        "load": {
+          "mean": 0.10485714301466942,
+          "sd": 0.010807822110185319,
+          "min": 0.09300000965595245,
+          "max": 0.12199999764561653
+        },
+        "translate": {
+          "mean": 0.15171431005001068,
+          "sd": 0.015723695089223024,
+          "min": 0.1400001347064972,
+          "max": 0.18299976363778114
+        },
+        "execute": {
+          "mean": 278.60942855477333,
+          "sd": 4.37916425820877,
+          "min": 276.312000118196,
+          "max": 288.4780000895262
+        },
+        "cli_e2e": {
+          "mean": 284.5540000125766,
+          "sd": 1.5952228275812632,
+          "min": 282.9410000704229,
+          "max": 286.98599990457296
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "disabled": "",
+      "variant": "while_loop",
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "worker_e2e": 0.18256899993866682,
+          "load": 0.00010199984535574913,
+          "translate": 0.0001509999856352806,
+          "execute": 0.17767000012099743,
+          "cli_e2e": 0.18191499961540103
+        },
+        {
+          "worker_e2e": 0.18142399983480573,
+          "load": 0.0001000002957880497,
+          "translate": 0.00014799972996115685,
+          "execute": 0.17698900029063225,
+          "cli_e2e": 0.18264800030738115
+        },
+        {
+          "worker_e2e": 0.17787199979647994,
+          "load": 9.799981489777565e-05,
+          "translate": 0.00013899989426136017,
+          "execute": 0.17340400023385882,
+          "cli_e2e": 0.18198500014841557
+        },
+        {
+          "worker_e2e": 0.18139100028201938,
+          "load": 0.00010999990627169609,
+          "translate": 0.00013899989426136017,
+          "execute": 0.17671200027689338,
+          "cli_e2e": 0.18144499976187944
+        },
+        {
+          "worker_e2e": 0.1818389999680221,
+          "load": 9.300000965595245e-05,
+          "translate": 0.0001400001347064972,
+          "execute": 0.17747100023552775,
+          "cli_e2e": 0.18243600009009242
+        },
+        {
+          "worker_e2e": 0.18166699958965182,
+          "load": 0.00010300008580088615,
+          "translate": 0.00014899997040629387,
+          "execute": 0.17715900018811226,
+          "cli_e2e": 0.1824489999562502
+        },
+        {
+          "worker_e2e": 0.182305000256747,
+          "load": 0.00010300008580088615,
+          "translate": 0.00014799972996115685,
+          "execute": 0.17759300023317337,
+          "cli_e2e": 0.18367400020360947
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 181.29528566662754,
+          "sd": 1.5716383625508648,
+          "min": 177.87199979647994,
+          "max": 182.56899993866682
+        },
+        "load": {
+          "mean": 0.10128572051014219,
+          "sd": 0.0052189973694025315,
+          "min": 0.09300000965595245,
+          "max": 0.10999990627169609
+        },
+        "translate": {
+          "mean": 0.14485704845615796,
+          "sd": 0.005273431761358188,
+          "min": 0.13899989426136017,
+          "max": 0.1509999856352806
+        },
+        "execute": {
+          "mean": 176.71400022559934,
+          "sd": 1.499409871464413,
+          "min": 173.40400023385882,
+          "max": 177.67000012099743
+        },
+        "cli_e2e": {
+          "mean": 182.36457144043274,
+          "sd": 0.7069850420757137,
+          "min": 181.44499976187944,
+          "max": 183.67400020360947
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "disabled": "",
+      "variant": "c_root_elision",
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "worker_e2e": 0.21680700033903122,
+          "load": 0.00010399986058473587,
+          "translate": 0.00014299992471933365,
+          "execute": 0.21195400040596724,
+          "cli_e2e": 0.22503500012680888
+        },
+        {
+          "worker_e2e": 0.2035540002398193,
+          "load": 0.00010199984535574913,
+          "translate": 0.00014200014993548393,
+          "execute": 0.19908299995586276,
+          "cli_e2e": 0.20265100011602044
+        },
+        {
+          "worker_e2e": 0.20369100011885166,
+          "load": 9.700004011392593e-05,
+          "translate": 0.0001400001347064972,
+          "execute": 0.19933000020682812,
+          "cli_e2e": 0.20532299997285008
+        },
+        {
+          "worker_e2e": 0.20395500026643276,
+          "load": 9.199976921081543e-05,
+          "translate": 0.00014100037515163422,
+          "execute": 0.19958499958738685,
+          "cli_e2e": 0.20586299989372492
+        },
+        {
+          "worker_e2e": 0.2025170000270009,
+          "load": 9.50000248849392e-05,
+          "translate": 0.00015400024130940437,
+          "execute": 0.19837799994274974,
+          "cli_e2e": 0.20165800023823977
+        },
+        {
+          "worker_e2e": 0.20311299990862608,
+          "load": 9.800028055906296e-05,
+          "translate": 0.0001509999856352806,
+          "execute": 0.19857499981299043,
+          "cli_e2e": 0.20317899994552135
+        },
+        {
+          "worker_e2e": 0.2042910000309348,
+          "load": 0.0001050001010298729,
+          "translate": 0.00014899997040629387,
+          "execute": 0.19952599983662367,
+          "cli_e2e": 0.2051119999960065
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 205.4182858472424,
+          "sd": 5.054794345655059,
+          "min": 202.5170000270009,
+          "max": 216.80700033903122
+        },
+        "load": {
+          "mean": 0.09899998881987163,
+          "sd": 0.004830479633232742,
+          "min": 0.09199976921081543,
+          "max": 0.1050001010298729
+        },
+        "translate": {
+          "mean": 0.14571439740913256,
+          "sd": 0.005529111476446446,
+          "min": 0.1400001347064972,
+          "max": 0.15400024130940437
+        },
+        "execute": {
+          "mean": 200.91871424977268,
+          "sd": 4.887706937077997,
+          "min": 198.37799994274974,
+          "max": 211.95400040596724
+        },
+        "cli_e2e": {
+          "mean": 206.97442861273885,
+          "sd": 8.113539070721107,
+          "min": 201.65800023823977,
+          "max": 225.03500012680888
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "disabled": "",
+      "variant": "while_c_root_elision",
+      "metrics": "dispatches=35000003 copies=1 register_reads=30000003 register_writes=25000001 function_entries=1 frames_created=1",
+      "samples": [
+        {
+          "worker_e2e": 0.11351299984380603,
+          "load": 0.00012600002810359,
+          "translate": 0.0001610000617802143,
+          "execute": 0.1056300001218915,
+          "cli_e2e": 0.11247800011187792
+        },
+        {
+          "worker_e2e": 0.1078329998999834,
+          "load": 9.399978443980217e-05,
+          "translate": 0.00014200014993548393,
+          "execute": 0.10321700014173985,
+          "cli_e2e": 0.10812800005078316
+        },
+        {
+          "worker_e2e": 0.10766200022771955,
+          "load": 9.50000248849392e-05,
+          "translate": 0.00014400016516447067,
+          "execute": 0.10331699997186661,
+          "cli_e2e": 0.10863499995321035
+        },
+        {
+          "worker_e2e": 0.10750700021162629,
+          "load": 9.599979966878891e-05,
+          "translate": 0.00014299992471933365,
+          "execute": 0.10317300027236342,
+          "cli_e2e": 0.10803799983114004
+        },
+        {
+          "worker_e2e": 0.10838700039312243,
+          "load": 9.999983012676239e-05,
+          "translate": 0.00014400016516447067,
+          "execute": 0.10370999993756413,
+          "cli_e2e": 0.10848900023847818
+        },
+        {
+          "worker_e2e": 0.10863499995321035,
+          "load": 9.600026533007622e-05,
+          "translate": 0.00014699995517730713,
+          "execute": 0.10416299989446998,
+          "cli_e2e": 0.10828999988734722
+        },
+        {
+          "worker_e2e": 0.10739999962970614,
+          "load": 0.00010499963536858559,
+          "translate": 0.00014299992471933365,
+          "execute": 0.10307300044223666,
+          "cli_e2e": 0.10804700013250113
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 108.70528573702488,
+          "sd": 2.1683076289224847,
+          "min": 107.39999962970614,
+          "max": 113.51299984380603
+        },
+        "load": {
+          "mean": 0.10171419541750636,
+          "sd": 0.011353636508251587,
+          "min": 0.09399978443980217,
+          "max": 0.12600002810359
+        },
+        "translate": {
+          "mean": 0.14628576380865915,
+          "sd": 0.006676183038024382,
+          "min": 0.14200014993548393,
+          "max": 0.1610000617802143
+        },
+        "execute": {
+          "mean": 103.75471439744744,
+          "sd": 0.9100594080891449,
+          "min": 103.07300044223666,
+          "max": 105.6300001218915
+        },
+        "cli_e2e": {
+          "mean": 108.87214288647685,
+          "sd": 1.6059543176382653,
+          "min": 108.03799983114004,
+          "max": 112.47800011187792
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "disabled": "inline",
+      "variant": "baseline",
+      "metrics": "dispatches=45000003 copies=1 register_reads=40000003 register_writes=35000001 function_entries=5000001 frames_created=2",
+      "samples": [
+        {
+          "worker_e2e": 0.467246999964118,
+          "load": 0.00010700011625885963,
+          "translate": 0.00012800004333257675,
+          "execute": 0.462313000112772,
+          "cli_e2e": 0.4477119999937713
+        },
+        {
+          "worker_e2e": 0.441473999992013,
+          "load": 9.300000965595245e-05,
+          "translate": 0.0001250002533197403,
+          "execute": 0.4369579995982349,
+          "cli_e2e": 0.4425300001166761
+        },
+        {
+          "worker_e2e": 0.4425579998642206,
+          "load": 9.800028055906296e-05,
+          "translate": 0.00012699980288743973,
+          "execute": 0.4380899998359382,
+          "cli_e2e": 0.44108100002631545
+        },
+        {
+          "worker_e2e": 0.45354099990800023,
+          "load": 0.00011399993672966957,
+          "translate": 0.00012600002810359,
+          "execute": 0.4485609997063875,
+          "cli_e2e": 0.44319000001996756
+        },
+        {
+          "worker_e2e": 0.4514729999937117,
+          "load": 9.499955922365189e-05,
+          "translate": 0.0001300000585615635,
+          "execute": 0.44706400018185377,
+          "cli_e2e": 0.442096000071615
+        },
+        {
+          "worker_e2e": 0.4418299999088049,
+          "load": 9.700004011392593e-05,
+          "translate": 0.00012800004333257675,
+          "execute": 0.4374839998781681,
+          "cli_e2e": 0.4421100001782179
+        },
+        {
+          "worker_e2e": 0.44303600024431944,
+          "load": 0.00010100007057189941,
+          "translate": 0.0001309998333454132,
+          "execute": 0.4385850001126528,
+          "cli_e2e": 0.44290999975055456
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 448.7369999821697,
+          "sd": 9.524735079617047,
+          "min": 441.473999992013,
+          "max": 467.246999964118
+        },
+        "load": {
+          "mean": 0.10071428758757454,
+          "sd": 0.007409807238291007,
+          "min": 0.09300000965595245,
+          "max": 0.11399993672966957
+        },
+        "translate": {
+          "mean": 0.12785715184041432,
+          "sd": 0.002115622728376743,
+          "min": 0.1250002533197403,
+          "max": 0.1309998333454132
+        },
+        "execute": {
+          "mean": 444.1507142037153,
+          "sd": 9.324663873597062,
+          "min": 436.9579995982349,
+          "max": 462.313000112772
+        },
+        "cli_e2e": {
+          "mean": 443.08985716530253,
+          "sd": 2.1487748511385663,
+          "min": 441.08100002631545,
+          "max": 447.7119999937713
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "disabled": "inline",
+      "variant": "while_loop",
+      "metrics": "dispatches=45000003 copies=1 register_reads=40000003 register_writes=35000001 function_entries=5000001 frames_created=2",
+      "samples": [
+        {
+          "worker_e2e": 0.27488299971446395,
+          "load": 9.700004011392593e-05,
+          "translate": 0.00013699987903237343,
+          "execute": 0.2699850001372397,
+          "cli_e2e": 0.27082599978893995
+        },
+        {
+          "worker_e2e": 0.2675020000897348,
+          "load": 9.900005534291267e-05,
+          "translate": 0.00012699980288743973,
+          "execute": 0.2630549999885261,
+          "cli_e2e": 0.271437999792397
+        },
+        {
+          "worker_e2e": 0.26997900009155273,
+          "load": 0.00010700011625885963,
+          "translate": 0.00015200022608041763,
+          "execute": 0.2654389999806881,
+          "cli_e2e": 0.27147999964654446
+        },
+        {
+          "worker_e2e": 0.2743080002255738,
+          "load": 9.400025010108948e-05,
+          "translate": 0.00012400001287460327,
+          "execute": 0.27011499973013997,
+          "cli_e2e": 0.26913500018417835
+        },
+        {
+          "worker_e2e": 0.26982300030067563,
+          "load": 9.50000248849392e-05,
+          "translate": 0.00012600002810359,
+          "execute": 0.2652540002018213,
+          "cli_e2e": 0.27095200028270483
+        },
+        {
+          "worker_e2e": 0.27460999973118305,
+          "load": 9.999983012676239e-05,
+          "translate": 0.0001349998638033867,
+          "execute": 0.2699299999512732,
+          "cli_e2e": 0.27102599991485476
+        },
+        {
+          "worker_e2e": 0.2722129998728633,
+          "load": 0.00010399986058473587,
+          "translate": 0.0001400001347064972,
+          "execute": 0.2675830000080168,
+          "cli_e2e": 0.32011800026521087
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 271.90257143229246,
+          "sd": 2.871856112063314,
+          "min": 267.5020000897348,
+          "max": 274.88299971446395
+        },
+        "load": {
+          "mean": 0.09942859677331788,
+          "sd": 0.004720723805157557,
+          "min": 0.09400025010108948,
+          "max": 0.10700011625885963
+        },
+        "translate": {
+          "mean": 0.13442856392690114,
+          "sd": 0.009846531880705651,
+          "min": 0.12400001287460327,
+          "max": 0.15200022608041763
+        },
+        "execute": {
+          "mean": 267.3372857139579,
+          "sd": 2.8222381112065964,
+          "min": 263.0549999885261,
+          "max": 270.11499973013997
+        },
+        "cli_e2e": {
+          "mean": 277.85357141069005,
+          "sd": 18.653469678663804,
+          "min": 269.13500018417835,
+          "max": 320.11800026521087
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "disabled": "inline",
+      "variant": "c_root_elision",
+      "metrics": "dispatches=45000003 copies=1 register_reads=40000003 register_writes=35000001 function_entries=5000001 frames_created=2",
+      "samples": [
+        {
+          "worker_e2e": 0.3765290002338588,
+          "load": 0.0001000002957880497,
+          "translate": 0.00012800004333257675,
+          "execute": 0.37167799985036254,
+          "cli_e2e": 0.3860820000991225
+        },
+        {
+          "worker_e2e": 0.37405099999159575,
+          "load": 9.400025010108948e-05,
+          "translate": 0.00012899981811642647,
+          "execute": 0.3696300000883639,
+          "cli_e2e": 0.37948699994012713
+        },
+        {
+          "worker_e2e": 0.376309999730438,
+          "load": 0.00011100014671683311,
+          "translate": 0.00013699987903237343,
+          "execute": 0.3717030002735555,
+          "cli_e2e": 0.3811409999616444
+        },
+        {
+          "worker_e2e": 0.3777509997598827,
+          "load": 0.00010100007057189941,
+          "translate": 0.00013899989426136017,
+          "execute": 0.3733570002950728,
+          "cli_e2e": 0.3779050000011921
+        },
+        {
+          "worker_e2e": 0.37932900013402104,
+          "load": 0.00010599987581372261,
+          "translate": 0.00013700034469366074,
+          "execute": 0.37450499972328544,
+          "cli_e2e": 0.3826779997907579
+        },
+        {
+          "worker_e2e": 0.37521700002253056,
+          "load": 9.50000248849392e-05,
+          "translate": 0.00012800004333257675,
+          "execute": 0.37050099996849895,
+          "cli_e2e": 0.38108200021088123
+        },
+        {
+          "worker_e2e": 0.36755899991840124,
+          "load": 0.00010200031101703644,
+          "translate": 0.00013299984857439995,
+          "execute": 0.36298600025475025,
+          "cli_e2e": 0.37992099998518825
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 375.2494285415326,
+          "sd": 3.7912806303165674,
+          "min": 367.55899991840124,
+          "max": 379.32900013402104
+        },
+        "load": {
+          "mean": 0.10128585355622428,
+          "sd": 0.005936131419780294,
+          "min": 0.09400025010108948,
+          "max": 0.11100014671683311
+        },
+        "translate": {
+          "mean": 0.13299998162048204,
+          "sd": 0.004725835191859005,
+          "min": 0.12800004333257675,
+          "max": 0.13899989426136017
+        },
+        "execute": {
+          "mean": 370.6228572076985,
+          "sd": 3.744970016315309,
+          "min": 362.98600025475025,
+          "max": 374.50499972328544
+        },
+        "cli_e2e": {
+          "mean": 381.1851428555591,
+          "sd": 2.628735545087574,
+          "min": 377.9050000011921,
+          "max": 386.0820000991225
+        }
+      }
+    },
+    {
+      "export": "call_mix",
+      "disabled": "inline",
+      "variant": "while_c_root_elision",
+      "metrics": "dispatches=45000003 copies=1 register_reads=40000003 register_writes=35000001 function_entries=5000001 frames_created=2",
+      "samples": [
+        {
+          "worker_e2e": 0.2417069999501109,
+          "load": 0.0003810003399848938,
+          "translate": 0.0002449997700750828,
+          "execute": 0.23555999994277954,
+          "cli_e2e": 0.21558400010690093
+        },
+        {
+          "worker_e2e": 0.217077000066638,
+          "load": 0.00011200038716197014,
+          "translate": 0.00012799957767128944,
+          "execute": 0.2125110002234578,
+          "cli_e2e": 0.2113169999793172
+        },
+        {
+          "worker_e2e": 0.21872300002723932,
+          "load": 9.700004011392593e-05,
+          "translate": 0.00013800011947751045,
+          "execute": 0.21451799990609288,
+          "cli_e2e": 0.2168569997884333
+        },
+        {
+          "worker_e2e": 0.21382699999958277,
+          "load": 9.800028055906296e-05,
+          "translate": 0.00012800004333257675,
+          "execute": 0.2093479996547103,
+          "cli_e2e": 0.21482300013303757
+        },
+        {
+          "worker_e2e": 0.21233499981462955,
+          "load": 9.200023487210274e-05,
+          "translate": 0.0001349998638033867,
+          "execute": 0.20783099997788668,
+          "cli_e2e": 0.21412999974563718
+        },
+        {
+          "worker_e2e": 0.21234500035643578,
+          "load": 0.00011100014671683311,
+          "translate": 0.00012900028377771378,
+          "execute": 0.20799699984490871,
+          "cli_e2e": 0.21500799991190434
+        },
+        {
+          "worker_e2e": 0.21419299999251962,
+          "load": 9.799981489777565e-05,
+          "translate": 0.00013100029900670052,
+          "execute": 0.2093830001540482,
+          "cli_e2e": 0.21417499985545874
+        }
+      ],
+      "statistics_ms": {
+        "worker_e2e": {
+          "mean": 218.6010000295937,
+          "sd": 10.463002464488289,
+          "min": 212.33499981462955,
+          "max": 241.7069999501109
+        },
+        "load": {
+          "mean": 0.1412858920437949,
+          "sd": 0.1059681752840579,
+          "min": 0.09200023487210274,
+          "max": 0.3810003399848938
+        },
+        "translate": {
+          "mean": 0.1477142795920372,
+          "sd": 0.04306463998759575,
+          "min": 0.12799957767128944,
+          "max": 0.24499977007508278
+        },
+        "execute": {
+          "mean": 213.87828567198343,
+          "sd": 9.868009830181496,
+          "min": 207.83099997788668,
+          "max": 235.55999994277954
+        },
+        "cli_e2e": {
+          "mean": 214.55628564581275,
+          "sd": 1.7051263456240946,
+          "min": 211.3169999793172,
+          "max": 216.8569997884333
+        }
+      }
+    }
+  ],
+  "fixture": {
+    "wat_sha256": "c1d607a759aa03ba265dd81b1b59ad23b00c1c31a4130b5d4ac93a20c4d18e2d",
+    "wasm_sha256": "c056fc8b3084432daae83bfac1b1a9bc53f12f12a18a37d85b41f3d031028407"
+  }
+}
