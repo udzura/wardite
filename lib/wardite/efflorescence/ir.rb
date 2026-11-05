@@ -440,6 +440,7 @@ module Wardite
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::MemorySite
       def memory_site(index)
+        raise Wardite::EvalError, "invalid MIR memory site" if index < 0
         @memory_sites[index] || raise(Wardite::EvalError, "invalid MIR memory site")
       end
 

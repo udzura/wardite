@@ -66,6 +66,33 @@ module Wardite
       # @rbs return: String
       def grown_buffer: (Wardite::Memory target, Integer delta) -> String
 
+      # Resolve table operands off the hot dispatch path. In particular do not
+      # widen its b/c integer-word locals with nullable array reads.
+      # @rbs opcode: Integer
+      # @rbs site: Wardite::Efflorescence::MemorySite
+      # @rbs registers: Array[Integer]
+      # @rbs return: void
+      def bulk: (Integer opcode, Wardite::Efflorescence::MemorySite site, Array[Integer] registers) -> void
+
+      # @rbs destination: Integer
+      # @rbs source: Integer
+      # @rbs length: Integer
+      # @rbs return: void
+      def copy: (Integer destination, Integer source, Integer length) -> void
+
+      # @rbs destination: Integer
+      # @rbs value: Integer
+      # @rbs length: Integer
+      # @rbs return: void
+      def fill: (Integer destination, Integer value, Integer length) -> void
+
+      # @rbs index: Integer
+      # @rbs destination: Integer
+      # @rbs source: Integer
+      # @rbs length: Integer
+      # @rbs return: void
+      def init: (Integer index, Integer destination, Integer source, Integer length) -> void
+
       # @rbs return: Wardite::Memory
       def memory: () -> Wardite::Memory
     end

@@ -45,4 +45,21 @@ module EfflorescenceM2Cases
         i32.const 0 i32.load i32.const 65536 i32.load i32.add))
   WAT
 
+  BULK_WAT = <<~WAT.freeze
+    (module (memory (export "memory") 1 2)
+      (data $active (i32.const 0) "abcdef")
+      (data $passive "\\80\\ffABC\\00xyz") (data $empty "")
+      (func (export "init") (param i32 i32 i32)
+        local.get 0 local.get 1 local.get 2 memory.init $passive)
+      (func (export "active") (param i32 i32 i32)
+        local.get 0 local.get 1 local.get 2 memory.init $active)
+      (func (export "empty") (param i32 i32 i32)
+        local.get 0 local.get 1 local.get 2 memory.init $empty)
+      (func (export "copy") (param i32 i32 i32)
+        local.get 0 local.get 1 local.get 2 memory.copy)
+      (func (export "fill") (param i32 i32 i32)
+        local.get 0 local.get 1 local.get 2 memory.fill)
+      (func (export "load") (param i32) (result i32) local.get 0 i32.load8_u))
+  WAT
+
 end

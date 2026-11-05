@@ -123,6 +123,61 @@ module Wardite
         target.data + ("\0".b * (delta * PAGE_SIZE))
       end
 
+      # Resolve table operands off the hot dispatch path. In particular do not
+      # widen its b/c integer-word locals with nullable array reads.
+      # @rbs opcode: Integer
+      # @rbs site: Wardite::Efflorescence::MemorySite
+      # @rbs registers: Array[Integer]
+      # @rbs return: void
+      def bulk(opcode, site, registers)
+        destination = registers.fetch(site.sources.fetch(0))
+        source = registers.fetch(site.sources.fetch(1))
+        length = registers.fetch(site.sources.fetch(2))
+        case opcode
+        when Opcode::MEMORY_INIT then init(site.data_index, destination, source, length)
+        when Opcode::MEMORY_COPY then copy(destination, source, length)
+        when Opcode::MEMORY_FILL then fill(destination, source, length)
+        else raise Wardite::EvalError, "invalid bulk memory opcode"
+        end
+      end
+
+      # @rbs destination: Integer
+      # @rbs source: Integer
+      # @rbs length: Integer
+      # @rbs return: void
+      def copy(destination, source, length)
+        data = memory.data
+        StoreAccess.check_range(destination, length, data.bytesize)
+        StoreAccess.check_range(source, length, data.bytesize)
+        bytes = data.byteslice(source, length) || raise(Wardite::EvalError, "missing checked memory slice")
+        data[destination, length] = bytes.dup
+      end
+
+      # @rbs destination: Integer
+      # @rbs value: Integer
+      # @rbs length: Integer
+      # @rbs return: void
+      def fill(destination, value, length)
+        data = memory.data
+        StoreAccess.check_range(destination, length, data.bytesize)
+        bytes = (value & 255).chr.b * length
+        data[destination, length] = bytes
+      end
+
+      # @rbs index: Integer
+      # @rbs destination: Integer
+      # @rbs source: Integer
+      # @rbs length: Integer
+      # @rbs return: void
+      def init(index, destination, source, length)
+        data = memory.data
+        segment = @store.data_segments[index] || raise(Wardite::EvalError, "invalid data segment")
+        StoreAccess.check_range(destination, length, data.bytesize)
+        StoreAccess.check_range(source, length, segment.bytesize)
+        bytes = segment.byteslice(source, length) || raise(Wardite::EvalError, "missing checked segment slice")
+        data[destination, length] = bytes.dup
+      end
+
       # @rbs return: Wardite::Memory
       def memory
         @store.memories[0] || raise(Wardite::EvalError, "missing memory 0")

@@ -1000,6 +1000,8 @@ module Wardite
 
     attr_accessor :memories #: Array[Memory]
 
+    attr_reader :data_segments #: Array[String]
+
     attr_accessor :globals #: Array[Global]
 
     attr_accessor :tables #: Array[Table]
@@ -1069,6 +1071,16 @@ module Wardite
 
             memory.data[data_start...data_end] = segment.data
           end
+        end
+      end
+
+      # Runtime segment instances differ from their syntax declarations: active
+      # segments have already been consumed by initialization.
+      @data_segments = []
+      data_section = inst.data_section
+      if data_section
+        data_section.segments.each do |segment|
+          @data_segments << (segment.mode == :passive ? segment.data.dup.b : "".b)
         end
       end
 

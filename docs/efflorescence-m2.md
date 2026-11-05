@@ -9,10 +9,10 @@
 | M2b: i32 global | 実装済み |
 | M2c: i32 load/store | 実装済み |
 | M2d: size/grow | 実装済み |
-| M2e: init/copy/fill | 未実装 |
+| M2e: init/copy/fill | 実装済み |
 | M2f: 統合・外部比較・性能 | 未実施 |
 
-M2命令の即値・型・indexは到達不能コードでも検査し、未完成の命令は実行を拒否する。
+M2命令の即値・型・indexは到達不能コードでも検査し、M2の15命令をflatで実行する。
 shared/memory64/custom page limits、memory 0以外の指定、data count不足、immutable global.setを拒否する。
 MemorySiteはdeep copy、register read解析・置換、Inspectionの対象とし、uses_store関数は既存passと
 双方向のinliningから保守的に除外する。通常i32関数の最適化とM1のEH除外規則は維持する。
@@ -39,3 +39,9 @@ M2dではsize/growを実装した。growは宣言maxと65536ページの上限�
 delta=0ではbufferを再作成しない。割当境界のNoMemoryErrorだけを失敗値へ変換し、
 その他のRubyエラーは伝播する。CRubyで割当失敗を注入して状態維持を確認する。
 Spinelの実プロセスOOMからの回復は保証・検証しない（巨大割当は行わない）。
+
+M2eではStoreにinstanceごとの実行時data segmentを持たせる。
+passiveは複製したbinary String、activeは共有初期化の後は空のsourceとして扱う。
+copy/initはsource/destinationの両範囲を検査してから独立したbyte列を転送し、
+fillはvalue & 255を用いる。0長でも両endpointを検査し、失敗でStringを拡張・縮小しない。
+data.dropはデコード後も明示拒否する。

@@ -541,11 +541,11 @@ module Wardite
             b = instructions.fetch(pc + 2)
             registers[a] = @store_access.grow(registers[b])
           when 64 # Opcode::MEMORY_INIT
-            raise UnsupportedFeature, "Efflorescence: MEMORY_INIT is not implemented yet"
+            @store_access.bulk(64, frame.function.memory_site(a), registers)
           when 65 # Opcode::MEMORY_COPY
-            raise UnsupportedFeature, "Efflorescence: MEMORY_COPY is not implemented yet"
+            @store_access.bulk(65, frame.function.memory_site(a), registers)
           when 66 # Opcode::MEMORY_FILL
-            raise UnsupportedFeature, "Efflorescence: MEMORY_FILL is not implemented yet"
+            @store_access.bulk(66, frame.function.memory_site(a), registers)
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

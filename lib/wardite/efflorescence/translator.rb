@@ -170,6 +170,19 @@ module Wardite
               emit([opcode, dst, address, offset])
               @stack << dst
             end
+          when :memory_init, :memory_copy, :memory_fill
+            next unless @reachable
+            length, source, destination = pop_typed(:i32), pop_typed(:i32), pop_typed(:i32)
+            data_index = code == :memory_init ? integer_operand(operands[0]) : -1
+            site = MemorySite.new([destination, source, length], data_index: data_index)
+            id = @function.memory_sites.size
+            @function.memory_sites << site
+            opcode = case code
+                     when :memory_init then Opcode::MEMORY_INIT
+                     when :memory_copy then Opcode::MEMORY_COPY
+                     else Opcode::MEMORY_FILL
+                     end
+            emit([opcode, id])
           when :memory_size, :memory_grow
             next unless @reachable
             source = code == :memory_grow ? pop_typed(:i32) : -1

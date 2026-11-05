@@ -233,6 +233,8 @@ module Wardite
 
     attr_accessor memories: Array[Memory]
 
+    attr_reader data_segments: Array[String]
+
     attr_accessor globals: Array[Global]
 
     attr_accessor tables: Array[Table]

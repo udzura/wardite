@@ -78,6 +78,20 @@ class WarditeSpinelM2Test < Test::Unit::TestCase
     end
   end
 
+  test 'M2 bulk overlap masks consumed segments and failed operations on native API' do
+    with_wasm(EfflorescenceM2Cases::BULK_WAT) do |file|
+      Dir.mktmpdir do |dir|
+        worker = File.join(dir, 'm2-bulk')
+        output, status = Open3.capture2e(ENV.fetch('SPINEL', 'spinel'), '--strict-require', '-O2',
+          "-I#{ROOT}/lib", File.join(ROOT, 'test/spinel/efflorescence_m2_bulk.rb'), '-o', worker)
+        assert status.success?, output
+        output, status = Open3.capture2e(worker, file)
+        assert status.success?, output
+        assert_equal "M2 bulk passed\n", output
+      end
+    end
+  end
+
   test 'M2 foundation shared initialization and checked byte ranges on native API' do
     wat = '(module (memory 1) (data (i32.const 11) "\ff\c3\a9") (global i32 (i32.const 11)))'
     with_wasm(wat) do |file|
