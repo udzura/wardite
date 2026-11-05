@@ -8,7 +8,7 @@
 | M2a: 検査・byte境界・MemorySite・Opcode情報 | 実装済み |
 | M2b: i32 global | 実装済み |
 | M2c: i32 load/store | 実装済み |
-| M2d: size/grow | 未実装 |
+| M2d: size/grow | 実装済み |
 | M2e: init/copy/fill | 未実装 |
 | M2f: 統合・外部比較・性能 | 未実施 |
 
@@ -33,3 +33,9 @@ M2cはlittle endianの5種類のloadと3種類のstoreに対応する。
 effective addressはunsigned address + static offsetをwrapせずに計算する。
 未整列アクセスを許し、storeは全範囲を検査してからsetbyteする。
 失敗時にmemory内容・bytesize・currentは変わらず、読み捨てるloadのtrapも維持する。
+
+M2dではsize/growを実装した。growは宣言maxと65536ページの上限を先に確認し、
+新しいbinary bufferを用意してからdata/currentを更新する。失敗はunsigned i32の0xffffffff。
+delta=0ではbufferを再作成しない。割当境界のNoMemoryErrorだけを失敗値へ変換し、
+その他のRubyエラーは伝播する。CRubyで割当失敗を注入して状態維持を確認する。
+Spinelの実プロセスOOMからの回復は保証・検証しない（巨大割当は行わない）。

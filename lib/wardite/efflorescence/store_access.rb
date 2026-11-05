@@ -87,6 +87,42 @@ module Wardite
         end
       end
 
+      # @rbs return: Integer
+      def size
+        memory.current
+      end
+
+      # Only the buffer preparation boundary handles allocation failure. Ruby
+      # implementation errors and traps must propagate rather than look like a
+      # successful Wasm instruction returning -1.
+      # @rbs delta: Integer
+      # @rbs return: Integer
+      def grow(delta)
+        target = memory
+        previous = target.current
+        declared = target.max
+        limit = declared && declared < MAX_PAGES ? declared : MAX_PAGES
+        return 0xffffffff if delta < 0 || previous > limit || delta > limit - previous
+        return previous if delta == 0
+        begin
+          data = grown_buffer(target, delta)
+        rescue NoMemoryError
+          return 0xffffffff
+        end
+        target.data = data
+        target.current = previous + delta
+        previous
+      end
+
+      # Kept separate so tests can inject allocation failure without requesting
+      # gigabytes or depending on the process's available resources.
+      # @rbs target: Wardite::Memory
+      # @rbs delta: Integer
+      # @rbs return: String
+      def grown_buffer(target, delta)
+        target.data + ("\0".b * (delta * PAGE_SIZE))
+      end
+
       # @rbs return: Wardite::Memory
       def memory
         @store.memories[0] || raise(Wardite::EvalError, "missing memory 0")

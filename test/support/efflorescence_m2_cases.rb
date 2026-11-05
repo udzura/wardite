@@ -33,4 +33,16 @@ module EfflorescenceM2Cases
     (func (export "unused") i32.const 65536 i32.load drop))
   WAT
 
+  GROW_WAT = <<~WAT.freeze
+    (module (memory (export "memory") 1 3)
+      (data (i32.const 0) "abc")
+      (func (export "size") (result i32) memory.size)
+      (func (export "grow") (param i32) (result i32) local.get 0 memory.grow)
+      (func (export "load") (param i32) (result i32) local.get 0 i32.load8_u)
+      (func $callee i32.const 1 memory.grow drop i32.const 65536 i32.const 42 i32.store)
+      (func (export "callee") (result i32)
+        i32.const 0 i32.const 11 i32.store call $callee
+        i32.const 0 i32.load i32.const 65536 i32.load i32.add))
+  WAT
+
 end

@@ -170,6 +170,12 @@ module Wardite
               emit([opcode, dst, address, offset])
               @stack << dst
             end
+          when :memory_size, :memory_grow
+            next unless @reachable
+            source = code == :memory_grow ? pop_typed(:i32) : -1
+            dst = register
+            emit(code == :memory_grow ? [Opcode::MEMORY_GROW, dst, source] : [Opcode::MEMORY_SIZE, dst])
+            @stack << dst
           when :global_get, :global_set
             index = integer_operand(operands[0])
             next unless @reachable

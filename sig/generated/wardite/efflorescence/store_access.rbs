@@ -49,6 +49,23 @@ module Wardite
       # @rbs return: void
       def store: (Integer address, Integer offset, Integer width, Integer value) -> void
 
+      # @rbs return: Integer
+      def size: () -> Integer
+
+      # Only the buffer preparation boundary handles allocation failure. Ruby
+      # implementation errors and traps must propagate rather than look like a
+      # successful Wasm instruction returning -1.
+      # @rbs delta: Integer
+      # @rbs return: Integer
+      def grow: (Integer delta) -> Integer
+
+      # Kept separate so tests can inject allocation failure without requesting
+      # gigabytes or depending on the process's available resources.
+      # @rbs target: Wardite::Memory
+      # @rbs delta: Integer
+      # @rbs return: String
+      def grown_buffer: (Wardite::Memory target, Integer delta) -> String
+
       # @rbs return: Wardite::Memory
       def memory: () -> Wardite::Memory
     end

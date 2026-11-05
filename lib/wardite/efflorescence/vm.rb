@@ -536,9 +536,10 @@ module Wardite
             c = instructions.fetch(pc + 3)
             @store_access.store(registers[b], c, 2, registers[a])
           when 62 # Opcode::MEMORY_SIZE
-            raise UnsupportedFeature, "Efflorescence: MEMORY_SIZE is not implemented yet"
+            registers[a] = @store_access.size
           when 63 # Opcode::MEMORY_GROW
-            raise UnsupportedFeature, "Efflorescence: MEMORY_GROW is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            registers[a] = @store_access.grow(registers[b])
           when 64 # Opcode::MEMORY_INIT
             raise UnsupportedFeature, "Efflorescence: MEMORY_INIT is not implemented yet"
           when 65 # Opcode::MEMORY_COPY
