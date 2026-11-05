@@ -37,6 +37,8 @@ module Wardite
 
     attr_accessor :exports #: Exports
 
+    attr_reader :tags #: Array[Wardite::Efflorescence::Tag]
+
     attr_reader :import_object #: Hash[Symbol, wasmModule]
 
     attr_accessor :wasi #: ::Wardite::WasiSnapshotPreview1?
@@ -61,6 +63,8 @@ module Wardite
       if engine == :efflorescence && !import_section.imports.empty?
         raise Efflorescence::UnsupportedFeature, "Efflorescence: imports are not supported"
       end
+      @tags = []
+      check_engine_features(engine)
       @store = Store.new(self)
       @exports = Exports.new(self.export_section, store)
 
@@ -78,6 +82,55 @@ module Wardite
       when :stack then Runtime.new(self)
       when :efflorescence then Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile)
       else raise LoadError, "unknown engine: #{engine}"
+      end
+    end
+
+    # Run before allocating Store/Exports or executing a start function.
+    # @rbs engine: Symbol
+    # @rbs return: void
+    def check_engine_features(engine)
+      types = type_section
+      tag_section = @sections.find { |section| section.is_a?(TagSection) }
+      if tag_section.is_a?(TagSection)
+        raise LoadError, "stack engine does not support tags/EH" unless engine == :efflorescence
+        tag_section.type_indices.each do |index|
+          params = types&.defined_types&.[](index)
+          results = types&.defined_results&.[](index)
+          raise LoadError, "invalid tag type index #{index}" unless params && results
+          unless params.all? { |type| type == :i32 } && results.empty?
+            raise LoadError, "only i32 tag payloads with no results are supported"
+          end
+          @tags << Efflorescence::Tag.new(params)
+        end
+      end
+      if engine == :stack && types && (types.defined_types + types.defined_results).any? { |list| list.include?(:exnref) }
+        raise LoadError, "stack engine does not support exnref"
+      end
+      codes = code_section
+      return unless codes
+      codes.func_codes.each do |body|
+        if engine == :stack && body.locals_type.include?(:exnref)
+          raise LoadError, "stack engine does not support exnref"
+        end
+        body.body.each do |instruction|
+          code = instruction[1]
+          if engine == :stack && [:try_table, :throw, :throw_ref].include?(code)
+            raise LoadError, "stack engine does not support EH"
+          end
+          instruction[2].each do |operand|
+            next unless operand.is_a?(Block)
+            index = operand.type_index
+            if index >= 0
+              params = types&.defined_types&.[](index)
+              results = types&.defined_results&.[](index)
+              raise LoadError, "invalid block type index #{index}" unless params && results
+              operand.resolve(params, results)
+            end
+            if engine == :stack && (index >= 0 || operand.result_types.include?(:exnref))
+              raise LoadError, "stack engine does not support indexed/reference block signatures"
+            end
+          end
+        end
       end
     end
 
@@ -1177,6 +1230,9 @@ module Wardite
     VOID = nil #: nil
 
     attr_accessor :block_types #: nil|Array[Integer]
+    attr_reader :type_index #: Integer
+    attr_reader :parameter_types #: Array[Symbol]
+    attr_reader :result_types #: Array[Symbol]
 
     # @rbs return: Block
     def self.void
@@ -1184,9 +1240,21 @@ module Wardite
     end
 
     # @rbs block_types: nil|Array[Integer]
+    # @rbs type_index: Integer
     # @rbs return: void
-    def initialize(block_types=VOID)
+    def initialize(block_types=VOID, type_index: -1)
       @block_types = block_types
+      @type_index = type_index
+      @parameter_types = []
+      @result_types = (block_types || []).map { |code| Op.i2type(code) }
+    end
+
+    # @rbs params: Array[Symbol]
+    # @rbs results: Array[Symbol]
+    # @rbs return: void
+    def resolve(params, results)
+      @parameter_types = params.dup
+      @result_types = results.dup
     end
 
     # @rbs return: bool
@@ -1265,7 +1333,7 @@ module Wardite
 
     attr_accessor :findex #: Integer
 
-    attr_accessor :default_locals #: Array[wasmValue]
+    # @rbs @default_locals: Array[wasmValue]?
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
@@ -1277,7 +1345,7 @@ module Wardite
 
       @code_body = code_body
       @findex = 0 # for debug
-      @default_locals = construct_default_locals
+      @default_locals = nil
     end
 
     # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
@@ -1293,6 +1361,12 @@ module Wardite
     # @rbs return: Array[Integer]
     def locals_count
       code_body.locals_count
+    end
+
+    # Stack-engine values are boxed lazily; Efflorescence uses type metadata.
+    # @rbs return: Array[wasmValue]
+    def default_locals
+      @default_locals ||= construct_default_locals
     end
 
     # @rbs return: Array[wasmValue]

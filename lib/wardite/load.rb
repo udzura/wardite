@@ -24,6 +24,16 @@ module Wardite
     end
   end
 
+  class TagSection < Section
+    attr_reader :type_indices #: Array[Integer]
+
+    def initialize
+      self.name = "Tag"
+      self.code = Const::SectionTag
+      @type_indices = []
+    end
+  end
+
   class FunctionSection < Section
     attr_accessor :func_indices #: Array[Integer]
 
@@ -326,6 +336,8 @@ module Wardite
             type_section
           when Wardite::SectionImport
             import_section
+          when Wardite::SectionTag
+            tag_section
           when Wardite::SectionFunction
             function_section
           when Wardite::SectionTable
@@ -378,6 +390,8 @@ module Wardite
         arg = [] #: Array[Symbol]
         arglen.times do
           case ty = assert_read(sbuf, 1)&.ord
+          when 0x69
+            arg << :exnref
           when 0x7f
             arg << :i32
           when 0x7e
@@ -387,7 +401,7 @@ module Wardite
           when 0x7c
             arg << :f64
           else
-            raise NotImplementedError, "unsupported for now: #{ty.inspect}"
+            raise LoadError, "unsupported value type: #{ty.inspect}"
           end
         end
         dest.defined_types << arg
@@ -396,6 +410,8 @@ module Wardite
         ret = [] #: Array[Symbol]
         retlen.times do
           case ty = assert_read(sbuf, 1)&.ord
+          when 0x69
+            ret << :exnref
           when 0x7f
             ret << :i32
           when 0x7e
@@ -405,12 +421,25 @@ module Wardite
           when 0x7c
             ret << :f64
           else
-            raise NotImplementedError, "unsupported for now: #{ty.inspect}"
+            raise LoadError, "unsupported value type: #{ty.inspect}"
           end
         end
         dest.defined_results << ret
       end
 
+      dest
+    end
+
+    # @rbs return: TagSection
+    def self.tag_section
+      dest = TagSection.new
+      dest.size = fetch_uleb128(@buf)
+      sbuf = StringIO.new(assert_read(@buf, dest.size))
+      fetch_uleb128(sbuf).times do
+        raise LoadError, "unsupported tag attribute" unless assert_read(sbuf, 1).ord == 0
+        dest.type_indices << fetch_uleb128(sbuf)
+      end
+      raise LoadError, "trailing tag section data" unless sbuf.eof?
       dest
     end
 
@@ -433,6 +462,7 @@ module Wardite
           raise "[BUG] empty unpacked string" # guard rbs
         end
 
+        raise LoadError, "tag imports are not supported" if kind == 4
         index = fetch_uleb128(sbuf)
         dest.add_desc do |desc|
           desc.module_name = module_name
@@ -669,16 +699,19 @@ module Wardite
             v = data.unpack("E")[0]
             raise "String#unpack is broken" if !v.is_a?(Float)
             operand << v
-          when :u8_block
-            block_ope = buf.read 1
-            if ! block_ope
-              raise LoadError, "buffer too short for if"
+          when :u8_block, :blocktype
+            value = read_blocktype(buf)
+            operand << value
+          when :catches
+            clauses = [] #: Array[Integer]
+            fetch_uleb128(buf).times do
+              kind = assert_read(buf, 1).ord
+              raise LoadError, "invalid catch kind #{kind}" unless kind <= 3
+              tag = kind <= 1 ? fetch_uleb128(buf) : -1
+              depth = fetch_uleb128(buf)
+              clauses << kind << tag << depth
             end
-            if block_ope.ord == 0x40
-              operand << Block.void
-            else
-              operand << Block.new([block_ope.ord])
-            end
+            operand << clauses
           else
             $stderr.puts "warning: unknown type #{typ.inspect}. defaulting to u32"
             operand << fetch_uleb128(buf)
@@ -687,7 +720,7 @@ module Wardite
 
         # HINT: [namespace, code, operand, else_pos, end_pos]
         dest << [namespace, code, operand, nil, nil]
-        if code == :block || code == :loop || code == :if
+        if code == :block || code == :loop || code == :if || code == :try_table
           branching_stack << [code, dest.size - 1, -1, -1]
         elsif code == :else
           if branching_stack.empty?
@@ -707,12 +740,13 @@ module Wardite
         end
       end
 
+      raise LoadError, "unterminated structured control" unless branching_stack.empty?
       fixed_stack.each do |(sym, begin_idx, else_idx, end_idx)|
         if end_idx == -1
           raise "broken sequence: branching without end"
         end
         case sym
-        when :block, :loop
+        when :block, :loop, :try_table
           dest[begin_idx][-1] = end_idx
         when :if
           dest[begin_idx][-2] = else_idx == -1 ? end_idx : else_idx
@@ -730,6 +764,24 @@ module Wardite
       raise e
     end
 
+    # Decode s33, distinguishing the one-byte value/void forms from indices.
+    # @rbs buf: StringIO
+    # @rbs return: Block
+    def self.read_blocktype(buf)
+      first = buf.pos
+      value = fetch_sleb128(buf, max_level: 4)
+      raise LoadError, "blocktype exceeds s33" unless value >= -4294967296 && value <= 4294967295
+      if value < 0 && buf.pos - first != 1
+        raise LoadError, "value/void blocktypes must use their single-byte encoding"
+      end
+      return Block.void if value == -64
+      return Block.new(nil, type_index: value) if value >= 0
+      raise LoadError, "invalid block value type" if value < -64
+      code = value & 0x7f
+      Op.i2type(code) # Reject unsupported/nonnullable reference declarations.
+      Block.new([code])
+    end
+
     # @rbs c: String
     # @rbs buf: StringIO
     # @rbs return: [Symbol, Symbol, Array[Symbol]]
@@ -742,8 +794,8 @@ module Wardite
         namespace = Op::FC_OPERANDS[lower] || :default
         return [namespace, sym, Op.operand_of(sym)]
       end
-      namespace = Op::NAMESPACES[ord] || raise("unsupported code: #{ord}")
-      return [namespace, code, Op::OPERANDS[ord]]
+      namespace = Op::NAMESPACES[ord] || raise(LoadError, "unsupported code: #{ord}")
+      return [namespace, code, Op.operand_of(code)]
     end
 
     # @rbs return: DataSection
@@ -895,6 +947,7 @@ module Wardite
           raise "[BUG] empty unpacked string" # guard rbs
         end
 
+        raise LoadError, "tag exports are not supported" if kind == 4
         index = fetch_uleb128(sbuf)
         dest.add_desc do |desc|
           desc.name = name
@@ -915,7 +968,7 @@ module Wardite
       nil
     end
 
-    # @rbs sbuf: StringIO
+    # @rbs sbuf: File|StringIO
     # @rbs n: Integer
     # @rbs return: String
     def self.assert_read(sbuf, n)

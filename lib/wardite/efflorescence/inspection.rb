@@ -59,7 +59,7 @@ module Wardite
           rewrite = Rewrite.new(function)
           function.instructions.each_with_index do |instruction, pc|
             rewrite.mark(pc)
-            reads = Opcode.read_positions(instruction).size
+            reads = function.reads(instruction).size
             writes = Opcode.destination(instruction) >= 0 ? 1 : 0
             # Parameter copies and the eventual return destination write count
             # at CALL; callee RETURN accounts for reading the returned value.
@@ -80,6 +80,14 @@ module Wardite
         lines = [] #: Array[String]
         ir.functions.each do |function|
           lines << "function #{function.index}: params=#{function.parameter_count} locals=#{function.local_count} registers=#{function.register_count}"
+          function.handlers.each_with_index do |handler, i|
+            handler.clauses.each do |clause|
+              lines << "  handler #{i}: tag=#{clause.tag_index} payload=#{clause.payload_registers.inspect} ref=#{clause.reference_register} target=#{clause.target_pc} depth=#{clause.handler_depth}"
+            end
+          end
+          function.throw_sites.each_with_index do |site, i|
+            lines << "  throw #{i}: tag=#{site.tag_index} payload=#{site.payload_registers.inspect}"
+          end
           function.instructions.each_with_index do |instruction, pc|
             operands = [] #: Array[String]
             index = 1

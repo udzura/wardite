@@ -2,6 +2,9 @@
 
 [日本語](efflorescence-ja.md)
 
+Current coverage: [M1 i32, structured control and new EH](efflorescence-m1.md).
+The Phase 1 limitations below are historical.
+
 This document records Phase 1 (`67fbfae`). Current Efflorescence enables the
 [Phase 2 optimizations](efflorescence-phase2.md) by default; `--mir-disable all`
 selects unoptimized semantic MIR execution. Wardite's default is still the stack VM.

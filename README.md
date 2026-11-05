@@ -78,6 +78,12 @@ flat integer bytecode and frame reuse. Use `--mir-disable NAME` to compare
 individual features, `--mir-dump` to inspect MIR and `--mir-profile` for counters.
 See [Phase 2](docs/efflorescence-phase2.md) ([日本語](docs/efflorescence-phase2-ja.md)).
 
+[M1](docs/efflorescence-m1.md) adds the remaining basic i32 operations,
+if/else/select/br_table, and new exception handling (try_table/throw/throw_ref).
+Tags support i32 payloads; nullable exnref locals and multi-result blocks carry
+caught values. Uncaught exceptions expose their tag and payload through
+`Wardite::UncaughtWasmException`. EH remains exclusive to Efflorescence.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `bundle exec rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

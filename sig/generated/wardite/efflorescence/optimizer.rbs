@@ -33,7 +33,26 @@ module Wardite
       def finish: () -> void
     end
 
+    # A shared CFG includes exceptional edges with their edge-local writes.
+    # Handler shapes are checked independently of definite assignment.
+    class FlowGraph
+      attr_reader normal: Array[Array[Integer]]
+
+      attr_reader exceptional: Array[Array[Wardite::Efflorescence::CatchTarget]]
+
+      # @rbs function: Wardite::Efflorescence::Function
+      def initialize: (Wardite::Efflorescence::Function function) -> untyped
+
+      private
+
+      # @rbs pc: Integer
+      # @rbs stack: Array[Integer]
+      # @rbs return: void
+      def merge: (Integer pc, Array[Integer] stack) -> void
+    end
+
     class Analysis
+      # @rbs @flow: Wardite::Efflorescence::FlowGraph?
       attr_reader leaders: Array[Integer]
 
       attr_reader reads: Array[Integer]
@@ -42,6 +61,11 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       def initialize: (Wardite::Efflorescence::Function function) -> untyped
+
+      # Ordinary optimization passes need only the summary above. Build the full
+      # normal CFG once for validation; EH summaries also need it for leaders.
+      # @rbs return: Wardite::Efflorescence::FlowGraph
+      def flow: () -> Wardite::Efflorescence::FlowGraph
 
       # @rbs register: Integer
       # @rbs return: bool

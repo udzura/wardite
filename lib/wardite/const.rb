@@ -16,6 +16,7 @@ module Wardite
     SectionCode      = 0xa #: Integer
     SectionData      = 0xb #: Integer
     SectionDataCount = 0xc #: Integer
+    SectionTag       = 0xd #: Integer
   end
   include Const
 end

@@ -1,6 +1,6 @@
 # ADR 0001: Efflorescence M1の制御構造と新形式EH
 
-- 状態: 実装方針として提案。実装・性能検証は未実施。
+- 状態: 採用・M1a〜M1d実装済み。[実装・検証・性能記録](../efflorescence-m1.md)を参照。
 - 日付: 2026-11-05
 - 調査基準: `5534486`
 - 対象読者: M1を分割して実装する担当者・レビュー担当者
@@ -138,7 +138,7 @@ Analysis/RegisterValidationに、保護されたCALL/THROW/THROW_REFから各cat
 各例外edgeは「送出命令の直前の定義集合＋その節が渡すpayload/参照の定義」を持つ。
 CALLの正常結果、送出命令より後の定義、他のcatch節だけが書くレジスタを混ぜない。
 合流では全incoming edgeの共通部分を取る。handlerだけから到達するブロックも検証する。
-基本ブロックをmay_throw命令で区切り、ブロック末尾の状態を送出地点の状態として流用しない。
+基本ブロックを保護されたmay_throw命令で区切り、ブロック末尾の状態を送出地点の状態として流用しない。
 handlerスタックの形も静的に照合し、通常edgeで矛盾する深さ・異なるhandler列が合流したMIRを拒否する。
 
 通常分岐以外に、HandlerDescriptorのtargetもPC参照として列挙できるAPIを用意する。
@@ -156,6 +156,16 @@ EH専用の最適化解禁は別マイルストーンで行う。
 EHを持たない関数でも、新しく加えるdiv/rem等を既存の純粋演算の数値opcode範囲へ無条件に入れない。
 未使用結果でもtrapを消さず、最適化で例外・trapの順序を変えない。新opcodeは明示的なwhitelistで扱う。
 flat lowering、profiling、framesはEHでも利用可能にする。検証自体をskipして通す実装は禁止する。
+
+### 実装時の補足
+
+- 通常関数の最適化passはCFGの集計情報だけを作り、完全な通常CFGは定義検証時に構築する。
+  EH関数は例外edgeからleaderを得るため先に完全なCFGを作る。検証の省略はしない。
+- handlerがないCALLには関数内の例外edgeがないため、その正常結果の隣接COPYとの合体を維持する。
+  保護されたCALLでは例外edgeの定義集合を正常結果から分ける。
+- CatchTargetのPC属性を`target_pc`とし、PCの書き換えは整数のmappingを使う。
+  Spinelの汎用callbackからのnullable型推論が通常dispatchのPCへ伝播しないよう、
+  MIR operandと保存PCの読み出し境界で整数であることを確定する。
 
 ## 内部マイルストーンとPRの順序
 

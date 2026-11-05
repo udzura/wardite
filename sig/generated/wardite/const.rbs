@@ -30,6 +30,8 @@ module Wardite
     SectionData: Integer
 
     SectionDataCount: Integer
+
+    SectionTag: Integer
   end
 
   include Const

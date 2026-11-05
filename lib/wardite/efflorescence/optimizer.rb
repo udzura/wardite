@@ -46,28 +46,103 @@ module Wardite
       # @rbs return: void
       def finish
         @mapping[@function.instructions.size] = @output.size
-        @output.each do |instruction|
-          position = Opcode.target_position(instruction)
-          instruction[position] = @mapping.fetch(instruction[position]) if position >= 0
-        end
         @function.replace_instructions(@output)
+        @function.remap_targets!(@mapping)
+      end
+    end
+
+    # A shared CFG includes exceptional edges with their edge-local writes.
+    # Handler shapes are checked independently of definite assignment.
+    class FlowGraph
+      attr_reader :normal #: Array[Array[Integer]]
+      attr_reader :exceptional #: Array[Array[Wardite::Efflorescence::CatchTarget]]
+
+      # @rbs function: Wardite::Efflorescence::Function
+      def initialize(function)
+        count = function.instructions.size
+        @normal = Array.new(count) { [] }
+        @exceptional = Array.new(count) { [] }
+        @states = Array.new(count) { [] } #: Array[Array[Integer]]
+        @reached = Array.new(count, false)
+        @pending = [] #: Array[Integer]
+        function.instructions.each_with_index do |instruction, pc|
+          position = Opcode.target_position(instruction)
+          if position >= 0
+            target = instruction[position]
+            raise TranslationError, "invalid MIR branch target #{target}" unless target >= 0 && target < count
+            @normal.fetch(pc) << target
+          end
+          @normal.fetch(pc) << pc + 1 unless Opcode.terminal?(instruction[0]) || pc + 1 == count
+        end
+        function.handlers.each do |handler|
+          handler.clauses.each do |clause|
+            raise TranslationError, "invalid catch target PC" unless clause.target_pc >= 0 && clause.target_pc < count
+          end
+        end
+        merge(0, []) unless count == 0
+        until @pending.empty?
+          pc = @pending.pop || raise(TranslationError, "missing CFG node")
+          instruction = function.instructions.fetch(pc)
+          stack = @states.fetch(pc).dup
+          if Opcode.may_throw?(instruction[0])
+            stack.each_with_index do |id, depth|
+              function.handlers.fetch(id).clauses.each do |clause|
+                unless clause.handler_depth >= 0 && clause.handler_depth <= depth
+                  raise TranslationError, "catch target retains a removed handler"
+                end
+                @exceptional.fetch(pc) << clause unless @exceptional.fetch(pc).include?(clause)
+                merge(clause.target_pc, stack.take(clause.handler_depth))
+              end
+            end
+          end
+          if instruction[0] == Opcode::EH_ENTER
+            id = instruction[1]
+            raise TranslationError, "invalid handler descriptor" unless id >= 0 && id < function.handlers.size
+            stack << id
+          elsif instruction[0] == Opcode::EH_TRIM
+            depth = instruction[1]
+            raise TranslationError, "invalid handler trim" unless depth >= 0 && depth <= stack.size
+            stack = stack.take(depth)
+          end
+          if @normal.fetch(pc).empty? && !Opcode.terminal?(instruction[0])
+            raise TranslationError, "MIR falls through without RETURN"
+          end
+          @normal.fetch(pc).each { |target| merge(target, stack) }
+        end
+      end
+
+      private
+
+      # @rbs pc: Integer
+      # @rbs stack: Array[Integer]
+      # @rbs return: void
+      def merge(pc, stack)
+        if @reached.fetch(pc)
+          raise TranslationError, "inconsistent handler stack at MIR PC #{pc}" unless @states.fetch(pc) == stack
+        else
+          @states[pc] = stack.dup
+          @reached[pc] = true
+          @pending << pc
+        end
       end
     end
 
     class Analysis
+      # @rbs @flow: Wardite::Efflorescence::FlowGraph?
       attr_reader :leaders #: Array[Integer]
       attr_reader :reads #: Array[Integer]
       attr_reader :writes #: Array[Integer]
 
       # @rbs function: Wardite::Efflorescence::Function
       def initialize(function)
+        @function = function
+        @flow = function.uses_eh || !function.handlers.empty? ? FlowGraph.new(function) : nil
         @leaders = Array.new(function.instructions.size, 0)
         @leaders[0] = 1 unless @leaders.empty?
         @reads = Array.new(function.register_count, 0)
         @writes = Array.new(function.register_count, 0)
         function.instructions.each_with_index do |instruction, pc|
-          Opcode.read_positions(instruction).each do |position|
-            register = instruction[position]
+          function.reads(instruction).each do |register|
             @reads[register] += 1
           end
           destination = Opcode.destination(instruction)
@@ -80,10 +155,19 @@ module Wardite
             end
             @leaders[destination_pc] = 1
           end
-          if target >= 0 || instruction[0] == Opcode::RETURN || instruction[0] == Opcode::TRAP
+          exceptional = @flow ? @flow.exceptional.fetch(pc) : [] #: Array[Wardite::Efflorescence::CatchTarget]
+          exceptional.each { |clause| @leaders[clause.target_pc] = 1 }
+          if target >= 0 || Opcode.terminal?(instruction[0]) || !exceptional.empty?
             @leaders[pc + 1] = 1 if pc + 1 < @leaders.size
           end
         end
+      end
+
+      # Ordinary optimization passes need only the summary above. Build the full
+      # normal CFG once for validation; EH summaries also need it for leaders.
+      # @rbs return: Wardite::Efflorescence::FlowGraph
+      def flow
+        @flow ||= FlowGraph.new(@function)
       end
 
       # @rbs register: Integer
@@ -111,7 +195,7 @@ module Wardite
           index = 0
           while index < ir.functions.size
             function = ir.function_at(index)
-            changed << index if expand_calls(function, callees)
+            changed << index if !function.uses_eh && expand_calls(function, callees)
             index += 1
           end
           changed
@@ -124,6 +208,7 @@ module Wardite
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: bool
         def eligible?(function)
+          return false if function.uses_eh
           instructions = function.instructions
           return false if instructions.empty? || instructions.size > MAX_INSTRUCTIONS || function.register_count > MAX_REGISTERS
           return false unless instructions.last[0] == Opcode::RETURN
@@ -441,6 +526,7 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       def optimize_function(function)
+        return if function.uses_eh
         Passes::CopyPropagation.new.run(function) if @configuration.enabled?(:copy)
         Passes::ImmediateSpecialization.new.run(function) if @configuration.enabled?(:immediate)
         Passes::BranchFusion.new.run(function) if @configuration.enabled?(:branch)
@@ -478,13 +564,13 @@ module Wardite
               # and loop; -1 selects the generic zero/multiple-argument path.
               c = arguments.size == 1 ? arguments.fetch(0) : -1
               calls << CallSite.new(callee, arguments)
-            elsif opcode == Opcode::BR
-              a *= WIDTH
-            elsif opcode == Opcode::BR_IF || opcode == Opcode::BR_IF_ZERO
-              b *= WIDTH
             end
+            target_position = Opcode.target_position(instruction)
+            a *= WIDTH if target_position == 1
+            b *= WIDTH if target_position == 2
             code << opcode << a << b << c
           end
+          function.lower_handlers
           function.install_code(code, calls)
           function_index += 1
         end
