@@ -561,6 +561,9 @@ module Wardite
         if !mut
           raise LoadError, "global section too short"
         end
+        unless mut.ord == 0 || mut.ord == 1
+          raise LoadError, "unsupported global mutability flags"
+        end
         
         code = fetch_insn_while_end(sbuf)
         ops = code_body(StringIO.new(code))

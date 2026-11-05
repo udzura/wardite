@@ -86,7 +86,7 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
   end
 
   test 'shared limits reject unsupported flags and invalid page bounds before allocation' do
-    [[1, 2, 0, 1], [1, 4, 0], [1, 8, 0], [1, 1, 1, 0], [1, 0, 0x81, 0x80, 4]].each do |payload|
+    [[1, 3, 0, 1], [1, 2, 0, 1], [1, 4, 0], [1, 8, 0], [1, 1, 1, 0], [1, 0, 0x81, 0x80, 4]].each do |payload|
       bytes = "\0asm\x01\0\0\0".b + [5, payload.size, *payload].pack('C*')
       [:stack, :efflorescence].each do |engine|
         assert_raise(Wardite::LoadError) do

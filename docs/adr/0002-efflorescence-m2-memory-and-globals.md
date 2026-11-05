@@ -1,6 +1,6 @@
 # ADR 0002: Efflorescence M2のメモリとグローバル変数
 
-- 状態: 提案。実装・性能検証は未実施。
+- 状態: 採用。M2a〜M2fを実装・検証済み。[実装・検証・性能記録](../efflorescence-m2.md)を参照。
 - 調査基準: main `1563ac6`（M1実装のmerge後）
 - 前提: [M0対応範囲](../efflorescence-coverage-ja.md)、[M1実装記録](../efflorescence-m1.md)、[ADR 0001](0001-efflorescence-m1-control-and-eh.md)
 - 対象読者: M2を内部フェーズに分けて実装する担当者

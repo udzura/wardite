@@ -62,4 +62,41 @@ module EfflorescenceM2Cases
       (func (export "load") (param i32) (result i32) local.get 0 i32.load8_u))
   WAT
 
+  INTEGRATION_WAT = <<~WAT.freeze
+    (module (tag $e (param i32))
+      (memory (export "memory") 1 3)
+      (global $g (export "g") (mut i32) (i32.const 3))
+      (data (i32.const 0) "x")
+      (func $start i32.const 0 i32.const 11 i32.store i32.const 5 global.set $g)
+      (start $start)
+      (func $thrower i32.const 4 i32.const 40 i32.store i32.const 2 global.set $g i32.const 9 throw $e)
+      (func (export "caught") (result i32)
+        block $done (result i32)
+          try_table (catch $e $done) call $thrower end unreachable
+        end global.get $g i32.add i32.const 4 i32.load i32.add)
+      (func (export "get") (result i32) global.get $g)
+      (func (export "load") (param i32) (result i32) local.get 0 i32.load)
+      (func (export "size") (result i32) memory.size)
+      (func (export "trap") (result i32)
+        block $wrong
+          try_table (catch_all $wrong)
+            i32.const 31 global.set $g
+            i32.const 8 i32.const 73 i32.store
+            i32.const 65535 i32.const 7 i32.store
+          end
+        end i32.const -999)
+      (func (export "uncaught")
+        i32.const 99 global.set $g i32.const 12 i32.const 44 i32.store i32.const 17 throw $e)
+      (func $write i32.const 16 i32.const 50 i32.store i32.const 50 global.set $g)
+      (func (export "snapshot") (result i32)
+        i32.const 16 i32.const 10 i32.store i32.const 16 i32.load
+        call $write i32.const 16 i32.load i32.sub)
+      (func $touch (param i32) (result i32) (local i32)
+        local.get 0 if i32.const 100 local.set 1 end
+        i32.const 20 local.get 1 i32.store local.get 1)
+      (func (export "reuse") (result i32) i32.const 1 call $touch drop i32.const 0 call $touch)
+      (func $pure (result i32) i32.const 6 i32.const 7 i32.mul)
+      (func (export "pure") (result i32) call $pure))
+  WAT
+
 end

@@ -29,6 +29,13 @@ require_relative 'efflorescence_m2_probe'
       end
       raise 'missing load trap' unless trapped
     end
+    [['load8_s', 127, 127], ['load8_s', 128, 0xffffff80],
+     ['load8_u', 127, 127], ['load8_u', 128, 128],
+     ['load16_s', 32767, 32767], ['load16_s', 32768, 0xffff8000],
+     ['load16_u', 32767, 32767], ['load16_u', 32768, 32768]].each do |name, value, expected|
+      memory.data[1, 2] = [value & 255, value >> 8].pack('C*')
+      raise 'bad sign boundary' unless M2Probe.call(vm, name, [1]) == expected
+    end
     %w[store store8 store16].each_with_index do |name, i|
       width = [4, 1, 2][i] || raise('missing width')
       M2Probe.call(vm, name, [1, 0x89abcdef])

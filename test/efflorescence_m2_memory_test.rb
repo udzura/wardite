@@ -37,6 +37,13 @@ class EfflorescenceM2MemoryTest < Test::Unit::TestCase
           assert_equal before, snapshot(memory)
         end
       end
+      [['load8_s', 127, 127], ['load8_s', 128, 0xffffff80],
+       ['load8_u', 127, 127], ['load8_u', 128, 128],
+       ['load16_s', 32767, 32767], ['load16_s', 32768, 0xffff8000],
+       ['load16_u', 32767, 32767], ['load16_u', 32768, 32768]].each do |name, value, expected|
+        memory.data[1, 2] = [value & 255, value >> 8].pack('C*')
+        assert_equal expected, vm.call_unboxed(name, [1]), "sign boundary #{name} #{value}"
+      end
       memory.data[4, 4] = [128, 255, 1, 128].pack('C*')
       assert_equal 0x8001ff80, vm.call_unboxed('offset', [1])
       [1, -1].each { |address| assert_raise(Wardite::EvalError) { vm.call_unboxed('overflow', [address]) } }

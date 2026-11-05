@@ -12,4 +12,3 @@ class M2Probe
     vm.call_unboxed(name, arguments)
   end
 end
-

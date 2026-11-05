@@ -2,7 +2,8 @@
 
 [日本語](efflorescence-ja.md)
 
-Current coverage: [M1 i32, structured control and new EH](efflorescence-m1.md).
+Current coverage: [M1 i32, structured control and new EH](efflorescence-m1.md)
+and [M2 memory and globals](efflorescence-m2.md).
 The Phase 1 limitations below are historical.
 
 This document records Phase 1 (`67fbfae`). Current Efflorescence enables the

@@ -4,7 +4,7 @@
 
 Phase 2 reduces MIR execution overhead. The stack VM remains Wardite's default;
 `--new-engine` selects Efflorescence with the optimizations below enabled.
-For the current Wasm subset, see [M1](efflorescence-m1.md). Unsupported instructions still fail
+For the current Wasm subset, see [M2](efflorescence-m2.md). Unsupported instructions still fail
 explicitly, including in unreachable or unexported functions.
 
 ## Pipeline and controls
@@ -20,6 +20,10 @@ Wasm → Translator → semantic MIR (retained)
                   → optional profiling instrumentation
                   → Lowerer → executable integer array → VM
 ```
+
+EH/reference/Store-access functions conservatively bypass local passes and both
+directions of inlining. Validation, flat lowering, profiling and frame reuse
+still apply.
 
 Local passes operate on a function; inlining reads a module snapshot. `Optimizer` copies the semantic MIR before
 changing it. `Rewrite` maps old instruction ordinals to new ones and repairs all
