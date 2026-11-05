@@ -6,13 +6,13 @@
 | 段階 | 状態 |
 |---|---|
 | M2a: 検査・byte境界・MemorySite・Opcode情報 | 実装済み |
-| M2b: i32 global | 未実装 |
+| M2b: i32 global | 実装済み |
 | M2c: i32 load/store | 未実装 |
 | M2d: size/grow | 未実装 |
 | M2e: init/copy/fill | 未実装 |
 | M2f: 統合・外部比較・性能 | 未実施 |
 
-M2aではM2命令の即値・型・indexを到達不能コードでも検査するが、命令の実行はまだ拒否する。
+M2命令の即値・型・indexは到達不能コードでも検査し、未完成の命令は実行を拒否する。
 shared/memory64/custom page limits、memory 0以外の指定、data count不足、immutable global.setを拒否する。
 MemorySiteはdeep copy、register read解析・置換、Inspectionの対象とし、uses_store関数は既存passと
 双方向のinliningから保守的に除外する。通常i32関数の最適化とM1のEH除外規則は維持する。
@@ -22,3 +22,8 @@ MemorySiteはdeep copy、register read解析・置換、Inspectionの対象と�
 共有の定数式デコードを命令単位に変更し、即値に0x0bが含まれてもendと取り違えない。
 active dataの範囲はEfflorescenceのStore生成前に検査する。
 共有ローダーとMemoryの変更は旧VMの回帰テストでも確認する。
+
+M2bではi32 global.get/setを実装した。Global.valueを状態の保持元として、get時は
+正規化整数を一時レジスタへ読み、set時だけI32へboxingする。
+関数呼び出し・再帰を挟んでも既に読み込んだ値は変わらず、更新は公開callを越えて同じinstanceに残る。
+使用しないi64/f32/f64 global宣言は維持し、非i32アクセス・immutable set・型不一致を拒否する。

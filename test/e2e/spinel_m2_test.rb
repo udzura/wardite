@@ -3,6 +3,7 @@
 require 'test_helper'
 require 'open3'
 require_relative '../support/efflorescence_helper'
+require_relative '../support/efflorescence_m2_cases'
 
 class WarditeSpinelM2Test < Test::Unit::TestCase
   include EfflorescenceHelper
@@ -20,6 +21,19 @@ class WarditeSpinelM2Test < Test::Unit::TestCase
       file = File.join(dir, 'input.wasm')
       File.binwrite(file, compile_efflorescence_wat(wat))
       yield file
+    end
+  end
+
+  test 'M2 globals snapshots and recursive calls in every native configuration' do
+    with_wasm(EfflorescenceM2Cases::GLOBAL_WAT) do |file|
+      MODES.each do |mode|
+        [['get', [], 7], ['snapshot', [], -1], ['recursive', [3], 24], ['fixed', [], -1]].each do |export, args, expected|
+          out, err, status = Open3.capture3(@binary, '--new-engine', *mode, '--invoke', export, '--', file, *args.map(&:to_s))
+          assert status.success?, err
+          assert_equal '', out
+          assert_include err, "return value: I32(#{expected})\n"
+        end
+      end
     end
   end
 

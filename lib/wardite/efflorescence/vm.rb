@@ -15,6 +15,7 @@ module Wardite
       # @rbs profile: bool
       def initialize(instance, disabled_optimizations: [], profile: false)
         @instance = instance
+        @store_access = StoreAccess.new(instance.store)
         configuration = Configuration.new(disabled_optimizations)
         @reuse_frames = configuration.enabled?(:frames)
         @profiling = profile
@@ -497,9 +498,11 @@ module Wardite
             pc = Integer(frame.pc)
             next
           when 52 # Opcode::GLOBAL_GET
-            raise UnsupportedFeature, "Efflorescence: GLOBAL_GET is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            registers[a] = @store_access.global_get(b)
           when 53 # Opcode::GLOBAL_SET
-            raise UnsupportedFeature, "Efflorescence: GLOBAL_SET is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            @store_access.global_set(a, registers[b])
           when 54 # Opcode::I32_LOAD
             raise UnsupportedFeature, "Efflorescence: I32_LOAD is not implemented yet"
           when 55 # Opcode::I32_LOAD8_S

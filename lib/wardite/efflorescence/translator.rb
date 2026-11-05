@@ -151,6 +151,16 @@ module Wardite
             else_control
           when :end
             end_control
+          when :global_get, :global_set
+            index = integer_operand(operands[0])
+            next unless @reachable
+            if code == :global_get
+              dst = register
+              emit([Opcode::GLOBAL_GET, dst, index])
+              @stack << dst
+            else
+              emit([Opcode::GLOBAL_SET, index, pop_typed(:i32)])
+            end
           when :local_get, :local_set, :local_tee
             local = integer_operand(operands[0])
             fail_translation("invalid local index #{local}") unless local >= 0 && local < @function.parameter_count + @function.local_count
@@ -264,9 +274,10 @@ module Wardite
           index = integer_operand(operands[0])
           global = index >= 0 ? @instance.store.globals[index] : nil
           fail_translation("invalid global index #{index}") unless global
-          unless global.type == :i32 && global.value.is_a?(Wardite::I32)
+          unless global.type == :i32
             raise UnsupportedFeature, context("only i32 global access is supported")
           end
+          fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::I32)
           fail_translation("global.set on immutable global #{index}") if code == :global_set && !global.mutable
           return
         end

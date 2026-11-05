@@ -18,6 +18,21 @@ module Wardite
       # @rbs store: Wardite::Store
       def initialize: (Wardite::Store store) -> untyped
 
+      # @rbs index: Integer
+      # @rbs return: Wardite::Global
+      def global_at: (Integer index) -> Wardite::Global
+
+      # @rbs index: Integer
+      # @rbs return: Integer
+      def global_get: (Integer index) -> Integer
+
+      # Boxing is confined to the shared Store boundary. Existing register
+      # snapshots contain independent integers, never a mutable Global object.
+      # @rbs index: Integer
+      # @rbs value: Integer
+      # @rbs return: void
+      def global_set: (Integer index, Integer value) -> void
+
       # @rbs return: Wardite::Memory
       def memory: () -> Wardite::Memory
     end
