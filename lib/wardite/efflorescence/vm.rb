@@ -496,6 +496,36 @@ module Wardite
             instructions = frame.function.bytecode
             pc = Integer(frame.pc)
             next
+          when 52 # Opcode::GLOBAL_GET
+            raise UnsupportedFeature, "Efflorescence: GLOBAL_GET is not implemented yet"
+          when 53 # Opcode::GLOBAL_SET
+            raise UnsupportedFeature, "Efflorescence: GLOBAL_SET is not implemented yet"
+          when 54 # Opcode::I32_LOAD
+            raise UnsupportedFeature, "Efflorescence: I32_LOAD is not implemented yet"
+          when 55 # Opcode::I32_LOAD8_S
+            raise UnsupportedFeature, "Efflorescence: I32_LOAD8_S is not implemented yet"
+          when 56 # Opcode::I32_LOAD8_U
+            raise UnsupportedFeature, "Efflorescence: I32_LOAD8_U is not implemented yet"
+          when 57 # Opcode::I32_LOAD16_S
+            raise UnsupportedFeature, "Efflorescence: I32_LOAD16_S is not implemented yet"
+          when 58 # Opcode::I32_LOAD16_U
+            raise UnsupportedFeature, "Efflorescence: I32_LOAD16_U is not implemented yet"
+          when 59 # Opcode::I32_STORE
+            raise UnsupportedFeature, "Efflorescence: I32_STORE is not implemented yet"
+          when 60 # Opcode::I32_STORE8
+            raise UnsupportedFeature, "Efflorescence: I32_STORE8 is not implemented yet"
+          when 61 # Opcode::I32_STORE16
+            raise UnsupportedFeature, "Efflorescence: I32_STORE16 is not implemented yet"
+          when 62 # Opcode::MEMORY_SIZE
+            raise UnsupportedFeature, "Efflorescence: MEMORY_SIZE is not implemented yet"
+          when 63 # Opcode::MEMORY_GROW
+            raise UnsupportedFeature, "Efflorescence: MEMORY_GROW is not implemented yet"
+          when 64 # Opcode::MEMORY_INIT
+            raise UnsupportedFeature, "Efflorescence: MEMORY_INIT is not implemented yet"
+          when 65 # Opcode::MEMORY_COPY
+            raise UnsupportedFeature, "Efflorescence: MEMORY_COPY is not implemented yet"
+          when 66 # Opcode::MEMORY_FILL
+            raise UnsupportedFeature, "Efflorescence: MEMORY_FILL is not implemented yet"
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

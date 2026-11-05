@@ -113,6 +113,36 @@ module Wardite
 
       THROW_REF: ::Integer
 
+      GLOBAL_GET: ::Integer
+
+      GLOBAL_SET: ::Integer
+
+      I32_LOAD: ::Integer
+
+      I32_LOAD8_S: ::Integer
+
+      I32_LOAD8_U: ::Integer
+
+      I32_LOAD16_S: ::Integer
+
+      I32_LOAD16_U: ::Integer
+
+      I32_STORE: ::Integer
+
+      I32_STORE8: ::Integer
+
+      I32_STORE16: ::Integer
+
+      MEMORY_SIZE: ::Integer
+
+      MEMORY_GROW: ::Integer
+
+      MEMORY_INIT: ::Integer
+
+      MEMORY_COPY: ::Integer
+
+      MEMORY_FILL: ::Integer
+
       NAMES: untyped
 
       # These are semantic register accesses, excluding frame initialization.
@@ -135,6 +165,18 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.side_effect?: (Integer opcode) -> bool
+
+      # @rbs opcode: Integer
+      # @rbs return: bool
+      def self.memory_site?: (Integer opcode) -> bool
+
+      # @rbs opcode: Integer
+      # @rbs return: bool
+      def self.reads_store?: (Integer opcode) -> bool
+
+      # @rbs opcode: Integer
+      # @rbs return: bool
+      def self.writes_store?: (Integer opcode) -> bool
 
       # @rbs opcode: Integer
       # @rbs return: bool
@@ -214,6 +256,26 @@ module Wardite
       def copy: () -> Wardite::Efflorescence::ThrowSite
     end
 
+    # Bulk operands stay static in the Function. Values remain in Frame registers.
+    class MemorySite
+      attr_reader sources: Array[Integer]
+
+      attr_reader memory_index: Integer
+
+      attr_reader source_memory_index: Integer
+
+      attr_reader data_index: Integer
+
+      # @rbs sources: Array[Integer]
+      # @rbs memory_index: Integer
+      # @rbs source_memory_index: Integer
+      # @rbs data_index: Integer
+      def initialize: (Array[Integer] sources, ?memory_index: Integer, ?source_memory_index: Integer, ?data_index: Integer) -> untyped
+
+      # @rbs return: Wardite::Efflorescence::MemorySite
+      def copy: () -> Wardite::Efflorescence::MemorySite
+    end
+
     # A small wrapper keeps operand reads monomorphic even when a compiler
     # represents the outer instruction table as a generic object array.
     class Instruction
@@ -269,6 +331,10 @@ module Wardite
 
       attr_accessor uses_eh: bool
 
+      attr_accessor uses_store: bool
+
+      attr_reader memory_sites: Array[Wardite::Efflorescence::MemorySite]
+
       attr_reader calls: Array[Wardite::Efflorescence::CallSite]
 
       # @rbs index: Integer
@@ -311,6 +377,10 @@ module Wardite
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::CallSite
       def call_site: (Integer index) -> Wardite::Efflorescence::CallSite
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::MemorySite
+      def memory_site: (Integer index) -> Wardite::Efflorescence::MemorySite
 
       # All PC consumers (rewrites, profiling, lowering) share this enumeration.
       # @rbs mapping: Array[Integer]

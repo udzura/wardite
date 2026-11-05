@@ -38,6 +38,10 @@ module Wardite
     # @rbs return: void
     def check_engine_features: (Symbol engine) -> void
 
+    # Validate active segments before shared initialization can mutate memory.
+    # @rbs return: void
+    def check_memory_initialization: () -> void
+
     # @rbs return: void
     def check_data_count: () -> void
 

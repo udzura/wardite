@@ -1,0 +1,25 @@
+# Generated from lib/wardite/efflorescence/store_access.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    # Checked byte operations live off the integer dispatch path. Store remains
+    # the owner of all state; never retain a Memory#data buffer across a call.
+    class StoreAccess
+      PAGE_SIZE: ::Integer
+
+      MAX_PAGES: ::Integer
+
+      # @rbs start: Integer
+      # @rbs length: Integer
+      # @rbs size: Integer
+      # @rbs return: void
+      def self.check_range: (Integer start, Integer length, Integer size) -> void
+
+      # @rbs store: Wardite::Store
+      def initialize: (Wardite::Store store) -> untyped
+
+      # @rbs return: Wardite::Memory
+      def memory: () -> Wardite::Memory
+    end
+  end
+end

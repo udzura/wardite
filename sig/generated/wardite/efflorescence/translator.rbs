@@ -46,6 +46,11 @@ module Wardite
 
       UNARY: untyped
 
+      # Natural alignment exponents; alignment is a hint, not an address rule.
+      MEMORY_WIDTHS: untyped
+
+      STORE_CODES: untyped
+
       @handler_depth: Integer
 
       @wasm_pc: Integer
@@ -74,6 +79,16 @@ module Wardite
       def translate_function: (Wardite::WasmFunction wasm, Integer index) -> Wardite::Efflorescence::Function
 
       private
+
+      # Validate even dead instructions before deciding whether to emit MIR.
+      # @rbs code: Symbol
+      # @rbs operands: Array[Wardite::operandItem]
+      # @rbs return: void
+      def validate_store_instruction: (Symbol code, Array[Wardite::operandItem] operands) -> void
+
+      # @rbs index: Integer
+      # @rbs return: void
+      def check_memory_index: (Integer index) -> void
 
       # @rbs function: Wardite::WasmFunction
       # @rbs return: void
