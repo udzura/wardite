@@ -9,8 +9,7 @@ class EfflorescenceM1Test < Test::Unit::TestCase
   include EfflorescenceM1Cases
   E = Wardite::Efflorescence
   OP = E::Opcode
-  MODES = [{}, {disabled_optimizations: [:all]}, {disabled_optimizations: [:flat]},
-           {disabled_optimizations: [:frames]}, {mir_profile: true}].freeze
+  MODES = [{}, {disabled_optimizations: [:all]}, {disabled_optimizations: [:frames]}, {mir_profile: true}].freeze
 
   def load_bytes(bytes, **options)
     Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,

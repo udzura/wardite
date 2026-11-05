@@ -16,7 +16,6 @@ module Wardite
       def initialize(instance, disabled_optimizations: [], profile: false)
         @instance = instance
         configuration = Configuration.new(disabled_optimizations)
-        @flat = configuration.enabled?(:flat)
         @reuse_frames = configuration.enabled?(:frames)
         @profiling = profile
         @metrics = Metrics.new
@@ -24,7 +23,7 @@ module Wardite
         @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)
         @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function) }
         @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir
-        Lowerer.new.compile(@ir) if @flat
+        Lowerer.new.compile(@ir)
         start = instance.start_section
         execute(start.func_index, []) if start
       end
@@ -181,7 +180,7 @@ module Wardite
           frame = current_frame(frames)
           until frame.handlers.empty?
             id = frame.handlers.pop || raise(Wardite::EvalError, "missing handler")
-            descriptors = @flat ? frame.function.flat_handlers : frame.function.handlers
+            descriptors = frame.function.flat_handlers
             descriptors.fetch(id).clauses.each do |clause|
               if clause.tag_index < 0 || @instance.tags.fetch(clause.tag_index).equal?(value.tag)
                 frame.trim_handlers(clause.handler_depth)
@@ -232,7 +231,7 @@ module Wardite
         arguments.each_with_index { |value, i| frame.registers[i] = value }
         @metrics = Metrics.new if @profiling
         active_frames = [frame]
-        @flat ? execute_flat(frame, pools, active_frames) : execute_semantic(frame, pools, active_frames)
+        execute_flat(frame, pools, active_frames)
       ensure
         active_frames&.each { |active| pool_at(pools, active.pool_index).release(active) }
         if @profiling
@@ -242,176 +241,6 @@ module Wardite
         end
       end
 
-      # @rbs frame: Wardite::Efflorescence::Frame
-      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
-      # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
-      # @rbs return: Integer
-      def execute_semantic(frame, pools, active_frames)
-        frames = active_frames
-        registers = frame.registers
-        instructions = frame.function.instructions
-        pc = 0
-        loop do
-          instruction = frame.function.instruction_at(pc)
-          pc += 1
-          # Integer literal labels let Spinel emit a C switch. Keep the
-          # Opcode comments in sync; the dispatch contract test checks them.
-          case instruction[0]
-          when 0 # Opcode::COPY
-            registers[instruction[1]] = registers[instruction[2]]
-          when 1 # Opcode::I32_ADD
-            registers[instruction[1]] = (registers[instruction[2]] + registers[instruction[3]]) & 0xffffffff
-          when 2 # Opcode::I32_SUB
-            registers[instruction[1]] = (registers[instruction[2]] - registers[instruction[3]]) & 0xffffffff
-          when 3 # Opcode::I32_MUL
-            # A full unsigned i32 product can overflow Spinel's native signed
-            # word. Split into 16-bit limbs; all intermediates fit in 49 bits.
-            left = registers[instruction[2]]
-            right = registers[instruction[3]]
-            low = (left & 0xffff) * right
-            high = (((left >> 16) * right) & 0xffff) << 16
-            registers[instruction[1]] = (low + high) & 0xffffffff
-          when 4 # Opcode::I32_XOR
-            registers[instruction[1]] = registers[instruction[2]] ^ registers[instruction[3]]
-          when 5 # Opcode::I32_SHL
-            registers[instruction[1]] = (registers[instruction[2]] << (registers[instruction[3]] & 31)) & 0xffffffff
-          when 6 # Opcode::I32_SHR_U
-            registers[instruction[1]] = registers[instruction[2]] >> (registers[instruction[3]] & 31)
-          when 7 # Opcode::I32_EQZ
-            registers[instruction[1]] = registers[instruction[2]] == 0 ? 1 : 0
-          when 13 # Opcode::I32_ADD_IMM
-            registers[instruction[1]] = (registers[instruction[2]] + instruction[3]) & 0xffffffff
-          when 14 # Opcode::I32_SUB_IMM
-            registers[instruction[1]] = (registers[instruction[2]] - instruction[3]) & 0xffffffff
-          when 15 # Opcode::I32_MUL_IMM
-            left = registers[instruction[2]]
-            right = instruction[3]
-            low = (left & 0xffff) * right
-            high = (((left >> 16) * right) & 0xffff) << 16
-            registers[instruction[1]] = (low + high) & 0xffffffff
-          when 16 # Opcode::I32_XOR_IMM
-            registers[instruction[1]] = registers[instruction[2]] ^ instruction[3]
-          when 17 # Opcode::I32_SHL_IMM
-            registers[instruction[1]] = (registers[instruction[2]] << (instruction[3] & 31)) & 0xffffffff
-          when 18 # Opcode::I32_SHR_U_IMM
-            registers[instruction[1]] = registers[instruction[2]] >> (instruction[3] & 31)
-          when 20 # Opcode::I32_XOR_SHR_U_IMM
-            value = registers[instruction[2]]
-            registers[instruction[1]] = value ^ (value >> instruction[3])
-          when 21 # Opcode::I32_XOR_SHL_IMM
-            value = registers[instruction[2]]
-            registers[instruction[1]] = (value ^ (value << instruction[3])) & 0xffffffff
-          when 8 # Opcode::BR
-            pc = instruction[1]
-          when 9 # Opcode::BR_IF
-            pc = instruction[2] if registers[instruction[1]] != 0
-          when 19 # Opcode::BR_IF_ZERO
-            pc = instruction[2] if registers[instruction[1]] == 0
-          when 10 # Opcode::CALL
-            frame.pc = pc
-            callee = @ir.function_at(instruction[2])
-            pool = pools[callee.index]
-            raise Wardite::EvalError, "missing MIR frame pool" unless pool
-            next_frame = pool.acquire(instruction[1])
-            argument = 0
-            while argument < callee.parameter_count
-              next_frame.registers[argument] = registers[instruction[argument + 3]]
-              argument += 1
-            end
-            frames << next_frame
-            frame = next_frame
-            registers = frame.registers
-            instructions = frame.function.instructions
-            pc = 0
-          when 11 # Opcode::RETURN
-            value = instruction[1] < 0 ? 0 : registers[instruction[1]]
-            destination = frame.return_register
-            frames.pop
-            pool = pools[frame.pool_index]
-            raise Wardite::EvalError, "missing MIR frame pool" unless pool
-            pool.release(frame)
-            return value if frames.empty?
-            frame = current_frame(frames)
-            registers = frame.registers
-            registers[destination] = value if destination >= 0
-            instructions = frame.function.instructions
-            pc = Integer(frame.pc)
-          when 12 # Opcode::TRAP
-            raise Wardite::Unreachable, "unreachable op"
-          when 23 # Opcode::I32_EQ
-            registers[instruction[1]] = calculate(23, registers[instruction[2]], registers[instruction[3]])
-          when 24 # Opcode::I32_NE
-            registers[instruction[1]] = calculate(24, registers[instruction[2]], registers[instruction[3]])
-          when 25 # Opcode::I32_LTS
-            registers[instruction[1]] = calculate(25, registers[instruction[2]], registers[instruction[3]])
-          when 26 # Opcode::I32_LTU
-            registers[instruction[1]] = calculate(26, registers[instruction[2]], registers[instruction[3]])
-          when 27 # Opcode::I32_GTS
-            registers[instruction[1]] = calculate(27, registers[instruction[2]], registers[instruction[3]])
-          when 28 # Opcode::I32_GTU
-            registers[instruction[1]] = calculate(28, registers[instruction[2]], registers[instruction[3]])
-          when 29 # Opcode::I32_LES
-            registers[instruction[1]] = calculate(29, registers[instruction[2]], registers[instruction[3]])
-          when 30 # Opcode::I32_LEU
-            registers[instruction[1]] = calculate(30, registers[instruction[2]], registers[instruction[3]])
-          when 31 # Opcode::I32_GES
-            registers[instruction[1]] = calculate(31, registers[instruction[2]], registers[instruction[3]])
-          when 32 # Opcode::I32_GEU
-            registers[instruction[1]] = calculate(32, registers[instruction[2]], registers[instruction[3]])
-          when 33 # Opcode::I32_CLZ
-            registers[instruction[1]] = calculate(33, registers[instruction[2]], 0)
-          when 34 # Opcode::I32_CTZ
-            registers[instruction[1]] = calculate(34, registers[instruction[2]], 0)
-          when 35 # Opcode::I32_POPCNT
-            registers[instruction[1]] = calculate(35, registers[instruction[2]], 0)
-          when 36 # Opcode::I32_DIV_S
-            registers[instruction[1]] = calculate(36, registers[instruction[2]], registers[instruction[3]])
-          when 37 # Opcode::I32_DIV_U
-            registers[instruction[1]] = calculate(37, registers[instruction[2]], registers[instruction[3]])
-          when 38 # Opcode::I32_REM_S
-            registers[instruction[1]] = calculate(38, registers[instruction[2]], registers[instruction[3]])
-          when 39 # Opcode::I32_REM_U
-            registers[instruction[1]] = calculate(39, registers[instruction[2]], registers[instruction[3]])
-          when 40 # Opcode::I32_AND
-            registers[instruction[1]] = calculate(40, registers[instruction[2]], registers[instruction[3]])
-          when 41 # Opcode::I32_OR
-            registers[instruction[1]] = calculate(41, registers[instruction[2]], registers[instruction[3]])
-          when 42 # Opcode::I32_SHR_S
-            registers[instruction[1]] = calculate(42, registers[instruction[2]], registers[instruction[3]])
-          when 43 # Opcode::I32_ROTL
-            registers[instruction[1]] = calculate(43, registers[instruction[2]], registers[instruction[3]])
-          when 44 # Opcode::I32_ROTR
-            registers[instruction[1]] = calculate(44, registers[instruction[2]], registers[instruction[3]])
-          when 45 # Opcode::I32_EXTEND8_S
-            registers[instruction[1]] = calculate(45, registers[instruction[2]], 0)
-          when 46 # Opcode::I32_EXTEND16_S
-            registers[instruction[1]] = calculate(46, registers[instruction[2]], 0)
-          when 47 # Opcode::COPY_REF
-            frame.exception_registers[instruction[1]] = frame.exception_registers[instruction[2]]
-          when 48 # Opcode::EH_ENTER
-            frame.handlers << instruction[1]
-          when 49 # Opcode::EH_TRIM
-            frame.trim_handlers(instruction[1])
-          when 50 # Opcode::THROW
-            value_ref = exception_at(frame, instruction[1])
-            frame = propagate(value_ref, frames, pools)
-            registers = frame.registers
-            instructions = frame.function.instructions
-            pc = Integer(frame.pc)
-          when 51 # Opcode::THROW_REF
-            value_ref = frame.exception_registers[instruction[1]]
-            raise Wardite::EvalError, "throw_ref null" unless value_ref
-            frame = propagate(value_ref, frames, pools)
-            registers = frame.registers
-            instructions = frame.function.instructions
-            pc = Integer(frame.pc)
-          when 22 # Opcode::PROFILE
-            @metrics.record(instruction[1], instruction[2], instruction[3])
-          else
-            raise Wardite::EvalError, "Efflorescence: invalid MIR opcode #{instruction[0]}"
-          end
-        end
-      end
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
       # @rbs active_frames: Array[Wardite::Efflorescence::Frame]

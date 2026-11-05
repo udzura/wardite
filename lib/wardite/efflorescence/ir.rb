@@ -311,13 +311,6 @@ module Wardite
         @calls = []
       end
 
-      # Preserve the concrete operand wrapper at a generic array boundary.
-      # @rbs pc: Integer
-      # @rbs return: Wardite::Efflorescence::Instruction
-      def instruction_at(pc)
-        @instructions[pc] || raise(Wardite::EvalError, "invalid MIR PC #{pc}")
-      end
-
       # @rbs return: Integer
       def register_count
         @initial_registers.size

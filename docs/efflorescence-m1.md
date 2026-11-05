@@ -5,6 +5,9 @@
 さらに`try_table`、`throw`、`throw_ref`を追加する。エンジンの選択は引き続きopt-inの
 `--new-engine` / `engine: :efflorescence`。デフォルトのstack VMにはEHを追加しない。
 
+実行器はflatに統一した。`--mir-disable all`でも未最適化MIRを必ずflatへ変換する。
+`flat`の最適化スイッチとsemantic実行器は削除し、意味MIRは検証・表示用に保持する。
+
 ## 対応する値と例外
 
 - 関数はi32引数、voidまたは単一i32結果。直接call、再帰、相互再帰に対応する。
@@ -75,7 +78,7 @@ bundle exec ruby -Ilib benchmark/validate_m1_eh.rb
 ```
 
 通常テストはwasm-toolsを使う。Spinelは別途native実行ファイルを生成して検証する。
-EHの共通ケースはCRuby/Spinelそれぞれのdefault、all無効、flat無効、frames無効、profilingで実行する。
+EHの共通ケースはCRuby/Spinelそれぞれのdefault、all無効、frames無効、profilingで実行する。
 i32は各passの個別無効化も検査する。
 通常命令は固定期待値と旧VMで比較し、EHは固定期待値とWasmtimeで比較する。
 [最小受け入れ例](../test/fixtures/efflorescence/eh_acceptance.wat)の2つのexportは42を返す。
@@ -144,7 +147,9 @@ shell wrapperへ置き換え、`ROUNDS=100000`で同じ計測scriptを使う。
 EHなしのALU dispatchに参照型判定やhandler探索は加えていない。
 EH専用の高速化はこの段階の目的に含めない。
 
-## 最終検証結果
+## M1導入時点の検証結果
+
+以下はflat統一前の記録。現在は上記の実行構成で検証する。
 
 - `bundle exec rake test`: 165 tests / 12,921 assertions、失敗・エラーなし。
   native専用52テストはこのコマンドでは省略し、下のSpinel実行で検証した。

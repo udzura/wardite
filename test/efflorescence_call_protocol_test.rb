@@ -42,7 +42,7 @@ class EfflorescenceCallProtocolTest < Test::Unit::TestCase
   test "mixed arities void calls argument snapshots and mutual recursion agree with the stack VM" do
     bytes = compile_efflorescence_wat(CALL_PROTOCOL_WAT)
     old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
-    [[], [:all], [:flat], [:copy], [:immediate], [:frames], [:inline]].each do |disabled|
+    [[], [:all], [:copy], [:immediate], [:frames], [:inline]].each do |disabled|
       [false, true].each do |profile|
         vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
           engine: :efflorescence, disabled_optimizations: disabled, mir_profile: profile).runtime

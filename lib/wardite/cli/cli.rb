@@ -47,7 +47,7 @@ module Wardite
           opts.on("--new-engine", "Use the Efflorescence register VM (i32 subset)") {|_v|
             @new_engine = true
           }
-          opts.on("--mir-disable NAME", "Disable copy, immediate, branch, superinstruction, inline, flat, frames, or all (repeatable)") {|v|
+          opts.on("--mir-disable NAME", "Disable copy, immediate, branch, superinstruction, inline, frames, or all (repeatable)") {|v|
             @disabled_optimizations << v.to_sym
           }
           opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }

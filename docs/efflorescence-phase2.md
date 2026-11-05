@@ -4,7 +4,7 @@
 
 Phase 2 reduces MIR execution overhead. The stack VM remains Wardite's default;
 `--new-engine` selects Efflorescence with the optimizations below enabled.
-The supported Wasm subset is unchanged. Unsupported instructions still fail
+For the current Wasm subset, see [M1](efflorescence-m1.md). Unsupported instructions still fail
 explicitly, including in unreachable or unexported functions.
 
 ## Pipeline and controls
@@ -31,16 +31,16 @@ and counts register definitions and uses across the whole function.
 ruby -Ilib exe/wardite --new-engine --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
 
 # Disable one feature, or several by repeating the option
-ruby -Ilib exe/wardite --new-engine --mir-disable copy --mir-disable flat --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
+ruby -Ilib exe/wardite --new-engine --mir-disable copy --mir-disable frames --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
 
-# Semantic MIR execution with all seven features disabled
+# Unoptimized MIR lowered to flat bytecode with all six features disabled
 ruby -Ilib exe/wardite --new-engine --mir-disable all --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
 
 # Inspect before/after MIR, or collect counters separately from timing
 ruby -Ilib exe/wardite --new-engine --mir-dump --mir-profile --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 10 123
 ```
 
-`copy`, `immediate`, `branch`, `superinstruction`, `inline`, `flat` and `frames` can be
+`copy`, `immediate`, `branch`, `superinstruction`, `inline` and `frames` can be
 disabled independently. Unknown names raise an error. MIR CLI options require
 `--new-engine`. The normal checksum output is unchanged unless inspection or
 profiling is explicitly requested.
@@ -67,15 +67,16 @@ Direct `VM.new` accepts `disabled_optimizations:` and `profile:`.
 | Branch fusion | `I32_EQZ tmp, src; BR_IF tmp, pc` → `BR_IF_ZERO src, pc` | The temporary is not a local, has one definition/use, and the second instruction has no incoming edge. |
 | Superinstructions | Fuse immediate logical-right/left shift followed by XOR with the original source | The intermediate has one definition/use and the XOR is not a basic-block entry. No benchmark-specific whole-function instruction is used. |
 | Inlining | Expand small straight-line leaf functions, then clean up with the enabled local passes | At most 8 callee instructions and 32 slots. Fresh renamed registers preserve arguments; explicit local zeroing runs at each call site. No branches, traps or nested calls. One snapshot round, at most 64 added instructions and 256 added slots per caller before cleanup. Disable with `--mir-disable inline`. |
-| Flat execution | Lower to four integers per instruction: opcode and three operands | Branch ordinals become offsets multiplied by four. CALL uses an out-of-line `CallSite` with the resolved callee and argument-register array, allowing any supported arity. |
+| Flat execution (always enabled) | Lower to four integers per instruction: opcode and three operands | Branch ordinals become offsets multiplied by four. CALL uses an out-of-line `CallSite` with the resolved callee and argument-register array, allowing any supported arity. |
 | Frame reuse | Per-function free lists owned by one public invocation | Active frames are never pooled. New frames copy the register template; reused frames zero only non-parameter locals and reset PC/return destination. CALL supplies parameters, constants remain immutable, and load-time definite-assignment validation ensures temporaries are written before use. Recursion and overlapping invocations have independent active frames. |
 
-The object-based semantic executor remains available with `--mir-disable flat`,
-including when individual MIR passes remain enabled. This permits differential
-execution of representation changes. `--mir-disable all` is a semantic baseline
-in the current code, not the exact Phase 1 binary: setup code and Spinel's
-whole-program inference can differ. The benchmark can also run commit `67fbfae`
-as an independently built baseline.
+Execution always uses the flat interpreter. Lowering is a required pipeline step,
+including with `--mir-disable all`; `flat` is no longer an optimization switch.
+The semantic executor has been removed. Semantic and optimized MIR are retained
+for validation, rewriting and inspection. `--mir-disable all` disables the six
+optional features before lowering; it does not reproduce the Phase 1 binary.
+Historical benchmark results below used the configurations available at the time.
+The benchmark can still run commit `67fbfae` as an independently built baseline.
 
 The flat interpreter uses `while true` so Spinel does not generate
 `Kernel#loop`'s StopIteration handler or the associated volatile locals.
@@ -129,7 +130,7 @@ metadata and frame/call-site collections may still use generic arrays.
 
 ### Integer-literal dispatch
 
-Both execution loops deliberately use `when 0 # Opcode::COPY` rather than
+The execution loop deliberately uses `when 0 # Opcode::COPY` rather than
 `when Opcode::COPY`. In the tested Spinel version, the
 [integer-case fast path in `emit_case`](https://github.com/matz/spinel/blob/master/src/codegen_stmt.c#L11032-L11101)
 requires integer literal AST nodes. Constant references do not meet that
@@ -140,7 +141,8 @@ Opcode constants remain the source of truth for MIR construction and optimizer
 passes. Each dispatch label retains its Opcode name in a comment; a regression
 test checks every literal against that constant and checks complete coverage.
 The native suite additionally compiles the CLI to C and verifies the switches
-in both the flat and semantic executors. With this follow-up included, the full
+in the flat executor. At the time of the Phase 2 follow-up (which still had
+both executors), the full
 suite passed **88 tests and 4,466 assertions**, with no failures/errors/omissions;
 type checks also passed.
 
