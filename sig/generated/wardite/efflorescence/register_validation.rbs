@@ -28,6 +28,20 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       def validate: (Wardite::Efflorescence::Function function) -> void
+
+      private
+
+      # Validate all registers, including unreachable instructions and table-only
+      # operands. The runtime never needs to branch on an i32 register's type.
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def validate_types: (Wardite::Efflorescence::Function function) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs register: Integer
+      # @rbs type: Symbol
+      # @rbs return: void
+      def check_destination: (Wardite::Efflorescence::Function function, Integer register, Symbol type) -> void
     end
   end
 end

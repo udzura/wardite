@@ -217,10 +217,9 @@ class EfflorescenceTest < Test::Unit::TestCase
 
   test "unsupported features fail explicitly even in dead or unexported functions" do
     ['(module (func (export "f") (result i64) i64.const 1))',
-     '(module (func (export "f") unreachable i32.const 1 i32.const 1 i32.and drop))',
+     '(module (func (export "f") unreachable i64.const 1 drop))',
      '(module (func (export "f")) (func (local f64)))',
      '(module (import "host" "function" (func)))',
-     '(module (func (export "f") i32.const 1 if nop end))',
      '(module (func (export "f") block (result f64) f64.const 1 end drop))'].each do |wat|
       error = assert_raise(Wardite::Efflorescence::UnsupportedFeature) { load_efflorescence(wat) }
       assert_include error.message, "Efflorescence"
@@ -232,13 +231,13 @@ class EfflorescenceTest < Test::Unit::TestCase
       file = File.join(dir, "unsupported.wasm")
       File.binwrite(file, compile_efflorescence_wat(<<~WAT))
         (module (func (export "run") (result i32)
-          i32.const 3 i32.const 1 i32.and))
+          i32.const 3 i32.const 1 i64.extend_i32_u drop))
       WAT
       stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-I#{File.expand_path('../lib', __dir__)}",
         File.expand_path("../exe/wardite", __dir__), "--new-engine", "--no-wasi", "--invoke", "run", file)
       assert_false status.success?
       assert_equal "", stdout
-      assert_include stderr, "unsupported instruction i32_and"
+      assert_include stderr, "unsupported instruction i64_extend_i32_u"
     end
   end
 

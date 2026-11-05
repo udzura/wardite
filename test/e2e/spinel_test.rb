@@ -25,7 +25,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
       %w[semantic flat].each do |name|
         body = code[/^static [^\n]+sp_(?:Wardite__Efflorescence__)?VM_execute_#{name}\([^;\n]*\) \{.*?(?=^static |\z)/m]
         assert_not_nil body, "Missing generated execute_#{name}"
-        assert_match(/switch \(_t\d+/, body)
+        assert_match(/switch \([^\n]*_t\d+/, body)
         assert_equal (0...Wardite::Efflorescence::Opcode::NAMES.size).to_a,
           body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
           "execute_#{name} should dispatch every opcode through the literal switch"
@@ -33,10 +33,15 @@ class WarditeSpinelTest < Test::Unit::TestCase
           "execute_#{name} must retain the concrete current frame and pool element types")
         assert_match(/sp_PtrArray \* lv_frames =/, body,
           "execute_#{name} must keep an unboxed frame stack")
-        assert_not_match(/sp_PolyArray_(?:get|push|pop|new)/, body,
+        # Object references may be boxed inside the EH-only cases. Ordinary
+        # CALL/RETURN and arithmetic must retain their existing array layout.
+        ordinary = body.gsub(/^\s*case (?:47|48|49|50|51)LL:.*?(?=^\s*case \d+LL:|^\s*default:)/m, '')
+        assert_not_match(/sp_PolyArray_(?:get|push|pop|new)/, ordinary,
           "CALL/RETURN must not box the frame stack or call-site table")
         assert_not_match(/sp_pd_[a-f0-9]+\(/, body) if name == "flat"
         if name == "flat"
+          assert_match(/\bsp_int lv_pc =/, body,
+            "EH table access must not widen the hot-loop PC to a nullable integer")
           assert_not_match(/\bsetjmp\(/, body,
             "flat dispatch must not install Kernel#loop's StopIteration handler")
           assert_not_match(/\bvolatile\b/, body,

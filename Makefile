@@ -11,4 +11,4 @@ spinel:
 	$(SPINEL) -I lib --strict-require $(SPINELFLAGS) exe/wardite -o $(BUILD_DIR)/wardite
 
 spinel-test: spinel
-	WARDITE_SPINEL_BIN="$(abspath $(BUILD_DIR)/wardite)" $(RUBY) -Ilib:test test/e2e/spinel_test.rb
+	WARDITE_SPINEL_BIN="$(abspath $(BUILD_DIR)/wardite)" $(RUBY) -Ilib:test -e 'Dir["test/e2e/spinel*_test.rb"].each { |path| require_relative path }'

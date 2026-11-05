@@ -2,6 +2,9 @@
 
 [English](efflorescence.md)
 
+現在の対応範囲は[M1の実装記録](efflorescence-m1.md)を参照してください。
+以下のPhase 1の制限は実装当時の記録です。
+
 この文書はPhase 1（`67fbfae`）の記録です。現在のEfflorescenceでは、
 [Phase 2の最適化](efflorescence-phase2-ja.md)がデフォルトで有効になります。
 `--mir-disable all` で、最適化していないMIRの実行を選べます。

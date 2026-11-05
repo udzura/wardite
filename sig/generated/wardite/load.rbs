@@ -18,6 +18,12 @@ module Wardite
     def initialize: () -> void
   end
 
+  class TagSection < Section
+    attr_reader type_indices: Array[Integer]
+
+    def initialize: () -> untyped
+  end
+
   class FunctionSection < Section
     attr_accessor func_indices: Array[Integer]
 
@@ -194,6 +200,9 @@ module Wardite
     # @rbs return: TypeSection
     def self.type_section: () -> TypeSection
 
+    # @rbs return: TagSection
+    def self.tag_section: () -> TagSection
+
     # @rbs return: ImportSection
     def self.import_section: () -> ImportSection
 
@@ -221,6 +230,11 @@ module Wardite
     # @rbs buf: StringIO
     # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     def self.code_body: (StringIO buf) -> Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+
+    # Decode s33, distinguishing the one-byte value/void forms from indices.
+    # @rbs buf: StringIO
+    # @rbs return: Block
+    def self.read_blocktype: (StringIO buf) -> Block
 
     # @rbs c: String
     # @rbs buf: StringIO
@@ -252,9 +266,9 @@ module Wardite
     # @rbs return: nil
     def self.unimplemented_skip_section: (Integer code) -> nil
 
-    # @rbs sbuf: StringIO
+    # @rbs sbuf: File|StringIO
     # @rbs n: Integer
     # @rbs return: String
-    def self.assert_read: (StringIO sbuf, Integer n) -> String
+    def self.assert_read: (File | StringIO sbuf, Integer n) -> String
   end
 end

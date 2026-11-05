@@ -50,6 +50,7 @@ module Wardite
       def validate(function)
         instructions = function.instructions
         raise TranslationError, "Efflorescence: empty MIR function" if instructions.empty?
+        validate_types(function)
         analysis = Analysis.new(function)
         blocks = [] #: Array[Wardite::Efflorescence::RegisterValidation::Block]
         block_for_pc = [] #: Array[Integer]
@@ -84,11 +85,18 @@ module Wardite
           pc = block.first
           while pc < block.limit
             instruction = instructions.fetch(pc)
-            Opcode.read_positions(instruction).each do |position|
-              register = instruction[position]
+            function.reads(instruction).each do |register|
               unless register >= 0 && register < defined.size && defined[register] == 1
                 raise TranslationError, "Efflorescence: function #{function.index}, MIR PC #{pc}: r#{register} read before definition"
               end
+            end
+            # Exceptional writes are edge-local. In particular a CALL result
+            # is absent here, even though its normal successor defines it.
+            analysis.flow.exceptional.fetch(pc).each do |clause|
+              edge_defined = defined.dup
+              clause.destinations.each { |register| edge_defined[register] = 1 }
+              target = block_for_pc.fetch(clause.target_pc)
+              pending << target if blocks.fetch(target).merge(edge_defined)
             end
             destination = Opcode.destination(instruction)
             if destination >= 0
@@ -99,21 +107,48 @@ module Wardite
             end
             pc += 1
           end
-          last = instructions.fetch(block.limit - 1)
-          target_position = Opcode.target_position(last)
-          if target_position >= 0
-            target = block_for_pc.fetch(last[target_position])
+          analysis.flow.normal.fetch(block.limit - 1).each do |pc|
+            target = block_for_pc.fetch(pc)
             pending << target if blocks.fetch(target).merge(defined)
-          end
-          unless last[0] == Opcode::BR || last[0] == Opcode::RETURN || last[0] == Opcode::TRAP
-            next_block = block_index + 1
-            if next_block >= blocks.size
-              raise TranslationError, "Efflorescence: function #{function.index} falls through without RETURN"
-            end
-            pending << next_block if blocks.fetch(next_block).merge(defined)
           end
         end
       end
+      private
+
+      # Validate all registers, including unreachable instructions and table-only
+      # operands. The runtime never needs to branch on an i32 register's type.
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def validate_types(function)
+        function.instructions.each do |instruction|
+          opcode = instruction[0]
+          reads = function.reads(instruction)
+          destination = Opcode.destination(instruction)
+          expected = opcode == Opcode::COPY_REF || opcode == Opcode::THROW_REF ? :exnref : :i32
+          (reads + (destination >= 0 ? [destination] : [])).each do |register|
+            unless register >= 0 && function.register_types[register] == expected
+              raise TranslationError, "invalid MIR register type/index r#{register}"
+            end
+          end
+        end
+        function.handlers.each do |handler|
+          handler.clauses.each do |clause|
+            clause.payload_registers.each { |register| check_destination(function, register, :i32) }
+            check_destination(function, clause.reference_register, :exnref) if clause.reference_register >= 0
+          end
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs register: Integer
+      # @rbs type: Symbol
+      # @rbs return: void
+      def check_destination(function, register, type)
+        unless register >= 0 && function.register_types[register] == type && !function.constant_registers.include?(register)
+          raise TranslationError, "invalid catch destination r#{register}"
+        end
+      end
+
     end
   end
 end

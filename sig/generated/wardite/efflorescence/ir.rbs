@@ -55,6 +55,64 @@ module Wardite
 
       PROFILE: ::Integer
 
+      I32_EQ: ::Integer
+
+      I32_NE: ::Integer
+
+      I32_LTS: ::Integer
+
+      I32_LTU: ::Integer
+
+      I32_GTS: ::Integer
+
+      I32_GTU: ::Integer
+
+      I32_LES: ::Integer
+
+      I32_LEU: ::Integer
+
+      I32_GES: ::Integer
+
+      I32_GEU: ::Integer
+
+      I32_CLZ: ::Integer
+
+      I32_CTZ: ::Integer
+
+      I32_POPCNT: ::Integer
+
+      I32_DIV_S: ::Integer
+
+      I32_DIV_U: ::Integer
+
+      I32_REM_S: ::Integer
+
+      I32_REM_U: ::Integer
+
+      I32_AND: ::Integer
+
+      I32_OR: ::Integer
+
+      I32_SHR_S: ::Integer
+
+      I32_ROTL: ::Integer
+
+      I32_ROTR: ::Integer
+
+      I32_EXTEND8_S: ::Integer
+
+      I32_EXTEND16_S: ::Integer
+
+      COPY_REF: ::Integer
+
+      EH_ENTER: ::Integer
+
+      EH_TRIM: ::Integer
+
+      THROW: ::Integer
+
+      THROW_REF: ::Integer
+
       NAMES: untyped
 
       # These are semantic register accesses, excluding frame initialization.
@@ -66,9 +124,94 @@ module Wardite
       # @rbs return: Integer
       def self.destination: (Wardite::Efflorescence::Instruction instruction) -> Integer
 
+      # @rbs opcode: Integer
+      # @rbs return: bool
+      def self.may_throw?: (Integer opcode) -> bool
+
+      # @rbs opcode: Integer
+      # @rbs return: bool
+      def self.may_trap?: (Integer opcode) -> bool
+
+      # @rbs opcode: Integer
+      # @rbs return: bool
+      def self.side_effect?: (Integer opcode) -> bool
+
+      # @rbs opcode: Integer
+      # @rbs return: bool
+      def self.terminal?: (Integer opcode) -> bool
+
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Integer
       def self.target_position: (Wardite::Efflorescence::Instruction instruction) -> Integer
+    end
+
+    class Tag
+      attr_reader parameter_types: Array[Symbol]
+
+      # @rbs parameter_types: Array[Symbol]
+      def initialize: (Array[Symbol] parameter_types) -> untyped
+    end
+
+    class ExceptionValue
+      attr_reader tag: Wardite::Efflorescence::Tag
+
+      attr_reader payload: Array[Integer]
+
+      # @rbs tag: Wardite::Efflorescence::Tag
+      # @rbs payload: Array[Integer]
+      def initialize: (Wardite::Efflorescence::Tag tag, Array[Integer] payload) -> untyped
+    end
+
+    class CatchTarget
+      attr_reader tag_index: Integer
+
+      attr_reader payload_registers: Array[Integer]
+
+      attr_reader reference_register: Integer
+
+      attr_accessor target_pc: Integer
+
+      attr_reader handler_depth: Integer
+
+      # @rbs tag_index: Integer
+      # @rbs payload_registers: Array[Integer]
+      # @rbs reference_register: Integer
+      # @rbs pc: Integer
+      # @rbs handler_depth: Integer
+      def initialize: (Integer tag_index, Array[Integer] payload_registers, Integer reference_register, Integer pc, Integer handler_depth) -> untyped
+
+      # @rbs register: Integer
+      # @rbs return: void
+      def replace_reference_register: (Integer register) -> void
+
+      # @rbs return: Wardite::Efflorescence::CatchTarget
+      def copy: () -> Wardite::Efflorescence::CatchTarget
+
+      # @rbs return: Array[Integer]
+      def destinations: () -> Array[Integer]
+    end
+
+    class HandlerDescriptor
+      attr_reader clauses: Array[Wardite::Efflorescence::CatchTarget]
+
+      # @rbs clauses: Array[Wardite::Efflorescence::CatchTarget]
+      def initialize: (Array[Wardite::Efflorescence::CatchTarget] clauses) -> untyped
+
+      # @rbs return: Wardite::Efflorescence::HandlerDescriptor
+      def copy: () -> Wardite::Efflorescence::HandlerDescriptor
+    end
+
+    class ThrowSite
+      attr_reader tag_index: Integer
+
+      attr_reader payload_registers: Array[Integer]
+
+      # @rbs tag_index: Integer
+      # @rbs payload_registers: Array[Integer]
+      def initialize: (Integer tag_index, Array[Integer] payload_registers) -> untyped
+
+      # @rbs return: Wardite::Efflorescence::ThrowSite
+      def copy: () -> Wardite::Efflorescence::ThrowSite
     end
 
     # A small wrapper keeps operand reads monomorphic even when a compiler
@@ -116,13 +259,29 @@ module Wardite
 
       attr_reader bytecode: Array[Integer]
 
+      attr_reader register_types: Array[Symbol]
+
+      attr_reader handlers: Array[Wardite::Efflorescence::HandlerDescriptor]
+
+      attr_reader flat_handlers: Array[Wardite::Efflorescence::HandlerDescriptor]
+
+      attr_reader throw_sites: Array[Wardite::Efflorescence::ThrowSite]
+
+      attr_accessor uses_eh: bool
+
       attr_reader calls: Array[Wardite::Efflorescence::CallSite]
 
       # @rbs index: Integer
       # @rbs parameter_types: Array[Symbol]
       # @rbs result_types: Array[Symbol]
       # @rbs local_count: Integer
-      def initialize: (Integer index, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer local_count) -> untyped
+      # @rbs local_types: Array[Symbol]?
+      def initialize: (Integer index, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer local_count, ?local_types: Array[Symbol]?) -> untyped
+
+      # Preserve the concrete operand wrapper at a generic array boundary.
+      # @rbs pc: Integer
+      # @rbs return: Wardite::Efflorescence::Instruction
+      def instruction_at: (Integer pc) -> Wardite::Efflorescence::Instruction
 
       # @rbs return: Integer
       def register_count: () -> Integer
@@ -136,7 +295,8 @@ module Wardite
 
       # @rbs value: Integer
       # @rbs return: Integer
-      def allocate_register: (Integer value) -> Integer
+      # @rbs type: Symbol
+      def allocate_register: (Integer value, ?type: Symbol) -> Integer
 
       # @rbs value: Integer
       # @rbs return: Integer
@@ -156,6 +316,29 @@ module Wardite
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::CallSite
       def call_site: (Integer index) -> Wardite::Efflorescence::CallSite
+
+      # All PC consumers (rewrites, profiling, lowering) share this enumeration.
+      # @rbs mapping: Array[Integer]
+      # @rbs return: void
+      def remap_targets!: (Array[Integer] mapping) -> void
+
+      # @rbs handlers: Array[Wardite::Efflorescence::HandlerDescriptor]
+      # @rbs mapping: Array[Integer]
+      # @rbs return: void
+      def remap_handler_targets!: (Array[Wardite::Efflorescence::HandlerDescriptor] handlers, Array[Integer] mapping) -> void
+
+      # @rbs return: void
+      def lower_handlers: () -> void
+
+      # Rename MIR references, including operands stored outside instructions.
+      # The caller supplies existing same-typed slots and validates the result.
+      # @rbs mapping: Array[Integer]
+      # @rbs return: void
+      def replace_register_references!: (Array[Integer] mapping) -> void
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Array[Integer]
+      def reads: (Wardite::Efflorescence::Instruction instruction) -> Array[Integer]
 
       # @rbs return: Wardite::Efflorescence::Function
       def copy: () -> Wardite::Efflorescence::Function
@@ -201,6 +384,10 @@ module Wardite
 
       attr_reader registers: Array[Integer]
 
+      attr_reader exception_registers: Array[Wardite::Efflorescence::ExceptionValue?]
+
+      attr_reader handlers: Array[Integer]
+
       attr_reader return_register: Integer
 
       attr_accessor pc: Integer
@@ -208,6 +395,13 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return_register: Integer
       def initialize: (Wardite::Efflorescence::Function function, Integer return_register) -> untyped
+
+      # @rbs return: void
+      def clear_references: () -> void
+
+      # @rbs depth: Integer
+      # @rbs return: void
+      def trim_handlers: (Integer depth) -> void
 
       # @rbs return_register: Integer
       # @rbs return: void

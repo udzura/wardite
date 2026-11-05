@@ -497,7 +497,7 @@ module Wardite
     # @rbs return: Array[Symbol]
     def self.operand_of(code)
       case code
-      when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if
+      when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if, :throw
         [:u32]
       when :memory_init, :memory_copy
         [:u32, :u32]
@@ -516,7 +516,9 @@ module Wardite
       when :f64_const
         [:f64]
       when :if, :block, :loop
-        [:u8_block]
+        [:blocktype]
+      when :try_table
+        [:blocktype, :catches]
       when :i32_load, :i64_load, :f32_load, :f64_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
            :i64_load8_s, :i64_load8_u, :i64_load16_s, :i64_load16_u, :i64_load32_s, :i64_load32_u, :i32_store, :i64_store,
            :f32_store, :f64_store, :i32_store8, :i32_store16, :i64_store8, :i64_store16, :i64_store32
@@ -532,6 +534,8 @@ module Wardite
     # @rbs return: Symbol
     def self.i2type(code)
       case code
+      when 0x69
+        :exnref
       when 0x6f
         :externref
       when 0x70
@@ -545,7 +549,7 @@ module Wardite
       when 0x7c
         :f64
       else
-        raise "unknown type code #{code}"
+        raise LoadError, "unsupported value type #{code}"
       end
     end
   end

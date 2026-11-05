@@ -4,10 +4,13 @@
 実行コードは変更せず、デコーダー、Runtime、生成済みEvaluator、Translatorを照合した。
 既存の `benchmark/compare.rb` の作業中の変更は対象外。
 
+M1の28命令と新形式EHは実装済み。現在の対応範囲・検証結果は
+[M1の実装記録](efflorescence-m1.md)を参照。以下の集計はM0時点の記録である。
+
 ## 後続の設計
 
 [M1の制御構造と新形式EHのADR](adr/0001-efflorescence-m1-control-and-eh.md)で、M1内部の実装順と受け入れ条件を定義する。
-ADRは本調査の既存VM同等対応に加え、Efflorescence限定の新形式EHと必要な複数結果blockを追加する提案である。
+ADRは本調査の既存VM同等対応に加え、Efflorescence限定の新形式EHと必要な複数結果blockを追加する設計である。
 以下の188命令の集計・対象外一覧は調査時点の旧VMを基準とした記録として維持する。
 
 ## 結論と集計の意味

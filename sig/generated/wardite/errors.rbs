@@ -7,6 +7,17 @@ module Wardite
   class WebAssemblyError < StandardError
   end
 
+  class UncaughtWasmException < WebAssemblyError
+    attr_reader exception_value: Wardite::Efflorescence::ExceptionValue
+
+    attr_reader tag: Wardite::Efflorescence::Tag
+
+    attr_reader payload: Array[Integer]
+
+    # @rbs value: Wardite::Efflorescence::ExceptionValue
+    def initialize: (Wardite::Efflorescence::ExceptionValue value) -> untyped
+  end
+
   class IntegerOverflow < WebAssemblyError
   end
 end

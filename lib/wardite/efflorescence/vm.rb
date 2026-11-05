@@ -95,6 +95,127 @@ module Wardite
         frames.last || raise(Wardite::EvalError, "missing MIR caller")
       end
 
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def signed(value)
+        value >= 0x80000000 ? value - 0x100000000 : value
+      end
+
+      # Cold/new ALU paths stay outside the established hot-loop operations.
+      # @rbs opcode: Integer
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def calculate(opcode, left, right)
+        case opcode
+        when Opcode::I32_EQ then left == right ? 1 : 0
+        when Opcode::I32_NE then left != right ? 1 : 0
+        when Opcode::I32_LTS then signed(left) < signed(right) ? 1 : 0
+        when Opcode::I32_LTU then left < right ? 1 : 0
+        when Opcode::I32_GTS then signed(left) > signed(right) ? 1 : 0
+        when Opcode::I32_GTU then left > right ? 1 : 0
+        when Opcode::I32_LES then signed(left) <= signed(right) ? 1 : 0
+        when Opcode::I32_LEU then left <= right ? 1 : 0
+        when Opcode::I32_GES then signed(left) >= signed(right) ? 1 : 0
+        when Opcode::I32_GEU then left >= right ? 1 : 0
+        when Opcode::I32_CLZ
+          count = 32
+          while left != 0
+            left >>= 1
+            count -= 1
+          end
+          count
+        when Opcode::I32_CTZ
+          return 32 if left == 0
+          count = 0
+          while (left & 1) == 0
+            left >>= 1
+            count += 1
+          end
+          count
+        when Opcode::I32_POPCNT
+          count = 0
+          while left != 0
+            left &= left - 1
+            count += 1
+          end
+          count
+        when Opcode::I32_DIV_S, Opcode::I32_REM_S
+          raise Wardite::EvalError, "integer divide by zero" if right == 0
+          a, b = signed(left), signed(right)
+          if opcode == Opcode::I32_DIV_S && a == -2147483648 && b == -1
+            raise Wardite::IntegerOverflow, "integer division overflow"
+          end
+          quotient = a.abs / b.abs
+          quotient = -quotient if (a < 0) != (b < 0)
+          (opcode == Opcode::I32_DIV_S ? quotient : a - quotient * b) & 0xffffffff
+        when Opcode::I32_DIV_U, Opcode::I32_REM_U
+          raise Wardite::EvalError, "integer divide by zero" if right == 0
+          opcode == Opcode::I32_DIV_U ? left / right : left % right
+        when Opcode::I32_AND then left & right
+        when Opcode::I32_OR then left | right
+        when Opcode::I32_SHR_S then (signed(left) >> (right & 31)) & 0xffffffff
+        when Opcode::I32_ROTL, Opcode::I32_ROTR
+          shift = right & 31
+          shift = (32 - shift) & 31 if opcode == Opcode::I32_ROTR
+          ((left << shift) | (left >> ((32 - shift) & 31))) & 0xffffffff
+        when Opcode::I32_EXTEND8_S
+          value = left & 255
+          (value >= 128 ? value - 256 : value) & 0xffffffff
+        when Opcode::I32_EXTEND16_S
+          value = left & 65535
+          (value >= 32768 ? value - 65536 : value) & 0xffffffff
+        else
+          raise Wardite::EvalError, "invalid i32 opcode"
+        end
+      end
+
+      # The pending value owns its payload before any frame is released. No
+      # Ruby raise/rescue is used to unwind the explicit Wasm call stack.
+      # @rbs value: Wardite::Efflorescence::ExceptionValue
+      # @rbs frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs return: Wardite::Efflorescence::Frame
+      def propagate(value, frames, pools)
+        until frames.empty?
+          frame = current_frame(frames)
+          until frame.handlers.empty?
+            id = frame.handlers.pop || raise(Wardite::EvalError, "missing handler")
+            descriptors = @flat ? frame.function.flat_handlers : frame.function.handlers
+            descriptors.fetch(id).clauses.each do |clause|
+              if clause.tag_index < 0 || @instance.tags.fetch(clause.tag_index).equal?(value.tag)
+                frame.trim_handlers(clause.handler_depth)
+                clause.payload_registers.each_with_index do |register, i|
+                  frame.registers[register] = value.payload.fetch(i)
+                end
+                frame.exception_registers[clause.reference_register] = value if clause.reference_register >= 0
+                frame.pc = Integer(clause.target_pc)
+                return frame
+              end
+            end
+          end
+          frames.pop
+          pool_at(pools, frame.pool_index).release(frame)
+        end
+        raise Wardite::UncaughtWasmException, value
+      end
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs id: Integer
+      # @rbs return: Wardite::Efflorescence::ExceptionValue
+      def exception_at(frame, id)
+        site = frame.function.throw_sites.fetch(id)
+        payload = site.payload_registers.map { |register| frame.registers[register] }
+        ExceptionValue.new(@instance.tags.fetch(site.tag_index), payload)
+      end
+
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::FramePool
+      def pool_at(pools, index)
+        pools[index] || raise(Wardite::EvalError, "missing MIR frame pool")
+      end
+
       # No Wasm operand stack, boxed values, or recursive Ruby calls here.
       # Every register array contains only normalized i32 Integers. Void calls
       # use destination -1; execute returns an unused integer for a void entry.
@@ -110,8 +231,10 @@ module Wardite
         frame = pool.acquire(-1)
         arguments.each_with_index { |value, i| frame.registers[i] = value }
         @metrics = Metrics.new if @profiling
-        @flat ? execute_flat(frame, pools) : execute_semantic(frame, pools)
+        active_frames = [frame]
+        @flat ? execute_flat(frame, pools, active_frames) : execute_semantic(frame, pools, active_frames)
       ensure
+        active_frames&.each { |active| pool_at(pools, active.pool_index).release(active) }
         if @profiling
           created = 0
           pools.each { |pool| created += pool.created }
@@ -121,15 +244,15 @@ module Wardite
 
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
       # @rbs return: Integer
-      def execute_semantic(frame, pools)
-        frames = [] #: Array[Wardite::Efflorescence::Frame]
-        frames << frame
+      def execute_semantic(frame, pools, active_frames)
+        frames = active_frames
         registers = frame.registers
         instructions = frame.function.instructions
         pc = 0
         loop do
-          instruction = instructions[pc] || raise(Wardite::EvalError, "Efflorescence: invalid MIR PC #{pc}")
+          instruction = frame.function.instruction_at(pc)
           pc += 1
           # Integer literal labels let Spinel emit a C switch. Keep the
           # Opcode comments in sync; the dispatch contract test checks them.
@@ -186,7 +309,7 @@ module Wardite
             pc = instruction[2] if registers[instruction[1]] == 0
           when 10 # Opcode::CALL
             frame.pc = pc
-            callee = @ir.functions[instruction[2]] || raise(Wardite::EvalError, "invalid MIR call target")
+            callee = @ir.function_at(instruction[2])
             pool = pools[callee.index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
             next_frame = pool.acquire(instruction[1])
@@ -212,9 +335,76 @@ module Wardite
             registers = frame.registers
             registers[destination] = value if destination >= 0
             instructions = frame.function.instructions
-            pc = frame.pc
+            pc = Integer(frame.pc)
           when 12 # Opcode::TRAP
             raise Wardite::Unreachable, "unreachable op"
+          when 23 # Opcode::I32_EQ
+            registers[instruction[1]] = calculate(23, registers[instruction[2]], registers[instruction[3]])
+          when 24 # Opcode::I32_NE
+            registers[instruction[1]] = calculate(24, registers[instruction[2]], registers[instruction[3]])
+          when 25 # Opcode::I32_LTS
+            registers[instruction[1]] = calculate(25, registers[instruction[2]], registers[instruction[3]])
+          when 26 # Opcode::I32_LTU
+            registers[instruction[1]] = calculate(26, registers[instruction[2]], registers[instruction[3]])
+          when 27 # Opcode::I32_GTS
+            registers[instruction[1]] = calculate(27, registers[instruction[2]], registers[instruction[3]])
+          when 28 # Opcode::I32_GTU
+            registers[instruction[1]] = calculate(28, registers[instruction[2]], registers[instruction[3]])
+          when 29 # Opcode::I32_LES
+            registers[instruction[1]] = calculate(29, registers[instruction[2]], registers[instruction[3]])
+          when 30 # Opcode::I32_LEU
+            registers[instruction[1]] = calculate(30, registers[instruction[2]], registers[instruction[3]])
+          when 31 # Opcode::I32_GES
+            registers[instruction[1]] = calculate(31, registers[instruction[2]], registers[instruction[3]])
+          when 32 # Opcode::I32_GEU
+            registers[instruction[1]] = calculate(32, registers[instruction[2]], registers[instruction[3]])
+          when 33 # Opcode::I32_CLZ
+            registers[instruction[1]] = calculate(33, registers[instruction[2]], 0)
+          when 34 # Opcode::I32_CTZ
+            registers[instruction[1]] = calculate(34, registers[instruction[2]], 0)
+          when 35 # Opcode::I32_POPCNT
+            registers[instruction[1]] = calculate(35, registers[instruction[2]], 0)
+          when 36 # Opcode::I32_DIV_S
+            registers[instruction[1]] = calculate(36, registers[instruction[2]], registers[instruction[3]])
+          when 37 # Opcode::I32_DIV_U
+            registers[instruction[1]] = calculate(37, registers[instruction[2]], registers[instruction[3]])
+          when 38 # Opcode::I32_REM_S
+            registers[instruction[1]] = calculate(38, registers[instruction[2]], registers[instruction[3]])
+          when 39 # Opcode::I32_REM_U
+            registers[instruction[1]] = calculate(39, registers[instruction[2]], registers[instruction[3]])
+          when 40 # Opcode::I32_AND
+            registers[instruction[1]] = calculate(40, registers[instruction[2]], registers[instruction[3]])
+          when 41 # Opcode::I32_OR
+            registers[instruction[1]] = calculate(41, registers[instruction[2]], registers[instruction[3]])
+          when 42 # Opcode::I32_SHR_S
+            registers[instruction[1]] = calculate(42, registers[instruction[2]], registers[instruction[3]])
+          when 43 # Opcode::I32_ROTL
+            registers[instruction[1]] = calculate(43, registers[instruction[2]], registers[instruction[3]])
+          when 44 # Opcode::I32_ROTR
+            registers[instruction[1]] = calculate(44, registers[instruction[2]], registers[instruction[3]])
+          when 45 # Opcode::I32_EXTEND8_S
+            registers[instruction[1]] = calculate(45, registers[instruction[2]], 0)
+          when 46 # Opcode::I32_EXTEND16_S
+            registers[instruction[1]] = calculate(46, registers[instruction[2]], 0)
+          when 47 # Opcode::COPY_REF
+            frame.exception_registers[instruction[1]] = frame.exception_registers[instruction[2]]
+          when 48 # Opcode::EH_ENTER
+            frame.handlers << instruction[1]
+          when 49 # Opcode::EH_TRIM
+            frame.trim_handlers(instruction[1])
+          when 50 # Opcode::THROW
+            value_ref = exception_at(frame, instruction[1])
+            frame = propagate(value_ref, frames, pools)
+            registers = frame.registers
+            instructions = frame.function.instructions
+            pc = Integer(frame.pc)
+          when 51 # Opcode::THROW_REF
+            value_ref = frame.exception_registers[instruction[1]]
+            raise Wardite::EvalError, "throw_ref null" unless value_ref
+            frame = propagate(value_ref, frames, pools)
+            registers = frame.registers
+            instructions = frame.function.instructions
+            pc = Integer(frame.pc)
           when 22 # Opcode::PROFILE
             @metrics.record(instruction[1], instruction[2], instruction[3])
           else
@@ -224,10 +414,10 @@ module Wardite
       end
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
       # @rbs return: Integer
-      def execute_flat(frame, pools)
-        frames = [] #: Array[Wardite::Efflorescence::Frame]
-        frames << frame
+      def execute_flat(frame, pools, active_frames)
+        frames = active_frames
         registers = frame.registers
         instructions = frame.function.bytecode
         pc = 0
@@ -360,10 +550,123 @@ module Wardite
             registers = frame.registers
             registers[destination] = value if destination >= 0
             instructions = frame.function.bytecode
-            pc = frame.pc
+            pc = Integer(frame.pc)
             next
           when 12 # Opcode::TRAP
             raise Wardite::Unreachable, "unreachable op"
+          when 23 # Opcode::I32_EQ
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(23, registers[b], registers[c])
+          when 24 # Opcode::I32_NE
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(24, registers[b], registers[c])
+          when 25 # Opcode::I32_LTS
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(25, registers[b], registers[c])
+          when 26 # Opcode::I32_LTU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(26, registers[b], registers[c])
+          when 27 # Opcode::I32_GTS
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(27, registers[b], registers[c])
+          when 28 # Opcode::I32_GTU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(28, registers[b], registers[c])
+          when 29 # Opcode::I32_LES
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(29, registers[b], registers[c])
+          when 30 # Opcode::I32_LEU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(30, registers[b], registers[c])
+          when 31 # Opcode::I32_GES
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(31, registers[b], registers[c])
+          when 32 # Opcode::I32_GEU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(32, registers[b], registers[c])
+          when 33 # Opcode::I32_CLZ
+            b = instructions.fetch(pc + 2)
+            registers[a] = calculate(33, registers[b], 0)
+          when 34 # Opcode::I32_CTZ
+            b = instructions.fetch(pc + 2)
+            registers[a] = calculate(34, registers[b], 0)
+          when 35 # Opcode::I32_POPCNT
+            b = instructions.fetch(pc + 2)
+            registers[a] = calculate(35, registers[b], 0)
+          when 36 # Opcode::I32_DIV_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(36, registers[b], registers[c])
+          when 37 # Opcode::I32_DIV_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(37, registers[b], registers[c])
+          when 38 # Opcode::I32_REM_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(38, registers[b], registers[c])
+          when 39 # Opcode::I32_REM_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(39, registers[b], registers[c])
+          when 40 # Opcode::I32_AND
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(40, registers[b], registers[c])
+          when 41 # Opcode::I32_OR
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(41, registers[b], registers[c])
+          when 42 # Opcode::I32_SHR_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(42, registers[b], registers[c])
+          when 43 # Opcode::I32_ROTL
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(43, registers[b], registers[c])
+          when 44 # Opcode::I32_ROTR
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = calculate(44, registers[b], registers[c])
+          when 45 # Opcode::I32_EXTEND8_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = calculate(45, registers[b], 0)
+          when 46 # Opcode::I32_EXTEND16_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = calculate(46, registers[b], 0)
+          when 47 # Opcode::COPY_REF
+            b = instructions.fetch(pc + 2)
+            frame.exception_registers[a] = frame.exception_registers[b]
+          when 48 # Opcode::EH_ENTER
+            frame.handlers << a
+          when 49 # Opcode::EH_TRIM
+            frame.trim_handlers(a)
+          when 50 # Opcode::THROW
+            value_ref = exception_at(frame, a)
+            frame = propagate(value_ref, frames, pools)
+            registers = frame.registers
+            instructions = frame.function.bytecode
+            pc = Integer(frame.pc)
+            next
+          when 51 # Opcode::THROW_REF
+            value_ref = frame.exception_registers[a]
+            raise Wardite::EvalError, "throw_ref null" unless value_ref
+            frame = propagate(value_ref, frames, pools)
+            registers = frame.registers
+            instructions = frame.function.bytecode
+            pc = Integer(frame.pc)
+            next
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

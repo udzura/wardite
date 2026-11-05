@@ -15,7 +15,7 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
 
   test "dispatch labels are integer literals synchronized with opcode definitions" do
     source = File.read(File.expand_path("../lib/wardite/efflorescence/vm.rb", __dir__))
-    methods = source.split(/^      def execute_(?:semantic|flat)\(frame, pools\)$/).drop(1)
+    methods = source.split(/^      def execute_(?:semantic|flat)\(frame, pools, active_frames\)$/).drop(1)
     assert_equal 2, methods.size
     methods.each do |body|
       labels = body.scan(/^          when (\d+) # Opcode::([A-Z_0-9]+)$/)

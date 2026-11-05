@@ -2,8 +2,8 @@
 
 module Wardite
   module Efflorescence
-    # Only the translator has a Wasm operand stack. The VM sees register sources
-    # and absolute MIR PCs, with no runtime labels or operand-stack unwinding.
+    # The operand/control stacks exist only during translation. Execution uses
+    # typed register banks, absolute PCs and explicit per-frame handler stacks.
     class Translator
       class Control
         attr_reader kind: Symbol
@@ -12,18 +12,41 @@ module Wardite
 
         attr_reader start_pc: Integer
 
-        attr_reader result_register: Integer
+        attr_reader result_types: Array[Symbol]
+
+        attr_reader result_registers: Array[Integer]
 
         attr_reader patches: Array[Integer]
 
+        attr_reader catch_patches: Array[Wardite::Efflorescence::CatchTarget]
+
+        attr_reader handler_depth: Integer
+
+        attr_reader entry_reachable: bool
+
         attr_accessor has_branch: bool
+
+        attr_accessor false_patch: Integer
+
+        attr_accessor else_seen: bool
+
+        attr_accessor then_reachable: bool
 
         # @rbs kind: Symbol
         # @rbs entry_stack: Array[Integer]
         # @rbs start_pc: Integer
-        # @rbs result_register: Integer
-        def initialize: (Symbol kind, Array[Integer] entry_stack, Integer start_pc, Integer result_register) -> untyped
+        # @rbs result_types: Array[Symbol]
+        # @rbs result_registers: Array[Integer]
+        # @rbs handler_depth: Integer
+        # @rbs reachable: bool
+        def initialize: (Symbol kind, Array[Integer] entry_stack, Integer start_pc, Array[Symbol] result_types, Array[Integer] result_registers, Integer handler_depth, bool reachable) -> untyped
       end
+
+      BINARY: untyped
+
+      UNARY: untyped
+
+      @handler_depth: Integer
 
       @wasm_pc: Integer
 
@@ -60,19 +83,48 @@ module Wardite
       # @rbs return: Integer
       def integer_operand: (Wardite::operandItem? value) -> Integer
 
+      # @rbs type: Symbol
+      # @rbs return: Integer
+      def register: (?Symbol type) -> Integer
+
       # @rbs value: Integer
       # @rbs return: Integer
-      def register: (?Integer value) -> Integer
+      def constant: (Integer value) -> Integer
+
+      # @rbs kind: Symbol
+      # @rbs types: Array[Symbol]
+      # @rbs return: Wardite::Efflorescence::Translator::Control
+      def new_control: (Symbol kind, Array[Symbol] types) -> Wardite::Efflorescence::Translator::Control
 
       # @rbs instruction: Array[Integer]
       # @rbs return: Integer
       def emit: (Array[Integer] instruction) -> Integer
 
-      # @rbs return: Integer
-      def peek_value: () -> Integer
+      # @rbs pc: Integer
+      # @rbs target: Integer
+      # @rbs return: void
+      def patch: (Integer pc, Integer target) -> void
 
       # @rbs return: Integer
       def pop_value: () -> Integer
+
+      # @rbs register: Integer
+      # @rbs return: Symbol
+      def type_of: (Integer register) -> Symbol
+
+      # @rbs type: Symbol
+      # @rbs return: Integer
+      def pop_typed: (Symbol type) -> Integer
+
+      # @rbs destination: Integer
+      # @rbs source: Integer
+      # @rbs return: void
+      def copy_value: (Integer destination, Integer source) -> void
+
+      # @rbs destinations: Array[Integer]
+      # @rbs sources: Array[Integer]
+      # @rbs return: void
+      def parallel_copy: (Array[Integer] destinations, Array[Integer] sources) -> void
 
       # @rbs local: Integer
       # @rbs return: void
@@ -81,12 +133,42 @@ module Wardite
       # @rbs return: void
       def snapshot_locals: () -> void
 
+      # @rbs depth: Integer
+      # @rbs return: Wardite::Efflorescence::Translator::Control
+      def label: (Integer depth) -> Wardite::Efflorescence::Translator::Control
+
+      # @rbs target: Wardite::Efflorescence::Translator::Control
+      # @rbs return: Array[Symbol]
+      def label_types: (Wardite::Efflorescence::Translator::Control target) -> Array[Symbol]
+
+      # @rbs types: Array[Symbol]
+      # @rbs return: Array[Integer]
+      def top_values: (Array[Symbol] types) -> Array[Integer]
+
+      # @rbs target: Wardite::Efflorescence::Translator::Control
+      # @rbs sources: Array[Integer]
+      # @rbs condition: Integer
+      # @rbs return: void
+      def branch: (Wardite::Efflorescence::Translator::Control target, Array[Integer] sources, ?Integer condition) -> void
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::Tag
+      def tag_at: (Integer index) -> Wardite::Efflorescence::Tag
+
+      # Catch labels resolve before pushing the try_table's own label.
+      # @rbs clauses: Array[Integer]
+      # @rbs return: Wardite::Efflorescence::HandlerDescriptor
+      def make_handler: (Array[Integer] clauses) -> Wardite::Efflorescence::HandlerDescriptor
+
+      # @rbs control: Wardite::Efflorescence::Translator::Control
+      # @rbs return: void
+      def finish_arm: (Wardite::Efflorescence::Translator::Control control) -> void
+
+      # @rbs return: void
+      def else_control: () -> void
+
       # @rbs return: void
       def end_control: () -> void
-
-      # @rbs code: Symbol
-      # @rbs return: Integer
-      def binary_opcode: (Symbol code) -> Integer
 
       # @rbs message: String
       # @rbs return: String

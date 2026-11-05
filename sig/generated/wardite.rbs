@@ -20,6 +20,8 @@ module Wardite
 
     attr_accessor exports: Exports
 
+    attr_reader tags: Array[Wardite::Efflorescence::Tag]
+
     attr_reader import_object: Hash[Symbol, wasmModule]
 
     attr_accessor wasi: ::Wardite::WasiSnapshotPreview1?
@@ -30,6 +32,11 @@ module Wardite
     # @rbs mir_profile: bool
     # @rbs &blk: (Instance) -> void
     def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?mir_profile: bool) { (Instance) -> void } -> untyped
+
+    # Run before allocating Store/Exports or executing a start function.
+    # @rbs engine: Symbol
+    # @rbs return: void
+    def check_engine_features: (Symbol engine) -> void
 
     # @rbs return: void
     def check_data_count: () -> void
@@ -312,12 +319,24 @@ module Wardite
 
     attr_accessor block_types: nil | Array[Integer]
 
+    attr_reader type_index: Integer
+
+    attr_reader parameter_types: Array[Symbol]
+
+    attr_reader result_types: Array[Symbol]
+
     # @rbs return: Block
     def self.void: () -> Block
 
     # @rbs block_types: nil|Array[Integer]
+    # @rbs type_index: Integer
     # @rbs return: void
-    def initialize: (?nil | Array[Integer] block_types) -> void
+    def initialize: (?nil | Array[Integer] block_types, ?type_index: Integer) -> void
+
+    # @rbs params: Array[Symbol]
+    # @rbs results: Array[Symbol]
+    # @rbs return: void
+    def resolve: (Array[Symbol] params, Array[Symbol] results) -> void
 
     # @rbs return: bool
     def void?: () -> bool
@@ -361,7 +380,7 @@ module Wardite
 
     attr_accessor findex: Integer
 
-    attr_accessor default_locals: Array[wasmValue]
+    @default_locals: Array[wasmValue]?
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
@@ -377,6 +396,10 @@ module Wardite
 
     # @rbs return: Array[Integer]
     def locals_count: () -> Array[Integer]
+
+    # Stack-engine values are boxed lazily; Efflorescence uses type metadata.
+    # @rbs return: Array[wasmValue]
+    def default_locals: () -> Array[wasmValue]
 
     # @rbs return: Array[wasmValue]
     def construct_default_locals: () -> Array[wasmValue]
