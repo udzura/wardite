@@ -26,7 +26,7 @@ class EfflorescenceCallAritiesTest < Test::Unit::TestCase
   test "all transfer arities agree with the stack VM and independent references across execution modes" do
     bytes = compile_efflorescence_wat(File.read(ARITY_WAT))
     old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
-    [[], [:inline], [:inline, :flat], [:inline, :frames], [:inline, :copy], [:all]].each do |disabled|
+    [[], [:inline], [:inline, :frames], [:inline, :copy], [:all]].each do |disabled|
       [false, true].each do |profile|
         vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
           engine: :efflorescence, disabled_optimizations: disabled, mir_profile: profile).runtime
@@ -75,7 +75,7 @@ class EfflorescenceCallAritiesTest < Test::Unit::TestCase
   test "multi-argument recursion preserves active callers and repeated or permuted sources" do
     bytes = compile_efflorescence_wat(ARITY_EDGE_WAT)
     old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
-    [[], [:inline], [:inline, :flat], [:inline, :frames], [:all]].each do |disabled|
+    [[], [:inline], [:inline, :frames], [:all]].each do |disabled|
       [false, true].each do |profile|
         vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
           engine: :efflorescence, disabled_optimizations: disabled, mir_profile: profile).runtime

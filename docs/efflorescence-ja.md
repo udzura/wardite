@@ -7,7 +7,8 @@
 
 この文書はPhase 1（`67fbfae`）の記録です。現在のEfflorescenceでは、
 [Phase 2の最適化](efflorescence-phase2-ja.md)がデフォルトで有効になります。
-`--mir-disable all` で、最適化していないMIRの実行を選べます。
+`--mir-disable all` で、最適化していないMIRをflatへ変換して実行します。
+実行器はflatに統一され、flatを切り替える最適化フラグはありません。
 Wardite全体のデフォルトは、引き続き既存のスタックVMです。
 
 Efflorescenceは、明示的に選択して使う、Pure Ruby製のレジスタ型インタプリタです。

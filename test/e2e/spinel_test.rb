@@ -22,35 +22,33 @@ class WarditeSpinelTest < Test::Unit::TestCase
         "-I#{ROOT}/lib", "-c", "#{ROOT}/exe/wardite", "-o", generated)
       assert status.success?, output
       code = File.read(generated)
-      %w[semantic flat].each do |name|
-        body = code[/^static [^\n]+sp_(?:Wardite__Efflorescence__)?VM_execute_#{name}\([^;\n]*\) \{.*?(?=^static |\z)/m]
-        assert_not_nil body, "Missing generated execute_#{name}"
-        assert_match(/switch \([^\n]*_t\d+/, body)
-        assert_equal (0...Wardite::Efflorescence::Opcode::NAMES.size).to_a,
-          body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
-          "execute_#{name} should dispatch every opcode through the literal switch"
-        assert_match(/Frame \* lv_frame(?:__in)?, sp_PtrArray \* lv_pools/, body,
-          "execute_#{name} must retain the concrete current frame and pool element types")
-        assert_match(/sp_PtrArray \* lv_frames =/, body,
-          "execute_#{name} must keep an unboxed frame stack")
-        # Object references may be boxed inside the EH-only cases. Ordinary
-        # CALL/RETURN and arithmetic must retain their existing array layout.
-        ordinary = body.gsub(/^\s*case (?:47|48|49|50|51)LL:.*?(?=^\s*case \d+LL:|^\s*default:)/m, '')
-        assert_not_match(/sp_PolyArray_(?:get|push|pop|new)/, ordinary,
-          "CALL/RETURN must not box the frame stack or call-site table")
-        assert_not_match(/sp_pd_[a-f0-9]+\(/, body) if name == "flat"
-        if name == "flat"
-          assert_match(/\bsp_int lv_pc =/, body,
-            "EH table access must not widen the hot-loop PC to a nullable integer")
-          assert_not_match(/\bsetjmp\(/, body,
-            "flat dispatch must not install Kernel#loop's StopIteration handler")
-          assert_not_match(/\bvolatile\b/, body,
-            "flat dispatch must not need variables preserved across that handler")
-          prelude = body.split(/^\s*case \d+LL:/, 2).first
-          assert_equal 2, prelude.scan(/sp_IntArray\s*\*\s*\w+\s*=\s*lv_instructions\b/).size,
-            "only opcode and a should be fetched before opcode dispatch"
-        end
-      end
+      body = code[/^static [^\n]+sp_(?:Wardite__Efflorescence__)?VM_execute_flat\([^;\n]*\) \{.*?(?=^static |\z)/m]
+      assert_not_nil body, "Missing generated execute_flat"
+      assert_match(/switch \([^\n]*_t\d+/, body)
+      assert_equal (0...Wardite::Efflorescence::Opcode::NAMES.size).to_a,
+        body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
+        "execute_flat should dispatch every opcode through the literal switch"
+      assert_match(/Frame \* lv_frame(?:__in)?, sp_PtrArray \* lv_pools/, body,
+        "execute_flat must retain the concrete current frame and pool element types")
+      assert_match(/sp_PtrArray \* lv_frames =/, body,
+        "execute_flat must keep an unboxed frame stack")
+      # Object references may be boxed inside the EH-only cases. Ordinary
+      # CALL/RETURN and arithmetic must retain their existing array layout.
+      ordinary = body.gsub(/^\s*case (?:47|48|49|50|51)LL:.*?(?=^\s*case \d+LL:|^\s*default:)/m, '')
+      assert_not_match(/sp_PolyArray_(?:get|push|pop|new)/, ordinary,
+        "CALL/RETURN must not box the frame stack or call-site table")
+      assert_not_match(/sp_pd_[a-f0-9]+\(/, body)
+
+      assert_match(/\bsp_int lv_pc =/, body,
+        "EH table access must not widen the hot-loop PC to a nullable integer")
+      assert_not_match(/\bsetjmp\(/, body,
+        "flat dispatch must not install Kernel#loop's StopIteration handler")
+      assert_not_match(/\bvolatile\b/, body,
+        "flat dispatch must not need variables preserved across that handler")
+      prelude = body.split(/^\s*case \d+LL:/, 2).first
+      assert_equal 2, prelude.scan(/sp_IntArray\s*\*\s*\w+\s*=\s*lv_instructions\b/).size,
+        "only opcode and a should be fetched before opcode dispatch"
+      assert_not_match(/VM_execute_semantic\(/, code)
       function_layout = code[/struct sp_Function(?:_s)? \{.*?^\};/m]
       assert_not_nil function_layout
       assert_match(/sp_PtrArray \* iv_calls;/, function_layout,
@@ -116,7 +114,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
       wasm = File.join(dir, "inline.wasm")
       File.binwrite(wasm, compile_efflorescence_wat(INLINE_WAT))
       [[], ["--mir-disable", "inline"], ["--mir-disable", "copy"],
-       ["--mir-disable", "immediate"], ["--mir-disable", "flat"], ["--mir-profile"]].each do |options|
+       ["--mir-disable", "immediate"], ["--mir-profile"]].each do |options|
         [["snapshot", [0xffffffff], 0], ["snapshot", [123], 124], ["loop", [1000, 123], 123000],
          ["loop", [10, 0xffffffff], -10], ["constant", [], -1], ["void", [123], 123],
          ["branch", [0, 123], 99], ["branch", [1, 123], 123]].each do |name, arguments, expected|
@@ -165,8 +163,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
     Dir.mktmpdir("wardite-spinel-reset") do |dir|
       wasm = File.join(dir, "reset.wasm")
       File.binwrite(wasm, compile_efflorescence_wat(RESET_WAT))
-      [[], ["--mir-disable", "all"], ["--mir-disable", "flat"],
-       ["--mir-disable", "immediate"], ["--mir-profile"]].each do |options|
+      [[], ["--mir-disable", "all"], ["--mir-disable", "immediate"], ["--mir-profile"]].each do |options|
         [["run", 123, 15744], ["run", 0xffffffff, -128], ["recursive", 50, 2550]].each do |name, argument, expected|
           out, err, status = Open3.capture3(@binary, "--new-engine", *options,
             "--invoke", name, "--", wasm, argument.to_s)
@@ -211,8 +208,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
     Dir.mktmpdir("wardite-spinel-call-protocol") do |dir|
       wasm = File.join(dir, "calls.wasm")
       File.binwrite(wasm, compile_efflorescence_wat(CALL_PROTOCOL_WAT))
-      [[], ["--mir-disable", "inline"], ["--mir-disable", "all"], ["--mir-disable", "flat"],
-       ["--mir-disable", "frames"], ["--mir-profile"]].each do |options|
+      [[], ["--mir-disable", "inline"], ["--mir-disable", "all"], ["--mir-disable", "frames"], ["--mir-profile"]].each do |options|
         [["run", 0, -19], ["run", 123, 1247], ["run", 0xffffffff, -25],
          ["alias", 123, -1], ["mutual", 200, 20127]].each do |name, argument, expected|
           out, err, status = Open3.capture3(@binary, "--new-engine", *options,
@@ -232,7 +228,6 @@ class WarditeSpinelTest < Test::Unit::TestCase
       File.binwrite(loops, compile_efflorescence_wat(File.read(ARITY_WAT)))
       File.binwrite(edges, compile_efflorescence_wat(ARITY_EDGE_WAT))
       [[], ["--mir-disable", "inline"], ["--mir-disable", "all"],
-       ["--mir-disable", "inline", "--mir-disable", "flat"],
        ["--mir-disable", "inline", "--mir-disable", "frames"],
        ["--mir-disable", "inline", "--mir-profile"]].each do |options|
         cases = []

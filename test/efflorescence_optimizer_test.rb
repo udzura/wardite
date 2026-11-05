@@ -15,8 +15,8 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
 
   test "dispatch labels are integer literals synchronized with opcode definitions" do
     source = File.read(File.expand_path("../lib/wardite/efflorescence/vm.rb", __dir__))
-    methods = source.split(/^      def execute_(?:semantic|flat)\(frame, pools, active_frames\)$/).drop(1)
-    assert_equal 2, methods.size
+    methods = source.split(/^      def execute_flat\(frame, pools, active_frames\)$/).drop(1)
+    assert_equal 1, methods.size
     methods.each do |body|
       labels = body.scan(/^          when (\d+) # Opcode::([A-Z_0-9]+)$/)
       assert_equal OP::NAMES.sort, labels.map(&:last).sort
@@ -24,6 +24,22 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
         assert_equal OP.const_get(name), Integer(number), "dispatch literal for #{name}"
       end
     end
+  end
+
+  test "every configuration lowers to flat bytecode including unoptimized profiling" do
+    bytes = compile_efflorescence_wat(File.read(MIX_WAT))
+    [[], [:all]].product([false, true]).each do |disabled, profile|
+      vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
+        engine: :efflorescence, disabled_optimizations: disabled, mir_profile: profile).runtime
+      assert_false vm.respond_to?(:execute_semantic, true)
+      vm.ir.functions.each do |function|
+        assert_equal E::Lowerer::WIDTH * function.instructions.size, function.bytecode.size
+      end
+      assert_equal reference_mix(10, 123), vm.call_unboxed("call_mix", [10, 123])
+    end
+    assert_not_include E::Configuration::FEATURES, :flat
+    error = assert_raise(Wardite::ArgumentError) { E::Configuration.new([:flat]) }
+    assert_include error.message, "unknown MIR optimization: flat"
   end
 
   test "all acceptance inputs with each optimization independently disabled" do
@@ -67,7 +83,7 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
 
   test "instruction and register access counters are separate from ordinary execution" do
     bytes = compile_efflorescence_wat(File.read(MIX_WAT))
-    [[], [:all], [:flat], [:inline]].each do |disabled|
+    [[], [:all], [:inline]].each do |disabled|
       vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
         engine: :efflorescence, disabled_optimizations: disabled, mir_profile: true).runtime
       %w[inline_mix call_mix].each do |export|
@@ -233,9 +249,9 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
   test "CLI flags select inspection profiling and unoptimized MIR" do
     assert_raise(Wardite::ArgumentError) { E::Configuration.new([:unknown]) }
     assert_raise(RuntimeError) { Wardite::Cli::Cli.new(["--mir-disable", "copy", "test.wasm"]) }
-    cli = Wardite::Cli::Cli.new(["--new-engine", "--mir-disable", "copy", "--mir-disable", "flat",
+    cli = Wardite::Cli::Cli.new(["--new-engine", "--mir-disable", "copy", "--mir-disable", "frames",
       "--mir-dump", "--mir-profile", "test.wasm"])
-    assert_equal [:copy, :flat], cli.disabled_optimizations
+    assert_equal [:copy, :frames], cli.disabled_optimizations
     assert cli.mir_dump
     assert cli.mir_profile
   end

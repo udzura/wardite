@@ -3,7 +3,7 @@
 
 require 'wardite'
 
-[[], [:all], [:flat], [:frames]].each do |disabled|
+[[], [:all], [:frames]].each do |disabled|
   [false, true].each do |profile|
     instance = File.open(ARGV.fetch(0), 'rb') do |file|
       Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false,

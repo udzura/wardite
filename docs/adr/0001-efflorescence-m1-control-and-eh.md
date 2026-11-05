@@ -31,7 +31,7 @@ M1はM1a〜M1dの全段階を完了して閉じる。途中の実装は部分対
 | block signature | void、単一型、型インデックス。引数は空、結果はi32/exnrefの列 |
 | loop | 引数なし。結果列を許すが、先頭への分岐で渡す値は0個 |
 | 公開API | 既存i32 APIを維持。未捕捉Wasm例外を専用Rubyエラーとして返す |
-| 実行環境 | CRubyとSpinel。semantic/flat、frames有効/無効の両方 |
+| 実行環境 | CRubyとSpinel。flat実行、frames有効/無効の両方 |
 
 M1ではtag import/export、ホスト例外、間接call、他の数値型、関数の複数結果、block/loop引数、参照型の関数引数・結果、参照のglobal/table格納、GC型階層を追加しない。
 これらは正しいバイナリでも未対応として拒否する。tag/ホスト連携はM3、数値型のpayloadはM4/M5で拡張する。
@@ -159,6 +159,9 @@ flat lowering、profiling、framesはEHでも利用可能にする。検証自�
 
 ### 実装時の補足
 
+- M1導入後、コードの重複を減らすため実行器をflatへ統一した。Lowererは常時実行し、
+  `flat`の切り替えフラグは廃止する。意味MIRは検証・書き換え・表示用に保持する。
+
 - 通常関数の最適化passはCFGの集計情報だけを作り、完全な通常CFGは定義検証時に構築する。
   EH関数は例外edgeからleaderを得るため先に完全なCFGを作る。検証の省略はしない。
 - handlerがないCALLには関数内の例外edgeがないため、その正常結果の隣接COPYとの合体を維持する。
@@ -176,7 +179,7 @@ flat lowering、profiling、framesはEHでも利用可能にする。検証自�
 | M1a-3 | if/else/select | 合流、local旧値、短絡化しないselectを確認 |
 | M1a-4 | br_tableの分岐列への展開 | 全target/default、重複target、結果転送を確認。M1の28命令が揃う |
 | M1b-1 | tag/EHデコード、機能判定、block signatureと複数結果 | 外部validate済み入力と不正入力を区別。旧VMがEHを明示拒否 |
-| M1b-2 | handler/throw表、EH_ENTER/TRIM/THROW、例外edge検証 | 同一関数のcatch/catch_allがsemantic/flat両方で動く |
+| M1b-2 | handler/throw表、EH_ENTER/TRIM/THROW、例外edge検証 | 同一関数のcatch/catch_allがflatで動く |
 | M1b-3 | call越しの伝播、pool解放、未捕捉API | 多段call・再帰・相互再帰・捕捉後の続行が成立 |
 | M1c-1 | exnref型・参照レジスタ・local処理・COPY_REF | null初期化、スナップショット、複数値合流、参照クリアを確認 |
 | M1c-2 | catch_ref/catch_all_ref/throw_ref | 保存後の再送出、外側での捕捉、null trapが成立 |
@@ -260,7 +263,7 @@ EHは旧VMへfallbackしない。固定した期待値に加え、新形式EH対
 `wasm-tools parse` と `validate` は入力の確認であり、実行結果の参照実装の代わりではない。
 参照エンジンが用意できなければEHの外部比較を未完了と記録し、M1d全完了を宣言しない。
 
-CRuby/Spinelそれぞれで、default、all無効、flatのみ無効、framesのみ無効、profiling有効を検証する。
+CRuby/Spinelそれぞれで、default、all無効、framesのみ無効、profiling有効を検証する。
 M1aは既存各passの個別無効化も確認する。EHはpassの保守的除外が既定設定でも守られることを検査する。
 意味MIR/最適化MIR/flat descriptorの所有関係とPC更新も確認し、profiling後に元IRが変わらないことをテストする。
 

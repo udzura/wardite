@@ -4,7 +4,7 @@
 module Wardite
   module Efflorescence
     class Configuration
-      FEATURES = %i[copy immediate branch superinstruction inline flat frames].freeze
+      FEATURES = %i[copy immediate branch superinstruction inline frames].freeze
       attr_reader :disabled #: Array[Symbol]
 
       # @rbs disabled: Array[Symbol]

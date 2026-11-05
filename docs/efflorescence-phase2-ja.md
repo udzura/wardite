@@ -5,7 +5,7 @@
 Phase 2では、MIRを実行するときのオーバーヘッドを減らします。
 Warditeのデフォルトは引き続き既存のスタックVMです。
 `--new-engine` でEfflorescenceを選択すると、以下の最適化が有効になります。
-対応するWasm命令の範囲はPhase 1と同じです。到達不能なコードやエクスポートされていない関数も含め、
+現在の命令対応範囲は[M1の実装記録](efflorescence-m1.md)を参照してください。到達不能なコードやエクスポートされていない関数も含め、
 未対応命令は引き続き明示的な例外になります。
 
 ## パイプラインと切り替え
@@ -32,16 +32,16 @@ Wasm → Translator → 意味論を表すMIR（保持）
 ruby -Ilib exe/wardite --new-engine --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
 
 # 最適化を個別に無効化。複数指定する場合はオプションを繰り返す
-ruby -Ilib exe/wardite --new-engine --mir-disable copy --mir-disable flat --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
+ruby -Ilib exe/wardite --new-engine --mir-disable copy --mir-disable frames --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
 
-# 7つの最適化をすべて無効化し、オブジェクト形式のMIRを実行
+# 6つの最適化をすべて無効化したMIRをflatへ変換して実行
 ruby -Ilib exe/wardite --new-engine --mir-disable all --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 100000 123
 
 # 最適化前後のMIR表示と詳細計測。性能計測とは別に実行する
 ruby -Ilib exe/wardite --new-engine --mir-dump --mir-profile --no-wasi --invoke call_mix build/benchmark/i32_mix.wasm 10 123
 ```
 
-`copy`、`immediate`、`branch`、`superinstruction`、`inline`、`flat`、`frames` を個別に無効化できます。
+`copy`、`immediate`、`branch`、`superinstruction`、`inline`、`frames` を個別に無効化できます。
 不明な名前を指定するとエラーになります。
 MIR用のCLIオプションには `--new-engine` が必要です。
 表示・計測オプションを明示的に指定しなければ、checksumの出力形式は変わりません。
@@ -68,13 +68,14 @@ puts vm.metrics.report
 | 分岐融合 | `I32_EQZ tmp, src; BR_IF tmp, pc` を `BR_IF_ZERO src, pc` にする | 一時レジスタがローカル変数ではなく、定義・使用が各1回であること。2命令目へ途中から分岐できないこと |
 | Superinstruction | 即値による論理右シフト／左シフトと、元の値とのXORを融合する | 中間値の定義・使用が各1回で、XORがBasic Blockの入口ではないこと。ベンチマークの関数全体を置き換える専用命令は使わない |
 | Inlining | 短い直線状のleaf関数を展開し、有効なローカルパスを再適用する | 呼び出し先は8命令・32スロット以内。レジスタを新しく割り当て、引数のスナップショットを保ち、各呼び出し位置でローカルを0初期化する。分岐・trap・内部CALLは対象外。1回のスナップショットに限定し、呼び出し元ごとの増加を整理前で64命令・256スロット以内に抑える。`--mir-disable inline` で無効化できる |
-| フラット化 | opcodeとオペランド3個を、固定幅4の整数配列に並べる | 分岐先の命令番号は4倍して配列上のオフセットに変換する。CALLの引数は別の `CallSite` に保持し、解決済みの呼び出し先と引数レジスタ配列を参照するため、引数の数は固定幅に制限されない |
+| フラット化（常時実行） | opcodeとオペランド3個を、固定幅4の整数配列に並べる | 分岐先の命令番号は4倍して配列上のオフセットに変換する。CALLの引数は別の `CallSite` に保持し、解決済みの呼び出し先と引数レジスタ配列を参照するため、引数の数は固定幅に制限されない |
 | フレーム再利用 | 1回の公開API呼び出しが所有する、関数ごとの空きフレーム一覧を使う | 実行中のフレームは再利用しない。初回はレジスタのテンプレートを複製し、再利用時は非引数ローカルだけを0に戻してPC・戻り値の格納先を初期化する。引数はCALLで設定し、定数は保持する。一時値はロード時の定義解析で使用前の代入を保証する。再帰や重なり合う公開API呼び出しでも、実行中のフレームは独立させる |
 
-`--mir-disable flat` では、オブジェクト形式のMIRを実行する処理も使えます。
-他の最適化パスは有効にしたまま、実行形式だけを切り替えて結果を比較できます。
-`--mir-disable all` は現在のコードで最適化を無効化した比較用モードであり、
-Phase 1のバイナリそのものではありません。初期化処理やSpinelのプログラム全体の型推論結果は異なる場合があります。
+実行器はflatに統一し、`--mir-disable all` の場合もLowererによる変換を必ず行います。
+`flat`の最適化スイッチとsemantic実行器は削除しました。
+意味MIRと最適化済みMIRは、検証・書き換え・表示用に保持します。
+`--mir-disable all` は6つの任意の機能を無効化してからflatへ変換するモードであり、
+Phase 1のバイナリそのものではありません。以下の過去の計測値は当時の設定による記録です。
 比較スクリプトでは、コミット `67fbfae` を独立してビルドしたものも基準として使えます。
 
 flat実行器には `while true` を使い、Spinelによる `Kernel#loop` のStopIteration捕捉と、
@@ -127,7 +128,7 @@ spinel -I lib --strict-require -O2 -c exe/wardite -o build/benchmark/phase2-ward
 
 ### 整数リテラルによるディスパッチ
 
-両方の実行ループでは、意図的に `when Opcode::COPY` ではなく
+実行ループでは、意図的に `when Opcode::COPY` ではなく
 `when 0 # Opcode::COPY` と書いています。
 検証したSpinelの[整数caseの高速化処理（`emit_case`）](https://github.com/matz/spinel/blob/master/src/codegen_stmt.c#L11032-L11101)は、
 AST上の整数リテラルを条件にしています。値が整数であっても、定数の参照はこの条件を満たしません。
@@ -135,8 +136,8 @@ AST上の整数リテラルを条件にしています。値が整数であっ�
 
 MIRの生成と最適化パスでは、引き続きOpcode定数を使います。
 ディスパッチの各ラベルにはOpcode名をコメントで残し、数値と定数の一致、全opcodeへの対応を回帰テストで確認します。
-ネイティブテストではCLIをCに変換し、フラット形式とオブジェクト形式の両方で `switch` が生成されることも確認します。
-この追加変更を含む検証では、**88テスト、4,466 assertions、失敗・エラー・省略はいずれも0件**でした。
+ネイティブテストではCLIをCに変換し、flat実行器で `switch` が生成されることも確認します。
+Phase 2の追加変更時点（当時は両実行器が存在）の検証では、**88テスト、4,466 assertions、失敗・エラー・省略はいずれも0件**でした。
 型チェックも成功しています。
 
 ```sh

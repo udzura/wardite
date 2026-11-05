@@ -278,11 +278,6 @@ module Wardite
       # @rbs local_types: Array[Symbol]?
       def initialize: (Integer index, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer local_count, ?local_types: Array[Symbol]?) -> untyped
 
-      # Preserve the concrete operand wrapper at a generic array boundary.
-      # @rbs pc: Integer
-      # @rbs return: Wardite::Efflorescence::Instruction
-      def instruction_at: (Integer pc) -> Wardite::Efflorescence::Instruction
-
       # @rbs return: Integer
       def register_count: () -> Integer
 

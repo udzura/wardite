@@ -74,7 +74,9 @@ exception. See the [design, supported subset and tests](docs/efflorescence.md)
 and [engine comparison benchmark](benchmark/README.md).
 
 Efflorescence now includes independent COPY/immediate/branch/fusion passes,
-flat integer bytecode and frame reuse. Use `--mir-disable NAME` to compare
+flat integer bytecode and frame reuse. Execution always uses flat bytecode,
+including with `--mir-disable all`; there is no `flat` optimization switch.
+Use `--mir-disable NAME` to compare
 individual features, `--mir-dump` to inspect MIR and `--mir-profile` for counters.
 See [Phase 2](docs/efflorescence-phase2.md) ([日本語](docs/efflorescence-phase2-ja.md)).
 

@@ -8,8 +8,7 @@ require_relative '../support/efflorescence_m1_cases'
 class WarditeSpinelM1Test < Test::Unit::TestCase
   include EfflorescenceHelper
   include EfflorescenceM1Cases
-  MODES = [[], ['--mir-disable', 'all'], ['--mir-disable', 'flat'],
-           ['--mir-disable', 'frames'], ['--mir-profile']].freeze
+  MODES = [[], ['--mir-disable', 'all'], ['--mir-disable', 'frames'], ['--mir-profile']].freeze
 
   def setup
     @binary = ENV['WARDITE_SPINEL_BIN']
