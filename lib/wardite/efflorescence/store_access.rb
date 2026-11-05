@@ -47,6 +47,46 @@ module Wardite
         global_at(index).value = Wardite::I32.new(value)
       end
 
+      # @rbs address: Integer
+      # @rbs offset: Integer
+      # @rbs width: Integer
+      # @rbs signed: bool
+      # @rbs return: Integer
+      def load(address, offset, width, signed)
+        data = memory.data
+        start = address + offset
+        StoreAccess.check_range(start, width, data.bytesize)
+        value = 0
+        byte = 0
+        while byte < width
+          part = data.getbyte(start + byte) || raise(Wardite::EvalError, "missing checked memory byte")
+          value |= part << (byte * 8)
+          byte += 1
+        end
+        if signed && value >= (1 << (width * 8 - 1))
+          value -= 1 << (width * 8)
+        end
+        value & 0xffffffff
+      end
+
+      # Check the whole access before the first write. Effective addresses are
+      # wide integers; the static offset never wraps back into memory32.
+      # @rbs address: Integer
+      # @rbs offset: Integer
+      # @rbs width: Integer
+      # @rbs value: Integer
+      # @rbs return: void
+      def store(address, offset, width, value)
+        data = memory.data
+        start = address + offset
+        StoreAccess.check_range(start, width, data.bytesize)
+        byte = 0
+        while byte < width
+          data.setbyte(start + byte, (value >> (byte * 8)) & 255)
+          byte += 1
+        end
+      end
+
       # @rbs return: Wardite::Memory
       def memory
         @store.memories[0] || raise(Wardite::EvalError, "missing memory 0")

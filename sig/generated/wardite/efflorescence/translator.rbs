@@ -49,6 +49,8 @@ module Wardite
       # Natural alignment exponents; alignment is a hint, not an address rule.
       MEMORY_WIDTHS: untyped
 
+      MEMORY_OPCODES: untyped
+
       STORE_CODES: untyped
 
       @handler_depth: Integer

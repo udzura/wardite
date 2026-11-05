@@ -33,6 +33,22 @@ module Wardite
       # @rbs return: void
       def global_set: (Integer index, Integer value) -> void
 
+      # @rbs address: Integer
+      # @rbs offset: Integer
+      # @rbs width: Integer
+      # @rbs signed: bool
+      # @rbs return: Integer
+      def load: (Integer address, Integer offset, Integer width, bool signed) -> Integer
+
+      # Check the whole access before the first write. Effective addresses are
+      # wide integers; the static offset never wraps back into memory32.
+      # @rbs address: Integer
+      # @rbs offset: Integer
+      # @rbs width: Integer
+      # @rbs value: Integer
+      # @rbs return: void
+      def store: (Integer address, Integer offset, Integer width, Integer value) -> void
+
       # @rbs return: Wardite::Memory
       def memory: () -> Wardite::Memory
     end

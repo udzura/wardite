@@ -22,4 +22,15 @@ module EfflorescenceM2Cases
       (func (export "recursive") (param i32) (result i32) local.get 0 call $sum)
       (func (export "fixed") (result i32) global.get $fixed))
   WAT
+  MEMORY_WAT = '(module (memory (export "memory") 1) ' + %w[load load8_s load8_u load16_s load16_u].map do |name|
+    "(func (export \"#{name}\") (param i32) (result i32) local.get 0 i32.#{name})"
+  end.join + %w[store store8 store16].map do |name|
+    "(func (export \"#{name}\") (param i32 i32) local.get 0 local.get 1 i32.#{name})"
+  end.join + <<~WAT
+    (func (export "offset") (param i32) (result i32) local.get 0 i32.load offset=3 align=1)
+    (func (export "overflow") (param i32) (result i32) local.get 0 i32.load8_u offset=4294967295)
+    (func (export "store_overflow") (param i32) local.get 0 i32.const 42 i32.store8 offset=4294967295)
+    (func (export "unused") i32.const 65536 i32.load drop))
+  WAT
+
 end

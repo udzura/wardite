@@ -57,6 +57,10 @@ module Wardite
       MEMORY_WIDTHS = { i32_load: 2, i32_load8_s: 0, i32_load8_u: 0,
                         i32_load16_s: 1, i32_load16_u: 1,
                         i32_store: 2, i32_store8: 0, i32_store16: 1 }.freeze
+      MEMORY_OPCODES = { i32_load: Opcode::I32_LOAD, i32_load8_s: Opcode::I32_LOAD8_S,
+                         i32_load8_u: Opcode::I32_LOAD8_U, i32_load16_s: Opcode::I32_LOAD16_S,
+                         i32_load16_u: Opcode::I32_LOAD16_U, i32_store: Opcode::I32_STORE,
+                         i32_store8: Opcode::I32_STORE8, i32_store16: Opcode::I32_STORE16 }.freeze
       STORE_CODES = (MEMORY_WIDTHS.keys + %i[global_get global_set memory_size memory_grow memory_init memory_copy memory_fill]).freeze
 
       # @rbs @instance: Wardite::Instance
@@ -151,6 +155,21 @@ module Wardite
             else_control
           when :end
             end_control
+          when :i32_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
+               :i32_store, :i32_store8, :i32_store16
+            next unless @reachable
+            opcode = MEMORY_OPCODES.fetch(code)
+            offset = integer_operand(operands[1])
+            if code == :i32_store || code == :i32_store8 || code == :i32_store16
+              value = pop_typed(:i32)
+              address = pop_typed(:i32)
+              emit([opcode, value, address, offset])
+            else
+              address = pop_typed(:i32)
+              dst = register
+              emit([opcode, dst, address, offset])
+              @stack << dst
+            end
           when :global_get, :global_set
             index = integer_operand(operands[0])
             next unless @reachable

@@ -504,21 +504,37 @@ module Wardite
             b = instructions.fetch(pc + 2)
             @store_access.global_set(a, registers[b])
           when 54 # Opcode::I32_LOAD
-            raise UnsupportedFeature, "Efflorescence: I32_LOAD is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 4, false)
           when 55 # Opcode::I32_LOAD8_S
-            raise UnsupportedFeature, "Efflorescence: I32_LOAD8_S is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 1, true)
           when 56 # Opcode::I32_LOAD8_U
-            raise UnsupportedFeature, "Efflorescence: I32_LOAD8_U is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 1, false)
           when 57 # Opcode::I32_LOAD16_S
-            raise UnsupportedFeature, "Efflorescence: I32_LOAD16_S is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 2, true)
           when 58 # Opcode::I32_LOAD16_U
-            raise UnsupportedFeature, "Efflorescence: I32_LOAD16_U is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 2, false)
           when 59 # Opcode::I32_STORE
-            raise UnsupportedFeature, "Efflorescence: I32_STORE is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 4, registers[a])
           when 60 # Opcode::I32_STORE8
-            raise UnsupportedFeature, "Efflorescence: I32_STORE8 is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 1, registers[a])
           when 61 # Opcode::I32_STORE16
-            raise UnsupportedFeature, "Efflorescence: I32_STORE16 is not implemented yet"
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 2, registers[a])
           when 62 # Opcode::MEMORY_SIZE
             raise UnsupportedFeature, "Efflorescence: MEMORY_SIZE is not implemented yet"
           when 63 # Opcode::MEMORY_GROW
