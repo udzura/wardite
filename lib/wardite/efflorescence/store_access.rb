@@ -149,8 +149,21 @@ module Wardite
         data = memory.data
         StoreAccess.check_range(destination, length, data.bytesize)
         StoreAccess.check_range(source, length, data.bytesize)
-        bytes = data.byteslice(source, length) || raise(Wardite::EvalError, "missing checked memory slice")
-        data[destination, length] = bytes.dup
+        # Walk backward when the destination starts inside the source, so an
+        # overlapping copy reads each byte before overwriting it.
+        if destination > source
+          index = length - 1
+          while index >= 0
+            data.setbyte(destination + index, data.getbyte(source + index) || raise(Wardite::EvalError, "missing checked memory byte"))
+            index -= 1
+          end
+        else
+          index = 0
+          while index < length
+            data.setbyte(destination + index, data.getbyte(source + index) || raise(Wardite::EvalError, "missing checked memory byte"))
+            index += 1
+          end
+        end
       end
 
       # @rbs destination: Integer
@@ -160,8 +173,12 @@ module Wardite
       def fill(destination, value, length)
         data = memory.data
         StoreAccess.check_range(destination, length, data.bytesize)
-        bytes = (value & 255).chr.b * length
-        data[destination, length] = bytes
+        byte = value & 255
+        index = 0
+        while index < length
+          data.setbyte(destination + index, byte)
+          index += 1
+        end
       end
 
       # @rbs index: Integer
@@ -174,8 +191,11 @@ module Wardite
         segment = @store.data_segments[index] || raise(Wardite::EvalError, "invalid data segment")
         StoreAccess.check_range(destination, length, data.bytesize)
         StoreAccess.check_range(source, length, segment.bytesize)
-        bytes = segment.byteslice(source, length) || raise(Wardite::EvalError, "missing checked segment slice")
-        data[destination, length] = bytes.dup
+        index = 0
+        while index < length
+          data.setbyte(destination + index, segment.getbyte(source + index) || raise(Wardite::EvalError, "missing checked segment byte"))
+          index += 1
+        end
       end
 
       # @rbs return: Wardite::Memory
