@@ -230,3 +230,4 @@ runtimeごとの分岐は設けない。CRubyでの低下はSpinel優先の方�
 単位はms（実行median）。ロード時間は変わらない。
 Spinelではcopy_fillが約155倍、segment_initが約550倍速くなり、どちらもCRubyより速い。
 CRubyではcopy_fillが約8倍、segment_initが約1.4倍遅くなる。
+Spinel側で範囲代入をin-placeにする変更案は[spinel-string-aset-inplace-proposal.md](spinel-string-aset-inplace-proposal.md)にまとめた。
