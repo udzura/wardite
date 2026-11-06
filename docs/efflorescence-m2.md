@@ -177,8 +177,50 @@ RUNS=7 WARMUPS=2 ROUNDS=1000 bundle exec ruby benchmark/measure_m2.rb
 | segment_init | CRuby | 0.782 | 1.745 (1.712–1.930) | 70099 |
 | segment_init | Spinel | 0.307 | 60.265 (59.948–60.973) | 70099 |
 
-Spinelの小さいbulk転送はCRubyより遅い。生成Cではcopy/fill/initのString範囲代入が
-`sp_str_splice_at`へlowerされ、現在のruntimeはhead/tailと連結結果を作るため、転送部分以外にも
-メモリ全体に比例するコピー・割当コストが発生する。M2の初期実装ではこの制約を記録し、
+Spinelのbulk転送はCRubyより遅い。M2の初期実装ではこの制約を記録し、
 範囲事前検査・独立source・trap時の状態維持を保つ。専用bulk helperやfusionの解禁は
 ADRどおり別の測定・レビューで扱う。M2の完了条件に高速化率は含めない。
+
+#### Spinelのbulk転送のコスト
+
+copy/fill/initの`data[destination, length] = bytes`は、生成Cで次の形になる
+（`6f1a2c259`で`-c`出力を確認。`StoreAccess#copy`の例）。
+
+```c
+const char *sb = sp_str_concat(sp_String_cstr(h), "");   /* memory全体を複製 */
+sb = sp_str_splice_at(sb, destination, length, bytes, 0);
+sp_String_set_bin(h, sb);                                /* 全体をsp_Stringへ書き戻す */
+```
+
+`sp_str_splice_at`（`lib/sp_cold.c`）はhead/tailの切り出しと2回の連結で新しい文字列を作る。
+binary Stringの長さはheaderから得るため、長さ取得はコストにならない。
+1回の範囲代入で、memoryのbyte数をNとして約4Nのmemcpyと4〜5回の割当が起きる。
+コストは転送長ではなくmemoryのページ数に比例する。`bytesplice`もSpinelではO(N)である。
+
+128byteの前方重複copyを20,000回繰り返した1回あたりの時間（µs）。
+Spinelは同じ`6f1a2c259`の`-O2`、CRubyは4.0.9（YJITなし）。256byteのfillも同じ傾向である。
+
+| memory | Spinel 範囲代入 | Spinel setbyteループ | Spinel bytesplice | CRuby 範囲代入 |
+|---|---:|---:|---:|---:|
+| 1 page | 80.8 | 0.28 | 4.4 | 0.23 |
+| 2 pages | 158.7 | 0.28 | — | 0.16 |
+| 16 pages | 1,275.0 | 0.29 | 48.1 | 0.14 |
+
+M2のworkloadは1 pageなので小さく見えるが、数十ページを使うmoduleでは
+1回の`memory.copy`が数msになりうる。「小さい転送に限った問題」ではない。
+
+別レビューの判断材料として、copy/fill/initを範囲検査後のgetbyte/setbyteループ
+（copyは重複に応じて走査方向を変える）にした版を試作し、`measure_m2.rb`で比べた
+（RUNS=7、WARMUPS=2、ROUNDS=1000、CRuby 4.0.9。compilerはパッチなしの`6f1a2c259`で、
+現状の値も上の表とは別に測り直したため、比べるのはこの表の中だけにする）。
+試作はCRuby 4.0.9でM2テスト23件を通したが、Spinelのテストは未実行で、本PRには含めない。
+
+| case | Spinel 現状 | Spinel setbyte | CRuby 現状 | CRuby setbyte |
+|---|---:|---:|---:|---:|
+| copy_fill | 169.255 | 1.075 | 2.720 | 21.047 |
+| segment_init | 84.973 | 0.159 | 2.480 | 3.400 |
+
+単位はms（median）。array_scan・global_updateは変化しない。
+setbyte版はSpinelで速いが、CRubyではcopy_fillが約7.7倍、segment_initが約1.4倍遅くなる。
+別の候補として、Spinel側で`s[i, n] = v`（`v.bytesize == n`）をsp_String上のin-place memmoveへ
+lowerすれば、Warditeを変えずに両runtimeの性能を保てる。
