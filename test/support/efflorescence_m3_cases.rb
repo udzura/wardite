@@ -33,13 +33,16 @@ module EfflorescenceM3Cases
       (func $throw (type $expected) local.get 0 throw $error)
       (func $mismatch (result i32) unreachable)
       (func (export "run") (param i32 i32) (result i32)
-        block $caught (result i32)
-          try_table (result i32) (catch $error $caught)
-            local.get 1 local.get 0 call_indirect (type $expected)
-            i32.const 1 i32.add
+        block $uncaught
+          block $caught (result i32)
+            try_table (result i32) (catch $error $caught) (catch_all $uncaught)
+              local.get 1 local.get 0 call_indirect (type $expected)
+              i32.const 1 i32.add
+            end
+            return
           end
-          return
+          i32.const 100 i32.add return
         end
-        i32.const 100 i32.add))
+        i32.const 900))
   WAT
 end
