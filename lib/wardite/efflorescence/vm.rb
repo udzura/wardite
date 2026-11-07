@@ -26,7 +26,13 @@ module Wardite
         @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir
         Lowerer.new.compile(@ir)
         start = instance.start_section
-        execute(start.func_index, []) if start
+        if start
+          entry = @ir.entry_at(start.func_index)
+          unless entry.parameter_types.empty? && entry.result_types.empty?
+            raise Wardite::LoadError, "start function must have no parameters or results"
+          end
+          execute(entry, [])
+        end
       end
 
       # @rbs name: String|Symbol
@@ -52,8 +58,8 @@ module Wardite
         export = @instance.export_section.exports[name.to_s]
         raise ::NoMethodError, "function #{name} not found" unless export
         raise ::NoMethodError, "#{name} is not a function" unless export.kind == 0
-        function = @ir.function_at(export.index)
-        unless arguments.size == function.parameter_count
+        entry = @ir.entry_at(export.index)
+        unless arguments.size == entry.parameter_types.size
           raise Wardite::ArgumentError, "unmatch arg size"
         end
         values = [] #: Array[Integer]
@@ -61,8 +67,7 @@ module Wardite
           raise Wardite::ArgumentError, "type mismatch: i32(#{value})" unless value.is_a?(Integer)
           values << (value & 0xffffffff)
         end
-        result = execute(export.index, values)
-        function.result_types.empty? ? nil : result
+        execute(entry, values)
       end
 
       # @rbs name: Symbol
@@ -216,37 +221,69 @@ module Wardite
         pools[index] || raise(Wardite::EvalError, "missing MIR frame pool")
       end
 
-      # No Wasm operand stack, boxed values, or recursive Ruby calls here.
-      # Every register array contains only normalized i32 Integers. Void calls
-      # use destination -1; execute returns an unused integer for a void entry.
-      # @rbs index: Integer
+      # @rbs host_index: Integer
       # @rbs arguments: Array[Integer]
-      # @rbs return: Integer
-      def execute(index, arguments)
+      # @rbs return: Integer?
+      def invoke_host(host_index, arguments)
+        host = @ir.hosts[host_index] || raise(Wardite::EvalError, "missing MIR host function")
+        boxed = [] #: Array[Wardite::wasmValue]
+        arguments.each { |value| boxed << Wardite::I32.new(value) }
+        result = host.callable.call(@instance.store, boxed)
+        if host.entry.result_types.empty?
+          return nil if result.nil?
+        elsif result.is_a?(Integer)
+          return result & 0xffffffff
+        elsif result.is_a?(Wardite::I32)
+          return result.value & 0xffffffff
+        end
+        raise Wardite::EvalError, "host ABI result mismatch for #{host.external.name}"
+      end
+
+      # Each public entry owns its frames, pools and counters, including when a
+      # host callback re-enters the VM. Store mutations are shared immediately.
+      # @rbs entry: Wardite::Efflorescence::FunctionEntry
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Integer?
+      def execute(entry, arguments)
+        metrics = @profiling ? Metrics.new : @metrics
         pools = [] #: Array[Wardite::Efflorescence::FramePool]
+        active_frames = [] #: Array[Wardite::Efflorescence::Frame]
+        return invoke_host(entry.host_index, arguments) if entry.kind == :host
+
         @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }
-        function = @ir.function_at(index)
-        pool = pools[function.pool_index]
-        raise Wardite::EvalError, "missing MIR frame pool" unless pool
-        frame = pool.acquire(-1)
+        frame = pool_at(pools, entry.defined_index).acquire(-1)
+        active_frames << frame
         arguments.each_with_index { |value, i| frame.registers[i] = value }
-        @metrics = Metrics.new if @profiling
-        active_frames = [frame]
-        execute_flat(frame, pools, active_frames)
+        result = execute_flat(frame, pools, active_frames, metrics)
+        entry.result_types.empty? ? nil : result
       ensure
-        active_frames&.each { |active| pool_at(pools, active.pool_index).release(active) }
+        active_frames.each { |active| pool_at(pools, active.pool_index).release(active) }
         if @profiling
           created = 0
           pools.each { |pool| created += pool.created }
-          @metrics.frames_created = created
+          metrics.frames_created = created
+          @metrics = metrics
         end
+      end
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs site_id: Integer
+      # @rbs destination: Integer
+      # @rbs return: void
+      def execute_host_site(frame, site_id, destination)
+        site = frame.function.dynamic_site(site_id)
+        registers = frame.registers
+        arguments = site.arguments.map { |register| registers[register] }
+        result = invoke_host(site.host_index, arguments)
+        registers[destination] = result if destination >= 0 && result
       end
 
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
       # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
       # @rbs return: Integer
-      def execute_flat(frame, pools, active_frames)
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      def execute_flat(frame, pools, active_frames, metrics)
         frames = active_frames
         registers = frame.registers
         instructions = frame.function.bytecode
@@ -368,6 +405,8 @@ module Wardite
             instructions = frame.function.bytecode
             pc = 0
             next
+          when 67 # Opcode::CALL_HOST
+            execute_host_site(frame, instructions.fetch(pc + 2), a)
           when 11 # Opcode::RETURN
             value = a < 0 ? 0 : registers[a]
             destination = frame.return_register
@@ -549,7 +588,7 @@ module Wardite
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
-            @metrics.record(a, b, c)
+            metrics.record(a, b, c)
           else
             raise Wardite::EvalError, "Efflorescence: invalid MIR opcode #{opcode}"
           end

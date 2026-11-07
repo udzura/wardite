@@ -133,6 +133,14 @@ module Wardite
               raise TranslationError, "invalid MIR memory site operands"
             end
           end
+          if Opcode.dynamic_call?(opcode)
+            site = function.dynamic_site(instruction[2])
+            destination = instruction[1]
+            unless site.arguments.size == site.parameter_types.size && site.parameter_types.all? { |type| type == :i32 } &&
+                (site.result_types.empty? ? destination == -1 : site.result_types == [:i32] && destination >= 0)
+              raise TranslationError, "invalid MIR dynamic call signature"
+            end
+          end
           reads = function.reads(instruction)
           destination = Opcode.destination(instruction)
           expected = opcode == Opcode::COPY_REF || opcode == Opcode::THROW_REF ? :exnref : :i32

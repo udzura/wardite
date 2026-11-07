@@ -76,13 +76,14 @@ module Wardite
       MEMORY_INIT = 64
       MEMORY_COPY = 65
       MEMORY_FILL = 66
+      CALL_HOST = 67
 
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
                  I32_XOR_SHR_U_IMM I32_XOR_SHL_IMM PROFILE
                  I32_EQ I32_NE I32_LTS I32_LTU I32_GTS I32_GTU I32_LES I32_LEU I32_GES I32_GEU I32_CLZ I32_CTZ I32_POPCNT I32_DIV_S I32_DIV_U I32_REM_S I32_REM_U I32_AND I32_OR I32_SHR_S I32_ROTL I32_ROTR I32_EXTEND8_S I32_EXTEND16_S COPY_REF EH_ENTER EH_TRIM THROW THROW_REF
-                 GLOBAL_GET GLOBAL_SET I32_LOAD I32_LOAD8_S I32_LOAD8_U I32_LOAD16_S I32_LOAD16_U I32_STORE I32_STORE8 I32_STORE16 MEMORY_SIZE MEMORY_GROW MEMORY_INIT MEMORY_COPY MEMORY_FILL].freeze
+                 GLOBAL_GET GLOBAL_SET I32_LOAD I32_LOAD8_S I32_LOAD8_U I32_LOAD16_S I32_LOAD16_U I32_STORE I32_STORE8 I32_STORE16 MEMORY_SIZE MEMORY_GROW MEMORY_INIT MEMORY_COPY MEMORY_FILL CALL_HOST].freeze
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction
@@ -107,7 +108,7 @@ module Wardite
           [1, 2]
         when THROW_REF
           [1]
-        when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL
+        when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
           []
         else
           raise UnsupportedFeature, "Efflorescence: unknown MIR opcode #{instruction[0]}"
@@ -118,7 +119,7 @@ module Wardite
       # @rbs return: Integer
       def self.destination(instruction)
         opcode = instruction[0]
-        if opcode <= I32_EQZ || opcode == CALL ||
+        if opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
             (opcode >= I32_ADD_IMM && opcode <= I32_SHR_U_IMM) ||
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
@@ -145,8 +146,14 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.side_effect?(opcode)
-        may_throw?(opcode) || may_trap?(opcode) || reads_store?(opcode) || writes_store?(opcode) ||
+        dynamic_call?(opcode) || may_throw?(opcode) || may_trap?(opcode) || reads_store?(opcode) || writes_store?(opcode) ||
           [BR, BR_IF, BR_IF_ZERO, RETURN, EH_ENTER, EH_TRIM, PROFILE].include?(opcode)
+      end
+
+      # @rbs opcode: Integer
+      # @rbs return: bool
+      def self.dynamic_call?(opcode)
+        opcode == CALL_HOST
       end
 
       # @rbs opcode: Integer
@@ -355,6 +362,8 @@ module Wardite
       attr_reader :throw_sites #: Array[Wardite::Efflorescence::ThrowSite]
       attr_accessor :uses_eh #: bool
       attr_accessor :uses_store #: bool
+      attr_accessor :uses_dynamic_calls #: bool
+      attr_reader :dynamic_sites #: Array[Wardite::Efflorescence::DynamicCallSite]
       attr_reader :memory_sites #: Array[Wardite::Efflorescence::MemorySite]
       attr_reader :calls #: Array[Wardite::Efflorescence::CallSite]
 
@@ -376,6 +385,8 @@ module Wardite
         @throw_sites = []
         @memory_sites = []
         @uses_store = false
+        @uses_dynamic_calls = false
+        @dynamic_sites = []
         @uses_eh = @register_types.include?(:exnref)
         @instructions = []
         @initial_registers = Array.new(parameter_types.size + local_count, 0)
@@ -447,6 +458,13 @@ module Wardite
         @memory_sites[index] || raise(Wardite::EvalError, "invalid MIR memory site")
       end
 
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::DynamicCallSite
+      def dynamic_site(index)
+        raise TranslationError, "invalid MIR dynamic call site" if index < 0
+        @dynamic_sites[index] || raise(TranslationError, "invalid MIR dynamic call site")
+      end
+
       # All PC consumers (rewrites, profiling, lowering) share this enumeration.
       # @rbs mapping: Array[Integer]
       # @rbs return: void
@@ -489,6 +507,7 @@ module Wardite
         end
         @throw_sites.each { |site| site.payload_registers.map! { |register| mapping.fetch(register) } }
         @memory_sites.each { |site| site.sources.map! { |register| mapping.fetch(register) } }
+        @dynamic_sites.each { |site| site.arguments.map! { |register| mapping.fetch(register) } }
         @handlers.each do |handler|
           handler.clauses.each do |clause|
             clause.payload_registers.map! { |register| mapping.fetch(register) }
@@ -505,6 +524,7 @@ module Wardite
         result = Opcode.read_positions(instruction).map { |position| instruction[position] }
         result += @throw_sites.fetch(instruction[1]).payload_registers if instruction[0] == Opcode::THROW
         result += memory_site(instruction[1]).sources if Opcode.memory_site?(instruction[0])
+        result += dynamic_site(instruction[2]).arguments if Opcode.dynamic_call?(instruction[0])
         result
       end
 
@@ -513,6 +533,8 @@ module Wardite
         result = Function.new(@index, @parameter_types, @result_types, @local_count, local_types: @register_types[@parameter_types.size, @local_count], pool_index: @pool_index)
         result.uses_eh = @uses_eh
         result.uses_store = @uses_store
+        result.uses_dynamic_calls = @uses_dynamic_calls
+        @dynamic_sites.each { |site| result.dynamic_sites << site.copy }
         @memory_sites.each { |site| result.memory_sites << site.copy }
         @handlers.each { |handler| result.handlers << handler.copy }
         @throw_sites.each { |site| result.throw_sites << site.copy }
@@ -558,6 +580,49 @@ module Wardite
       end
     end
 
+    class DynamicCallSite
+      attr_reader :host_index #: Integer
+      attr_reader :arguments #: Array[Integer]
+      attr_reader :parameter_types #: Array[Symbol]
+      attr_reader :result_types #: Array[Symbol]
+
+      # @rbs host_index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs parameter_types: Array[Symbol]
+      # @rbs result_types: Array[Symbol]
+      def initialize(host_index, arguments, parameter_types, result_types)
+        @host_index = host_index
+        @arguments = arguments.dup
+        @parameter_types = parameter_types.dup
+        @result_types = result_types.dup
+      end
+
+      # @rbs return: Wardite::Efflorescence::DynamicCallSite
+      def copy
+        DynamicCallSite.new(@host_index, @arguments, @parameter_types, @result_types)
+      end
+    end
+
+    class HostFunction
+      attr_reader :external #: Wardite::ExternalFunction
+      attr_reader :entry #: Wardite::Efflorescence::FunctionEntry
+      attr_reader :callable #: Wardite::_WasmCallable
+
+      # @rbs external: Wardite::ExternalFunction
+      # @rbs entry: Wardite::Efflorescence::FunctionEntry
+      # @rbs callable: Wardite::_WasmCallable
+      def initialize(external, entry, callable)
+        @external = external
+        @entry = entry
+        @callable = callable
+      end
+
+      # @rbs return: Wardite::Efflorescence::HostFunction
+      def copy
+        HostFunction.new(@external, @entry.copy, @callable)
+      end
+    end
+
     class FunctionEntry
       attr_reader :kind #: Symbol
       attr_reader :parameter_types #: Array[Symbol]
@@ -578,6 +643,16 @@ module Wardite
         @host_index = host_index
       end
 
+      # @rbs params: Array[Symbol]
+      # @rbs results: Array[Symbol]
+      # @rbs label: String
+      # @rbs return: void
+      def self.check_signature(params, results, label)
+        unless params.all? { |type| type == :i32 } && (results.empty? || results == [:i32])
+          raise UnsupportedFeature, "Efflorescence: #{label} requires an i32-only signature with at most one result"
+        end
+      end
+
       # @rbs return: Wardite::Efflorescence::FunctionEntry
       def copy
         FunctionEntry.new(@kind, @parameter_types, @result_types, @defined_index, @host_index)
@@ -587,11 +662,14 @@ module Wardite
     class IR
       attr_reader :functions #: Array[Wardite::Efflorescence::Function]
       attr_reader :entries #: Array[Wardite::Efflorescence::FunctionEntry]
+      attr_reader :hosts #: Array[Wardite::Efflorescence::HostFunction]
 
       # @rbs functions: Array[Wardite::Efflorescence::Function]
       # @rbs entries: Array[Wardite::Efflorescence::FunctionEntry]?
-      def initialize(functions, entries: nil)
+      # @rbs hosts: Array[Wardite::Efflorescence::HostFunction]
+      def initialize(functions, entries: nil, hosts: [])
         @functions = functions
+        @hosts = hosts
         @entries = entries || functions.map do |function|
           FunctionEntry.new(:defined, function.parameter_types, function.result_types, function.pool_index, -1)
         end
@@ -620,7 +698,8 @@ module Wardite
 
       # @rbs return: Wardite::Efflorescence::IR
       def copy
-        IR.new(@functions.map { |function| function.copy }, entries: @entries.map { |entry| entry.copy })
+        IR.new(@functions.map { |function| function.copy }, entries: @entries.map { |entry| entry.copy },
+          hosts: @hosts.map { |host| host.copy })
       end
     end
 

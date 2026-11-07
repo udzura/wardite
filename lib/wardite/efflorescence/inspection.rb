@@ -78,6 +78,9 @@ module Wardite
       # @rbs return: String
       def disassemble(ir)
         lines = [] #: Array[String]
+        ir.hosts.each_with_index do |host, i|
+          lines << "host #{i}: #{host.external.name} #{host.entry.parameter_types.inspect} -> #{host.entry.result_types.inspect}"
+        end
         ir.functions.each do |function|
           lines << "function #{function.index}: params=#{function.parameter_count} locals=#{function.local_count} registers=#{function.register_count}"
           function.handlers.each_with_index do |handler, i|
@@ -90,6 +93,9 @@ module Wardite
           end
           function.memory_sites.each_with_index do |site, i|
             lines << "  memory #{i}: sources=#{site.sources.inspect} memory=#{site.memory_index} source_memory=#{site.source_memory_index} data=#{site.data_index}"
+          end
+          function.dynamic_sites.each_with_index do |site, i|
+            lines << "  call #{i}: host=#{site.host_index} arguments=#{site.arguments.inspect}"
           end
           function.instructions.each_with_index do |instruction, pc|
             operands = [] #: Array[String]

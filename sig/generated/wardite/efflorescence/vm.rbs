@@ -82,19 +82,30 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::FramePool
       def pool_at: (Array[Wardite::Efflorescence::FramePool] pools, Integer index) -> Wardite::Efflorescence::FramePool
 
-      # No Wasm operand stack, boxed values, or recursive Ruby calls here.
-      # Every register array contains only normalized i32 Integers. Void calls
-      # use destination -1; execute returns an unused integer for a void entry.
-      # @rbs index: Integer
+      # @rbs host_index: Integer
       # @rbs arguments: Array[Integer]
-      # @rbs return: Integer
-      def execute: (Integer index, Array[Integer] arguments) -> Integer
+      # @rbs return: Integer?
+      def invoke_host: (Integer host_index, Array[Integer] arguments) -> Integer?
+
+      # Each public entry owns its frames, pools and counters, including when a
+      # host callback re-enters the VM. Store mutations are shared immediately.
+      # @rbs entry: Wardite::Efflorescence::FunctionEntry
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Integer?
+      def execute: (Wardite::Efflorescence::FunctionEntry entry, Array[Integer] arguments) -> Integer?
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs site_id: Integer
+      # @rbs destination: Integer
+      # @rbs return: void
+      def execute_host_site: (Wardite::Efflorescence::Frame frame, Integer site_id, Integer destination) -> void
 
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
       # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
       # @rbs return: Integer
-      def execute_flat: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] active_frames) -> Integer
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      def execute_flat: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] active_frames, Wardite::Efflorescence::Metrics metrics) -> Integer
     end
   end
 end

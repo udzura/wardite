@@ -64,6 +64,7 @@ module Wardite
       STORE_CODES = (MEMORY_WIDTHS.keys + %i[global_get global_set memory_size memory_grow memory_init memory_copy memory_fill]).freeze
 
       # @rbs @instance: Wardite::Instance
+      # @rbs @entries: Array[Wardite::Efflorescence::FunctionEntry]
       # @rbs @stack: Array[Integer]
       # @rbs @controls: Array[Wardite::Efflorescence::Translator::Control]
       # @rbs @constants: Hash[Integer, Integer]
@@ -75,6 +76,7 @@ module Wardite
       # @rbs instance: Wardite::Instance
       def initialize(instance)
         @instance = instance
+        @entries = []
         @stack, @controls, @constants = [], [], {}
         @reachable, @wasm_pc, @handler_depth = true, 0, 0
         @function = Function.new(0, [], [], 0)
@@ -82,18 +84,30 @@ module Wardite
 
       # @rbs return: Wardite::Efflorescence::IR
       def translate
-        raise UnsupportedFeature, "Efflorescence: imports are not supported" unless @instance.import_section.imports.empty?
+        hosts = [] #: Array[Wardite::Efflorescence::HostFunction]
+        defined_count = 0
+        @entries = @instance.store.funcs.map do |function|
+          if function.is_a?(Wardite::ExternalFunction)
+            entry = FunctionEntry.new(:host, function.callsig, function.retsig, -1, hosts.size)
+            callable = function.callable #: Wardite::_WasmCallable & Object
+            unless callable.respond_to?(:call)
+              raise Wardite::LoadError, "import #{function.name} is not callable"
+            end
+            hosts << HostFunction.new(function, entry, callable)
+            entry
+          else
+            entry = FunctionEntry.new(:defined, function.callsig, function.retsig, defined_count, -1)
+            defined_count += 1
+            entry
+          end
+        end
         functions = [] #: Array[Wardite::Efflorescence::Function]
-        entries = [] #: Array[Wardite::Efflorescence::FunctionEntry]
-        @instance.store.funcs.each do |function|
-          raise UnsupportedFeature, "Efflorescence: host functions are not supported" unless function.is_a?(Wardite::WasmFunction)
-          entries << FunctionEntry.new(:defined, function.callsig, function.retsig, entries.size, -1)
-        end
         @instance.store.funcs.each_with_index do |function, index|
-          raise UnsupportedFeature, "Efflorescence: host functions are not supported" unless function.is_a?(Wardite::WasmFunction)
-          functions << translate_function(function, index, functions.size)
+          if function.is_a?(Wardite::WasmFunction)
+            functions << translate_function(function, index, functions.size)
+          end
         end
-        IR.new(functions, entries: entries)
+        IR.new(functions, entries: @entries, hosts: hosts)
       end
 
       # @rbs wasm: Wardite::WasmFunction
@@ -101,7 +115,7 @@ module Wardite
       # @rbs pool_index: Integer
       # @rbs return: Wardite::Efflorescence::Function
       def translate_function(wasm, index, pool_index)
-        check_signature(wasm)
+        FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}")
         unless wasm.locals_type.all? { |type| type == :i32 || type == :exnref }
           raise UnsupportedFeature, "Efflorescence: function #{index} has unsupported locals"
         end
@@ -265,13 +279,20 @@ module Wardite
           when :call
             index = integer_operand(operands[0])
             fail_translation("invalid call target #{index}") if index < 0
-            callee = @instance.store.funcs[index]
-            fail_translation("invalid call target #{index}") unless callee.is_a?(Wardite::WasmFunction)
-            check_signature(callee)
+            callee = @entries[index]
+            fail_translation("invalid call target #{index}") unless callee
+            FunctionEntry.check_signature(callee.parameter_types, callee.result_types, "function #{index}")
+            @function.uses_dynamic_calls = true if callee.kind == :host
             next unless @reachable
-            arguments = callee.callsig.reverse.map { |type| pop_typed(type) }.reverse
-            dst = callee.retsig.empty? ? -1 : register
-            emit([Opcode::CALL, dst, index] + arguments)
+            arguments = callee.parameter_types.reverse.map { |type| pop_typed(type) }.reverse
+            dst = callee.result_types.empty? ? -1 : register
+            if callee.kind == :host
+              id = @function.dynamic_sites.size
+              @function.dynamic_sites << DynamicCallSite.new(callee.host_index, arguments, callee.parameter_types, callee.result_types)
+              emit([Opcode::CALL_HOST, dst, id, 0])
+            else
+              emit([Opcode::CALL, dst, index] + arguments)
+            end
             @stack << dst if dst >= 0
           when :throw
             tag_index = integer_operand(operands[0])
@@ -350,14 +371,6 @@ module Wardite
       # @rbs return: void
       def check_memory_index(index)
         raise UnsupportedFeature, context("only memory 0 is supported") unless index == 0
-      end
-
-      # @rbs function: Wardite::WasmFunction
-      # @rbs return: void
-      def check_signature(function)
-        unless function.callsig.all? { |type| type == :i32 } && (function.retsig.empty? || function.retsig == [:i32])
-          raise UnsupportedFeature, "Efflorescence: function #{function.findex} requires an i32-only signature with at most one result"
-        end
       end
 
       # @rbs value: Wardite::operandItem?

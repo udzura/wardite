@@ -428,9 +428,10 @@ module Wardite
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
-    # @rbs callable: _WasmCallable
+    # @rbs target_module: wasmModule
+    # @rbs name: Symbol
     # @rbs return: void
-    def initialize: (untyped target_module, untyped name, Array[Symbol] callsig, Array[Symbol] retsig) -> void
+    def initialize: (wasmModule target_module, Symbol name, Array[Symbol] callsig, Array[Symbol] retsig) -> void
 
     # @rbs return: _WasmCallable
     def callable: () -> _WasmCallable

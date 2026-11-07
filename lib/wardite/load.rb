@@ -463,6 +463,7 @@ module Wardite
         end
 
         raise LoadError, "tag imports are not supported" if kind == 4
+        raise LoadError, "unsupported import kind #{kind} for #{module_name}.#{name}" unless kind == 0
         index = fetch_uleb128(sbuf)
         dest.add_desc do |desc|
           desc.module_name = module_name

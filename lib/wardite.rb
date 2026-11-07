@@ -60,9 +60,6 @@ module Wardite
 
       @import_object = import_object #: Hash[Symbol, wasmModule]
 
-      if engine == :efflorescence && !import_section.imports.empty?
-        raise Efflorescence::UnsupportedFeature, "Efflorescence: imports are not supported"
-      end
       @tags = []
       check_engine_features(engine)
       check_data_count
@@ -91,6 +88,14 @@ module Wardite
     def check_engine_features(engine)
       check_memory_initialization if engine == :efflorescence
       types = type_section
+      if engine == :efflorescence
+        import_section.imports.each do |import|
+          params = types&.defined_types&.[](import.sig_index)
+          results = types&.defined_results&.[](import.sig_index)
+          raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
+          Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
+        end
+      end
       tag_section = @sections.find { |section| section.is_a?(TagSection) }
       if tag_section.is_a?(TagSection)
         raise LoadError, "stack engine does not support tags/EH" unless engine == :efflorescence
@@ -1019,28 +1024,30 @@ module Wardite
       @funcs = []
       @modules = inst.import_object
 
-      if type_section && func_section && code_section
-        import_section.imports.each do |desc|
-          callsig = type_section.defined_types[desc.sig_index]
-          retsig = type_section.defined_results[desc.sig_index]
-          module_name = desc.module_name.to_sym
-          target_module = self.modules.fetch(module_name) { self.modules.default(module_name) }
-          if target_module.nil?
-            raise ::NameError, "module #{desc.module_name} not found"
-          end
-          target_name = desc.name.to_sym
-          
-          ext_function = ExternalFunction.new(target_module, target_name, callsig, retsig)
-          self.funcs << ext_function
-        end
+      import_section.imports.each do |desc|
+        callsig = type_section&.defined_types&.[](desc.sig_index)
+        retsig = type_section&.defined_results&.[](desc.sig_index)
+        raise LoadError, "invalid import type index #{desc.sig_index}" unless callsig && retsig
 
+        module_name = desc.module_name.to_sym
+        target_module = self.modules.fetch(module_name) { self.modules.default(module_name) }
+        raise ::NameError, "module #{desc.module_name} not found" unless target_module
+
+        self.funcs << ExternalFunction.new(target_module, desc.name.to_sym, callsig, retsig)
+      end
+
+      if (func_section&.func_indices&.size || 0) != (code_section&.func_codes&.size || 0)
+        raise LoadError, "function and code section lengths differ"
+      end
+      if func_section && code_section
         func_section.func_indices.each_with_index do |sigindex, findex|
-          callsig = type_section.defined_types[sigindex]
-          retsig = type_section.defined_results[sigindex]
-          codes = code_section.func_codes[findex]
+          callsig = type_section&.defined_types&.[](sigindex)
+          retsig = type_section&.defined_results&.[](sigindex)
+          raise LoadError, "invalid function type index #{sigindex}" unless callsig && retsig
+
+          codes = code_section.func_codes.fetch(findex)
           wasm_function = WasmFunction.new(callsig, retsig, codes)
-          idx = self.funcs.size
-          wasm_function.findex = idx
+          wasm_function.findex = self.funcs.size
           self.funcs << wasm_function
         end
       end
@@ -1450,7 +1457,8 @@ module Wardite
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
-    # @rbs callable: _WasmCallable
+    # @rbs target_module: wasmModule
+    # @rbs name: Symbol
     # @rbs return: void
     def initialize(target_module, name, callsig, retsig)
       @target_module = target_module
