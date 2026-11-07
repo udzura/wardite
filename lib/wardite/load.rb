@@ -281,7 +281,8 @@ module Wardite
       if enable_wasi
         if RUBY_ENGINE == "spinel"
           raise LoadError, "WASI is not supported in Spinel builds; pass enable_wasi: false"
-        else
+        elsif sections_.any? { |section| section.is_a?(ImportSection) &&
+            section.imports.any? { |import| import.module_name == "wasi_snapshot_preview1" } }
           require "wardite/wasi"
           wasi_env = Wardite::WasiSnapshotPreview1.new
           import_object[:wasi_snapshot_preview1] = wasi_env
@@ -291,9 +292,7 @@ module Wardite
       return Instance.new(import_object, engine: engine, disabled_optimizations: disabled_optimizations, mir_profile: mir_profile) do |i|
         i.version = version
         i.sections = sections_
-        if enable_wasi
-          i.wasi = wasi_env
-        end
+        i.wasi = wasi_env
       end
     ensure
       $stderr.puts "load_from_buffer: #{Time.now.to_f - start}" if ENV['WARITE_TRACE']

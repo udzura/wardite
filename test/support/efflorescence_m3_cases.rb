@@ -17,6 +17,8 @@ module EfflorescenceM3Cases
       (func $wrong_arity (param i32) (result i32) unreachable)
       (func $arg (param i32) (result i32)
         global.get $effects i32.const 1 i32.add global.set $effects local.get 0)
+      (export "sum" (func $sum))
+      (func (export "direct") (param i32 i32) (result i32) local.get 0 local.get 1 call $sum)
       (func (export "effects") (result i32) global.get $effects)
       (func (export "run") (param i32 i32 i32) (result i32)
         local.get 1 call $arg local.get 2 call $arg local.get 0 call_indirect (type $expected)))
