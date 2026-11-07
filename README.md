@@ -88,8 +88,12 @@ caught values. Uncaught exceptions expose their tag and payload through
 
 [M2](docs/efflorescence-m2.md) adds i32 loads/stores, mutable i32 globals and
 memory.size/grow/init/copy/fill. All state stays in the shared Store, with
-checked byte ranges and instance-local runtime data segments. Execution remains
-flat-only; imports/WASI, memory64, shared memory and data.drop are unsupported.
+checked byte ranges and instance-local runtime data segments.
+
+[M3](docs/efflorescence-m3.md) adds i32 function imports, imported reexports,
+and typed `call_indirect` through funcref table 0. Host callbacks share the
+instance Store and can re-enter the VM. CRuby runs the i32 WASI `fd_write` and
+`proc_exit` examples. Spinel supports regular host callbacks.
 
 ## Development
 

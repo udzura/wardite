@@ -11,6 +11,10 @@ module Wardite
 
       attr_accessor frames_created: Integer
 
+      attr_accessor host_calls: Integer
+
+      attr_accessor root_defined_entries: Integer
+
       def initialize: () -> untyped
 
       # @rbs opcode: Integer
@@ -24,6 +28,13 @@ module Wardite
 
       # @rbs return: Integer
       def copies: () -> Integer
+
+      # @rbs parameter_count: Integer
+      # @rbs return: void
+      def enter_indirect_defined: (Integer parameter_count) -> void
+
+      # @rbs return: Integer
+      def indirect_calls: () -> Integer
 
       # @rbs return: Integer
       def function_entries: () -> Integer

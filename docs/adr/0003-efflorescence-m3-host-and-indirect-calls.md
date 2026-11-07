@@ -1,6 +1,6 @@
 # ADR 0003: Efflorescence M3のホスト呼び出しと間接呼び出し
 
-- 状態: 提案。実装・検証は未実施。
+- 状態: 採用。実装と検証結果は [M3実装記録](../efflorescence-m3.md) を参照。
 - 日付: 2026-11-07
 - 調査基準: main `80dd56d`（M2とbulk転送改善のmerge後）
 - 前提: [M1実装](../efflorescence-m1.md)、[M2実装](../efflorescence-m2.md)、[M0調査](../efflorescence-coverage-ja.md)

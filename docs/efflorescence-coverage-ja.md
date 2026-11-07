@@ -4,10 +4,9 @@
 実行コードは変更せず、デコーダー、Runtime、生成済みEvaluator、Translatorを照合した。
 既存の `benchmark/compare.rb` の作業中の変更は対象外。
 
-現在はM1の28命令・新形式EHに加え、M2の15命令も実装済み。
-詳細は[M1](efflorescence-m1.md)・[M2](efflorescence-m2.md)の実装記録を参照。
-M0の188命令のうち、既存21 + M1追加28 + M2追加15 = **64命令**に対応する
-（追加の新形式EH 3命令は別枠）。M3〜M5の124命令は未対応。
+現在は M1 の28命令・新形式 EH、M2 の15命令、M3 の `call_indirect` を実装済み。
+M0 の188命令のうち、既存21 + M1追加28 + M2追加15 + M3追加1 = **65命令**に対応する
+（新形式 EH 3命令は別枠）。詳細は [M1](efflorescence-m1.md)、[M2](efflorescence-m2.md)、[M3](efflorescence-m3.md) の実装記録を参照。
 
 | M2の追加分類 | 命令数 | 現在の状態 |
 |---|---:|---|

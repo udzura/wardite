@@ -59,6 +59,15 @@ class EfflorescenceM3HostTest < Test::Unit::TestCase
     end
   end
 
+  test "profiling an imported export counts one host call and no frames" do
+    vm = load_efflorescence('(module (import "env" "one" (func $one (result i32))) (export "one" (func $one)))',
+      mir_profile: true, import_object: {env: {one: ->(_store, _args) { 1 }}}).runtime
+    assert_equal 1, vm.call_unboxed(:one, [])
+    metrics = vm.metrics
+    assert_equal [1, 0, 1, 0, 0],
+      [metrics.host_calls, metrics.indirect_calls, metrics.function_entries, metrics.frames_created, metrics.dispatches]
+  end
+
   test "all imports are linked before start and unsupported kinds or types are rejected" do
     started = []
     init = ->(_store, _args) { started << true; nil }

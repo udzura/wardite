@@ -231,11 +231,13 @@ module Wardite
 
       # @rbs host_index: Integer
       # @rbs arguments: Array[Integer]
+      # @rbs metrics: Wardite::Efflorescence::Metrics
       # @rbs return: Integer?
-      def invoke_host(host_index, arguments)
+      def invoke_host(host_index, arguments, metrics)
         host = @ir.hosts[host_index] || raise(Wardite::EvalError, "missing MIR host function")
         boxed = [] #: Array[Wardite::wasmValue]
         arguments.each { |value| boxed << Wardite::I32.new(value) }
+        metrics.host_calls += 1 if @profiling
         result = host.callable.call(@instance.store, boxed)
         if host.entry.result_types.empty?
           return nil if result.nil?
@@ -256,11 +258,12 @@ module Wardite
         metrics = @profiling ? Metrics.new : @metrics
         pools = [] #: Array[Wardite::Efflorescence::FramePool]
         active_frames = [] #: Array[Wardite::Efflorescence::Frame]
-        return invoke_host(entry.host_index, arguments) if entry.kind == :host
+        return invoke_host(entry.host_index, arguments, metrics) if entry.kind == :host
 
         @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }
         frame = pool_at(pools, entry.defined_index).acquire(-1)
         active_frames << frame
+        metrics.root_defined_entries = 1 if @profiling
         arguments.each_with_index { |value, i| frame.registers[i] = value }
         result = execute_flat(frame, pools, active_frames, metrics)
         entry.result_types.empty? ? nil : result
@@ -278,11 +281,12 @@ module Wardite
       # @rbs site: Wardite::Efflorescence::DynamicCallSite
       # @rbs host_index: Integer
       # @rbs destination: Integer
+      # @rbs metrics: Wardite::Efflorescence::Metrics
       # @rbs return: void
-      def execute_host_site(frame, site, host_index, destination)
+      def execute_host_site(frame, site, host_index, destination, metrics)
         registers = frame.registers
         arguments = site.arguments.map { |register| registers[register] }
-        result = invoke_host(host_index, arguments)
+        result = invoke_host(host_index, arguments, metrics)
         registers[destination] = result if destination >= 0 && result
       end
 
@@ -295,7 +299,7 @@ module Wardite
         index = selector & 0xffffffff
         raise Wardite::EvalError, "call_indirect table index out of bounds: #{index}" if index >= table.current
         function = table.refs[index]
-        raise Wardite::EvalError, "call_indirect null reference" unless function
+        raise Wardite::EvalError, "call_indirect null reference" if function.nil?
         function_index = @function_indices[function.object_id]
         unless function_index && @indirect_functions[function_index].equal?(function)
           raise Wardite::EvalError, "call_indirect unknown function reference"
@@ -307,12 +311,40 @@ module Wardite
         entry
       end
 
-      # @rbs site: Wardite::Efflorescence::DynamicCallSite
-      # @rbs target: Array[Integer]
-      # @rbs source: Array[Integer]
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs site_id: Integer
+      # @rbs destination: Integer
+      # @rbs metrics: Wardite::Efflorescence::Metrics
       # @rbs return: void
-      def transfer_indirect_arguments(site, target, source)
-        site.arguments.each_with_index { |register, i| target[i] = source[register] }
+      def execute_direct_host(frame, site_id, destination, metrics)
+        site = frame.function.dynamic_site(site_id)
+        execute_host_site(frame, site, site.host_index, destination, metrics)
+      end
+
+      # Keep table resolution and the additional call locals off the hot path.
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs destination: Integer
+      # @rbs site_id: Integer
+      # @rbs selector: Integer
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      # @rbs return: Wardite::Efflorescence::Frame
+      def execute_indirect(frame, pools, frames, destination, site_id, selector, metrics)
+        site = frame.function.dynamic_site(site_id)
+        registers = frame.registers
+        entry = indirect_entry(site, registers[selector])
+        if entry.kind == :host
+          execute_host_site(frame, site, entry.host_index, destination, metrics)
+          frame
+        else
+          next_frame = pool_at(pools, entry.defined_index).acquire(destination)
+          frames << next_frame
+          target = next_frame.registers
+          site.arguments.each_with_index { |register, i| target[i] = registers[register] }
+          metrics.enter_indirect_defined(site.arguments.size) if @profiling
+          next_frame
+        end
       end
 
       # @rbs frame: Wardite::Efflorescence::Frame
@@ -443,36 +475,29 @@ module Wardite
             pc = 0
             next
           when 67 # Opcode::CALL_HOST
-            dynamic_site = frame.function.dynamic_site(instructions.fetch(pc + 2))
-            execute_host_site(frame, dynamic_site, dynamic_site.host_index, a)
+            execute_direct_host(frame, instructions.fetch(pc + 2), a, metrics)
           when 68 # Opcode::CALL_INDIRECT
-            dynamic_site = frame.function.dynamic_site(instructions.fetch(pc + 2))
-            selector = instructions.fetch(pc + 3)
-            entry = indirect_entry(dynamic_site, registers[selector])
-            if entry.kind == :host
-              execute_host_site(frame, dynamic_site, entry.host_index, a)
-            else
-              frame.pc = pc + Lowerer::WIDTH
-              next_frame = pool_at(pools, entry.defined_index).acquire(a)
-              frames << next_frame
-              transfer_indirect_arguments(dynamic_site, next_frame.registers, registers)
-              frame = next_frame
-              registers = frame.registers
-              instructions = frame.function.bytecode
-              pc = 0
-              next
-            end
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            frame.pc = pc + Lowerer::WIDTH
+            frame = execute_indirect(frame, pools, frames, a, b, c, metrics)
+            registers = frame.registers
+            instructions = frame.function.bytecode
+            pc = Integer(frame.pc)
+            next
           when 11 # Opcode::RETURN
-            value = a < 0 ? 0 : registers[a]
+            # Verified RETURN reads an initialized i32. Keep its native type
+            # separate from the nullable array reads used by the ALU cases.
+            return_value = a < 0 ? 0 : Integer(registers[a])
             destination = frame.return_register
             frames.pop
             pool = pools[frame.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
             pool.release(frame)
-            return value if frames.empty?
+            return return_value if frames.empty?
             frame = current_frame(frames)
             registers = frame.registers
-            registers[destination] = value if destination >= 0
+            registers[destination] = return_value if destination >= 0
             instructions = frame.function.bytecode
             pc = Integer(frame.pc)
             next

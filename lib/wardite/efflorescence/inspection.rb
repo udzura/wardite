@@ -8,12 +8,17 @@ module Wardite
       attr_reader :register_reads #: Integer
       attr_reader :register_writes #: Integer
       attr_accessor :frames_created #: Integer
+      attr_accessor :host_calls #: Integer
+      attr_accessor :root_defined_entries #: Integer
 
       def initialize
         @opcode_counts = Array.new(Opcode::NAMES.size, 0)
         @register_reads = 0
         @register_writes = 0
         @frames_created = 0
+        @host_calls = 0
+        @root_defined_entries = 0
+        @indirect_defined_entries = 0
       end
 
       # @rbs opcode: Integer
@@ -36,15 +41,31 @@ module Wardite
         @opcode_counts[Opcode::COPY]
       end
 
+      # @rbs parameter_count: Integer
+      # @rbs return: void
+      def enter_indirect_defined(parameter_count)
+        @indirect_defined_entries += 1
+        @register_writes += parameter_count
+      end
+
+      # @rbs return: Integer
+      def indirect_calls
+        @opcode_counts[Opcode::CALL_INDIRECT]
+      end
+
       # @rbs return: Integer
       def function_entries
-        1 + @opcode_counts[Opcode::CALL]
+        @root_defined_entries + @opcode_counts[Opcode::CALL] + @indirect_defined_entries + @host_calls
       end
 
       # @rbs return: String
       def report
-        "dispatches=#{dispatches} copies=#{copies} register_reads=#{@register_reads} " \
+        counters = "dispatches=#{dispatches} copies=#{copies} register_reads=#{@register_reads} " \
           "register_writes=#{@register_writes} function_entries=#{function_entries} frames_created=#{@frames_created}"
+        if @host_calls > 0 || indirect_calls > 0
+          counters += " host_calls=#{@host_calls} indirect_calls=#{indirect_calls}"
+        end
+        counters
       end
     end
 

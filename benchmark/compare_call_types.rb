@@ -11,8 +11,9 @@ Dir.chdir(File.expand_path("..", __dir__))
 $stdout.sync = true
 ablation = ENV["INLINE_ABLATION"] == "1"
 arities = ENV["CALL_ARITIES"] == "1"
+mix_only = ENV["MIX_ONLY"] == "1"
 experiment = ENV["CALL_ARITY_EXPERIMENT"] == "1"
-abort "Choose either CALL_ARITIES or INLINE_ABLATION" if arities && ablation
+abort "Choose only one of CALL_ARITIES, INLINE_ABLATION or MIX_ONLY" if [arities, ablation, mix_only].count(true) > 1
 abort "CALL_ARITY_EXPERIMENT requires CALL_ARITIES=1" if experiment && !arities
 output = File.expand_path("build/benchmark/#{arities ? 'call-arities' : (ablation ? 'inlining' : 'call-types')}")
 FileUtils.mkdir_p(output)
@@ -21,9 +22,13 @@ seed = Integer(ARGV.fetch(1, "123"), 10)
 runs = Integer(ENV.fetch("RUNS", "7"))
 warmups = Integer(ENV.fetch("WARMUPS", "2"))
 abort "invalid inputs" unless (0..0x7fffffff).cover?(rounds) && (0..0xffffffff).cover?(seed) && runs > 1 && warmups >= 0
-exports = arities ? %w[empty_loop call_zero call_one call_two call_three call_four] :
-  %w[empty_loop call_identity call_add_one inline_mix call_mix]
-fixture = arities ? "benchmark/i32_call_arities.wat" : "benchmark/i32_calls.wat"
+exports, fixture = if arities
+  [%w[empty_loop call_zero call_one call_two call_three call_four], "benchmark/i32_call_arities.wat"]
+elsif mix_only
+  [%w[inline_mix call_mix], "benchmark/i32_mix.wat"]
+else
+  [%w[empty_loop call_identity call_add_one inline_mix call_mix], "benchmark/i32_calls.wat"]
+end
 runtimes = ENV.fetch("RUNTIMES", "Spinel").split(",").uniq
 abort "invalid RUNTIMES" if runtimes.empty? || !(runtimes - %w[Spinel CRuby YJIT]).empty?
 if runtimes.include?("YJIT")
@@ -202,5 +207,6 @@ report = {comparison: ablation ? "same binary, inline off/on" : "commits", basel
   call_arity_experiment: experiment,
   rounds: rounds, seed: seed, runs: runs, warmups: warmups,
   spinel: version.strip, spinel_flags: flags, ruby: RUBY_DESCRIPTION, checksums: checksums, snapshots: snapshots, results: rows}
-File.write("#{output}/results.json", JSON.pretty_generate(report) + "\n")
-puts "Saved #{output}/results.json"
+report_path = "#{output}/#{mix_only ? 'mix-results.json' : 'results.json'}"
+File.write(report_path, JSON.pretty_generate(report) + "\n")
+puts "Saved #{report_path}"
