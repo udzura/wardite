@@ -1,0 +1,820 @@
+{
+  "before_revision": "5ac5dc1",
+  "note": "before: String range assignment; after: byte loops. Same compiler and Ruby, measured back to back.",
+  "before": {
+    "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin25]",
+    "spinel": "spinel 2026.10.25+1968 (6f1a2c259) [apple clang 21.0.0 (cc)]",
+    "compiler_flags": [
+      "-O2"
+    ],
+    "runs": 7,
+    "warmups": 2,
+    "rounds": 1000,
+    "seed": 123,
+    "disabled": [
+      "inline"
+    ],
+    "samples": [
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.0009850002825260162,
+        "execution": 0.3782739997841418,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.0004059998318552971,
+        "execution": 0.025725000072270632,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.00037499982863664627,
+        "execution": 0.02591500012204051,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.0009880000725388527,
+        "execution": 0.37454700004309416,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.000986000057309866,
+        "execution": 0.35883900010958314,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.00041399989277124405,
+        "execution": 0.02688799984753132,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.00037499982863664627,
+        "execution": 0.02742200018838048,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.000984999816864729,
+        "execution": 0.3734030001796782,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.0009850002825260162,
+        "execution": 0.37517499970272183,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.00040900008752942085,
+        "execution": 0.025544000323861837,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.0003760000690817833,
+        "execution": 0.02614900004118681,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.000984999816864729,
+        "execution": 0.37949700001627207,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.0009889998473227024,
+        "execution": 0.37519600009545684,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.00042799999937415123,
+        "execution": 0.025749000255018473,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0009960001334547997,
+        "execution": 0.0027009998448193073,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.00043499981984496117,
+        "execution": 0.16790100000798702,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.00038299988955259323,
+        "execution": 0.16800300031900406,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0010020001791417599,
+        "execution": 0.0026850001886487007,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0009949998930096626,
+        "execution": 0.002662000246345997,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.00043000001460313797,
+        "execution": 0.16799299977719784,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.0003919997252523899,
+        "execution": 0.16766700008884072,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0009920001029968262,
+        "execution": 0.0026699998416006565,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0009949998930096626,
+        "execution": 0.0026699998416006565,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.00039799977093935013,
+        "execution": 0.16804999997839332,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.00041799992322921753,
+        "execution": 0.16801200015470386,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0009929998777806759,
+        "execution": 0.0026839999482035637,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0009920001029968262,
+        "execution": 0.002731999848037958,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.0004210001789033413,
+        "execution": 0.16816399991512299,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0010039997287094593,
+        "execution": 0.001039000228047371,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.000421999953687191,
+        "execution": 0.00005499972030520439,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.00039799977093935013,
+        "execution": 0.0000550001859664917,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0016709999181330204,
+        "execution": 0.0009960001334547997,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0009909998625516891,
+        "execution": 0.0010270001366734505,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.0004360000602900982,
+        "execution": 0.000057999975979328156,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.0003809998743236065,
+        "execution": 0.000053999945521354675,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.001694999635219574,
+        "execution": 0.0009850002825260162,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0009910003282129765,
+        "execution": 0.0009999996982514858,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.0004070000723004341,
+        "execution": 0.000053999945521354675,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.00036399997770786285,
+        "execution": 0.00005300017073750496,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0009880000725388527,
+        "execution": 0.0010149995796382427,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0009889998473227024,
+        "execution": 0.001031000167131424,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.0004070000723004341,
+        "execution": 0.000055999960750341415,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.0009999996982514858,
+        "execution": 0.0024790000170469284,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.00043899985030293465,
+        "execution": 0.08425600035116076,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.00037400005385279655,
+        "execution": 0.08419499965384603,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.0016800002194941044,
+        "execution": 0.0024329996667802334,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.0016739997081458569,
+        "execution": 0.002461000345647335,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.0004229997284710407,
+        "execution": 0.08412400027737021,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.0003869999200105667,
+        "execution": 0.08431999990716577,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.000994000118225813,
+        "execution": 0.0024999999441206455,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.000994000118225813,
+        "execution": 0.00242799986153841,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.00042499974370002747,
+        "execution": 0.084500000346452,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.0003760000690817833,
+        "execution": 0.08409899985417724,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.001006999984383583,
+        "execution": 0.002497000154107809,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.000997999683022499,
+        "execution": 0.0024730004370212555,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.00042300019413232803,
+        "execution": 0.08424999983981252,
+        "checksum": 70099
+      }
+    ]
+  },
+  "after": {
+    "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin25]",
+    "spinel": "spinel 2026.10.25+1968 (6f1a2c259) [apple clang 21.0.0 (cc)]",
+    "compiler_flags": [
+      "-O2"
+    ],
+    "runs": 7,
+    "warmups": 2,
+    "rounds": 1000,
+    "seed": 123,
+    "disabled": [
+      "inline"
+    ],
+    "samples": [
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.00099500035867095,
+        "execution": 0.38049899972975254,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.0004019998013973236,
+        "execution": 0.027354000136256218,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.00036800000816583633,
+        "execution": 0.026247000321745872,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.0009960001334547997,
+        "execution": 0.3712459998205304,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.0009969999082386494,
+        "execution": 0.3787680002860725,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.0004109996370971203,
+        "execution": 0.027377000078558922,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.0003820001147687435,
+        "execution": 0.025230000261217356,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.0016609998419880867,
+        "execution": 0.37302799988538027,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.0009949998930096626,
+        "execution": 0.37535900017246604,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.00043899985030293465,
+        "execution": 0.02592100016772747,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.0003810003399848938,
+        "execution": 0.027395999990403652,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.001016000285744667,
+        "execution": 0.38339099986478686,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "array_scan",
+        "load": 0.0010100002400577068,
+        "execution": 0.387703999876976,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "Spinel",
+        "export": "array_scan",
+        "load": 0.00041799992322921753,
+        "execution": 0.025274000130593777,
+        "checksum": 64128000
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0010009999386966228,
+        "execution": 0.021518999710679054,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.00039499998092651367,
+        "execution": 0.0011240001767873764,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.0003609997220337391,
+        "execution": 0.0010720002464950085,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0009960001334547997,
+        "execution": 0.02146399999037385,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0016599996015429497,
+        "execution": 0.020942000206559896,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.00039499998092651367,
+        "execution": 0.0010839998722076416,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.0003659999929368496,
+        "execution": 0.0011620000004768372,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0009930003434419632,
+        "execution": 0.021410999819636345,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0017459997907280922,
+        "execution": 0.02136899996548891,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.0004000002518296242,
+        "execution": 0.001066999975591898,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.0003700000233948231,
+        "execution": 0.0011220001615583897,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0016619996167719364,
+        "execution": 0.0209650001488626,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "copy_fill",
+        "load": 0.0010049999691545963,
+        "execution": 0.020210999995470047,
+        "checksum": 127908
+      },
+      {
+        "runtime": "Spinel",
+        "export": "copy_fill",
+        "load": 0.00040400028228759766,
+        "execution": 0.0010770000517368317,
+        "checksum": 127908
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0010100002400577068,
+        "execution": 0.0010379999876022339,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.00039299996569752693,
+        "execution": 0.000055999960750341415,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.00037400005385279655,
+        "execution": 0.000053999945521354675,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0009920001029968262,
+        "execution": 0.00102199986577034,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0009900000877678394,
+        "execution": 0.001023000106215477,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.0003969999961555004,
+        "execution": 0.000055999960750341415,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.0003670002333819866,
+        "execution": 0.000053999945521354675,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0009879996068775654,
+        "execution": 0.0010060002095997334,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0009969999082386494,
+        "execution": 0.0009850002825260162,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.00040500005707144737,
+        "execution": 0.0000550001859664917,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.00035899970680475235,
+        "execution": 0.0000550001859664917,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0010060002095997334,
+        "execution": 0.0010199998505413532,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "global_update",
+        "load": 0.0009969999082386494,
+        "execution": 0.0010369997471570969,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "Spinel",
+        "export": "global_update",
+        "load": 0.0003959997557103634,
+        "execution": 0.0000550001859664917,
+        "checksum": 1664525123
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.0009949998930096626,
+        "execution": 0.0033370000310242176,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.00039900001138448715,
+        "execution": 0.00015399977564811707,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.0003669997677206993,
+        "execution": 0.00015200022608041763,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.0009989999234676361,
+        "execution": 0.003383999690413475,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.001029999926686287,
+        "execution": 0.0033909999765455723,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.00041899969801306725,
+        "execution": 0.0001560002565383911,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.0003800000995397568,
+        "execution": 0.00015300000086426735,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.0010029999539256096,
+        "execution": 0.003409000113606453,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.0009960001334547997,
+        "execution": 0.0033740000799298286,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.0004059998318552971,
+        "execution": 0.00015400024130940437,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.0003609997220337391,
+        "execution": 0.00015300000086426735,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.0009910003282129765,
+        "execution": 0.0033959997817873955,
+        "checksum": 70099
+      },
+      {
+        "runtime": "CRuby",
+        "export": "segment_init",
+        "load": 0.00099500035867095,
+        "execution": 0.003420999739319086,
+        "checksum": 70099
+      },
+      {
+        "runtime": "Spinel",
+        "export": "segment_init",
+        "load": 0.00041400035843253136,
+        "execution": 0.0001559997908771038,
+        "checksum": 70099
+      }
+    ]
+  }
+}
