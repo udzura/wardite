@@ -77,8 +77,9 @@ module Wardite
 
       # @rbs wasm: Wardite::WasmFunction
       # @rbs index: Integer
+      # @rbs pool_index: Integer
       # @rbs return: Wardite::Efflorescence::Function
-      def translate_function: (Wardite::WasmFunction wasm, Integer index) -> Wardite::Efflorescence::Function
+      def translate_function: (Wardite::WasmFunction wasm, Integer index, Integer pool_index) -> Wardite::Efflorescence::Function
 
       private
 

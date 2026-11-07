@@ -307,6 +307,8 @@ module Wardite
     class Function
       attr_reader index: Integer
 
+      attr_reader pool_index: Integer
+
       attr_reader parameter_types: Array[Symbol]
 
       attr_reader result_types: Array[Symbol]
@@ -342,7 +344,8 @@ module Wardite
       # @rbs result_types: Array[Symbol]
       # @rbs local_count: Integer
       # @rbs local_types: Array[Symbol]?
-      def initialize: (Integer index, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer local_count, ?local_types: Array[Symbol]?) -> untyped
+      # @rbs pool_index: Integer?
+      def initialize: (Integer index, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer local_count, ?local_types: Array[Symbol]?, ?pool_index: Integer?) -> untyped
 
       # @rbs return: Integer
       def register_count: () -> Integer
@@ -428,15 +431,48 @@ module Wardite
       def copy_arguments: (Array[Integer] target, Array[Integer] source) -> void
     end
 
+    class FunctionEntry
+      attr_reader kind: Symbol
+
+      attr_reader parameter_types: Array[Symbol]
+
+      attr_reader result_types: Array[Symbol]
+
+      attr_reader defined_index: Integer
+
+      attr_reader host_index: Integer
+
+      # @rbs kind: Symbol
+      # @rbs parameter_types: Array[Symbol]
+      # @rbs result_types: Array[Symbol]
+      # @rbs defined_index: Integer
+      # @rbs host_index: Integer
+      def initialize: (Symbol kind, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer defined_index, Integer host_index) -> untyped
+
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def copy: () -> Wardite::Efflorescence::FunctionEntry
+    end
+
     class IR
       attr_reader functions: Array[Wardite::Efflorescence::Function]
 
+      attr_reader entries: Array[Wardite::Efflorescence::FunctionEntry]
+
       # @rbs functions: Array[Wardite::Efflorescence::Function]
-      def initialize: (Array[Wardite::Efflorescence::Function] functions) -> untyped
+      # @rbs entries: Array[Wardite::Efflorescence::FunctionEntry]?
+      def initialize: (Array[Wardite::Efflorescence::Function] functions, ?entries: Array[Wardite::Efflorescence::FunctionEntry]?) -> untyped
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def entry_at: (Integer index) -> Wardite::Efflorescence::FunctionEntry
 
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::Function
       def function_at: (Integer index) -> Wardite::Efflorescence::Function
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::Function
+      def defined_at: (Integer index) -> Wardite::Efflorescence::Function
 
       # @rbs return: Wardite::Efflorescence::IR
       def copy: () -> Wardite::Efflorescence::IR

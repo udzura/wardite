@@ -194,8 +194,8 @@ module Wardite
           changed = [] #: Array[Integer]
           index = 0
           while index < ir.functions.size
-            function = ir.function_at(index)
-            changed << index if !function.uses_eh && !function.uses_store && expand_calls(function, callees)
+            function = ir.defined_at(index)
+            changed << function.index if !function.uses_eh && !function.uses_store && expand_calls(function, callees)
             index += 1
           end
           changed
@@ -542,7 +542,7 @@ module Wardite
       def compile(ir)
         function_index = 0
         while function_index < ir.functions.size
-          function = ir.function_at(function_index)
+          function = ir.defined_at(function_index)
           code = [] #: Array[Integer]
           calls = [] #: Array[Wardite::Efflorescence::CallSite]
           function.instructions.each do |instruction|

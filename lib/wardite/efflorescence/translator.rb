@@ -84,24 +84,30 @@ module Wardite
       def translate
         raise UnsupportedFeature, "Efflorescence: imports are not supported" unless @instance.import_section.imports.empty?
         functions = [] #: Array[Wardite::Efflorescence::Function]
+        entries = [] #: Array[Wardite::Efflorescence::FunctionEntry]
+        @instance.store.funcs.each do |function|
+          raise UnsupportedFeature, "Efflorescence: host functions are not supported" unless function.is_a?(Wardite::WasmFunction)
+          entries << FunctionEntry.new(:defined, function.callsig, function.retsig, entries.size, -1)
+        end
         @instance.store.funcs.each_with_index do |function, index|
           raise UnsupportedFeature, "Efflorescence: host functions are not supported" unless function.is_a?(Wardite::WasmFunction)
-          functions << translate_function(function, index)
+          functions << translate_function(function, index, functions.size)
         end
-        IR.new(functions)
+        IR.new(functions, entries: entries)
       end
 
       # @rbs wasm: Wardite::WasmFunction
       # @rbs index: Integer
+      # @rbs pool_index: Integer
       # @rbs return: Wardite::Efflorescence::Function
-      def translate_function(wasm, index)
+      def translate_function(wasm, index, pool_index)
         check_signature(wasm)
         unless wasm.locals_type.all? { |type| type == :i32 || type == :exnref }
           raise UnsupportedFeature, "Efflorescence: function #{index} has unsupported locals"
         end
         locals = [] #: Array[Symbol]
         wasm.locals_type.each_with_index { |type, i| wasm.locals_count.fetch(i).times { locals << type } }
-        @function = Function.new(index, wasm.callsig, wasm.retsig, locals.size, local_types: locals)
+        @function = Function.new(index, wasm.callsig, wasm.retsig, locals.size, local_types: locals, pool_index: pool_index)
         @stack, @controls, @constants = [], [], {}
         @reachable, @handler_depth = true, 0
         @controls << new_control(:function, wasm.retsig)

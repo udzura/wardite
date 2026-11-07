@@ -52,7 +52,7 @@ module Wardite
         export = @instance.export_section.exports[name.to_s]
         raise ::NoMethodError, "function #{name} not found" unless export
         raise ::NoMethodError, "#{name} is not a function" unless export.kind == 0
-        function = @ir.functions[export.index] || raise(Wardite::EvalError, "invalid function index")
+        function = @ir.function_at(export.index)
         unless arguments.size == function.parameter_count
           raise Wardite::ArgumentError, "unmatch arg size"
         end
@@ -225,8 +225,8 @@ module Wardite
       def execute(index, arguments)
         pools = [] #: Array[Wardite::Efflorescence::FramePool]
         @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }
-        function = @ir.functions[index] || raise(Wardite::EvalError, "invalid function index #{index}")
-        pool = pools[function.index]
+        function = @ir.function_at(index)
+        pool = pools[function.pool_index]
         raise Wardite::EvalError, "missing MIR frame pool" unless pool
         frame = pool.acquire(-1)
         arguments.each_with_index { |value, i| frame.registers[i] = value }

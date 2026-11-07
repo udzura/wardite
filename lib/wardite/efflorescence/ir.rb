@@ -341,6 +341,7 @@ module Wardite
     # function-level optimization passes can consume and produce MIR.
     class Function
       attr_reader :index #: Integer
+      attr_reader :pool_index #: Integer
       attr_reader :parameter_types #: Array[Symbol]
       attr_reader :result_types #: Array[Symbol]
       attr_reader :local_count #: Integer
@@ -362,8 +363,10 @@ module Wardite
       # @rbs result_types: Array[Symbol]
       # @rbs local_count: Integer
       # @rbs local_types: Array[Symbol]?
-      def initialize(index, parameter_types, result_types, local_count, local_types: nil)
+      # @rbs pool_index: Integer?
+      def initialize(index, parameter_types, result_types, local_count, local_types: nil, pool_index: nil)
         @index = index
+        @pool_index = pool_index || index
         @parameter_types = parameter_types.dup
         @result_types = result_types.dup
         @local_count = local_count
@@ -507,7 +510,7 @@ module Wardite
 
       # @rbs return: Wardite::Efflorescence::Function
       def copy
-        result = Function.new(@index, @parameter_types, @result_types, @local_count, local_types: @register_types[@parameter_types.size, @local_count])
+        result = Function.new(@index, @parameter_types, @result_types, @local_count, local_types: @register_types[@parameter_types.size, @local_count], pool_index: @pool_index)
         result.uses_eh = @uses_eh
         result.uses_store = @uses_store
         @memory_sites.each { |site| result.memory_sites << site.copy }
@@ -537,7 +540,7 @@ module Wardite
       def initialize(callee, arguments)
         @callee = callee
         @arguments = arguments
-        @pool_index = callee.index
+        @pool_index = callee.pool_index
       end
 
       # Keep the generic argument loop out of the interpreter's live locals.
@@ -555,23 +558,69 @@ module Wardite
       end
     end
 
+    class FunctionEntry
+      attr_reader :kind #: Symbol
+      attr_reader :parameter_types #: Array[Symbol]
+      attr_reader :result_types #: Array[Symbol]
+      attr_reader :defined_index #: Integer
+      attr_reader :host_index #: Integer
+
+      # @rbs kind: Symbol
+      # @rbs parameter_types: Array[Symbol]
+      # @rbs result_types: Array[Symbol]
+      # @rbs defined_index: Integer
+      # @rbs host_index: Integer
+      def initialize(kind, parameter_types, result_types, defined_index, host_index)
+        @kind = kind
+        @parameter_types = parameter_types.dup
+        @result_types = result_types.dup
+        @defined_index = defined_index
+        @host_index = host_index
+      end
+
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def copy
+        FunctionEntry.new(@kind, @parameter_types, @result_types, @defined_index, @host_index)
+      end
+    end
+
     class IR
       attr_reader :functions #: Array[Wardite::Efflorescence::Function]
+      attr_reader :entries #: Array[Wardite::Efflorescence::FunctionEntry]
 
       # @rbs functions: Array[Wardite::Efflorescence::Function]
-      def initialize(functions)
+      # @rbs entries: Array[Wardite::Efflorescence::FunctionEntry]?
+      def initialize(functions, entries: nil)
         @functions = functions
+        @entries = entries || functions.map do |function|
+          FunctionEntry.new(:defined, function.parameter_types, function.result_types, function.pool_index, -1)
+        end
+      end
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def entry_at(index)
+        raise Wardite::EvalError, "invalid MIR function index #{index}" if index < 0
+        @entries[index] || raise(Wardite::EvalError, "invalid MIR function index #{index}")
       end
 
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::Function
       def function_at(index)
-        @functions[index] || raise(Wardite::EvalError, "invalid MIR function index #{index}")
+        entry = entry_at(index)
+        raise Wardite::EvalError, "MIR function #{index} is not defined" unless entry.kind == :defined
+        defined_at(entry.defined_index)
+      end
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::Function
+      def defined_at(index)
+        @functions[index] || raise(Wardite::EvalError, "invalid MIR defined index #{index}")
       end
 
       # @rbs return: Wardite::Efflorescence::IR
       def copy
-        IR.new(@functions.map { |function| function.copy })
+        IR.new(@functions.map { |function| function.copy }, entries: @entries.map { |entry| entry.copy })
       end
     end
 
@@ -588,7 +637,7 @@ module Wardite
       # @rbs return_register: Integer
       def initialize(function, return_register)
         @function = function
-        @pool_index = function.index
+        @pool_index = function.pool_index
         # Constants are initialized once and never written by verified MIR.
         # Copying the template also avoids zero-filling and then overwriting
         # every slot in a second loop on a newly allocated frame.
