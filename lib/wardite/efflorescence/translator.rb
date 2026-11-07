@@ -294,6 +294,24 @@ module Wardite
               emit([Opcode::CALL, dst, index] + arguments)
             end
             @stack << dst if dst >= 0
+          when :call_indirect
+            type_index = integer_operand(operands[0])
+            table_index = integer_operand(operands[1])
+            raise UnsupportedFeature, context("only call_indirect through table 0 is supported") unless table_index == 0
+            table = @instance.store.tables[0]
+            fail_translation("call_indirect requires funcref table 0") unless table && table.type == :funcref
+            type = @instance.types[type_index] if type_index >= 0
+            fail_translation("invalid indirect call type index #{type_index}") unless type
+            FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}")
+            @function.uses_dynamic_calls = true
+            next unless @reachable
+            selector = pop_typed(:i32)
+            arguments = type.callsig.reverse.map { |param| pop_typed(param) }.reverse
+            dst = type.retsig.empty? ? -1 : register
+            id = @function.dynamic_sites.size
+            @function.dynamic_sites << DynamicCallSite.new(-1, arguments, type.callsig, type.retsig, table_index: table_index)
+            emit([Opcode::CALL_INDIRECT, dst, id, selector])
+            @stack << dst if dst >= 0
           when :throw
             tag_index = integer_operand(operands[0])
             tag = tag_at(tag_index)

@@ -16,6 +16,14 @@ module Wardite
       def initialize(instance, disabled_optimizations: [], profile: false)
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
+        @function_indices = {} #: Hash[Integer, Integer]
+        # Retain the original objects so IDs stay valid even if a host edits
+        # Store.funcs. Spinel cannot use an identity Hash for these objects.
+        @indirect_functions = [] #: Array[Wardite::WasmFunction | Wardite::ExternalFunction]
+        unless instance.store.tables.empty?
+          @indirect_functions = instance.store.funcs.dup
+          @indirect_functions.each_with_index { |function, index| @function_indices[function.object_id] = index }
+        end
         configuration = Configuration.new(disabled_optimizations)
         @reuse_frames = configuration.enabled?(:frames)
         @profiling = profile
@@ -267,15 +275,44 @@ module Wardite
       end
 
       # @rbs frame: Wardite::Efflorescence::Frame
-      # @rbs site_id: Integer
+      # @rbs site: Wardite::Efflorescence::DynamicCallSite
+      # @rbs host_index: Integer
       # @rbs destination: Integer
       # @rbs return: void
-      def execute_host_site(frame, site_id, destination)
-        site = frame.function.dynamic_site(site_id)
+      def execute_host_site(frame, site, host_index, destination)
         registers = frame.registers
         arguments = site.arguments.map { |register| registers[register] }
-        result = invoke_host(site.host_index, arguments)
+        result = invoke_host(host_index, arguments)
         registers[destination] = result if destination >= 0 && result
+      end
+
+      # @rbs site: Wardite::Efflorescence::DynamicCallSite
+      # @rbs selector: Integer
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def indirect_entry(site, selector)
+        table = @instance.store.tables[site.table_index]
+        raise Wardite::EvalError, "call_indirect requires funcref table 0" unless table && table.type == :funcref
+        index = selector & 0xffffffff
+        raise Wardite::EvalError, "call_indirect table index out of bounds: #{index}" if index >= table.current
+        function = table.refs[index]
+        raise Wardite::EvalError, "call_indirect null reference" unless function
+        function_index = @function_indices[function.object_id]
+        unless function_index && @indirect_functions[function_index].equal?(function)
+          raise Wardite::EvalError, "call_indirect unknown function reference"
+        end
+        entry = @ir.entry_at(function_index)
+        unless entry.parameter_types == site.parameter_types && entry.result_types == site.result_types
+          raise Wardite::EvalError, "call_indirect function type mismatch"
+        end
+        entry
+      end
+
+      # @rbs site: Wardite::Efflorescence::DynamicCallSite
+      # @rbs target: Array[Integer]
+      # @rbs source: Array[Integer]
+      # @rbs return: void
+      def transfer_indirect_arguments(site, target, source)
+        site.arguments.each_with_index { |register, i| target[i] = source[register] }
       end
 
       # @rbs frame: Wardite::Efflorescence::Frame
@@ -406,7 +443,25 @@ module Wardite
             pc = 0
             next
           when 67 # Opcode::CALL_HOST
-            execute_host_site(frame, instructions.fetch(pc + 2), a)
+            dynamic_site = frame.function.dynamic_site(instructions.fetch(pc + 2))
+            execute_host_site(frame, dynamic_site, dynamic_site.host_index, a)
+          when 68 # Opcode::CALL_INDIRECT
+            dynamic_site = frame.function.dynamic_site(instructions.fetch(pc + 2))
+            selector = instructions.fetch(pc + 3)
+            entry = indirect_entry(dynamic_site, registers[selector])
+            if entry.kind == :host
+              execute_host_site(frame, dynamic_site, entry.host_index, a)
+            else
+              frame.pc = pc + Lowerer::WIDTH
+              next_frame = pool_at(pools, entry.defined_index).acquire(a)
+              frames << next_frame
+              transfer_indirect_arguments(dynamic_site, next_frame.registers, registers)
+              frame = next_frame
+              registers = frame.registers
+              instructions = frame.function.bytecode
+              pc = 0
+              next
+            end
           when 11 # Opcode::RETURN
             value = a < 0 ? 0 : registers[a]
             destination = frame.return_register

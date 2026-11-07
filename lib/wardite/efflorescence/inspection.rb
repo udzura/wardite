@@ -95,7 +95,8 @@ module Wardite
             lines << "  memory #{i}: sources=#{site.sources.inspect} memory=#{site.memory_index} source_memory=#{site.source_memory_index} data=#{site.data_index}"
           end
           function.dynamic_sites.each_with_index do |site, i|
-            lines << "  call #{i}: host=#{site.host_index} arguments=#{site.arguments.inspect}"
+            target = site.host_index >= 0 ? "host=#{site.host_index}" : "table=#{site.table_index}"
+            lines << "  call #{i}: #{target} #{site.parameter_types.inspect} -> #{site.result_types.inspect} arguments=#{site.arguments.inspect}"
           end
           function.instructions.each_with_index do |instruction, pc|
             operands = [] #: Array[String]

@@ -77,13 +77,14 @@ module Wardite
       MEMORY_COPY = 65
       MEMORY_FILL = 66
       CALL_HOST = 67
+      CALL_INDIRECT = 68
 
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
                  I32_XOR_SHR_U_IMM I32_XOR_SHL_IMM PROFILE
                  I32_EQ I32_NE I32_LTS I32_LTU I32_GTS I32_GTU I32_LES I32_LEU I32_GES I32_GEU I32_CLZ I32_CTZ I32_POPCNT I32_DIV_S I32_DIV_U I32_REM_S I32_REM_U I32_AND I32_OR I32_SHR_S I32_ROTL I32_ROTR I32_EXTEND8_S I32_EXTEND16_S COPY_REF EH_ENTER EH_TRIM THROW THROW_REF
-                 GLOBAL_GET GLOBAL_SET I32_LOAD I32_LOAD8_S I32_LOAD8_U I32_LOAD16_S I32_LOAD16_U I32_STORE I32_STORE8 I32_STORE16 MEMORY_SIZE MEMORY_GROW MEMORY_INIT MEMORY_COPY MEMORY_FILL CALL_HOST].freeze
+                 GLOBAL_GET GLOBAL_SET I32_LOAD I32_LOAD8_S I32_LOAD8_U I32_LOAD16_S I32_LOAD16_U I32_STORE I32_STORE8 I32_STORE16 MEMORY_SIZE MEMORY_GROW MEMORY_INIT MEMORY_COPY MEMORY_FILL CALL_HOST CALL_INDIRECT].freeze
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction
@@ -102,6 +103,8 @@ module Wardite
           [1]
         when CALL
           (3...instruction.size).to_a
+        when CALL_INDIRECT
+          [3]
         when RETURN
           instruction[1] < 0 ? [] : [1]
         when I32_STORE, I32_STORE8, I32_STORE16
@@ -133,13 +136,13 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.may_throw?(opcode)
-        opcode == CALL || opcode == THROW || opcode == THROW_REF
+        opcode == CALL || opcode == CALL_INDIRECT || opcode == THROW || opcode == THROW_REF
       end
 
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.may_trap?(opcode)
-        opcode == TRAP || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
+        opcode == TRAP || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode)
       end
 
@@ -153,7 +156,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.dynamic_call?(opcode)
-        opcode == CALL_HOST
+        opcode == CALL_HOST || opcode == CALL_INDIRECT
       end
 
       # @rbs opcode: Integer
@@ -582,6 +585,7 @@ module Wardite
 
     class DynamicCallSite
       attr_reader :host_index #: Integer
+      attr_reader :table_index #: Integer
       attr_reader :arguments #: Array[Integer]
       attr_reader :parameter_types #: Array[Symbol]
       attr_reader :result_types #: Array[Symbol]
@@ -590,8 +594,10 @@ module Wardite
       # @rbs arguments: Array[Integer]
       # @rbs parameter_types: Array[Symbol]
       # @rbs result_types: Array[Symbol]
-      def initialize(host_index, arguments, parameter_types, result_types)
+      # @rbs table_index: Integer
+      def initialize(host_index, arguments, parameter_types, result_types, table_index: -1)
         @host_index = host_index
+        @table_index = table_index
         @arguments = arguments.dup
         @parameter_types = parameter_types.dup
         @result_types = result_types.dup
@@ -599,7 +605,7 @@ module Wardite
 
       # @rbs return: Wardite::Efflorescence::DynamicCallSite
       def copy
-        DynamicCallSite.new(@host_index, @arguments, @parameter_types, @result_types)
+        DynamicCallSite.new(@host_index, @arguments, @parameter_types, @result_types, table_index: @table_index)
       end
     end
 

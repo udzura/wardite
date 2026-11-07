@@ -145,6 +145,8 @@ module Wardite
 
       CALL_HOST: ::Integer
 
+      CALL_INDIRECT: ::Integer
+
       NAMES: untyped
 
       # These are semantic register accesses, excluding frame initialization.
@@ -448,6 +450,8 @@ module Wardite
     class DynamicCallSite
       attr_reader host_index: Integer
 
+      attr_reader table_index: Integer
+
       attr_reader arguments: Array[Integer]
 
       attr_reader parameter_types: Array[Symbol]
@@ -458,7 +462,8 @@ module Wardite
       # @rbs arguments: Array[Integer]
       # @rbs parameter_types: Array[Symbol]
       # @rbs result_types: Array[Symbol]
-      def initialize: (Integer host_index, Array[Integer] arguments, Array[Symbol] parameter_types, Array[Symbol] result_types) -> untyped
+      # @rbs table_index: Integer
+      def initialize: (Integer host_index, Array[Integer] arguments, Array[Symbol] parameter_types, Array[Symbol] result_types, ?table_index: Integer) -> untyped
 
       # @rbs return: Wardite::Efflorescence::DynamicCallSite
       def copy: () -> Wardite::Efflorescence::DynamicCallSite

@@ -1121,36 +1121,19 @@ module Wardite
       elem_section = inst.elem_section
       if elem_section
         elem_section.table_indices.each_with_index do |tidx, idx|
-          table = @tables[tidx]
-          if !table
-            raise LoadError, "invalid table index #{tidx}"
+          table = @tables[tidx] || raise(LoadError, "invalid table index #{tidx}")
+          offset = elem_section.table_offsets.fetch(idx)
+          indices = elem_section.element_indices.fetch(idx)
+          raise LoadError, "element segment requires a funcref table" unless table.type == :funcref
+          if offset < 0 || offset > table.current || indices.size > table.current - offset
+            raise LoadError, "active element segment out of bounds"
           end
-          typ = table.type
-          offset = elem_section.table_offsets[idx]
-          if !offset
-            raise LoadError, "invalid element index #{idx}"
+          indices.each_with_index do |function_index, position|
+            function = @funcs[function_index] if function_index >= 0
+            raise LoadError, "invalid element function index #{function_index}" unless function
+            table.set(offset + position, function)
           end
-          indices = elem_section.element_indices[idx]
-          if !indices
-            raise LoadError, "invalid element index #{idx}"
-          end
-          elms = [typ, offset, indices] #: [Symbol, Integer, Array[Integer]]
-          @elements << elms
-        end
-      end
-
-      @elements.each_with_index do |(typ, offset, indices), idx|
-        table = @tables[idx]
-        if !table
-          raise LoadError, "invalid table index #{idx}"          
-        end
-        indices.each_with_index do |eidx, tidx|
-          case typ
-          when :funcref
-            table.set(offset + tidx, @funcs[eidx])
-          when :externref
-            raise NotImplementedError, "no support :externref"
-          end
+          @elements << [table.type, offset, indices]
         end
       end
     end
@@ -1221,8 +1204,8 @@ module Wardite
     # @rbs elem: WasmFunction|ExternalFunction|nil
     # @rbs return: void
     def set(idx, elem)
-      if idx >= @current
-        raise GenericError, "idx too large for table"
+      if idx < 0 || idx >= @current
+        raise GenericError, "table index out of bounds"
       end
       @refs[idx] = elem
     end

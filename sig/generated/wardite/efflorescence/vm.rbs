@@ -95,10 +95,22 @@ module Wardite
       def execute: (Wardite::Efflorescence::FunctionEntry entry, Array[Integer] arguments) -> Integer?
 
       # @rbs frame: Wardite::Efflorescence::Frame
-      # @rbs site_id: Integer
+      # @rbs site: Wardite::Efflorescence::DynamicCallSite
+      # @rbs host_index: Integer
       # @rbs destination: Integer
       # @rbs return: void
-      def execute_host_site: (Wardite::Efflorescence::Frame frame, Integer site_id, Integer destination) -> void
+      def execute_host_site: (Wardite::Efflorescence::Frame frame, Wardite::Efflorescence::DynamicCallSite site, Integer host_index, Integer destination) -> void
+
+      # @rbs site: Wardite::Efflorescence::DynamicCallSite
+      # @rbs selector: Integer
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def indirect_entry: (Wardite::Efflorescence::DynamicCallSite site, Integer selector) -> Wardite::Efflorescence::FunctionEntry
+
+      # @rbs site: Wardite::Efflorescence::DynamicCallSite
+      # @rbs target: Array[Integer]
+      # @rbs source: Array[Integer]
+      # @rbs return: void
+      def transfer_indirect_arguments: (Wardite::Efflorescence::DynamicCallSite site, Array[Integer] target, Array[Integer] source) -> void
 
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]

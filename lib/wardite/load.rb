@@ -524,26 +524,23 @@ module Wardite
       len = fetch_uleb128(sbuf)
       len.times do |i|
         etype = fetch_uleb128(sbuf)
-        case etype
-        when 0x0 # expr, vec(funcidx)
-          dest.table_indices << 0 # default and fixed to table[0]
-
-          code = fetch_insn_while_end(sbuf)
-          ops = code_body(StringIO.new(code))
-          offset = decode_expr(ops)
-          dest.table_offsets << offset
-
-          elms = [] #: Array[Integer]
-          elen = fetch_uleb128(sbuf)
-          elen.times do |i|
-            index = fetch_uleb128(sbuf)
-            elms << index
-          end
-          dest.element_indices << elms
-        else
-          raise NotImplementedError, "element section type #{etype} is a TODO!"
+        unless etype == 0 || etype == 2
+          raise LoadError, "unsupported element segment kind #{etype}"
         end
+        dest.table_indices << (etype == 0 ? 0 : fetch_uleb128(sbuf))
+
+        code = fetch_insn_while_end(sbuf)
+        ops = code_body(StringIO.new(code))
+        dest.table_offsets << decode_expr(ops)
+        if etype == 2 && assert_read(sbuf, 1).ord != 0
+          raise LoadError, "unsupported element type"
+        end
+
+        elms = [] #: Array[Integer]
+        fetch_uleb128(sbuf).times { elms << fetch_uleb128(sbuf) }
+        dest.element_indices << elms
       end
+      raise LoadError, "trailing element section data" unless sbuf.eof?
       dest
     end
 
