@@ -15,6 +15,7 @@ module Wardite
       # @rbs profile: bool
       def initialize(instance, disabled_optimizations: [], profile: false)
         @instance = instance
+        @store_access = StoreAccess.new(instance.store)
         configuration = Configuration.new(disabled_optimizations)
         @reuse_frames = configuration.enabled?(:frames)
         @profiling = profile
@@ -496,6 +497,55 @@ module Wardite
             instructions = frame.function.bytecode
             pc = Integer(frame.pc)
             next
+          when 52 # Opcode::GLOBAL_GET
+            b = instructions.fetch(pc + 2)
+            registers[a] = @store_access.global_get(b)
+          when 53 # Opcode::GLOBAL_SET
+            b = instructions.fetch(pc + 2)
+            @store_access.global_set(a, registers[b])
+          when 54 # Opcode::I32_LOAD
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 4, false)
+          when 55 # Opcode::I32_LOAD8_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 1, true)
+          when 56 # Opcode::I32_LOAD8_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 1, false)
+          when 57 # Opcode::I32_LOAD16_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 2, true)
+          when 58 # Opcode::I32_LOAD16_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 2, false)
+          when 59 # Opcode::I32_STORE
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 4, registers[a])
+          when 60 # Opcode::I32_STORE8
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 1, registers[a])
+          when 61 # Opcode::I32_STORE16
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 2, registers[a])
+          when 62 # Opcode::MEMORY_SIZE
+            registers[a] = @store_access.size
+          when 63 # Opcode::MEMORY_GROW
+            b = instructions.fetch(pc + 2)
+            registers[a] = @store_access.grow(registers[b])
+          when 64 # Opcode::MEMORY_INIT
+            @store_access.bulk(64, frame.function.memory_site(a), registers)
+          when 65 # Opcode::MEMORY_COPY
+            @store_access.bulk(65, frame.function.memory_site(a), registers)
+          when 66 # Opcode::MEMORY_FILL
+            @store_access.bulk(66, frame.function.memory_site(a), registers)
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

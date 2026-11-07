@@ -497,7 +497,7 @@ module Wardite
     # @rbs return: Array[Symbol]
     def self.operand_of(code)
       case code
-      when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if, :throw
+      when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if, :throw, :data_drop
         [:u32]
       when :memory_init, :memory_copy
         [:u32, :u32]

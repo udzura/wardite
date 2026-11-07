@@ -53,6 +53,16 @@ module Wardite
                 i32_ctz: Opcode::I32_CTZ, i32_popcnt: Opcode::I32_POPCNT,
                 i32_extend8_s: Opcode::I32_EXTEND8_S, i32_extend16_s: Opcode::I32_EXTEND16_S }.freeze
 
+      # Natural alignment exponents; alignment is a hint, not an address rule.
+      MEMORY_WIDTHS = { i32_load: 2, i32_load8_s: 0, i32_load8_u: 0,
+                        i32_load16_s: 1, i32_load16_u: 1,
+                        i32_store: 2, i32_store8: 0, i32_store16: 1 }.freeze
+      MEMORY_OPCODES = { i32_load: Opcode::I32_LOAD, i32_load8_s: Opcode::I32_LOAD8_S,
+                         i32_load8_u: Opcode::I32_LOAD8_U, i32_load16_s: Opcode::I32_LOAD16_S,
+                         i32_load16_u: Opcode::I32_LOAD16_U, i32_store: Opcode::I32_STORE,
+                         i32_store8: Opcode::I32_STORE8, i32_store16: Opcode::I32_STORE16 }.freeze
+      STORE_CODES = (MEMORY_WIDTHS.keys + %i[global_get global_set memory_size memory_grow memory_init memory_copy memory_fill]).freeze
+
       # @rbs @instance: Wardite::Instance
       # @rbs @stack: Array[Integer]
       # @rbs @controls: Array[Wardite::Efflorescence::Translator::Control]
@@ -99,6 +109,7 @@ module Wardite
           @wasm_pc = pc
           fail_translation("instruction after function end") if @controls.empty?
           code, operands = instruction[1], instruction[2]
+          validate_store_instruction(code, operands) if STORE_CODES.include?(code)
           if BINARY.key?(code)
             if @reachable
               right, left = pop_typed(:i32), pop_typed(:i32)
@@ -144,6 +155,50 @@ module Wardite
             else_control
           when :end
             end_control
+          when :i32_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
+               :i32_store, :i32_store8, :i32_store16
+            next unless @reachable
+            opcode = MEMORY_OPCODES.fetch(code)
+            offset = integer_operand(operands[1])
+            if code == :i32_store || code == :i32_store8 || code == :i32_store16
+              value = pop_typed(:i32)
+              address = pop_typed(:i32)
+              emit([opcode, value, address, offset])
+            else
+              address = pop_typed(:i32)
+              dst = register
+              emit([opcode, dst, address, offset])
+              @stack << dst
+            end
+          when :memory_init, :memory_copy, :memory_fill
+            next unless @reachable
+            length, source, destination = pop_typed(:i32), pop_typed(:i32), pop_typed(:i32)
+            data_index = code == :memory_init ? integer_operand(operands[0]) : -1
+            site = MemorySite.new([destination, source, length], data_index: data_index)
+            id = @function.memory_sites.size
+            @function.memory_sites << site
+            opcode = case code
+                     when :memory_init then Opcode::MEMORY_INIT
+                     when :memory_copy then Opcode::MEMORY_COPY
+                     else Opcode::MEMORY_FILL
+                     end
+            emit([opcode, id])
+          when :memory_size, :memory_grow
+            next unless @reachable
+            source = code == :memory_grow ? pop_typed(:i32) : -1
+            dst = register
+            emit(code == :memory_grow ? [Opcode::MEMORY_GROW, dst, source] : [Opcode::MEMORY_SIZE, dst])
+            @stack << dst
+          when :global_get, :global_set
+            index = integer_operand(operands[0])
+            next unless @reachable
+            if code == :global_get
+              dst = register
+              emit([Opcode::GLOBAL_GET, dst, index])
+              @stack << dst
+            else
+              emit([Opcode::GLOBAL_SET, index, pop_typed(:i32)])
+            end
           when :local_get, :local_set, :local_tee
             local = integer_operand(operands[0])
             fail_translation("invalid local index #{local}") unless local >= 0 && local < @function.parameter_count + @function.local_count
@@ -246,6 +301,50 @@ module Wardite
       end
 
       private
+
+      # Validate even dead instructions before deciding whether to emit MIR.
+      # @rbs code: Symbol
+      # @rbs operands: Array[Wardite::operandItem]
+      # @rbs return: void
+      def validate_store_instruction(code, operands)
+        @function.uses_store = true
+        if code == :global_get || code == :global_set
+          index = integer_operand(operands[0])
+          global = index >= 0 ? @instance.store.globals[index] : nil
+          fail_translation("invalid global index #{index}") unless global
+          unless global.type == :i32
+            raise UnsupportedFeature, context("only i32 global access is supported")
+          end
+          fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::I32)
+          fail_translation("global.set on immutable global #{index}") if code == :global_set && !global.mutable
+          return
+        end
+        fail_translation("memory instruction requires memory 0") if @instance.store.memories.empty?
+        alignment = MEMORY_WIDTHS[code]
+        if alignment
+          hint = integer_operand(operands[0])
+          offset = integer_operand(operands[1])
+          fail_translation("invalid memory alignment") unless hint >= 0 && hint <= alignment
+          fail_translation("invalid memory offset") unless offset >= 0 && offset <= 0xffffffff
+        elsif code == :memory_init
+          data_index = integer_operand(operands[0])
+          fail_translation("memory.init requires data count") unless @instance.data_count_section
+          count = @instance.data_section&.segments&.size || 0
+          fail_translation("invalid data index #{data_index}") unless data_index >= 0 && data_index < count
+          check_memory_index(integer_operand(operands[1]))
+        elsif code == :memory_copy
+          check_memory_index(integer_operand(operands[0]))
+          check_memory_index(integer_operand(operands[1]))
+        else
+          check_memory_index(integer_operand(operands[0]))
+        end
+      end
+
+      # @rbs index: Integer
+      # @rbs return: void
+      def check_memory_index(index)
+        raise UnsupportedFeature, context("only memory 0 is supported") unless index == 0
+      end
 
       # @rbs function: Wardite::WasmFunction
       # @rbs return: void

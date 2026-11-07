@@ -195,7 +195,7 @@ module Wardite
           index = 0
           while index < ir.functions.size
             function = ir.function_at(index)
-            changed << index if !function.uses_eh && expand_calls(function, callees)
+            changed << index if !function.uses_eh && !function.uses_store && expand_calls(function, callees)
             index += 1
           end
           changed
@@ -208,7 +208,7 @@ module Wardite
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: bool
         def eligible?(function)
-          return false if function.uses_eh
+          return false if function.uses_eh || function.uses_store
           instructions = function.instructions
           return false if instructions.empty? || instructions.size > MAX_INSTRUCTIONS || function.register_count > MAX_REGISTERS
           return false unless instructions.last[0] == Opcode::RETURN
@@ -526,7 +526,7 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       def optimize_function(function)
-        return if function.uses_eh
+        return if function.uses_eh || function.uses_store
         Passes::CopyPropagation.new.run(function) if @configuration.enabled?(:copy)
         Passes::ImmediateSpecialization.new.run(function) if @configuration.enabled?(:immediate)
         Passes::BranchFusion.new.run(function) if @configuration.enabled?(:branch)

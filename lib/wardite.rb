@@ -65,6 +65,7 @@ module Wardite
       end
       @tags = []
       check_engine_features(engine)
+      check_data_count
       @store = Store.new(self)
       @exports = Exports.new(self.export_section, store)
 
@@ -77,7 +78,6 @@ module Wardite
         end
       end
 
-      check_data_count
       @runtime = case engine
       when :stack then Runtime.new(self)
       when :efflorescence then Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile)
@@ -89,6 +89,7 @@ module Wardite
     # @rbs engine: Symbol
     # @rbs return: void
     def check_engine_features(engine)
+      check_memory_initialization if engine == :efflorescence
       types = type_section
       tag_section = @sections.find { |section| section.is_a?(TagSection) }
       if tag_section.is_a?(TagSection)
@@ -134,14 +135,30 @@ module Wardite
       end
     end
 
+    # Validate active segments before shared initialization can mutate memory.
+    # @rbs return: void
+    def check_memory_initialization
+      segments = data_section&.segments
+      return unless segments
+      limits = memory_section&.limits
+      segments.each do |segment|
+        next unless segment.mode == :active
+        unless limits && limits.size == 1 && segment.mem_index == 0
+          raise LoadError, "active data segment requires memory 0"
+        end
+        size = limits.fetch(0).fetch(0) * 65536
+        start = segment.offset
+        unless start >= 0 && start <= size && segment.data.bytesize <= size - start
+          raise LoadError, "active data segment out of bounds"
+        end
+      end
+    end
+
     # @rbs return: void
     def check_data_count
       data_count = self.data_count_section&.count
       if data_count
-        actual_count = self.data_section&.segments&.size
-        if !actual_count
-          raise LoadError, "invalid data segment count"
-        end
+        actual_count = self.data_section&.segments&.size || 0
         if (data_count != actual_count)
           raise LoadError, "invalid data segment count"
         end
@@ -983,6 +1000,8 @@ module Wardite
 
     attr_accessor :memories #: Array[Memory]
 
+    attr_reader :data_segments #: Array[String]
+
     attr_accessor :globals #: Array[Global]
 
     attr_accessor :tables #: Array[Table]
@@ -1045,13 +1064,23 @@ module Wardite
             end
 
             data_start = segment.offset
-            data_end = segment.offset + segment.data.size
-            if data_end > memory.data.size
+            data_end = segment.offset + segment.data.bytesize
+            if data_start < 0 || data_end > memory.data.bytesize
               raise GenericError, "data too large for memory"
             end
 
             memory.data[data_start...data_end] = segment.data
           end
+        end
+      end
+
+      # Runtime segment instances differ from their syntax declarations: active
+      # segments have already been consumed by initialization.
+      @data_segments = []
+      data_section = inst.data_section
+      if data_section
+        data_section.segments.each do |segment|
+          @data_segments << (segment.mode == :passive ? segment.data.dup.b : "".b)
         end
       end
 
@@ -1136,7 +1165,7 @@ module Wardite
     # @rbs max: Integer|nil
     # @rbs return: void
     def initialize(min, max)
-      @data = String.new("\0" * (min * 64 * 1024))
+      @data = String.new("\0" * (min * 64 * 1024)).b
       @current = min
       @max = max
     end

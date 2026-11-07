@@ -6,6 +6,19 @@ enabled in the script. See [Run](#run) for the complete
 matrix and options. The scripts below provide additional optimization-specific
 comparisons.
 
+## M2 memory and global validation
+
+```sh
+bundle exec ruby -Ilib benchmark/validate_m2.rb
+RUNS=7 WARMUPS=2 ROUNDS=1000 bundle exec ruby benchmark/measure_m2.rb
+```
+
+The measurement script builds a Spinel worker and runs CRuby and Spinel, checking
+independent checksums for array scans, overlapping copy/fill, global updates and
+repeated passive-segment initialization. Load/translation and execution times
+are separate; samples alternate runtime order. `M2_SPINEL_WORKER=/path/to/worker`
+reuses an existing worker. [Results, constraints and i32 before/after comparison](../docs/efflorescence-m2.md).
+
 ## Investigate generated C guards
 
 ```sh

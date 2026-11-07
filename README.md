@@ -86,6 +86,11 @@ Tags support i32 payloads; nullable exnref locals and multi-result blocks carry
 caught values. Uncaught exceptions expose their tag and payload through
 `Wardite::UncaughtWasmException`. EH remains exclusive to Efflorescence.
 
+[M2](docs/efflorescence-m2.md) adds i32 loads/stores, mutable i32 globals and
+memory.size/grow/init/copy/fill. All state stays in the shared Store, with
+checked byte ranges and instance-local runtime data segments. Execution remains
+flat-only; imports/WASI, memory64, shared memory and data.drop are unsupported.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `bundle exec rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

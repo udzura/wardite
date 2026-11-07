@@ -480,22 +480,25 @@ module Wardite
       dest = MemorySection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
-      if len != 1
-        raise LoadError, "memory section has invalid size: #{len}"
+      if len > 1
+        raise LoadError, "only one memory is supported: #{len}"
       end
       len.times do |i|
         flags = fetch_uleb128(sbuf)
+        unless flags == 0 || flags == 1
+          raise LoadError, "shared/memory64/custom-page memory limits are not supported"
+        end
         min = fetch_uleb128(sbuf)
-
-        max = nil
-        if flags != 0
-          max = fetch_uleb128(sbuf)
+        max = flags == 1 ? fetch_uleb128(sbuf) : nil
+        if min > 65536 || (max && (max > 65536 || max < min))
+          raise LoadError, "invalid memory32 limits"
         end
         dest.limits << [min, max]
       end
+      raise LoadError, "trailing memory section bytes" unless sbuf.eof?
       dest
     end
 
@@ -557,6 +560,9 @@ module Wardite
         mut = sbuf.read 1
         if !mut
           raise LoadError, "global section too short"
+        end
+        unless mut.ord == 0 || mut.ord == 1
+          raise LoadError, "unsupported global mutability flags"
         end
         
         code = fetch_insn_while_end(sbuf)
@@ -671,7 +677,11 @@ module Wardite
             end
             operand << ope.ord
           when :u32
-            operand << fetch_uleb128(buf)
+            value = fetch_uleb128(buf)
+            if operand.empty? && c.ord >= 0x28 && c.ord <= 0x3e && value >= 64
+              raise LoadError, "multi-memory memargs are not supported"
+            end
+            operand << value
           when :u32_vec
             len = fetch_uleb128(buf)
             vec = [] #: Array[Integer]
@@ -803,36 +813,32 @@ module Wardite
       dest = DataSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
         data_type = fetch_uleb128(sbuf)
         case data_type
-        when 0x0
-          # active
+        when 0x0, 0x2
+          # Active explicit-memory segments still target memory 0 in M2.
+          memory_index = data_type == 2 ? fetch_uleb128(sbuf) : 0
+          raise LoadError, "only memory 0 is supported" unless memory_index == 0
           code = fetch_insn_while_end(sbuf)
           ops = code_body(StringIO.new(code))
           offset = decode_expr(ops)
           len = fetch_uleb128(sbuf)
-          data = sbuf.read len
-          if !data
-            raise LoadError, "buffer too short"
-          end
+          data = assert_read(sbuf, len).b
           segment = DataSection::Segment.new do |seg|
             seg.mode = :active
-            seg.mem_index = 0 # memory index
-            seg.offset = offset
+            seg.mem_index = memory_index
+            seg.offset = offset & 0xffffffff
             seg.data = data
           end
           dest.segments << segment
         when 0x1
           # passive
           dsize = fetch_uleb128(sbuf)
-          data = sbuf.read dsize
-          if !data
-            raise LoadError, "data too short"
-          end
+          data = assert_read(sbuf, dsize).b
           segment = DataSection::Segment.new do |seg|
             seg.mode = :passive
             seg.mem_index = 0 # unused
@@ -840,17 +846,21 @@ module Wardite
             seg.data = data
           end
           dest.segments << segment
+        else
+          raise LoadError, "unsupported data segment flags #{data_type}"
         end
       end
+      raise LoadError, "trailing data section bytes" unless sbuf.eof?
       dest
     end
 
     # @rbs return: DataCountSection
     def self.data_count_section
       size = fetch_uleb128(@buf)
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
       count = fetch_uleb128(sbuf)
       dest = DataCountSection.new(count)
+      raise LoadError, "trailing data count bytes" unless sbuf.eof?
       dest.size = size
       dest
     end
@@ -858,18 +868,19 @@ module Wardite
     # @rbs sbuf: StringIO
     # @rbs return: String
     def self.fetch_insn_while_end(sbuf)
-      code = String.new("")
-      loop {
-        c = sbuf.read 1
-        if !c
-          break
-        end
-        code << c
-        if c == "\u000b" # :end
-          break
-        end
-      }
-      code
+      first = sbuf.pos
+      opcode = assert_read(sbuf, 1).ord
+      case opcode
+      when 0x41 then fetch_sleb128(sbuf)
+      when 0x42 then fetch_sleb128(sbuf, max_level: 16)
+      when 0x43 then assert_read(sbuf, 4)
+      when 0x44 then assert_read(sbuf, 8)
+      else raise LoadError, "unsupported constant expression"
+      end
+      raise LoadError, "constant expression requires end" unless assert_read(sbuf, 1).ord == 0x0b
+      length = sbuf.pos - first
+      sbuf.pos = first
+      assert_read(sbuf, length)
     end
 
     # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]

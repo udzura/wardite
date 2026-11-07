@@ -122,6 +122,17 @@ module Wardite
       def validate_types(function)
         function.instructions.each do |instruction|
           opcode = instruction[0]
+          if Opcode.memory_site?(opcode)
+            index = instruction[1]
+            unless index >= 0 && index < function.memory_sites.size
+              raise TranslationError, "invalid MIR memory site index"
+            end
+            site = function.memory_site(index)
+            unless site.sources.size == 3 && site.memory_index == 0 && site.source_memory_index == 0 &&
+                (opcode != Opcode::MEMORY_INIT || site.data_index >= 0)
+              raise TranslationError, "invalid MIR memory site operands"
+            end
+          end
           reads = function.reads(instruction)
           destination = Opcode.destination(instruction)
           expected = opcode == Opcode::COPY_REF || opcode == Opcode::THROW_REF ? :exnref : :i32

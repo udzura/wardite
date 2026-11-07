@@ -1,6 +1,6 @@
 # ADR 0002: Efflorescence M2のメモリとグローバル変数
 
-- 状態: 提案。実装・性能検証は未実施。
+- 状態: 採用。M2a〜M2fを実装・検証済み。[実装・検証・性能記録](../efflorescence-m2.md)を参照。
 - 調査基準: main `1563ac6`（M1実装のmerge後）
 - 前提: [M0対応範囲](../efflorescence-coverage-ja.md)、[M1実装記録](../efflorescence-m1.md)、[ADR 0001](0001-efflorescence-m1-control-and-eh.md)
 - 対象読者: M2を内部フェーズに分けて実装する担当者
@@ -9,7 +9,8 @@
 
 M2ではi32のメモリアクセス、i32のglobal、memory管理の15命令を実装する。
 Storeを状態の唯一の保持元とし、Efflorescenceの整数レジスタと共有Storeの境界を明示する。
-M1のEH・参照bank・明示的Frame・semantic/flat実行を維持する。
+M1のEH・参照bank・明示的Frameを維持する。PR #21の方針に従い実行はflatに統一する。
+意味MIRは検証・変換・表示用に保持し、flatの切り替えフラグは追加しない。
 
 | 分類 | 命令 |
 |---|---|
@@ -56,7 +57,7 @@ trapやthrowより前に完了した更新は取り消さない。EHの巻き戻
 little endianを明示し、符号付き狭幅loadは符号拡張後に0xffffffffで正規化する。
 store8/store16は下位8/16bitだけを書き込む。
 整数bankのまま処理し、既存stack Evaluatorを呼び出さない。
-byte処理の共通helperをsemantic/flatで共有してよいが、毎回Wasm値を生成する実装は避ける。
+byte処理は共通helperに分けてよいが、毎回Wasm値を生成する実装は避ける。
 
 ### size/grow
 
@@ -118,12 +119,12 @@ memory 0以外の即値、shared/memory64等を旧形式として誤読しない
 |---|---|---|
 | M2a | feature/type/index検査、checked byte helper、MemorySite、uses_store、Opcode情報 | 不正入力・範囲境界・IR copy/read解析のテストが通る |
 | M2b | i32 global.get/set | mutable/immutable、snapshot、call越し更新、instance分離が成立 |
-| M2c | 8種類のi32 load/store | 全幅・符号・未整列・offset・境界trapを両dispatchで確認 |
+| M2c | 8種類のi32 load/store | 全幅・符号・未整列・offset・境界trapをflat実行で確認 |
 | M2d | memory.size/grow | 成功・上限・0・失敗時の状態維持・grow後アクセスを確認 |
 | M2e | init/copy/fill、実行時segment状態 | passive/active、0長、重複、全範囲事前検査が成立 |
 | M2f | EH・call・start・profiling統合、性能と対応表更新 | 下記の受け入れ条件を満たし、結果を文書化 |
 
-各フェーズでsemantic/flatを同時に実装する。M2fまでテストを先送りしない。
+各フェーズでflat実行を実装する。M2fまでテストを先送りしない。
 
 ## 受け入れ条件とテスト
 
@@ -143,7 +144,7 @@ M0で見つかった旧VMの境界store/copy/fillの誤動作を正解にしな�
 参照エンジンはM1で使ったWasmtimeを候補とし、実装時にバージョンとEHオプションを確認する。
 外部比較にはgrowの実リソース不足など環境依存の結果を要求せず、確定的な上限失敗は比較する。
 
-CRuby/Spinelのdefault、all無効、flatのみ無効、framesのみ無効、profiling有効を確認する。
+CRuby/Spinelのdefault、all無効、framesのみ無効、profiling有効を確認する。
 M1のEHテストと従来のi32テストも通す。実行コマンドは以下を基準とする。
 
 ```sh
@@ -166,7 +167,7 @@ M2では配列走査・copy/fill・global更新の小さなベンチマークを
 | efflorescence/translator.rb | 型・即値検査、状態アクセスMIR生成 |
 | efflorescence/ir.rb | Opcode情報、MemorySite、uses_store、copy/参照列挙 |
 | efflorescence/optimizer.rb | 安全な除外、flat lowering、表の維持 |
-| efflorescence/vm.rb | 両dispatch、checked memory操作、実行時segment状態 |
+| efflorescence/vm.rb | flat dispatch、checked memory操作、実行時segment状態 |
 | efflorescence/register_validation.rb、inspection.rb | source/destination検証、表の表示とprofiling |
 | test、sig/generated、docs | 正常系・境界・拒否・統合テスト、生成型、実装記録 |
 

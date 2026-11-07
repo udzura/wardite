@@ -88,6 +88,9 @@ module Wardite
           function.throw_sites.each_with_index do |site, i|
             lines << "  throw #{i}: tag=#{site.tag_index} payload=#{site.payload_registers.inspect}"
           end
+          function.memory_sites.each_with_index do |site, i|
+            lines << "  memory #{i}: sources=#{site.sources.inspect} memory=#{site.memory_index} source_memory=#{site.source_memory_index} data=#{site.data_index}"
+          end
           function.instructions.each_with_index do |instruction, pc|
             operands = [] #: Array[String]
             index = 1
