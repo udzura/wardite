@@ -93,7 +93,14 @@ module Wardite
             unless callable.respond_to?(:call)
               raise Wardite::LoadError, "import #{function.name} is not callable"
             end
-            hosts << HostFunction.new(function, entry, callable)
+            unboxed_wasi = nil
+            if RUBY_ENGINE != "spinel"
+              wasi = @instance.wasi
+              if wasi && wasi.equal?(function.target_module) && wasi.is_a?(Wardite::Efflorescence::WasiSnapshotPreview1)
+                unboxed_wasi = Wardite::Efflorescence::WasiSnapshotPreview1.unboxed_callable(wasi, function)
+              end
+            end
+            hosts << HostFunction.new(function, entry, callable, unboxed_wasi)
             entry
           else
             entry = FunctionEntry.new(:defined, function.callsig, function.retsig, defined_count, -1)

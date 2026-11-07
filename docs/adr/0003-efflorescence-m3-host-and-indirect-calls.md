@@ -16,10 +16,10 @@ M2の現状に合わせ、実行はflatのみ。意味MIRは変換・検証・�
 | 関数型 | i32引数0個以上、voidまたは単一i32結果 |
 | 直接call | defined/imported関数の両方 |
 | 間接call | table 0のfuncref、defined/imported関数の両方 |
-| ホストABI | callable[Store, Array[wasmValue]]。引数はI32へboxing |
+| ホストABI | 通常は callable[Store, Array[wasmValue]]。組み込み WASI の2関数は整数を直接渡す |
 | 公開API | imported関数の再exportもcall/call_unboxedから呼べる |
 | 初期化 | 全関数・型・table/elementの準備後にstartを実行 |
-| WASI | CRubyでfd_writeの縦通しを必須。i32シグネチャの既存関数へ接続 |
+| WASI | CRuby の組み込み `fd_write` と `proc_exit` を専用の i32 経路で実行 |
 | Spinel | WASIなしのホスト関数と間接callを検証 |
 
 memory/table/global import、table操作命令、call_ref、tail call、非i32関数型、複数結果、外部instanceのWasm関数直接リンクは対象外。
@@ -66,7 +66,9 @@ InstanceとTranslatorの一律拒否を、kind・型・対象module/nameの検�
 ### 3. ホストABIを一箇所に集約する
 
 invoke_host(host_index, integer_arguments, store)相当の共通helperを設ける。
-引数は各i32値をI32へboxingした新しい配列で渡す。Frame.registersそのものをホストへ渡さない。
+通常のホストには各 i32 値を I32 へ boxing した新しい配列を渡す。
+組み込み WASI の専用経路では、VM 内部のアダプターが side table の添字で整数レジスタを読み取る。
+ユーザー定義の callable へは Frame.registers を公開しない。
 内部defined callは引き続きunboxedのまま。
 
 | 戻り値型 | 受理する値 | 処理 |
@@ -141,10 +143,14 @@ MetricsのCALLだけを数える前提を更新し、二重計数を避ける。
 
 ### 8. WASIとSpinel
 
-CRubyで既存fd_writeサンプルをEfflorescence実行し、stdout、errno、nwrittenのメモリを検証する。
-WASIのiovecが共有memoryを参照することを確認する。WASIを使わない通常importでWASIをロードしない。
-既存proc_exitはRubyのexitを呼ぶため、テストは子プロセスで行い、終了codeを確認する。test runner本体を終了させない。
-WASI全体の改修や終了API変更はこのADRでは行わない。
+CRuby の `Wardite::Efflorescence::WasiSnapshotPreview1` は既存の fd、argv、preopen の状態管理を継承する。
+当初は既存の boxed 経路へ接続した。M3 のフォローアップでは、短い書き込みを繰り返すときの引数変換を省くため、
+`fd_write` と `proc_exit` に整数を直接渡す経路を導入する。
+
+- 組み込みの実体と正確な関数型をリンク時に照合する。型は `fd_write: (i32, i32, i32, i32) -> i32` と `proc_exit: (i32) -> void`。直接・間接・再エクスポートは同じリンク済みの経路を使う。
+- `fd_write` は共有 memory 0 の iovec と出力先を境界検査し、little-endian で読む。複数の iovec はすべて検査してから書き込む。既存サンプルの stdout、errno、nwritten を検証する。
+- `proc_exit` は Ruby の `exit` を使い、子プロセスで終了コードを検証する。
+- 他の i32 WASI 関数には既存の boxed 実装を使う。通常の import と同様に、`enable_wasi: false` で登録したユーザー定義モジュールも boxed ABI を使う。WASI を import する CRuby モジュールだけで WASI をロードする。
 
 Spinelの共有ローダーによるWASI拒否は維持する。
 ホストABIは小さなWasmModule実装から先に検証し、HashModule/callableも対応可能な形でテストする。

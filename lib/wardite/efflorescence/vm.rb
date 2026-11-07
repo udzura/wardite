@@ -233,11 +233,20 @@ module Wardite
       # @rbs arguments: Array[Integer]
       # @rbs metrics: Wardite::Efflorescence::Metrics
       # @rbs return: Integer?
-      def invoke_host(host_index, arguments, metrics)
+      # @rbs sources: Array[Integer]?
+      def invoke_host(host_index, arguments, metrics, sources = nil)
         host = @ir.hosts[host_index] || raise(Wardite::EvalError, "missing MIR host function")
-        boxed = [] #: Array[Wardite::wasmValue]
-        arguments.each { |value| boxed << Wardite::I32.new(value) }
         metrics.host_calls += 1 if @profiling
+        if RUBY_ENGINE != "spinel"
+          wasi = host.unboxed_wasi
+          return wasi.call(@instance.store, arguments, sources) if wasi
+        end
+        boxed = [] #: Array[Wardite::wasmValue]
+        if sources
+          sources.each { |register| boxed << Wardite::I32.new(arguments[register]) }
+        else
+          arguments.each { |value| boxed << Wardite::I32.new(value) }
+        end
         result = host.callable.call(@instance.store, boxed)
         if host.entry.result_types.empty?
           return nil if result.nil?
@@ -285,8 +294,7 @@ module Wardite
       # @rbs return: void
       def execute_host_site(frame, site, host_index, destination, metrics)
         registers = frame.registers
-        arguments = site.arguments.map { |register| registers[register] }
-        result = invoke_host(host_index, arguments, metrics)
+        result = invoke_host(host_index, registers, metrics, site.arguments)
         registers[destination] = result if destination >= 0 && result
       end
 

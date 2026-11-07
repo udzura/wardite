@@ -92,8 +92,9 @@ checked byte ranges and instance-local runtime data segments.
 
 [M3](docs/efflorescence-m3.md) adds i32 function imports, imported reexports,
 and typed `call_indirect` through funcref table 0. Host callbacks share the
-instance Store and can re-enter the VM. CRuby runs the i32 WASI `fd_write` and
-`proc_exit` examples. Spinel supports regular host callbacks.
+instance Store and can re-enter the VM. On CRuby, Efflorescence runs built-in
+WASI `fd_write` and `proc_exit` with unboxed i32 arguments. Spinel supports
+regular host callbacks.
 
 ## Development
 

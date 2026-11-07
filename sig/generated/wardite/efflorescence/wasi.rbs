@@ -1,0 +1,47 @@
+# Generated from lib/wardite/efflorescence/wasi.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class WasiSnapshotPreview1 < Wardite::WasiSnapshotPreview1
+      FD_WRITE_ARGUMENTS: untyped
+
+      PROC_EXIT_ARGUMENTS: untyped
+
+      # @rbs fnname: Symbol
+      # @rbs return: Wardite::_WasmCallable
+      def callable: (Symbol fnname) -> Wardite::_WasmCallable
+
+      # @rbs environment: Wardite::Efflorescence::WasiSnapshotPreview1
+      # @rbs function: Wardite::ExternalFunction
+      # @rbs return: Wardite::Efflorescence::_WasiCallable?
+      def self.unboxed_callable: (Wardite::Efflorescence::WasiSnapshotPreview1 environment, Wardite::ExternalFunction function) -> Wardite::Efflorescence::_WasiCallable?
+
+      private
+
+      # @rbs store: Wardite::Store
+      # @rbs values: Array[Integer]
+      # @rbs sources: Array[Integer]?
+      # @rbs return: Integer
+      def fd_write_from_registers: (Wardite::Store store, Array[Integer] values, Array[Integer]? sources) -> Integer
+
+      # @rbs _store: Wardite::Store
+      # @rbs values: Array[Integer]
+      # @rbs sources: Array[Integer]?
+      # @rbs return: bot
+      def proc_exit_from_registers: (untyped _store, Array[Integer] values, Array[Integer]? sources) -> bot
+
+      # @rbs store: Wardite::Store
+      # @rbs fd: Integer
+      # @rbs iovs: Integer
+      # @rbs count: Integer
+      # @rbs written_at: Integer
+      # @rbs return: Integer
+      def fd_write_i32: (Wardite::Store store, Integer fd, Integer iovs, Integer count, Integer written_at) -> Integer
+
+      # @rbs data: String
+      # @rbs iov: Integer
+      # @rbs return: String?
+      def iovec_payload: (String data, Integer iov) -> String?
+    end
+  end
+end

@@ -609,23 +609,31 @@ module Wardite
       end
     end
 
+    # @rbs!
+    #   interface _WasiCallable
+    #     def call: (Wardite::Store, Array[Integer], Array[Integer]?) -> Integer?
+    #   end
+
     class HostFunction
       attr_reader :external #: Wardite::ExternalFunction
       attr_reader :entry #: Wardite::Efflorescence::FunctionEntry
       attr_reader :callable #: Wardite::_WasmCallable
+      attr_reader :unboxed_wasi #: Wardite::Efflorescence::_WasiCallable?
 
       # @rbs external: Wardite::ExternalFunction
       # @rbs entry: Wardite::Efflorescence::FunctionEntry
       # @rbs callable: Wardite::_WasmCallable
-      def initialize(external, entry, callable)
+      # @rbs unboxed_wasi: Wardite::Efflorescence::_WasiCallable?
+      def initialize(external, entry, callable, unboxed_wasi)
         @external = external
         @entry = entry
         @callable = callable
+        @unboxed_wasi = unboxed_wasi
       end
 
       # @rbs return: Wardite::Efflorescence::HostFunction
       def copy
-        HostFunction.new(@external, @entry.copy, @callable)
+        HostFunction.new(@external, @entry.copy, @callable, @unboxed_wasi)
       end
     end
 

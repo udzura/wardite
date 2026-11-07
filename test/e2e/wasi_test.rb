@@ -53,6 +53,101 @@ class WarditeE2EWasiTest < Test::Unit::TestCase
     end
   end
 
+  test "Efflorescence fd_write handles indirect calls, reexports and invalid guest ranges" do
+    with_wasm(<<~WAT) do |file|
+      (module
+        (type $write (func (param i32 i32 i32 i32) (result i32)))
+        (import "wasi_snapshot_preview1" "fd_write" (func $write (type $write)))
+        (export "write" (func $write))
+        (table 1 funcref)
+        (elem (i32.const 0) func $write)
+        (memory 1)
+        (func (export "indirect") (param i32 i32 i32 i32) (result i32)
+          local.get 0 local.get 1 local.get 2 local.get 3 i32.const 0 call_indirect (type $write)))
+    WAT
+      instance = Wardite.new(path: file, engine: :efflorescence, mir_profile: true)
+      assert_instance_of Wardite::Efflorescence::WasiSnapshotPreview1, instance.wasi
+      vm = instance.runtime
+      assert_not_nil vm.ir.hosts.fetch(0).unboxed_wasi
+
+      output = StringIO.new("".b)
+      instance.wasi.fd_table[1] = output
+      data = instance.store.memories.fetch(0).data
+      data[16, 16] = [32, 2, 34, 3].pack("V4")
+      data[32, 5] = "abcde"
+      assert_equal 0, vm.call_unboxed(:indirect, [1, 16, 2, 64])
+      assert_equal "abcde", output.string
+      assert_equal 5, data.unpack1("V", offset: 64)
+      assert_equal 1, vm.metrics.host_calls
+      assert_equal 1, vm.metrics.indirect_calls
+
+      data[34, 1] = "Z"
+      assert_equal 0, vm.call(:write, [1, 24, 1, 64]).value
+      assert_equal "abcdeZde", output.string
+      assert_equal 3, data.unpack1("V", offset: 64)
+      assert_equal 1, vm.metrics.host_calls
+      assert_equal 0, vm.metrics.frames_created
+
+      assert_equal Wardite::Wasi::EBADF, vm.call_unboxed(:write, [99, 16, 2, 64])
+      assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:write, [1, -1, 1, 64])
+      assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:write, [1, 16, -1, 64])
+      assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:write, [1, 16, 2, 65533])
+      data[24, 8] = [65535, 2].pack("V2")
+      assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:write, [1, 16, 2, 64])
+      assert_equal "abcdeZde", output.string
+      assert_equal 3, data.unpack1("V", offset: 64)
+
+      assert_equal 0, vm.call_unboxed(:write, [1, 65536, 0, 65532])
+      assert_equal 0, data.unpack1("V", offset: 65532)
+
+      memory = instance.store.memories.fetch(0)
+      memory.grow(1)
+      memory.data[24, 8] = [65536, 1].pack("V2")
+      memory.data.setbyte(65536, "x".ord)
+      assert_equal 0, vm.call_unboxed(:write, [1, 24, 1, 65537])
+      assert_equal 1, memory.data.unpack1("V", offset: 65537)
+      assert_equal "abcdeZdex", output.string
+    end
+  end
+
+  test "native WASI signatures are checked at link time and user modules keep the boxed ABI" do
+    ["fd_write", "proc_exit"].each do |name|
+      with_wasm(<<~WAT) do |file|
+        (module
+          (import "wasi_snapshot_preview1" "#{name}" (func $host (result i32)))
+          (export "run" (func $host)))
+      WAT
+        assert_raise_message(/invalid WASI signature for #{name}/) do
+          Wardite.new(path: file, engine: :efflorescence)
+        end
+        host = ->(_store, args) { assert_equal [], args; Wardite::I32.new(37) }
+        instance = Wardite.new(path: file, engine: :efflorescence, enable_wasi: false,
+          import_object: {wasi_snapshot_preview1: {name.to_sym => host}})
+        assert_nil instance.runtime.ir.hosts.fetch(0).unboxed_wasi
+        assert_equal 37, instance.runtime.call_unboxed(:run, [])
+      end
+    end
+    with_wasm('(module (import "wasi_snapshot_preview1" "fd_write_from_registers" (func)))') do |file|
+      assert_raise(NameError) { Wardite.new(path: file, engine: :efflorescence) }
+    end
+  end
+
+  test "Efflorescence uses the same WASI state for existing boxed calls" do
+    with_wasm(<<~WAT) do |file|
+      (module
+        (import "wasi_snapshot_preview1" "args_sizes_get" (func $sizes (param i32 i32) (result i32)))
+        (export "sizes" (func $sizes))
+        (memory 1))
+    WAT
+      instance = Wardite.new(path: file, engine: :efflorescence)
+      instance.wasi.argv = ["app", "arg"]
+      assert_nil instance.runtime.ir.hosts.fetch(0).unboxed_wasi
+      assert_equal 0, instance.runtime.call_unboxed(:sizes, [0, 4])
+      data = instance.store.memories.fetch(0).data
+      assert_equal [2, 8], data.unpack("V2")
+    end
+  end
+
   test "Efflorescence proc_exit reaches the child process boundary" do
     with_wasm(<<~WAT) do |file|
       (module

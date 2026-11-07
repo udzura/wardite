@@ -8,7 +8,7 @@ M3 は i32 引数と、結果なしまたは単一 i32 結果の関数 import �
 
 ## ホスト ABI と例外
 
-`WasmModule#callable` または `HashModule` が解決した callable には、共有 Store と呼び出しごとに作る `Array[Wardite::I32]` を渡す。
+通常の `WasmModule#callable` または `HashModule` が解決した callable には、共有 Store と呼び出しごとに作る `Array[Wardite::I32]` を渡す。
 ホストは void 関数で `nil` を返し、i32 関数で `Integer` または `Wardite::I32` を返す。
 VM は i32 の戻り値を unsigned 32 bit に正規化し、公開 `call` は結果を `Wardite::I32` に戻す。
 共有 Store への書き込みや memory.grow は復帰後の Wasm から読める。
@@ -28,6 +28,17 @@ instance = Wardite.new(
 Wasm の間接呼び出し先が投げた Wasm 例外は、呼び出し元の handler に伝播する。
 ホストの Ruby 例外と間接呼び出しの trap は Ruby の公開境界に伝播する。ホストが再入先の未捕捉 Wasm 例外を受け取った場合も同じ経路を通る。
 公開呼び出しの終了時にフレームを解放し、完了済みの Store 更新は残る。
+
+## CRuby の組み込み WASI
+
+`Wardite::Efflorescence::WasiSnapshotPreview1` は既存の WASI 環境を継承して fd や argv、preopen を共有する。
+専用経路の対象は `fd_write` と `proc_exit` の2関数。リンク時に組み込み WASI の実体と関数型を照合する。
+VM は直接・間接・再エクスポートの呼び出しを同じ整数 ABI に接続する。通常のホストと他の既存 WASI 関数は boxed ABI を使う。
+
+`fd_write` は現在の共有 memory 0 を参照し、iovec の各フィールドを little-endian で読む。
+テーブル、バッファ、nwritten の範囲が無効な場合は `EFAULT` を返す。
+複数の iovec は書き込み前に検査する。正常時は書き込んだバイト数を little-endian の u32 としてメモリに格納する。
+`proc_exit` は整数の終了コードを Ruby の `exit` に渡す。
 
 ## MIR と計測
 
@@ -101,3 +112,20 @@ RUNS=5 WARMUPS=2 ROUNDS=100000 ruby benchmark/measure_m3_calls.rb
 | Spinel | `direct_host` | 0.418 | 12.571 (12.407–12.661) |
 | Spinel | `indirect_defined` | 0.428 | 13.308 (13.272–13.507) |
 | Spinel | `indirect_host` | 0.429 | 19.676 (19.592–19.903) |
+
+### 組み込み `fd_write` の専用化
+
+同じ Efflorescence VM に、従来の `Wardite::WasiSnapshotPreview1` を明示登録した場合と、組み込みの専用経路を選んだ場合を比較した。
+CRuby 4.0.9（YJIT 無効）、arm64 macOS で、4 byte の iovec を `IO::NULL` へ同期書き込みする処理を100,000回実行した。
+各経路を2回ウォームアップして5回計測し、全回で errno 0 と合計400,000 byte を確認した。
+
+| 経路 | 実行中央値 (min–max, ms) | Ruby 割り当て数の中央値 |
+|---|---:|---:|
+| 既存 boxed WASI | 594.074 (590.461–602.586) | 1,900,013 |
+| 専用 i32 WASI | 456.381 (451.621–465.679) | 300,013 |
+
+実行時間は23.2%短縮、割り当て数は84.2%減少した。計測には VM のループと同期 I/O も含み、差には ABI と iovec の読み取り処理の両方が寄与する。
+
+```sh
+ruby --disable-yjit -Ilib benchmark/measure_wasi_write.rb
+```

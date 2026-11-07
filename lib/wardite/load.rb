@@ -283,8 +283,13 @@ module Wardite
           raise LoadError, "WASI is not supported in Spinel builds; pass enable_wasi: false"
         elsif sections_.any? { |section| section.is_a?(ImportSection) &&
             section.imports.any? { |import| import.module_name == "wasi_snapshot_preview1" } }
-          require "wardite/wasi"
-          wasi_env = Wardite::WasiSnapshotPreview1.new
+          wasi_env = if engine == :efflorescence
+            require "wardite/efflorescence/wasi"
+            Wardite::Efflorescence::WasiSnapshotPreview1.new
+          else
+            require "wardite/wasi"
+            Wardite::WasiSnapshotPreview1.new
+          end
           import_object[:wasi_snapshot_preview1] = wasi_env
         end
       end
