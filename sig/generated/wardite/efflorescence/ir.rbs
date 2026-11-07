@@ -143,6 +143,10 @@ module Wardite
 
       MEMORY_FILL: ::Integer
 
+      CALL_HOST: ::Integer
+
+      CALL_INDIRECT: ::Integer
+
       NAMES: untyped
 
       # These are semantic register accesses, excluding frame initialization.
@@ -165,6 +169,10 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.side_effect?: (Integer opcode) -> bool
+
+      # @rbs opcode: Integer
+      # @rbs return: bool
+      def self.dynamic_call?: (Integer opcode) -> bool
 
       # @rbs opcode: Integer
       # @rbs return: bool
@@ -307,6 +315,8 @@ module Wardite
     class Function
       attr_reader index: Integer
 
+      attr_reader pool_index: Integer
+
       attr_reader parameter_types: Array[Symbol]
 
       attr_reader result_types: Array[Symbol]
@@ -333,6 +343,10 @@ module Wardite
 
       attr_accessor uses_store: bool
 
+      attr_accessor uses_dynamic_calls: bool
+
+      attr_reader dynamic_sites: Array[Wardite::Efflorescence::DynamicCallSite]
+
       attr_reader memory_sites: Array[Wardite::Efflorescence::MemorySite]
 
       attr_reader calls: Array[Wardite::Efflorescence::CallSite]
@@ -342,7 +356,8 @@ module Wardite
       # @rbs result_types: Array[Symbol]
       # @rbs local_count: Integer
       # @rbs local_types: Array[Symbol]?
-      def initialize: (Integer index, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer local_count, ?local_types: Array[Symbol]?) -> untyped
+      # @rbs pool_index: Integer?
+      def initialize: (Integer index, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer local_count, ?local_types: Array[Symbol]?, ?pool_index: Integer?) -> untyped
 
       # @rbs return: Integer
       def register_count: () -> Integer
@@ -381,6 +396,10 @@ module Wardite
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::MemorySite
       def memory_site: (Integer index) -> Wardite::Efflorescence::MemorySite
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::DynamicCallSite
+      def dynamic_site: (Integer index) -> Wardite::Efflorescence::DynamicCallSite
 
       # All PC consumers (rewrites, profiling, lowering) share this enumeration.
       # @rbs mapping: Array[Integer]
@@ -428,15 +447,102 @@ module Wardite
       def copy_arguments: (Array[Integer] target, Array[Integer] source) -> void
     end
 
+    class DynamicCallSite
+      attr_reader host_index: Integer
+
+      attr_reader table_index: Integer
+
+      attr_reader arguments: Array[Integer]
+
+      attr_reader parameter_types: Array[Symbol]
+
+      attr_reader result_types: Array[Symbol]
+
+      # @rbs host_index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs parameter_types: Array[Symbol]
+      # @rbs result_types: Array[Symbol]
+      # @rbs table_index: Integer
+      def initialize: (Integer host_index, Array[Integer] arguments, Array[Symbol] parameter_types, Array[Symbol] result_types, ?table_index: Integer) -> untyped
+
+      # @rbs return: Wardite::Efflorescence::DynamicCallSite
+      def copy: () -> Wardite::Efflorescence::DynamicCallSite
+    end
+
+    interface _WasiCallable
+      def call: (Wardite::Store, Array[Integer], Array[Integer]?) -> Integer?
+    end
+
+    class HostFunction
+      attr_reader external: Wardite::ExternalFunction
+
+      attr_reader entry: Wardite::Efflorescence::FunctionEntry
+
+      attr_reader callable: Wardite::_WasmCallable
+
+      attr_reader unboxed_wasi: Wardite::Efflorescence::_WasiCallable?
+
+      # @rbs external: Wardite::ExternalFunction
+      # @rbs entry: Wardite::Efflorescence::FunctionEntry
+      # @rbs callable: Wardite::_WasmCallable
+      # @rbs unboxed_wasi: Wardite::Efflorescence::_WasiCallable?
+      def initialize: (Wardite::ExternalFunction external, Wardite::Efflorescence::FunctionEntry entry, Wardite::_WasmCallable callable, Wardite::Efflorescence::_WasiCallable? unboxed_wasi) -> untyped
+
+      # @rbs return: Wardite::Efflorescence::HostFunction
+      def copy: () -> Wardite::Efflorescence::HostFunction
+    end
+
+    class FunctionEntry
+      attr_reader kind: Symbol
+
+      attr_reader parameter_types: Array[Symbol]
+
+      attr_reader result_types: Array[Symbol]
+
+      attr_reader defined_index: Integer
+
+      attr_reader host_index: Integer
+
+      # @rbs kind: Symbol
+      # @rbs parameter_types: Array[Symbol]
+      # @rbs result_types: Array[Symbol]
+      # @rbs defined_index: Integer
+      # @rbs host_index: Integer
+      def initialize: (Symbol kind, Array[Symbol] parameter_types, Array[Symbol] result_types, Integer defined_index, Integer host_index) -> untyped
+
+      # @rbs params: Array[Symbol]
+      # @rbs results: Array[Symbol]
+      # @rbs label: String
+      # @rbs return: void
+      def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label) -> void
+
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def copy: () -> Wardite::Efflorescence::FunctionEntry
+    end
+
     class IR
       attr_reader functions: Array[Wardite::Efflorescence::Function]
 
+      attr_reader entries: Array[Wardite::Efflorescence::FunctionEntry]
+
+      attr_reader hosts: Array[Wardite::Efflorescence::HostFunction]
+
       # @rbs functions: Array[Wardite::Efflorescence::Function]
-      def initialize: (Array[Wardite::Efflorescence::Function] functions) -> untyped
+      # @rbs entries: Array[Wardite::Efflorescence::FunctionEntry]?
+      # @rbs hosts: Array[Wardite::Efflorescence::HostFunction]
+      def initialize: (Array[Wardite::Efflorescence::Function] functions, ?entries: Array[Wardite::Efflorescence::FunctionEntry]?, ?hosts: Array[Wardite::Efflorescence::HostFunction]) -> untyped
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def entry_at: (Integer index) -> Wardite::Efflorescence::FunctionEntry
 
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::Function
       def function_at: (Integer index) -> Wardite::Efflorescence::Function
+
+      # @rbs index: Integer
+      # @rbs return: Wardite::Efflorescence::Function
+      def defined_at: (Integer index) -> Wardite::Efflorescence::Function
 
       # @rbs return: Wardite::Efflorescence::IR
       def copy: () -> Wardite::Efflorescence::IR

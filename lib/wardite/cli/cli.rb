@@ -152,16 +152,16 @@ module Wardite
       # @rbs return: void
       def invoke_wasi
         instance = new_instance #: ::Wardite::Instance
-        unless instance.wasi
-          raise "WASI not activated"
-        end
-        instance.wasi.argv = ["wardite"] + @args
-        destination = mount_dst
-        source = mount_src
-        if mapdir && destination && source
-          # TODO: support multiple mapdir
-          instance.wasi.mapdir[destination] = source
-          instance.wasi.set_preopened_dir(destination, source)
+        wasi_env = instance.wasi
+        if wasi_env
+          wasi_env.argv = ["wardite"] + @args
+          destination = mount_dst
+          source = mount_src
+          if mapdir && destination && source
+            # TODO: support multiple mapdir
+            wasi_env.mapdir[destination] = source
+            wasi_env.set_preopened_dir(destination, source)
+          end
         end
 
         if defined? Bundler

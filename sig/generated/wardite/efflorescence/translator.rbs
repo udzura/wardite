@@ -67,6 +67,8 @@ module Wardite
 
       @stack: Array[Integer]
 
+      @entries: Array[Wardite::Efflorescence::FunctionEntry]
+
       @instance: Wardite::Instance
 
       # @rbs instance: Wardite::Instance
@@ -77,8 +79,9 @@ module Wardite
 
       # @rbs wasm: Wardite::WasmFunction
       # @rbs index: Integer
+      # @rbs pool_index: Integer
       # @rbs return: Wardite::Efflorescence::Function
-      def translate_function: (Wardite::WasmFunction wasm, Integer index) -> Wardite::Efflorescence::Function
+      def translate_function: (Wardite::WasmFunction wasm, Integer index, Integer pool_index) -> Wardite::Efflorescence::Function
 
       private
 
@@ -91,10 +94,6 @@ module Wardite
       # @rbs index: Integer
       # @rbs return: void
       def check_memory_index: (Integer index) -> void
-
-      # @rbs function: Wardite::WasmFunction
-      # @rbs return: void
-      def check_signature: (Wardite::WasmFunction function) -> void
 
       # @rbs value: Wardite::operandItem?
       # @rbs return: Integer

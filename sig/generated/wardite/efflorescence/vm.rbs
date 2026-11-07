@@ -82,19 +82,57 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::FramePool
       def pool_at: (Array[Wardite::Efflorescence::FramePool] pools, Integer index) -> Wardite::Efflorescence::FramePool
 
-      # No Wasm operand stack, boxed values, or recursive Ruby calls here.
-      # Every register array contains only normalized i32 Integers. Void calls
-      # use destination -1; execute returns an unused integer for a void entry.
-      # @rbs index: Integer
+      # @rbs host_index: Integer
       # @rbs arguments: Array[Integer]
-      # @rbs return: Integer
-      def execute: (Integer index, Array[Integer] arguments) -> Integer
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      # @rbs return: Integer?
+      # @rbs sources: Array[Integer]?
+      def invoke_host: (Integer host_index, Array[Integer] arguments, Wardite::Efflorescence::Metrics metrics, ?Array[Integer]? sources) -> Integer?
+
+      # Each public entry owns its frames, pools and counters, including when a
+      # host callback re-enters the VM. Store mutations are shared immediately.
+      # @rbs entry: Wardite::Efflorescence::FunctionEntry
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Integer?
+      def execute: (Wardite::Efflorescence::FunctionEntry entry, Array[Integer] arguments) -> Integer?
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs site: Wardite::Efflorescence::DynamicCallSite
+      # @rbs host_index: Integer
+      # @rbs destination: Integer
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      # @rbs return: void
+      def execute_host_site: (Wardite::Efflorescence::Frame frame, Wardite::Efflorescence::DynamicCallSite site, Integer host_index, Integer destination, Wardite::Efflorescence::Metrics metrics) -> void
+
+      # @rbs site: Wardite::Efflorescence::DynamicCallSite
+      # @rbs selector: Integer
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def indirect_entry: (Wardite::Efflorescence::DynamicCallSite site, Integer selector) -> Wardite::Efflorescence::FunctionEntry
+
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs site_id: Integer
+      # @rbs destination: Integer
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      # @rbs return: void
+      def execute_direct_host: (Wardite::Efflorescence::Frame frame, Integer site_id, Integer destination, Wardite::Efflorescence::Metrics metrics) -> void
+
+      # Keep table resolution and the additional call locals off the hot path.
+      # @rbs frame: Wardite::Efflorescence::Frame
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs destination: Integer
+      # @rbs site_id: Integer
+      # @rbs selector: Integer
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      # @rbs return: Wardite::Efflorescence::Frame
+      def execute_indirect: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] frames, Integer destination, Integer site_id, Integer selector, Wardite::Efflorescence::Metrics metrics) -> Wardite::Efflorescence::Frame
 
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
       # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
       # @rbs return: Integer
-      def execute_flat: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] active_frames) -> Integer
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      def execute_flat: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] active_frames, Wardite::Efflorescence::Metrics metrics) -> Integer
     end
   end
 end

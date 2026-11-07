@@ -219,7 +219,6 @@ class EfflorescenceTest < Test::Unit::TestCase
     ['(module (func (export "f") (result i64) i64.const 1))',
      '(module (func (export "f") unreachable i64.const 1 drop))',
      '(module (func (export "f")) (func (local f64)))',
-     '(module (import "host" "function" (func)))',
      '(module (func (export "f") block (result f64) f64.const 1 end drop))'].each do |wat|
       error = assert_raise(Wardite::Efflorescence::UnsupportedFeature) { load_efflorescence(wat) }
       assert_include error.message, "Efflorescence"

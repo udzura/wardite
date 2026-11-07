@@ -20,6 +20,7 @@ module Wardite
     ENOTEMPTY = 55
     ENOTSOCK = 57
     ENOTSUP = 58
+    EOVERFLOW = 61
     EPERM  = 63
     EROFS  = 69
 

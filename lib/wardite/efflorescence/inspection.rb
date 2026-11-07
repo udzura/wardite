@@ -8,12 +8,17 @@ module Wardite
       attr_reader :register_reads #: Integer
       attr_reader :register_writes #: Integer
       attr_accessor :frames_created #: Integer
+      attr_accessor :host_calls #: Integer
+      attr_accessor :root_defined_entries #: Integer
 
       def initialize
         @opcode_counts = Array.new(Opcode::NAMES.size, 0)
         @register_reads = 0
         @register_writes = 0
         @frames_created = 0
+        @host_calls = 0
+        @root_defined_entries = 0
+        @indirect_defined_entries = 0
       end
 
       # @rbs opcode: Integer
@@ -36,15 +41,31 @@ module Wardite
         @opcode_counts[Opcode::COPY]
       end
 
+      # @rbs parameter_count: Integer
+      # @rbs return: void
+      def enter_indirect_defined(parameter_count)
+        @indirect_defined_entries += 1
+        @register_writes += parameter_count
+      end
+
+      # @rbs return: Integer
+      def indirect_calls
+        @opcode_counts[Opcode::CALL_INDIRECT]
+      end
+
       # @rbs return: Integer
       def function_entries
-        1 + @opcode_counts[Opcode::CALL]
+        @root_defined_entries + @opcode_counts[Opcode::CALL] + @indirect_defined_entries + @host_calls
       end
 
       # @rbs return: String
       def report
-        "dispatches=#{dispatches} copies=#{copies} register_reads=#{@register_reads} " \
+        counters = "dispatches=#{dispatches} copies=#{copies} register_reads=#{@register_reads} " \
           "register_writes=#{@register_writes} function_entries=#{function_entries} frames_created=#{@frames_created}"
+        if @host_calls > 0 || indirect_calls > 0
+          counters += " host_calls=#{@host_calls} indirect_calls=#{indirect_calls}"
+        end
+        counters
       end
     end
 
@@ -78,6 +99,9 @@ module Wardite
       # @rbs return: String
       def disassemble(ir)
         lines = [] #: Array[String]
+        ir.hosts.each_with_index do |host, i|
+          lines << "host #{i}: #{host.external.name} #{host.entry.parameter_types.inspect} -> #{host.entry.result_types.inspect}"
+        end
         ir.functions.each do |function|
           lines << "function #{function.index}: params=#{function.parameter_count} locals=#{function.local_count} registers=#{function.register_count}"
           function.handlers.each_with_index do |handler, i|
@@ -90,6 +114,10 @@ module Wardite
           end
           function.memory_sites.each_with_index do |site, i|
             lines << "  memory #{i}: sources=#{site.sources.inspect} memory=#{site.memory_index} source_memory=#{site.source_memory_index} data=#{site.data_index}"
+          end
+          function.dynamic_sites.each_with_index do |site, i|
+            target = site.host_index >= 0 ? "host=#{site.host_index}" : "table=#{site.table_index}"
+            lines << "  call #{i}: #{target} #{site.parameter_types.inspect} -> #{site.result_types.inspect} arguments=#{site.arguments.inspect}"
           end
           function.instructions.each_with_index do |instruction, pc|
             operands = [] #: Array[String]

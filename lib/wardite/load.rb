@@ -281,9 +281,15 @@ module Wardite
       if enable_wasi
         if RUBY_ENGINE == "spinel"
           raise LoadError, "WASI is not supported in Spinel builds; pass enable_wasi: false"
-        else
-          require "wardite/wasi"
-          wasi_env = Wardite::WasiSnapshotPreview1.new
+        elsif sections_.any? { |section| section.is_a?(ImportSection) &&
+            section.imports.any? { |import| import.module_name == "wasi_snapshot_preview1" } }
+          wasi_env = if engine == :efflorescence
+            require "wardite/efflorescence/wasi"
+            Wardite::Efflorescence::WasiSnapshotPreview1.new
+          else
+            require "wardite/wasi"
+            Wardite::WasiSnapshotPreview1.new
+          end
           import_object[:wasi_snapshot_preview1] = wasi_env
         end
       end
@@ -291,9 +297,7 @@ module Wardite
       return Instance.new(import_object, engine: engine, disabled_optimizations: disabled_optimizations, mir_profile: mir_profile) do |i|
         i.version = version
         i.sections = sections_
-        if enable_wasi
-          i.wasi = wasi_env
-        end
+        i.wasi = wasi_env
       end
     ensure
       $stderr.puts "load_from_buffer: #{Time.now.to_f - start}" if ENV['WARITE_TRACE']
@@ -463,6 +467,7 @@ module Wardite
         end
 
         raise LoadError, "tag imports are not supported" if kind == 4
+        raise LoadError, "unsupported import kind #{kind} for #{module_name}.#{name}" unless kind == 0
         index = fetch_uleb128(sbuf)
         dest.add_desc do |desc|
           desc.module_name = module_name
@@ -523,26 +528,23 @@ module Wardite
       len = fetch_uleb128(sbuf)
       len.times do |i|
         etype = fetch_uleb128(sbuf)
-        case etype
-        when 0x0 # expr, vec(funcidx)
-          dest.table_indices << 0 # default and fixed to table[0]
-
-          code = fetch_insn_while_end(sbuf)
-          ops = code_body(StringIO.new(code))
-          offset = decode_expr(ops)
-          dest.table_offsets << offset
-
-          elms = [] #: Array[Integer]
-          elen = fetch_uleb128(sbuf)
-          elen.times do |i|
-            index = fetch_uleb128(sbuf)
-            elms << index
-          end
-          dest.element_indices << elms
-        else
-          raise NotImplementedError, "element section type #{etype} is a TODO!"
+        unless etype == 0 || etype == 2
+          raise LoadError, "unsupported element segment kind #{etype}"
         end
+        dest.table_indices << (etype == 0 ? 0 : fetch_uleb128(sbuf))
+
+        code = fetch_insn_while_end(sbuf)
+        ops = code_body(StringIO.new(code))
+        dest.table_offsets << decode_expr(ops)
+        if etype == 2 && assert_read(sbuf, 1).ord != 0
+          raise LoadError, "unsupported element type"
+        end
+
+        elms = [] #: Array[Integer]
+        fetch_uleb128(sbuf).times { elms << fetch_uleb128(sbuf) }
+        dest.element_indices << elms
       end
+      raise LoadError, "trailing element section data" unless sbuf.eof?
       dest
     end
 

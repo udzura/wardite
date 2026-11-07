@@ -38,6 +38,8 @@ module Wardite
 
     ENOTSUP: ::Integer
 
+    EOVERFLOW: ::Integer
+
     EPERM: ::Integer
 
     EROFS: ::Integer
