@@ -35,7 +35,7 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
     [
       '(module (import "host" "e" (tag)))',
       '(module (tag (export "e")))',
-      '(module (tag (param i64)))',
+      '(module (tag (param f64)))',
       '(module (type (func (result i32))) (tag (type 0)))',
       '(module (func (param exnref)))',
       '(module (func (result exnref) unreachable))',

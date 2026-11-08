@@ -2,7 +2,7 @@
 
 [English](efflorescence.md)
 
-現在の対応範囲は [M1](efflorescence-m1.md)、[M2](efflorescence-m2.md)、[M3](efflorescence-m3.md) の実装記録を参照してください。
+現在の対応範囲は [M1](efflorescence-m1.md)、[M2](efflorescence-m2.md)、[M3](efflorescence-m3.md)、[M4](efflorescence-m4.md) の実装記録を参照してください。
 以下のPhase 1の制限は実装当時の記録です。
 
 この文書はPhase 1（`67fbfae`）の記録です。現在のEfflorescenceでは、

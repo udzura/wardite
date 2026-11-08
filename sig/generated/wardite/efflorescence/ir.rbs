@@ -147,7 +147,110 @@ module Wardite
 
       CALL_INDIRECT: ::Integer
 
+      I64_EQZ: ::Integer
+
+      I32_WRAP_I64: ::Integer
+
+      I64_EQ: ::Integer
+
+      I64_NE: ::Integer
+
+      I64_LTS: ::Integer
+
+      I64_LTU: ::Integer
+
+      I64_GTS: ::Integer
+
+      I64_GTU: ::Integer
+
+      I64_LES: ::Integer
+
+      I64_LEU: ::Integer
+
+      I64_GES: ::Integer
+
+      I64_GEU: ::Integer
+
+      I64_CLZ: ::Integer
+
+      I64_CTZ: ::Integer
+
+      I64_POPCNT: ::Integer
+
+      I64_EXTEND8_S: ::Integer
+
+      I64_EXTEND16_S: ::Integer
+
+      I64_EXTEND32_S: ::Integer
+
+      I64_EXTEND_I32_S: ::Integer
+
+      I64_EXTEND_I32_U: ::Integer
+
+      I64_AND: ::Integer
+
+      I64_OR: ::Integer
+
+      I64_XOR: ::Integer
+
+      I64_SHL: ::Integer
+
+      I64_SHR_S: ::Integer
+
+      I64_SHR_U: ::Integer
+
+      I64_ROTL: ::Integer
+
+      I64_ROTR: ::Integer
+
+      I64_ADD: ::Integer
+
+      I64_SUB: ::Integer
+
+      I64_MUL: ::Integer
+
+      I64_DIV_S: ::Integer
+
+      I64_DIV_U: ::Integer
+
+      I64_REM_S: ::Integer
+
+      I64_REM_U: ::Integer
+
+      I64_LOAD: ::Integer
+
+      I64_LOAD8_S: ::Integer
+
+      I64_LOAD8_U: ::Integer
+
+      I64_LOAD16_S: ::Integer
+
+      I64_LOAD16_U: ::Integer
+
+      I64_LOAD32_S: ::Integer
+
+      I64_LOAD32_U: ::Integer
+
+      I64_STORE: ::Integer
+
+      I64_STORE8: ::Integer
+
+      I64_STORE16: ::Integer
+
+      I64_STORE32: ::Integer
+
+      I64_GLOBAL_GET: ::Integer
+
+      I64_GLOBAL_SET: ::Integer
+
       NAMES: untyped
+
+      # Each signature lists the destination type followed by the source types.
+      I64_ALU_TYPES: Hash[Integer, Array[Symbol]]
+
+      I64_LOADS: untyped
+
+      I64_STORES: untyped
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction
@@ -339,6 +442,8 @@ module Wardite
 
       attr_reader throw_sites: Array[Wardite::Efflorescence::ThrowSite]
 
+      attr_accessor uses_i64: bool
+
       attr_accessor uses_eh: bool
 
       attr_accessor uses_store: bool
@@ -376,7 +481,8 @@ module Wardite
 
       # @rbs value: Integer
       # @rbs return: Integer
-      def allocate_constant: (Integer value) -> Integer
+      # @rbs type: Symbol
+      def allocate_constant: (Integer value, ?type: Symbol) -> Integer
 
       # @rbs instructions: Array[Wardite::Efflorescence::Instruction]
       # @rbs return: void
@@ -480,6 +586,8 @@ module Wardite
 
       attr_reader callable: Wardite::_WasmCallable
 
+      attr_reader uses_i64: bool
+
       attr_reader unboxed_wasi: Wardite::Efflorescence::_WasiCallable?
 
       # @rbs external: Wardite::ExternalFunction
@@ -553,6 +661,7 @@ module Wardite
 
       attr_reader pool_index: Integer
 
+      # Numeric registers hold unsigned i32 or signed i64, as recorded in Function.
       attr_reader registers: Array[Integer]
 
       attr_reader exception_registers: Array[Wardite::Efflorescence::ExceptionValue?]

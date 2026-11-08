@@ -103,8 +103,8 @@ module Wardite
           params = types&.defined_types&.[](index)
           results = types&.defined_results&.[](index)
           raise LoadError, "invalid tag type index #{index}" unless params && results
-          unless params.all? { |type| type == :i32 } && results.empty?
-            raise LoadError, "only i32 tag payloads with no results are supported"
+          unless params.all? { |type| type == :i32 || type == :i64 } && results.empty?
+            raise LoadError, "only integer tag payloads with no results are supported"
           end
           @tags << Efflorescence::Tag.new(params)
         end
@@ -562,8 +562,9 @@ module Wardite
         frame.pc = pc
 
       when :br_table
-        level_vec = operand[0]
-        raise EvalError, "no level vector" if !level_vec.is_a?(Array)
+        levels = operand[0]
+        raise EvalError, "no level vector" unless levels.is_a?(OperandVector)
+        level_vec = levels.entries
         default = operand[1]
         raise EvalError, "no default specified" if !default.is_a?(Integer)
         idx = stack.pop 

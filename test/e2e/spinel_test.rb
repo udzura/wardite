@@ -68,6 +68,17 @@ class WarditeSpinelTest < Test::Unit::TestCase
     WAT
   end
 
+  test "br_table keeps the shared decoder compatible with the stack engine" do
+    assert_native_result(<<~WAT, "run", [0], 42)
+      (module
+        (func (export "run") (param i32) (result i32)
+          block
+            local.get 0 br_table 0 0
+          end
+          i32.const 42))
+    WAT
+  end
+
   test "Efflorescence complete acceptance module on both native engines" do
     Dir.mktmpdir("wardite-spinel-mir") do |dir|
       wasm = File.join(dir, "mix.wasm")

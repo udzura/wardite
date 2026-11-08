@@ -61,7 +61,7 @@ class EfflorescenceM3IndirectTest < Test::Unit::TestCase
       '(module (type $t (func)) (func unreachable call_indirect (type $t)))',
       '(module (type $t (func)) (table 1 externref) (func unreachable call_indirect (type $t)))',
       '(module (table 1 funcref) (func unreachable call_indirect (type 50)))',
-      '(module (type $t (func (param i64))) (table 1 funcref) (func unreachable call_indirect (type $t)))',
+      '(module (type $t (func (param f64))) (table 1 funcref) (func unreachable call_indirect (type $t)))',
       '(module (type $t (func)) (table 1 funcref) (table 1 funcref) (func unreachable call_indirect 1 (type $t)))'
     ].each do |wat|
       assert_raise_kind_of(Wardite::LoadError) { load_efflorescence(wat) }

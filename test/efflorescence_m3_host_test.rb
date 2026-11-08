@@ -76,7 +76,7 @@ class EfflorescenceM3HostTest < Test::Unit::TestCase
     assert_raise(NameError) { load_efflorescence(wat, import_object: {env: {init: init}}) }
     assert_empty started
     assert_raise(Wardite::Efflorescence::UnsupportedFeature) do
-      load_efflorescence('(module (import "env" "unused" (func (param i64))))')
+      load_efflorescence('(module (import "env" "unused" (func (param f64))))')
     end
     ['(memory 1)', '(table 1 funcref)', '(global i32)'].each do |kind|
       assert_raise(Wardite::LoadError) { load_efflorescence("(module (import \"env\" \"x\" #{kind}))") }

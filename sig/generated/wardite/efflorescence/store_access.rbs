@@ -26,6 +26,10 @@ module Wardite
       # @rbs return: Integer
       def global_get: (Integer index) -> Integer
 
+      # @rbs index: Integer
+      # @rbs return: Integer
+      def global_get_i64: (Integer index) -> Integer
+
       # Boxing is confined to the shared Store boundary. Existing register
       # snapshots contain independent integers, never a mutable Global object.
       # @rbs index: Integer
@@ -33,12 +37,24 @@ module Wardite
       # @rbs return: void
       def global_set: (Integer index, Integer value) -> void
 
+      # @rbs index: Integer
+      # @rbs value: Integer
+      # @rbs return: void
+      def global_set_i64: (Integer index, Integer value) -> void
+
       # @rbs address: Integer
       # @rbs offset: Integer
       # @rbs width: Integer
       # @rbs signed: bool
       # @rbs return: Integer
       def load: (Integer address, Integer offset, Integer width, bool signed) -> Integer
+
+      # @rbs address: Integer
+      # @rbs offset: Integer
+      # @rbs width: Integer
+      # @rbs signed: bool
+      # @rbs return: Integer
+      def load_i64: (Integer address, Integer offset, Integer width, bool signed) -> Integer
 
       # Check the whole access before the first write. Effective addresses are
       # wide integers; the static offset never wraps back into memory32.
@@ -92,6 +108,13 @@ module Wardite
       # @rbs length: Integer
       # @rbs return: void
       def init: (Integer index, Integer destination, Integer source, Integer length) -> void
+
+      # Read up to four checked little-endian bytes as an unsigned limb.
+      # @rbs data: String
+      # @rbs start: Integer
+      # @rbs width: Integer
+      # @rbs return: Integer
+      def read_word: (String data, Integer start, Integer width) -> Integer
 
       # @rbs return: Wardite::Memory
       def memory: () -> Wardite::Memory

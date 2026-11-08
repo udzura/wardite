@@ -690,11 +690,11 @@ module Wardite
             len.times do
               vec << fetch_uleb128(buf)
             end
-            operand << vec
+            operand << OperandVector.new(vec)
           when :i32
             operand << fetch_sleb128(buf)
           when :i64
-            operand << fetch_sleb128(buf, max_level: 16)
+            operand << fetch_sleb128(buf, width: 64)
           when :f32
             data = buf.read 4
             if !data || data.size != 4
@@ -723,7 +723,7 @@ module Wardite
               depth = fetch_uleb128(buf)
               clauses << kind << tag << depth
             end
-            operand << clauses
+            operand << OperandVector.new(clauses)
           else
             $stderr.puts "warning: unknown type #{typ.inspect}. defaulting to u32"
             operand << fetch_uleb128(buf)
@@ -874,7 +874,7 @@ module Wardite
       opcode = assert_read(sbuf, 1).ord
       case opcode
       when 0x41 then fetch_sleb128(sbuf)
-      when 0x42 then fetch_sleb128(sbuf, max_level: 16)
+      when 0x42 then fetch_sleb128(sbuf, width: 64)
       when 0x43 then assert_read(sbuf, 4)
       when 0x44 then assert_read(sbuf, 8)
       else raise LoadError, "unsupported constant expression"

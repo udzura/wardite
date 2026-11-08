@@ -31,7 +31,10 @@ module Wardite
 
     # @rbs buf: File|StringIO
     # @rbs return: Integer
-    def fetch_sleb128(buf, max_level: 8)
+    # @rbs max_level: Integer
+    # @rbs width: Integer?
+    def fetch_sleb128(buf, max_level: 8, width: nil)
+      max_level = (width - 1) / 7 if width
       bytes = [] #: Array[Integer]
       negative = false
       level = 0
@@ -43,6 +46,13 @@ module Wardite
         bytes << lower
         negative = (c & 0x40) != 0
         if upper == 0
+          if width && level == max_level
+            used = width - 7 * level
+            padding = lower >> (used - 1)
+            unless padding == 0 || padding == (1 << (8 - used)) - 1
+              raise LoadError, "signed LEB128 exceeds width"
+            end
+          end
           terminated = true
           break
         end

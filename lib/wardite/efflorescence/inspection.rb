@@ -104,6 +104,12 @@ module Wardite
         end
         ir.functions.each do |function|
           lines << "function #{function.index}: params=#{function.parameter_count} locals=#{function.local_count} registers=#{function.register_count}"
+          if function.uses_i64
+            lines << "  types: #{function.register_types.inspect} -> #{function.result_types.inspect}"
+            function.constant_registers.each do |register|
+              lines << "  const r#{register}: #{function.initial_value(register)}"
+            end
+          end
           function.handlers.each_with_index do |handler, i|
             handler.clauses.each do |clause|
               lines << "  handler #{i}: tag=#{clause.tag_index} payload=#{clause.payload_registers.inspect} ref=#{clause.reference_register} target=#{clause.target_pc} depth=#{clause.handler_depth}"

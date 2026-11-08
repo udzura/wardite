@@ -38,6 +38,14 @@ module Wardite
         value.value & 0xffffffff
       end
 
+      # @rbs index: Integer
+      # @rbs return: Integer
+      def global_get_i64(index)
+        value = global_at(index).value
+        raise Wardite::EvalError, "invalid i64 global value" unless value.is_a?(Wardite::I64)
+        value.value_s
+      end
+
       # Boxing is confined to the shared Store boundary. Existing register
       # snapshots contain independent integers, never a mutable Global object.
       # @rbs index: Integer
@@ -45,6 +53,13 @@ module Wardite
       # @rbs return: void
       def global_set(index, value)
         global_at(index).value = Wardite::I32.new(value)
+      end
+
+      # @rbs index: Integer
+      # @rbs value: Integer
+      # @rbs return: void
+      def global_set_i64(index, value)
+        global_at(index).value = Wardite::I64(value)
       end
 
       # @rbs address: Integer
@@ -56,17 +71,28 @@ module Wardite
         data = memory.data
         start = address + offset
         StoreAccess.check_range(start, width, data.bytesize)
-        value = 0
-        byte = 0
-        while byte < width
-          part = data.getbyte(start + byte) || raise(Wardite::EvalError, "missing checked memory byte")
-          value |= part << (byte * 8)
-          byte += 1
-        end
+        value = read_word(data, start, width)
         if signed && value >= (1 << (width * 8 - 1))
           value -= 1 << (width * 8)
         end
         value & 0xffffffff
+      end
+
+      # @rbs address: Integer
+      # @rbs offset: Integer
+      # @rbs width: Integer
+      # @rbs signed: bool
+      # @rbs return: Integer
+      def load_i64(address, offset, width, signed)
+        data = memory.data
+        start = address + offset
+        StoreAccess.check_range(start, width, data.bytesize)
+        if width == 8
+          I64Arithmetic.join(read_word(data, start, 4), read_word(data, start + 4, 4))
+        else
+          value = read_word(data, start, width)
+          signed ? I64Arithmetic.extend(value, width * 8) : value
+        end
       end
 
       # Check the whole access before the first write. Effective addresses are
@@ -196,6 +222,22 @@ module Wardite
           data.setbyte(destination + index, segment.getbyte(source + index) || raise(Wardite::EvalError, "missing checked segment byte"))
           index += 1
         end
+      end
+
+      # Read up to four checked little-endian bytes as an unsigned limb.
+      # @rbs data: String
+      # @rbs start: Integer
+      # @rbs width: Integer
+      # @rbs return: Integer
+      def read_word(data, start, width)
+        value = 0
+        byte = 0
+        while byte < width
+          part = data.getbyte(start + byte) || raise(Wardite::EvalError, "missing checked memory byte")
+          value |= part << (byte * 8)
+          byte += 1
+        end
+        value
       end
 
       # @rbs return: Wardite::Memory

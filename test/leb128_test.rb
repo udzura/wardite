@@ -17,4 +17,12 @@ class WarditeLeb128Test < Test::Unit::TestCase
       assert_equal hex.length / 2, buffer.pos
     end
   end
+
+  test "i64 LEB128 rejects invalid sign padding, a continuation after byte ten and truncation" do
+    %w[80808080808080808001 ffffffffffffffffff7e 8080808080808080808000 8080].each do |hex|
+      assert_raise(Wardite::LoadError) do
+        Wardite::Leb128Helper.fetch_sleb128(StringIO.new([hex].pack("H*")), width: 64)
+      end
+    end
+  end
 end

@@ -27,15 +27,44 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
-      def validate: (Wardite::Efflorescence::Function function) -> void
+      # @rbs ir: Wardite::Efflorescence::IR?
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      def validate: (Wardite::Efflorescence::Function function, ?Wardite::Efflorescence::IR? ir, ?tags: Array[Wardite::Efflorescence::Tag]?) -> void
 
       private
 
       # Validate all registers, including unreachable instructions and table-only
-      # operands. The runtime never needs to branch on an i32 register's type.
+      # operands. Numeric registers are checked before flat execution.
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
-      def validate_types: (Wardite::Efflorescence::Function function) -> void
+      # @rbs ir: Wardite::Efflorescence::IR?
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      def validate_types: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR? ir, Array[Wardite::Efflorescence::Tag]? tags) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs reads: Array[Integer]
+      # @rbs destination: Integer
+      # @rbs return: void
+      def validate_i64_instruction: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Array[Integer] reads, Integer destination) -> void
+
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      # @rbs index: Integer
+      # @rbs size: Integer
+      # @rbs return: Array[Symbol]
+      def payload_types: (Array[Wardite::Efflorescence::Tag]? tags, Integer index, Integer size) -> Array[Symbol]
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs register: Integer
+      # @rbs types: Array[Symbol]
+      # @rbs return: void
+      def check_result: (Wardite::Efflorescence::Function function, Integer register, Array[Symbol] types) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs register: Integer
+      # @rbs type: Symbol
+      # @rbs return: void
+      def check_register: (Wardite::Efflorescence::Function function, Integer register, Symbol type) -> void
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs register: Integer

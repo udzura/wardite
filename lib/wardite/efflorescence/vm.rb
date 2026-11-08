@@ -30,7 +30,7 @@ module Wardite
         @metrics = Metrics.new
         @semantic_ir = Translator.new(instance).translate
         @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)
-        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function) }
+        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function, @optimized_ir, tags: instance.tags) }
         @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir
         Lowerer.new.compile(@ir)
         start = instance.start_section
@@ -53,34 +53,25 @@ module Wardite
       # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::I32?
+      # @rbs return: (Wardite::I32 | Wardite::I64)?
       def call(name, arguments)
-        result = call_unboxed(name, arguments)
-        result.nil? ? nil : Wardite::I32.new(result)
+        entry = export_entry(name)
+        result = execute_public(entry, arguments)
+        return nil if result.nil?
+        entry.result_types[0] == :i64 ? Wardite::I64(result) : Wardite::I32.new(result)
       end
 
+      # i32 results are unsigned and i64 results are signed.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
       # @rbs return: Integer?
       def call_unboxed(name, arguments)
-        export = @instance.export_section.exports[name.to_s]
-        raise ::NoMethodError, "function #{name} not found" unless export
-        raise ::NoMethodError, "#{name} is not a function" unless export.kind == 0
-        entry = @ir.entry_at(export.index)
-        unless arguments.size == entry.parameter_types.size
-          raise Wardite::ArgumentError, "unmatch arg size"
-        end
-        values = [] #: Array[Integer]
-        arguments.each do |value|
-          raise Wardite::ArgumentError, "type mismatch: i32(#{value})" unless value.is_a?(Integer)
-          values << (value & 0xffffffff)
-        end
-        execute(entry, values)
+        execute_public(export_entry(name), arguments)
       end
 
       # @rbs name: Symbol
       # @rbs *arguments: Object
-      # @rbs return: Wardite::I32?
+      # @rbs return: (Wardite::I32 | Wardite::I64)?
       def method_missing(name, *arguments)
         callable?(name) ? call(name, arguments) : super
       end
@@ -100,6 +91,36 @@ module Wardite
       end
 
       private
+
+      # @rbs name: String|Symbol
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def export_entry(name)
+        export = @instance.export_section.exports[name.to_s]
+        raise ::NoMethodError, "function #{name} not found" unless export
+        raise ::NoMethodError, "#{name} is not a function" unless export.kind == 0
+        @ir.entry_at(export.index)
+      end
+
+      # @rbs entry: Wardite::Efflorescence::FunctionEntry
+      # @rbs arguments: Array[Object]
+      # @rbs return: Integer?
+      def execute_public(entry, arguments)
+        unless arguments.size == entry.parameter_types.size
+          raise Wardite::ArgumentError, "unmatch arg size"
+        end
+        values = [] #: Array[Integer]
+        arguments.each_with_index do |value, i|
+          type = entry.parameter_types.fetch(i)
+          if type == :i64 && value.is_a?(Wardite::I64)
+            values << value.value_s
+          elsif value.is_a?(Integer)
+            values << (type == :i64 ? I64Arithmetic.normalize(value) : value & 0xffffffff)
+          else
+            raise Wardite::ArgumentError, "type mismatch: #{type}(#{value})"
+          end
+        end
+        execute(entry, values)
+      end
 
       # A concrete return type breaks the inference cycle between the current
       # frame and the array it is restored from after every internal RETURN.
@@ -241,6 +262,8 @@ module Wardite
           wasi = host.unboxed_wasi
           return wasi.call(@instance.store, arguments, sources) if wasi
         end
+        return invoke_i64_host(host, arguments, sources) if host.uses_i64
+
         boxed = [] #: Array[Wardite::wasmValue]
         if sources
           sources.each { |register| boxed << Wardite::I32.new(arguments[register]) }
@@ -254,6 +277,31 @@ module Wardite
           return result & 0xffffffff
         elsif result.is_a?(Wardite::I32)
           return result.value & 0xffffffff
+        end
+        raise Wardite::EvalError, "host ABI result mismatch for #{host.external.name}"
+      end
+
+      # @rbs host: Wardite::Efflorescence::HostFunction
+      # @rbs arguments: Array[Integer]
+      # @rbs sources: Array[Integer]?
+      # @rbs return: Integer?
+      def invoke_i64_host(host, arguments, sources)
+        boxed = [] #: Array[Wardite::wasmValue]
+        host.entry.parameter_types.each_with_index do |type, i|
+          index = sources ? sources.fetch(i) : i
+          value = arguments.fetch(index)
+          boxed << (type == :i64 ? Wardite::I64(value) : Wardite::I32.new(value))
+        end
+        result = host.callable.call(@instance.store, boxed)
+        case host.entry.result_types[0]
+        when nil
+          return nil if result.nil?
+        when :i64
+          return result.value_s if result.is_a?(Wardite::I64)
+          return I64Arithmetic.normalize(result) if result.is_a?(Integer)
+        when :i32
+          return result.value & 0xffffffff if result.is_a?(Wardite::I32)
+          return result & 0xffffffff if result.is_a?(Integer)
         end
         raise Wardite::EvalError, "host ABI result mismatch for #{host.external.name}"
       end
@@ -494,7 +542,7 @@ module Wardite
             pc = Integer(frame.pc)
             next
           when 11 # Opcode::RETURN
-            # Verified RETURN reads an initialized i32. Keep its native type
+            # Verified RETURN reads an initialized integer. Keep its native type
             # separate from the nullable array reads used by the ALU cases.
             return_value = a < 0 ? 0 : Integer(registers[a])
             destination = frame.return_register
@@ -673,6 +721,186 @@ module Wardite
             @store_access.bulk(65, frame.function.memory_site(a), registers)
           when 66 # Opcode::MEMORY_FILL
             @store_access.bulk(66, frame.function.memory_site(a), registers)
+          when 69 # Opcode::I64_EQZ
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(69, registers[b], 0)
+          when 70 # Opcode::I32_WRAP_I64
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(70, registers[b], 0)
+          when 71 # Opcode::I64_EQ
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(71, registers[b], registers[c])
+          when 72 # Opcode::I64_NE
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(72, registers[b], registers[c])
+          when 73 # Opcode::I64_LTS
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(73, registers[b], registers[c])
+          when 74 # Opcode::I64_LTU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(74, registers[b], registers[c])
+          when 75 # Opcode::I64_GTS
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(75, registers[b], registers[c])
+          when 76 # Opcode::I64_GTU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(76, registers[b], registers[c])
+          when 77 # Opcode::I64_LES
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(77, registers[b], registers[c])
+          when 78 # Opcode::I64_LEU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(78, registers[b], registers[c])
+          when 79 # Opcode::I64_GES
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(79, registers[b], registers[c])
+          when 80 # Opcode::I64_GEU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(80, registers[b], registers[c])
+          when 81 # Opcode::I64_CLZ
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(81, registers[b], 0)
+          when 82 # Opcode::I64_CTZ
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(82, registers[b], 0)
+          when 83 # Opcode::I64_POPCNT
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(83, registers[b], 0)
+          when 84 # Opcode::I64_EXTEND8_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(84, registers[b], 0)
+          when 85 # Opcode::I64_EXTEND16_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(85, registers[b], 0)
+          when 86 # Opcode::I64_EXTEND32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(86, registers[b], 0)
+          when 87 # Opcode::I64_EXTEND_I32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(87, registers[b], 0)
+          when 88 # Opcode::I64_EXTEND_I32_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(88, registers[b], 0)
+          when 89 # Opcode::I64_AND
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(89, registers[b], registers[c])
+          when 90 # Opcode::I64_OR
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(90, registers[b], registers[c])
+          when 91 # Opcode::I64_XOR
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(91, registers[b], registers[c])
+          when 92 # Opcode::I64_SHL
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(92, registers[b], registers[c])
+          when 93 # Opcode::I64_SHR_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(93, registers[b], registers[c])
+          when 94 # Opcode::I64_SHR_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(94, registers[b], registers[c])
+          when 95 # Opcode::I64_ROTL
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(95, registers[b], registers[c])
+          when 96 # Opcode::I64_ROTR
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(96, registers[b], registers[c])
+          when 97 # Opcode::I64_ADD
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(97, registers[b], registers[c])
+          when 98 # Opcode::I64_SUB
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(98, registers[b], registers[c])
+          when 99 # Opcode::I64_MUL
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(99, registers[b], registers[c])
+          when 100 # Opcode::I64_DIV_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(100, registers[b], registers[c])
+          when 101 # Opcode::I64_DIV_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(101, registers[b], registers[c])
+          when 102 # Opcode::I64_REM_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(102, registers[b], registers[c])
+          when 103 # Opcode::I64_REM_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(103, registers[b], registers[c])
+          when 104 # Opcode::I64_LOAD
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 8, false)
+          when 105 # Opcode::I64_LOAD8_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 1, true)
+          when 106 # Opcode::I64_LOAD8_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 1, false)
+          when 107 # Opcode::I64_LOAD16_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 2, true)
+          when 108 # Opcode::I64_LOAD16_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 2, false)
+          when 109 # Opcode::I64_LOAD32_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 4, true)
+          when 110 # Opcode::I64_LOAD32_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 4, false)
+          when 111 # Opcode::I64_STORE
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 8, registers[a])
+          when 112 # Opcode::I64_STORE8
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 1, registers[a])
+          when 113 # Opcode::I64_STORE16
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 2, registers[a])
+          when 114 # Opcode::I64_STORE32
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 4, registers[a])
+          when 115 # Opcode::I64_GLOBAL_GET
+            b = instructions.fetch(pc + 2)
+            registers[a] = @store_access.global_get_i64(b)
+          when 116 # Opcode::I64_GLOBAL_SET
+            b = instructions.fetch(pc + 2)
+            @store_access.global_set_i64(a, registers[b])
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

@@ -60,7 +60,7 @@ $ wardite examples/test.wasm
 
 ### Efflorescence register VM (experimental)
 
-Use `--new-engine` to select the MIR-based i32 engine; the stack VM remains the
+Use `--new-engine` to select the MIR-based integer engine; the stack VM remains the
 default. The same option is available in Spinel builds.
 
 ```sh
@@ -82,7 +82,7 @@ See [Phase 2](docs/efflorescence-phase2.md) ([日本語](docs/efflorescence-phas
 
 [M1](docs/efflorescence-m1.md) adds the remaining basic i32 operations,
 if/else/select/br_table, and new exception handling (try_table/throw/throw_ref).
-Tags support i32 payloads; nullable exnref locals and multi-result blocks carry
+Tags support integer payloads; nullable exnref locals and multi-result blocks carry
 caught values. Uncaught exceptions expose their tag and payload through
 `Wardite::UncaughtWasmException`. EH remains exclusive to Efflorescence.
 
@@ -95,6 +95,11 @@ and typed `call_indirect` through funcref table 0. Host callbacks share the
 instance Store and can re-enter the VM. On CRuby, Efflorescence runs built-in
 WASI `fd_write` and `proc_exit` with unboxed i32 arguments. Spinel supports
 regular host callbacks.
+
+[M4](docs/efflorescence-m4.md) adds i64 and integer conversions, including
+mixed signatures, memory, globals and exception payloads. For an i64 result,
+`runtime.call` returns a `Wardite::I64` and `runtime.call_unboxed` returns a
+signed 64-bit Integer. The i32 unboxed result remains unsigned.
 
 ## Development
 

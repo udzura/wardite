@@ -8,6 +8,7 @@ module Wardite
   class UncaughtWasmException < WebAssemblyError
     attr_reader :exception_value #: Wardite::Efflorescence::ExceptionValue
     attr_reader :tag #: Wardite::Efflorescence::Tag
+    # Payload integers follow tag order, with unsigned i32 and signed i64.
     attr_reader :payload #: Array[Integer]
 
     # @rbs value: Wardite::Efflorescence::ExceptionValue

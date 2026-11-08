@@ -2,7 +2,17 @@
 
 module Wardite
   # @rbs!
-  #   type operandItem = Integer | Array[Integer] | Float | Block
+  #   type operandItem = Integer | Float | Block | OperandVector
+
+  # Give br_table and try_table vectors a concrete type in the mixed operand list.
+  class OperandVector
+    attr_reader :entries #: Array[Integer]
+
+    # @rbs entries: Array[Integer]
+    def initialize(entries)
+      @entries = entries
+    end
+  end
 
   class Op
     # @see https://pengowray.github.io/wasm-ops/

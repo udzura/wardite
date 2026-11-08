@@ -47,10 +47,12 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
-      def validate(function)
+      # @rbs ir: Wardite::Efflorescence::IR?
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      def validate(function, ir = nil, tags: nil)
         instructions = function.instructions
         raise TranslationError, "Efflorescence: empty MIR function" if instructions.empty?
-        validate_types(function)
+        validate_types(function, ir, tags)
         analysis = Analysis.new(function)
         blocks = [] #: Array[Wardite::Efflorescence::RegisterValidation::Block]
         block_for_pc = [] #: Array[Integer]
@@ -116,10 +118,12 @@ module Wardite
       private
 
       # Validate all registers, including unreachable instructions and table-only
-      # operands. The runtime never needs to branch on an i32 register's type.
+      # operands. Numeric registers are checked before flat execution.
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
-      def validate_types(function)
+      # @rbs ir: Wardite::Efflorescence::IR?
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      def validate_types(function, ir, tags)
         function.instructions.each do |instruction|
           opcode = instruction[0]
           if Opcode.memory_site?(opcode)
@@ -143,25 +147,129 @@ module Wardite
             elsif site.host_index != -1 || site.table_index != 0
               raise TranslationError, "invalid MIR indirect call operands"
             end
-            unless site.arguments.size == site.parameter_types.size && site.parameter_types.all? { |type| type == :i32 } &&
-                (site.result_types.empty? ? destination == -1 : site.result_types == [:i32] && destination >= 0)
+            unless site.arguments.size == site.parameter_types.size &&
+                site.parameter_types.all? { |type| type == :i32 || type == :i64 } &&
+                (site.result_types.empty? ? destination == -1 : site.result_types.size == 1 &&
+                  [:i32, :i64].include?(site.result_types.fetch(0)) && destination >= 0)
               raise TranslationError, "invalid MIR dynamic call signature"
             end
+            if ir && opcode == Opcode::CALL_HOST
+              host = ir.hosts[site.host_index]
+              unless host && host.entry.parameter_types == site.parameter_types && host.entry.result_types == site.result_types
+                raise TranslationError, "MIR host call signature mismatch"
+              end
+            end
+            check_register(function, instruction[3], :i32) if opcode == Opcode::CALL_INDIRECT
+            site.arguments.each_with_index { |register, i| check_register(function, register, site.parameter_types.fetch(i)) }
+            check_result(function, destination, site.result_types)
+            next
           end
           reads = function.reads(instruction)
           destination = Opcode.destination(instruction)
-          expected = opcode == Opcode::COPY_REF || opcode == Opcode::THROW_REF ? :exnref : :i32
-          (reads + (destination >= 0 ? [destination] : [])).each do |register|
-            unless register >= 0 && function.register_types[register] == expected
-              raise TranslationError, "invalid MIR register type/index r#{register}"
+          if opcode > Opcode::CALL_INDIRECT
+            validate_i64_instruction(function, instruction, reads, destination)
+            next
+          end
+          case opcode
+          when Opcode::THROW
+            site = function.throw_sites.fetch(instruction[1])
+            types = payload_types(tags, site.tag_index, reads.size)
+            reads.each_with_index { |register, i| check_register(function, register, types.fetch(i)) }
+          when Opcode::COPY
+            type = function.register_types[destination] if destination >= 0
+            unless type == :i32 || type == :i64
+              raise TranslationError, "invalid MIR numeric copy destination r#{destination}"
             end
+            check_register(function, instruction[2], type)
+          when Opcode::RETURN
+            check_result(function, instruction[1], function.result_types)
+          when Opcode::CALL
+            if ir
+              entry = ir.entry_at(instruction[2])
+              unless entry.kind == :defined && reads.size == entry.parameter_types.size
+                raise TranslationError, "invalid MIR direct call signature"
+              end
+              reads.each_with_index { |register, i| check_register(function, register, entry.parameter_types.fetch(i)) }
+              check_result(function, destination, entry.result_types)
+            else
+              reads.each { |register| check_register(function, register, :i32) }
+              check_register(function, destination, :i32) if destination >= 0
+            end
+          else
+            expected = opcode == Opcode::COPY_REF || opcode == Opcode::THROW_REF ? :exnref : :i32
+            reads.each { |register| check_register(function, register, expected) }
+            check_register(function, destination, expected) if destination >= 0
           end
         end
         function.handlers.each do |handler|
           handler.clauses.each do |clause|
-            clause.payload_registers.each { |register| check_destination(function, register, :i32) }
+            types = payload_types(tags, clause.tag_index, clause.payload_registers.size)
+            clause.payload_registers.each_with_index do |register, i|
+              check_destination(function, register, types.fetch(i))
+            end
             check_destination(function, clause.reference_register, :exnref) if clause.reference_register >= 0
           end
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs reads: Array[Integer]
+      # @rbs destination: Integer
+      # @rbs return: void
+      def validate_i64_instruction(function, instruction, reads, destination)
+        opcode = instruction[0]
+        types = Opcode::I64_ALU_TYPES[opcode]
+        if types
+          check_register(function, destination, types.fetch(0))
+          reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }
+        elsif Opcode::I64_LOADS.include?(opcode)
+          check_register(function, destination, :i64)
+          check_register(function, instruction[2], :i32)
+        elsif Opcode::I64_STORES.include?(opcode)
+          check_register(function, instruction[1], :i64)
+          check_register(function, instruction[2], :i32)
+        elsif opcode == Opcode::I64_GLOBAL_GET
+          check_register(function, destination, :i64)
+        elsif opcode == Opcode::I64_GLOBAL_SET
+          check_register(function, instruction[2], :i64)
+        end
+      end
+
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      # @rbs index: Integer
+      # @rbs size: Integer
+      # @rbs return: Array[Symbol]
+      def payload_types(tags, index, size)
+        return Array.new(size, :i32) unless tags
+
+        tag = tags[index] if index >= 0
+        types = tag ? tag.parameter_types : [] #: Array[Symbol]
+        if (index >= 0 && !tag) || size != types.size
+          raise TranslationError, "invalid MIR exception payload"
+        end
+        types
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs register: Integer
+      # @rbs types: Array[Symbol]
+      # @rbs return: void
+      def check_result(function, register, types)
+        if types.empty?
+          raise TranslationError, "invalid MIR void result" unless register == -1
+        else
+          check_register(function, register, types.fetch(0))
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs register: Integer
+      # @rbs type: Symbol
+      # @rbs return: void
+      def check_register(function, register, type)
+        unless register >= 0 && function.register_types[register] == type
+          raise TranslationError, "invalid MIR register type/index r#{register}"
         end
       end
 

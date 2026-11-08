@@ -1,0 +1,99 @@
+# Generated from lib/wardite/efflorescence/i64_arithmetic.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    module I64Arithmetic
+      MASK: ::Integer
+
+      MIN: Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.low: (Integer value) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.high: (Integer value) -> Integer
+
+      # @rbs low: Integer
+      # @rbs high: Integer
+      # @rbs return: Integer
+      def self.join: (Integer low, Integer high) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.normalize: (Integer value) -> Integer
+
+      # Sign extension for an integer field of at most 32 bits.
+      # @rbs value: Integer
+      # @rbs width: Integer
+      # @rbs return: Integer
+      def self.extend: (Integer value, Integer width) -> Integer
+
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: bool
+      def self.unsigned_less?: (Integer left, Integer right) -> bool
+
+      # @rbs value: Integer
+      # @rbs count: Integer
+      # @rbs return: Integer
+      def self.shift_left: (Integer value, Integer count) -> Integer
+
+      # @rbs value: Integer
+      # @rbs count: Integer
+      # @rbs signed: bool
+      # @rbs return: Integer
+      def self.shift_right: (Integer value, Integer count, bool signed) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.clz32: (Integer value) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.ctz32: (Integer value) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.popcnt32: (Integer value) -> Integer
+
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.add_i64: (Integer left, Integer right) -> Integer
+
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.subtract_i64: (Integer left, Integer right) -> Integer
+
+      # Only the four least significant base-2**16 digits contribute.
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.multiply_i64: (Integer left, Integer right) -> Integer
+
+      # The sign bit remains part of the unsigned magnitude, including MIN.
+      # @rbs opcode: Integer
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.divide: (Integer opcode, Integer left, Integer right) -> Integer
+
+      # Shift in one dividend bit per step. Preserve the extra remainder bit
+      # until comparison and subtraction have consumed it.
+      # @rbs dividend: Integer
+      # @rbs divisor: Integer
+      # @rbs remainder: bool
+      # @rbs return: Integer
+      def self.unsigned_divide: (Integer dividend, Integer divisor, bool remainder) -> Integer
+
+      # @rbs opcode: Integer
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.calculate: (Integer opcode, Integer left, Integer right) -> Integer
+    end
+  end
+end
