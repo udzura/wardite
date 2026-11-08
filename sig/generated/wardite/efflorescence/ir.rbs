@@ -339,6 +339,8 @@ module Wardite
 
       attr_reader throw_sites: Array[Wardite::Efflorescence::ThrowSite]
 
+      attr_accessor uses_i64: bool
+
       attr_accessor uses_eh: bool
 
       attr_accessor uses_store: bool
@@ -376,7 +378,8 @@ module Wardite
 
       # @rbs value: Integer
       # @rbs return: Integer
-      def allocate_constant: (Integer value) -> Integer
+      # @rbs type: Symbol
+      def allocate_constant: (Integer value, ?type: Symbol) -> Integer
 
       # @rbs instructions: Array[Wardite::Efflorescence::Instruction]
       # @rbs return: void

@@ -67,7 +67,7 @@ module Wardite
       # @rbs @entries: Array[Wardite::Efflorescence::FunctionEntry]
       # @rbs @stack: Array[Integer]
       # @rbs @controls: Array[Wardite::Efflorescence::Translator::Control]
-      # @rbs @constants: Hash[Integer, Integer]
+      # @rbs @constants: Hash[Symbol, Hash[Integer, Integer]]
       # @rbs @function: Wardite::Efflorescence::Function
       # @rbs @reachable: bool
       # @rbs @wasm_pc: Integer
@@ -413,8 +413,10 @@ module Wardite
 
       # @rbs value: Integer
       # @rbs return: Integer
-      def constant(value)
-        @constants[value] ||= @function.allocate_constant(value)
+      # @rbs type: Symbol
+      def constant(value, type = :i32)
+        constants = (@constants[type] ||= {})
+        constants[value] ||= @function.allocate_constant(value, type: type)
       end
 
       # @rbs kind: Symbol

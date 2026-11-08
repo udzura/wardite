@@ -1,0 +1,28 @@
+# Generated from lib/wardite/efflorescence/i64_arithmetic.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    module I64Arithmetic
+      MASK: ::Integer
+
+      MIN: Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.low: (Integer value) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.high: (Integer value) -> Integer
+
+      # @rbs low: Integer
+      # @rbs high: Integer
+      # @rbs return: Integer
+      def self.join: (Integer low, Integer high) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.normalize: (Integer value) -> Integer
+    end
+  end
+end

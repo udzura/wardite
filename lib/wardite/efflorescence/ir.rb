@@ -363,6 +363,7 @@ module Wardite
       attr_reader :handlers #: Array[Wardite::Efflorescence::HandlerDescriptor]
       attr_reader :flat_handlers #: Array[Wardite::Efflorescence::HandlerDescriptor]
       attr_reader :throw_sites #: Array[Wardite::Efflorescence::ThrowSite]
+      attr_accessor :uses_i64 #: bool
       attr_accessor :uses_eh #: bool
       attr_accessor :uses_store #: bool
       attr_accessor :uses_dynamic_calls #: bool
@@ -390,6 +391,7 @@ module Wardite
         @uses_store = false
         @uses_dynamic_calls = false
         @dynamic_sites = []
+        @uses_i64 = @register_types.include?(:i64) || result_types.include?(:i64)
         @uses_eh = @register_types.include?(:exnref)
         @instructions = []
         @initial_registers = Array.new(parameter_types.size + local_count, 0)
@@ -420,14 +422,16 @@ module Wardite
       def allocate_register(value, type: :i32)
         slot = @initial_registers.size
         @initial_registers << value
+        @uses_i64 = true if type == :i64
         @register_types << type
         slot
       end
 
       # @rbs value: Integer
       # @rbs return: Integer
-      def allocate_constant(value)
-        slot = allocate_register(value)
+      # @rbs type: Symbol
+      def allocate_constant(value, type: :i32)
+        slot = allocate_register(value, type: type)
         @constant_registers << slot
         slot
       end
@@ -534,6 +538,7 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::Function
       def copy
         result = Function.new(@index, @parameter_types, @result_types, @local_count, local_types: @register_types[@parameter_types.size, @local_count], pool_index: @pool_index)
+        result.uses_i64 = @uses_i64
         result.uses_eh = @uses_eh
         result.uses_store = @uses_store
         result.uses_dynamic_calls = @uses_dynamic_calls

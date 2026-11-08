@@ -61,7 +61,7 @@ module Wardite
 
       @function: Wardite::Efflorescence::Function
 
-      @constants: Hash[Integer, Integer]
+      @constants: Hash[Symbol, Hash[Integer, Integer]]
 
       @controls: Array[Wardite::Efflorescence::Translator::Control]
 
@@ -105,7 +105,8 @@ module Wardite
 
       # @rbs value: Integer
       # @rbs return: Integer
-      def constant: (Integer value) -> Integer
+      # @rbs type: Symbol
+      def constant: (Integer value, ?Symbol type) -> Integer
 
       # @rbs kind: Symbol
       # @rbs types: Array[Symbol]
