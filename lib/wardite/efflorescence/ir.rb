@@ -735,6 +735,7 @@ module Wardite
       attr_reader :external #: Wardite::ExternalFunction
       attr_reader :entry #: Wardite::Efflorescence::FunctionEntry
       attr_reader :callable #: Wardite::_WasmCallable
+      attr_reader :uses_i64 #: bool
       attr_reader :unboxed_wasi #: Wardite::Efflorescence::_WasiCallable?
 
       # @rbs external: Wardite::ExternalFunction
@@ -745,6 +746,7 @@ module Wardite
         @external = external
         @entry = entry
         @callable = callable
+        @uses_i64 = entry.parameter_types.include?(:i64) || entry.result_types.include?(:i64)
         @unboxed_wasi = unboxed_wasi
       end
 
@@ -778,11 +780,10 @@ module Wardite
       # @rbs results: Array[Symbol]
       # @rbs label: String
       # @rbs return: void
-      # @rbs allow_i64: bool
-      def self.check_signature(params, results, label, allow_i64: false)
-        types = allow_i64 ? [:i32, :i64] : [:i32]
+      def self.check_signature(params, results, label)
+        types = [:i32, :i64]
         unless params.all? { |type| types.include?(type) } && results.size <= 1 && results.all? { |type| types.include?(type) }
-          raise UnsupportedFeature, "Efflorescence: #{label} requires an integer signature with at most one result (supported types: #{types.join(', ')})"
+          raise UnsupportedFeature, "Efflorescence: #{label} requires an integer signature with at most one result (i32/i64)"
         end
       end
 

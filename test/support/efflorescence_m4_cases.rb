@@ -98,4 +98,45 @@ module EfflorescenceM4Cases
     ["eh", -2**63, -2**63], ["uncaught", -2**63, "uncaught"],
     ["eh", -1, -1], ["uncaught", -1, "uncaught"]
   ].freeze
+
+  HOST_WAT = <<~WAT.freeze
+    (module
+      (type $imported (func (param i64 i32 i64) (result i64)))
+      (type $expected (func (param i64 i32 i64) (result i64)))
+      (type $wrong (func (param i32 i32 i64) (result i64)))
+      (import "env" "mix" (func $mix (type $imported)))
+      (import "env" "zero" (func $zero (result i64)))
+      (import "env" "one" (func $one (param i64) (result i32)))
+      (import "env" "sink" (func $sink (param i64)))
+      (export "mix" (func $mix))
+      (export "zero" (func $zero))
+      (export "one" (func $one))
+      (export "sink" (func $sink))
+      (table 4 funcref)
+      (elem (i32.const 0) func $mix $defined $wrong)
+      (func $defined (type $expected) local.get 0 local.get 2 i64.xor)
+      (func $wrong (type $wrong) unreachable)
+      (func (export "echo") (param i64) (result i64) local.get 0)
+      (func (export "direct") (param i64 i32) (result i64)
+        local.get 0 local.get 1 i64.const 9 call $mix)
+      (func (export "indirect") (param i32 i64 i32) (result i64)
+        local.get 1 local.get 2 i64.const 9 local.get 0 call_indirect (type $expected))
+      (func (export "outer") (param i64 i32) (result i64)
+        local.get 0
+        local.get 0 local.get 1 i64.const 9 call $mix
+        i64.xor)
+      (func (export "fail") (result i64) unreachable))
+  WAT
+
+  WASI_PATH_OPEN_WAT = <<~WAT.freeze
+    (module
+      (import "wasi_snapshot_preview1" "path_open"
+        (func $open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+      (memory 1)
+      (data (i32.const 0) "sample")
+      (data (i32.const 16) "absent")
+      (func (export "open") (param i32) (result i32)
+        i32.const 3 i32.const 0 local.get 0 i32.const 6 i32.const 0
+        i64.const 2 i64.const -1 i32.const 0 i32.const 32 call $open))
+  WAT
 end

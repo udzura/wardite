@@ -175,7 +175,7 @@ module Wardite
       # @rbs pool_index: Integer
       # @rbs return: Wardite::Efflorescence::Function
       def translate_function(wasm, index, pool_index)
-        FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}", allow_i64: true)
+        FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}")
         unless wasm.locals_type.all? { |type| type == :i32 || type == :i64 || type == :exnref }
           raise UnsupportedFeature, "Efflorescence: function #{index} has unsupported locals"
         end
@@ -374,7 +374,7 @@ module Wardite
             fail_translation("invalid call target #{index}") if index < 0
             callee = @entries[index]
             fail_translation("invalid call target #{index}") unless callee
-            FunctionEntry.check_signature(callee.parameter_types, callee.result_types, "function #{index}", allow_i64: callee.kind == :defined)
+            FunctionEntry.check_signature(callee.parameter_types, callee.result_types, "function #{index}")
             @function.uses_dynamic_calls = true if callee.kind == :host
             arguments = callee.parameter_types.reverse.map { |type| pop_typed(type) }.reverse
             dst = callee.result_types.empty? ? -1 : register(callee.result_types.fetch(0))
@@ -399,7 +399,7 @@ module Wardite
             @function.uses_dynamic_calls = true
             selector = pop_typed(:i32)
             arguments = type.callsig.reverse.map { |param| pop_typed(param) }.reverse
-            dst = type.retsig.empty? ? -1 : register
+            dst = type.retsig.empty? ? -1 : register(type.retsig.fetch(0))
             @stack << dst if dst >= 0
             next unless @reachable
             id = @function.dynamic_sites.size

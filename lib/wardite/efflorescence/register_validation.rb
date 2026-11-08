@@ -147,10 +147,22 @@ module Wardite
             elsif site.host_index != -1 || site.table_index != 0
               raise TranslationError, "invalid MIR indirect call operands"
             end
-            unless site.arguments.size == site.parameter_types.size && site.parameter_types.all? { |type| type == :i32 } &&
-                (site.result_types.empty? ? destination == -1 : site.result_types == [:i32] && destination >= 0)
+            unless site.arguments.size == site.parameter_types.size &&
+                site.parameter_types.all? { |type| type == :i32 || type == :i64 } &&
+                (site.result_types.empty? ? destination == -1 : site.result_types.size == 1 &&
+                  [:i32, :i64].include?(site.result_types.fetch(0)) && destination >= 0)
               raise TranslationError, "invalid MIR dynamic call signature"
             end
+            if ir && opcode == Opcode::CALL_HOST
+              host = ir.hosts[site.host_index]
+              unless host && host.entry.parameter_types == site.parameter_types && host.entry.result_types == site.result_types
+                raise TranslationError, "MIR host call signature mismatch"
+              end
+            end
+            check_register(function, instruction[3], :i32) if opcode == Opcode::CALL_INDIRECT
+            site.arguments.each_with_index { |register, i| check_register(function, register, site.parameter_types.fetch(i)) }
+            check_result(function, destination, site.result_types)
+            next
           end
           reads = function.reads(instruction)
           destination = Opcode.destination(instruction)

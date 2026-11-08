@@ -262,6 +262,8 @@ module Wardite
           wasi = host.unboxed_wasi
           return wasi.call(@instance.store, arguments, sources) if wasi
         end
+        return invoke_i64_host(host, arguments, sources) if host.uses_i64
+
         boxed = [] #: Array[Wardite::wasmValue]
         if sources
           sources.each { |register| boxed << Wardite::I32.new(arguments[register]) }
@@ -275,6 +277,31 @@ module Wardite
           return result & 0xffffffff
         elsif result.is_a?(Wardite::I32)
           return result.value & 0xffffffff
+        end
+        raise Wardite::EvalError, "host ABI result mismatch for #{host.external.name}"
+      end
+
+      # @rbs host: Wardite::Efflorescence::HostFunction
+      # @rbs arguments: Array[Integer]
+      # @rbs sources: Array[Integer]?
+      # @rbs return: Integer?
+      def invoke_i64_host(host, arguments, sources)
+        boxed = [] #: Array[Wardite::wasmValue]
+        host.entry.parameter_types.each_with_index do |type, i|
+          index = sources ? sources.fetch(i) : i
+          value = arguments.fetch(index)
+          boxed << (type == :i64 ? Wardite::I64(value) : Wardite::I32.new(value))
+        end
+        result = host.callable.call(@instance.store, boxed)
+        case host.entry.result_types[0]
+        when nil
+          return nil if result.nil?
+        when :i64
+          return result.value_s if result.is_a?(Wardite::I64)
+          return I64Arithmetic.normalize(result) if result.is_a?(Integer)
+        when :i32
+          return result.value & 0xffffffff if result.is_a?(Wardite::I32)
+          return result & 0xffffffff if result.is_a?(Integer)
         end
         raise Wardite::EvalError, "host ABI result mismatch for #{host.external.name}"
       end

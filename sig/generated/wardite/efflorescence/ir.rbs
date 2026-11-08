@@ -586,6 +586,8 @@ module Wardite
 
       attr_reader callable: Wardite::_WasmCallable
 
+      attr_reader uses_i64: bool
+
       attr_reader unboxed_wasi: Wardite::Efflorescence::_WasiCallable?
 
       # @rbs external: Wardite::ExternalFunction
@@ -620,8 +622,7 @@ module Wardite
       # @rbs results: Array[Symbol]
       # @rbs label: String
       # @rbs return: void
-      # @rbs allow_i64: bool
-      def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label, ?allow_i64: bool) -> void
+      def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label) -> void
 
       # @rbs return: Wardite::Efflorescence::FunctionEntry
       def copy: () -> Wardite::Efflorescence::FunctionEntry

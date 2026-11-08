@@ -99,6 +99,12 @@ module Wardite
       # @rbs sources: Array[Integer]?
       def invoke_host: (Integer host_index, Array[Integer] arguments, Wardite::Efflorescence::Metrics metrics, ?Array[Integer]? sources) -> Integer?
 
+      # @rbs host: Wardite::Efflorescence::HostFunction
+      # @rbs arguments: Array[Integer]
+      # @rbs sources: Array[Integer]?
+      # @rbs return: Integer?
+      def invoke_i64_host: (Wardite::Efflorescence::HostFunction host, Array[Integer] arguments, Array[Integer]? sources) -> Integer?
+
       # Each public entry owns its frames, pools and counters, including when a
       # host callback re-enters the VM. Store mutations are shared immediately.
       # @rbs entry: Wardite::Efflorescence::FunctionEntry
