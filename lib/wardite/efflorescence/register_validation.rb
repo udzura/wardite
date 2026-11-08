@@ -47,10 +47,11 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
-      def validate(function)
+      # @rbs ir: Wardite::Efflorescence::IR?
+      def validate(function, ir = nil)
         instructions = function.instructions
         raise TranslationError, "Efflorescence: empty MIR function" if instructions.empty?
-        validate_types(function)
+        validate_types(function, ir)
         analysis = Analysis.new(function)
         blocks = [] #: Array[Wardite::Efflorescence::RegisterValidation::Block]
         block_for_pc = [] #: Array[Integer]
@@ -116,10 +117,11 @@ module Wardite
       private
 
       # Validate all registers, including unreachable instructions and table-only
-      # operands. The runtime never needs to branch on an i32 register's type.
+      # operands. Numeric registers are checked before flat execution.
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
-      def validate_types(function)
+      # @rbs ir: Wardite::Efflorescence::IR?
+      def validate_types(function, ir)
         function.instructions.each do |instruction|
           opcode = instruction[0]
           if Opcode.memory_site?(opcode)
@@ -150,11 +152,31 @@ module Wardite
           end
           reads = function.reads(instruction)
           destination = Opcode.destination(instruction)
-          expected = opcode == Opcode::COPY_REF || opcode == Opcode::THROW_REF ? :exnref : :i32
-          (reads + (destination >= 0 ? [destination] : [])).each do |register|
-            unless register >= 0 && function.register_types[register] == expected
-              raise TranslationError, "invalid MIR register type/index r#{register}"
+          case opcode
+          when Opcode::COPY
+            type = function.register_types[destination] if destination >= 0
+            unless type == :i32 || type == :i64
+              raise TranslationError, "invalid MIR numeric copy destination r#{destination}"
             end
+            check_register(function, instruction[2], type)
+          when Opcode::RETURN
+            check_result(function, instruction[1], function.result_types)
+          when Opcode::CALL
+            if ir
+              entry = ir.entry_at(instruction[2])
+              unless entry.kind == :defined && reads.size == entry.parameter_types.size
+                raise TranslationError, "invalid MIR direct call signature"
+              end
+              reads.each_with_index { |register, i| check_register(function, register, entry.parameter_types.fetch(i)) }
+              check_result(function, destination, entry.result_types)
+            else
+              reads.each { |register| check_register(function, register, :i32) }
+              check_register(function, destination, :i32) if destination >= 0
+            end
+          else
+            expected = opcode == Opcode::COPY_REF || opcode == Opcode::THROW_REF ? :exnref : :i32
+            reads.each { |register| check_register(function, register, expected) }
+            check_register(function, destination, expected) if destination >= 0
           end
         end
         function.handlers.each do |handler|
@@ -162,6 +184,28 @@ module Wardite
             clause.payload_registers.each { |register| check_destination(function, register, :i32) }
             check_destination(function, clause.reference_register, :exnref) if clause.reference_register >= 0
           end
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs register: Integer
+      # @rbs types: Array[Symbol]
+      # @rbs return: void
+      def check_result(function, register, types)
+        if types.empty?
+          raise TranslationError, "invalid MIR void result" unless register == -1
+        else
+          check_register(function, register, types.fetch(0))
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs register: Integer
+      # @rbs type: Symbol
+      # @rbs return: void
+      def check_register(function, register, type)
+        unless register >= 0 && function.register_types[register] == type
+          raise TranslationError, "invalid MIR register type/index r#{register}"
         end
       end
 

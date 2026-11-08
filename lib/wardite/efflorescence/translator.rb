@@ -16,6 +16,7 @@ module Wardite
         attr_reader :catch_patches #: Array[Wardite::Efflorescence::CatchTarget]
         attr_reader :handler_depth #: Integer
         attr_reader :entry_reachable #: bool
+        attr_accessor :polymorphic #: bool
         attr_accessor :has_branch #: bool
         attr_accessor :false_patch #: Integer
         attr_accessor :else_seen #: bool
@@ -35,6 +36,7 @@ module Wardite
           @patches, @catch_patches = [], []
           @has_branch, @else_seen, @then_reachable = false, false, false
           @false_patch = -1
+          @polymorphic = false
         end
       end
 
@@ -122,8 +124,8 @@ module Wardite
       # @rbs pool_index: Integer
       # @rbs return: Wardite::Efflorescence::Function
       def translate_function(wasm, index, pool_index)
-        FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}")
-        unless wasm.locals_type.all? { |type| type == :i32 || type == :exnref }
+        FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}", allow_i64: true)
+        unless wasm.locals_type.all? { |type| type == :i32 || type == :i64 || type == :exnref }
           raise UnsupportedFeature, "Efflorescence: function #{index} has unsupported locals"
         end
         locals = [] #: Array[Symbol]
@@ -138,30 +140,26 @@ module Wardite
           code, operands = instruction[1], instruction[2]
           validate_store_instruction(code, operands) if STORE_CODES.include?(code)
           if BINARY.key?(code)
-            if @reachable
-              right, left = pop_typed(:i32), pop_typed(:i32)
-              dst = register
-              emit([BINARY.fetch(code), dst, left, right])
-              @stack << dst
-            end
+            right, left = pop_typed(:i32), pop_typed(:i32)
+            dst = register
+            emit([BINARY.fetch(code), dst, left, right]) if @reachable
+            @stack << dst
             next
           elsif UNARY.key?(code)
-            if @reachable
-              source = pop_typed(:i32)
-              dst = register
-              emit([UNARY.fetch(code), dst, source])
-              @stack << dst
-            end
+            source = pop_typed(:i32)
+            dst = register
+            emit([UNARY.fetch(code), dst, source]) if @reachable
+            @stack << dst
             next
           end
           case code
           when :block, :loop, :if, :try_table
             block = operands[0]
             fail_translation("expected block signature") unless block.is_a?(Wardite::Block)
-            unless block.parameter_types.empty? && block.result_types.all? { |type| type == :i32 || type == :exnref }
-              raise UnsupportedFeature, context("block parameters and non-i32/exnref results are not supported")
+            unless block.parameter_types.empty? && block.result_types.all? { |type| type == :i32 || type == :i64 || type == :exnref }
+              raise UnsupportedFeature, context("block parameters and unsupported block result types are not supported")
             end
-            condition = code == :if && @reachable ? pop_typed(:i32) : -1
+            condition = code == :if ? pop_typed(:i32) : -1
             snapshot_locals if @reachable
             control = new_control(code, block.result_types)
             if code == :if && @reachable
@@ -184,22 +182,21 @@ module Wardite
             end_control
           when :i32_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
                :i32_store, :i32_store8, :i32_store16
-            next unless @reachable
             opcode = MEMORY_OPCODES.fetch(code)
             offset = integer_operand(operands[1])
             if code == :i32_store || code == :i32_store8 || code == :i32_store16
               value = pop_typed(:i32)
               address = pop_typed(:i32)
-              emit([opcode, value, address, offset])
+              emit([opcode, value, address, offset]) if @reachable
             else
               address = pop_typed(:i32)
               dst = register
-              emit([opcode, dst, address, offset])
+              emit([opcode, dst, address, offset]) if @reachable
               @stack << dst
             end
           when :memory_init, :memory_copy, :memory_fill
-            next unless @reachable
             length, source, destination = pop_typed(:i32), pop_typed(:i32), pop_typed(:i32)
+            next unless @reachable
             data_index = code == :memory_init ? integer_operand(operands[0]) : -1
             site = MemorySite.new([destination, source, length], data_index: data_index)
             id = @function.memory_sites.size
@@ -211,42 +208,55 @@ module Wardite
                      end
             emit([opcode, id])
           when :memory_size, :memory_grow
-            next unless @reachable
             source = code == :memory_grow ? pop_typed(:i32) : -1
             dst = register
-            emit(code == :memory_grow ? [Opcode::MEMORY_GROW, dst, source] : [Opcode::MEMORY_SIZE, dst])
+            emit(code == :memory_grow ? [Opcode::MEMORY_GROW, dst, source] : [Opcode::MEMORY_SIZE, dst]) if @reachable
             @stack << dst
           when :global_get, :global_set
             index = integer_operand(operands[0])
-            next unless @reachable
             if code == :global_get
               dst = register
-              emit([Opcode::GLOBAL_GET, dst, index])
+              emit([Opcode::GLOBAL_GET, dst, index]) if @reachable
               @stack << dst
             else
-              emit([Opcode::GLOBAL_SET, index, pop_typed(:i32)])
+              source = pop_typed(:i32)
+              emit([Opcode::GLOBAL_SET, index, source]) if @reachable
             end
           when :local_get, :local_set, :local_tee
             local = integer_operand(operands[0])
             fail_translation("invalid local index #{local}") unless local >= 0 && local < @function.parameter_count + @function.local_count
-            next unless @reachable
             if code == :local_get
               @stack << local
             else
               source = pop_typed(type_of(local))
-              preserve_local(local)
-              copy_value(local, source) unless local == source
+              if @reachable
+                preserve_local(local)
+                copy_value(local, source) unless local == source
+              end
               @stack << local if code == :local_tee
             end
-          when :i32_const
-            value = integer_operand(operands[0]) & 0xffffffff
-            @stack << constant(value) if @reachable
+          when :i32_const, :i64_const
+            immediate = integer_operand(operands[0])
+            if code == :i64_const
+              @function.uses_i64 = true
+              @stack << constant(I64Arithmetic.normalize(immediate), :i64)
+            else
+              @stack << constant(immediate & 0xffffffff)
+            end
           when :br, :br_if
             target = label(integer_operand(operands[0]))
-            next unless @reachable
             condition = code == :br_if ? pop_typed(:i32) : -1
             types = label_types(target)
             sources = top_values(types)
+            unless @reachable
+              if code == :br
+                mark_unreachable
+              else
+                types.size.times { pop_value }
+                @stack.concat(target.result_registers) unless target.kind == :loop
+              end
+              next
+            end
             if code == :br_if && (types.size > 0 || @handler_depth != target.handler_depth)
               skip = emit([Opcode::BR_IF_ZERO, condition, -1])
               branch(target, sources)
@@ -254,7 +264,7 @@ module Wardite
             else
               branch(target, sources, condition)
             end
-            @reachable = false if code == :br
+            mark_unreachable if code == :br
           when :br_table
             depths = operands[0]
             fail_translation("expected branch table") unless depths.is_a?(Array)
@@ -262,9 +272,12 @@ module Wardite
             default = label(integer_operand(operands[1]))
             types = label_types(default)
             fail_translation("inconsistent br_table label types") unless targets.all? { |target| label_types(target) == types }
-            next unless @reachable
             selector = pop_typed(:i32)
             sources = top_values(types)
+            unless @reachable
+              mark_unreachable
+              next
+            end
             targets.each_with_index do |target, i|
               comparison = register
               emit([Opcode::I32_EQ, comparison, selector, constant(i)])
@@ -273,26 +286,31 @@ module Wardite
               patch(skip, @function.instructions.size)
             end
             branch(default, sources)
-            @reachable = false
+            mark_unreachable
           when :select
+            condition, right, left = pop_typed(:i32), pop_value, pop_value
+            type = right < 0 ? type_of(left) : type_of(right)
+            unless (type == :i32 || type == :i64 || type == :unknown) && (left < 0 || type_of(left) == type)
+              fail_translation("select requires matching integer operands")
+            end
+            dst = type == :unknown ? -1 : register(type)
+            @stack << dst
             next unless @reachable
-            condition, right, left = pop_typed(:i32), pop_typed(:i32), pop_typed(:i32)
-            dst = register
             copy_value(dst, right)
             skip = emit([Opcode::BR_IF_ZERO, condition, -1])
             copy_value(dst, left)
             patch(skip, @function.instructions.size)
-            @stack << dst
           when :call
             index = integer_operand(operands[0])
             fail_translation("invalid call target #{index}") if index < 0
             callee = @entries[index]
             fail_translation("invalid call target #{index}") unless callee
-            FunctionEntry.check_signature(callee.parameter_types, callee.result_types, "function #{index}")
+            FunctionEntry.check_signature(callee.parameter_types, callee.result_types, "function #{index}", allow_i64: callee.kind == :defined)
             @function.uses_dynamic_calls = true if callee.kind == :host
-            next unless @reachable
             arguments = callee.parameter_types.reverse.map { |type| pop_typed(type) }.reverse
-            dst = callee.result_types.empty? ? -1 : register
+            dst = callee.result_types.empty? ? -1 : register(callee.result_types.fetch(0))
+            @stack << dst if dst >= 0
+            next unless @reachable
             if callee.kind == :host
               id = @function.dynamic_sites.size
               @function.dynamic_sites << DynamicCallSite.new(callee.host_index, arguments, callee.parameter_types, callee.result_types)
@@ -300,7 +318,6 @@ module Wardite
             else
               emit([Opcode::CALL, dst, index] + arguments)
             end
-            @stack << dst if dst >= 0
           when :call_indirect
             type_index = integer_operand(operands[0])
             table_index = integer_operand(operands[1])
@@ -311,38 +328,39 @@ module Wardite
             fail_translation("invalid indirect call type index #{type_index}") unless type
             FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}")
             @function.uses_dynamic_calls = true
-            next unless @reachable
             selector = pop_typed(:i32)
             arguments = type.callsig.reverse.map { |param| pop_typed(param) }.reverse
             dst = type.retsig.empty? ? -1 : register
+            @stack << dst if dst >= 0
+            next unless @reachable
             id = @function.dynamic_sites.size
             @function.dynamic_sites << DynamicCallSite.new(-1, arguments, type.callsig, type.retsig, table_index: table_index)
             emit([Opcode::CALL_INDIRECT, dst, id, selector])
-            @stack << dst if dst >= 0
           when :throw
             tag_index = integer_operand(operands[0])
             tag = tag_at(tag_index)
             @function.uses_eh = true
-            next unless @reachable
             payload = tag.parameter_types.reverse.map { |type| pop_typed(type) }.reverse
-            id = @function.throw_sites.size
-            @function.throw_sites << ThrowSite.new(tag_index, payload)
-            emit([Opcode::THROW, id])
-            @reachable = false
+            if @reachable
+              id = @function.throw_sites.size
+              @function.throw_sites << ThrowSite.new(tag_index, payload)
+              emit([Opcode::THROW, id])
+            end
+            mark_unreachable
           when :throw_ref
             @function.uses_eh = true
-            emit([Opcode::THROW_REF, pop_typed(:exnref)]) if @reachable
-            @reachable = false
+            reference = pop_typed(:exnref)
+            emit([Opcode::THROW_REF, reference]) if @reachable
+            mark_unreachable
           when :return
-            next unless @reachable
-            source = @function.result_types.empty? ? -1 : pop_typed(:i32)
-            emit([Opcode::RETURN, source])
-            @reachable = false
+            source = @function.result_types.empty? ? -1 : pop_typed(@function.result_types.fetch(0))
+            emit([Opcode::RETURN, source]) if @reachable
+            mark_unreachable
           when :unreachable
             emit([Opcode::TRAP]) if @reachable
-            @reachable = false
+            mark_unreachable
           when :drop
-            pop_value if @reachable
+            pop_value
           when :nop
           else
             raise UnsupportedFeature, context("unsupported instruction #{code}")
@@ -445,21 +463,24 @@ module Wardite
       # @rbs return: Integer
       def pop_value
         control = @controls.last || raise(TranslationError, "missing control")
-        fail_translation("operand stack underflow") if @stack.size <= control.entry_stack.size
+        if @stack.size == control.entry_stack.size
+          return -1 if control.polymorphic
+          fail_translation("operand stack underflow")
+        end
         @stack.pop || raise(TranslationError, "missing operand")
       end
 
       # @rbs register: Integer
       # @rbs return: Symbol
       def type_of(register)
-        @function.register_types.fetch(register)
+        register < 0 ? :unknown : @function.register_types.fetch(register)
       end
 
       # @rbs type: Symbol
       # @rbs return: Integer
       def pop_typed(type)
         value = pop_value
-        fail_translation("expected #{type}, got #{type_of(value)}") unless type_of(value) == type
+        fail_translation("expected #{type}, got #{type_of(value)}") unless value < 0 || type_of(value) == type
         value
       end
 
@@ -516,9 +537,13 @@ module Wardite
       # @rbs return: Array[Integer]
       def top_values(types)
         control = @controls.last || raise(TranslationError, "missing control")
-        fail_translation("operand stack underflow") if @stack.size < control.entry_stack.size + types.size
-        values = @stack.last(types.size)
-        fail_translation("branch result type mismatch") unless values.map { |value| type_of(value) } == types
+        available = @stack.size - control.entry_stack.size
+        missing = [types.size - available, 0].max
+        fail_translation("operand stack underflow") if missing > 0 && !control.polymorphic
+        values = Array.new(missing, -1) + @stack.last(types.size - missing)
+        values.each_with_index do |value, i|
+          fail_translation("branch result type mismatch") if value >= 0 && type_of(value) != types.fetch(i)
+        end
         values
       end
 
@@ -571,9 +596,10 @@ module Wardite
       # @rbs control: Wardite::Efflorescence::Translator::Control
       # @rbs return: void
       def finish_arm(control)
-        return unless @reachable
-        fail_translation("incorrect stack height at end") unless @stack.size == control.entry_stack.size + control.result_types.size
-        parallel_copy(control.result_registers, top_values(control.result_types))
+        height = @stack.size - control.entry_stack.size
+        fail_translation("incorrect stack height at end") if height > control.result_types.size
+        sources = top_values(control.result_types)
+        parallel_copy(control.result_registers, sources) if @reachable
       end
 
       # @rbs return: void
@@ -585,6 +611,7 @@ module Wardite
         control.patches << emit([Opcode::BR, -1]) if @reachable
         patch(control.false_patch, @function.instructions.size) if control.false_patch >= 0
         control.else_seen = true
+        control.polymorphic = false
         @stack = control.entry_stack.dup
         @reachable = control.entry_reachable
       end
@@ -611,6 +638,14 @@ module Wardite
         if control.kind == :function
           emit([Opcode::RETURN, control.result_registers.empty? ? -1 : control.result_registers.fetch(0)])
         end
+      end
+
+      # @rbs return: void
+      def mark_unreachable
+        control = @controls.last || raise(TranslationError, "missing control")
+        control.polymorphic = true
+        @stack = control.entry_stack.dup
+        @reachable = false
       end
 
       # @rbs message: String

@@ -25,9 +25,10 @@ module Wardite
       # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::I32?
-      def call: (String | Symbol name, Array[Object] arguments) -> Wardite::I32?
+      # @rbs return: (Wardite::I32 | Wardite::I64)?
+      def call: (String | Symbol name, Array[Object] arguments) -> (Wardite::I32 | Wardite::I64)?
 
+      # i32 results are unsigned and i64 results are signed.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
       # @rbs return: Integer?
@@ -35,8 +36,8 @@ module Wardite
 
       # @rbs name: Symbol
       # @rbs *arguments: Object
-      # @rbs return: Wardite::I32?
-      def method_missing: (Symbol name, *Object arguments) -> Wardite::I32?
+      # @rbs return: (Wardite::I32 | Wardite::I64)?
+      def method_missing: (Symbol name, *Object arguments) -> (Wardite::I32 | Wardite::I64)?
 
       # @rbs name: String|Symbol
       # @rbs include_private: bool
@@ -47,6 +48,15 @@ module Wardite
       def dump_mir: () -> String
 
       private
+
+      # @rbs name: String|Symbol
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def export_entry: (String | Symbol name) -> Wardite::Efflorescence::FunctionEntry
+
+      # @rbs entry: Wardite::Efflorescence::FunctionEntry
+      # @rbs arguments: Array[Object]
+      # @rbs return: Integer?
+      def execute_public: (Wardite::Efflorescence::FunctionEntry entry, Array[Object] arguments) -> Integer?
 
       # A concrete return type breaks the inference cycle between the current
       # frame and the array it is restored from after every internal RETURN.

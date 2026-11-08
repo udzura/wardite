@@ -517,7 +517,8 @@ module Wardite
       # @rbs results: Array[Symbol]
       # @rbs label: String
       # @rbs return: void
-      def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label) -> void
+      # @rbs allow_i64: bool
+      def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label, ?allow_i64: bool) -> void
 
       # @rbs return: Wardite::Efflorescence::FunctionEntry
       def copy: () -> Wardite::Efflorescence::FunctionEntry

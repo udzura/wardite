@@ -30,7 +30,7 @@ module Wardite
         @metrics = Metrics.new
         @semantic_ir = Translator.new(instance).translate
         @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)
-        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function) }
+        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function, @optimized_ir) }
         @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir
         Lowerer.new.compile(@ir)
         start = instance.start_section
@@ -53,34 +53,25 @@ module Wardite
       # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::I32?
+      # @rbs return: (Wardite::I32 | Wardite::I64)?
       def call(name, arguments)
-        result = call_unboxed(name, arguments)
-        result.nil? ? nil : Wardite::I32.new(result)
+        entry = export_entry(name)
+        result = execute_public(entry, arguments)
+        return nil if result.nil?
+        entry.result_types[0] == :i64 ? Wardite::I64(result) : Wardite::I32.new(result)
       end
 
+      # i32 results are unsigned and i64 results are signed.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
       # @rbs return: Integer?
       def call_unboxed(name, arguments)
-        export = @instance.export_section.exports[name.to_s]
-        raise ::NoMethodError, "function #{name} not found" unless export
-        raise ::NoMethodError, "#{name} is not a function" unless export.kind == 0
-        entry = @ir.entry_at(export.index)
-        unless arguments.size == entry.parameter_types.size
-          raise Wardite::ArgumentError, "unmatch arg size"
-        end
-        values = [] #: Array[Integer]
-        arguments.each do |value|
-          raise Wardite::ArgumentError, "type mismatch: i32(#{value})" unless value.is_a?(Integer)
-          values << (value & 0xffffffff)
-        end
-        execute(entry, values)
+        execute_public(export_entry(name), arguments)
       end
 
       # @rbs name: Symbol
       # @rbs *arguments: Object
-      # @rbs return: Wardite::I32?
+      # @rbs return: (Wardite::I32 | Wardite::I64)?
       def method_missing(name, *arguments)
         callable?(name) ? call(name, arguments) : super
       end
@@ -100,6 +91,36 @@ module Wardite
       end
 
       private
+
+      # @rbs name: String|Symbol
+      # @rbs return: Wardite::Efflorescence::FunctionEntry
+      def export_entry(name)
+        export = @instance.export_section.exports[name.to_s]
+        raise ::NoMethodError, "function #{name} not found" unless export
+        raise ::NoMethodError, "#{name} is not a function" unless export.kind == 0
+        @ir.entry_at(export.index)
+      end
+
+      # @rbs entry: Wardite::Efflorescence::FunctionEntry
+      # @rbs arguments: Array[Object]
+      # @rbs return: Integer?
+      def execute_public(entry, arguments)
+        unless arguments.size == entry.parameter_types.size
+          raise Wardite::ArgumentError, "unmatch arg size"
+        end
+        values = [] #: Array[Integer]
+        arguments.each_with_index do |value, i|
+          type = entry.parameter_types.fetch(i)
+          if type == :i64 && value.is_a?(Wardite::I64)
+            values << value.value_s
+          elsif value.is_a?(Integer)
+            values << (type == :i64 ? I64Arithmetic.normalize(value) : value & 0xffffffff)
+          else
+            raise Wardite::ArgumentError, "type mismatch: #{type}(#{value})"
+          end
+        end
+        execute(entry, values)
+      end
 
       # A concrete return type breaks the inference cycle between the current
       # frame and the array it is restored from after every internal RETURN.
@@ -494,7 +515,7 @@ module Wardite
             pc = Integer(frame.pc)
             next
           when 11 # Opcode::RETURN
-            # Verified RETURN reads an initialized i32. Keep its native type
+            # Verified RETURN reads an initialized integer. Keep its native type
             # separate from the nullable array reads used by the ALU cases.
             return_value = a < 0 ? 0 : Integer(registers[a])
             destination = frame.return_register

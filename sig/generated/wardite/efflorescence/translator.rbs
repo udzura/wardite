@@ -24,6 +24,8 @@ module Wardite
 
         attr_reader entry_reachable: bool
 
+        attr_accessor polymorphic: bool
+
         attr_accessor has_branch: bool
 
         attr_accessor false_patch: Integer
@@ -186,6 +188,9 @@ module Wardite
 
       # @rbs return: void
       def end_control: () -> void
+
+      # @rbs return: void
+      def mark_unreachable: () -> void
 
       # @rbs message: String
       # @rbs return: String

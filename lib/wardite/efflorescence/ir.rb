@@ -549,7 +549,7 @@ module Wardite
         index = @parameter_types.size + @local_count
         while index < register_count
           if @constant_registers.include?(index)
-            result.allocate_constant(initial_value(index))
+            result.allocate_constant(initial_value(index), type: @register_types.fetch(index))
           else
             result.allocate_register(initial_value(index), type: @register_types.fetch(index))
           end
@@ -666,9 +666,11 @@ module Wardite
       # @rbs results: Array[Symbol]
       # @rbs label: String
       # @rbs return: void
-      def self.check_signature(params, results, label)
-        unless params.all? { |type| type == :i32 } && (results.empty? || results == [:i32])
-          raise UnsupportedFeature, "Efflorescence: #{label} requires an i32-only signature with at most one result"
+      # @rbs allow_i64: bool
+      def self.check_signature(params, results, label, allow_i64: false)
+        types = allow_i64 ? [:i32, :i64] : [:i32]
+        unless params.all? { |type| types.include?(type) } && results.size <= 1 && results.all? { |type| types.include?(type) }
+          raise UnsupportedFeature, "Efflorescence: #{label} requires an integer signature with at most one result (supported types: #{types.join(', ')})"
         end
       end
 
