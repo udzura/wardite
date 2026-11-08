@@ -217,10 +217,40 @@ module Wardite
 
       I64_REM_U: ::Integer
 
+      I64_LOAD: ::Integer
+
+      I64_LOAD8_S: ::Integer
+
+      I64_LOAD8_U: ::Integer
+
+      I64_LOAD16_S: ::Integer
+
+      I64_LOAD16_U: ::Integer
+
+      I64_LOAD32_S: ::Integer
+
+      I64_LOAD32_U: ::Integer
+
+      I64_STORE: ::Integer
+
+      I64_STORE8: ::Integer
+
+      I64_STORE16: ::Integer
+
+      I64_STORE32: ::Integer
+
+      I64_GLOBAL_GET: ::Integer
+
+      I64_GLOBAL_SET: ::Integer
+
       NAMES: untyped
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES: Hash[Integer, Array[Symbol]]
+
+      I64_LOADS: untyped
+
+      I64_STORES: untyped
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction

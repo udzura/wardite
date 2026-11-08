@@ -723,7 +723,7 @@ module Wardite
               depth = fetch_uleb128(buf)
               clauses << kind << tag << depth
             end
-            operand << clauses
+            operand << CatchClauses.new(clauses)
           else
             $stderr.puts "warning: unknown type #{typ.inspect}. defaulting to u32"
             operand << fetch_uleb128(buf)

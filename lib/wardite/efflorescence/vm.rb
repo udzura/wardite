@@ -30,7 +30,7 @@ module Wardite
         @metrics = Metrics.new
         @semantic_ir = Translator.new(instance).translate
         @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)
-        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function, @optimized_ir) }
+        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function, @optimized_ir, tags: instance.tags) }
         @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir
         Lowerer.new.compile(@ir)
         start = instance.start_section
@@ -824,6 +824,56 @@ module Wardite
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
             registers[a] = I64Arithmetic.calculate(103, registers[b], registers[c])
+          when 104 # Opcode::I64_LOAD
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 8, false)
+          when 105 # Opcode::I64_LOAD8_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 1, true)
+          when 106 # Opcode::I64_LOAD8_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 1, false)
+          when 107 # Opcode::I64_LOAD16_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 2, true)
+          when 108 # Opcode::I64_LOAD16_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 2, false)
+          when 109 # Opcode::I64_LOAD32_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 4, true)
+          when 110 # Opcode::I64_LOAD32_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 4, false)
+          when 111 # Opcode::I64_STORE
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 8, registers[a])
+          when 112 # Opcode::I64_STORE8
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 1, registers[a])
+          when 113 # Opcode::I64_STORE16
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 2, registers[a])
+          when 114 # Opcode::I64_STORE32
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 4, registers[a])
+          when 115 # Opcode::I64_GLOBAL_GET
+            b = instructions.fetch(pc + 2)
+            registers[a] = @store_access.global_get_i64(b)
+          when 116 # Opcode::I64_GLOBAL_SET
+            b = instructions.fetch(pc + 2)
+            @store_access.global_set_i64(a, registers[b])
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

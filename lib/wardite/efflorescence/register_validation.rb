@@ -48,10 +48,11 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       # @rbs ir: Wardite::Efflorescence::IR?
-      def validate(function, ir = nil)
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      def validate(function, ir = nil, tags: nil)
         instructions = function.instructions
         raise TranslationError, "Efflorescence: empty MIR function" if instructions.empty?
-        validate_types(function, ir)
+        validate_types(function, ir, tags)
         analysis = Analysis.new(function)
         blocks = [] #: Array[Wardite::Efflorescence::RegisterValidation::Block]
         block_for_pc = [] #: Array[Integer]
@@ -121,7 +122,8 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       # @rbs ir: Wardite::Efflorescence::IR?
-      def validate_types(function, ir)
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      def validate_types(function, ir, tags)
         function.instructions.each do |instruction|
           opcode = instruction[0]
           if Opcode.memory_site?(opcode)
@@ -158,7 +160,24 @@ module Wardite
             reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }
             next
           end
+          if Opcode::I64_LOADS.include?(opcode)
+            check_register(function, destination, :i64)
+            check_register(function, instruction[2], :i32)
+            next
+          elsif Opcode::I64_STORES.include?(opcode)
+            check_register(function, instruction[1], :i64)
+            check_register(function, instruction[2], :i32)
+            next
+          end
           case opcode
+          when Opcode::I64_GLOBAL_GET
+            check_register(function, destination, :i64)
+          when Opcode::I64_GLOBAL_SET
+            check_register(function, instruction[2], :i64)
+          when Opcode::THROW
+            site = function.throw_sites.fetch(instruction[1])
+            types = payload_types(tags, site.tag_index, reads.size)
+            reads.each_with_index { |register, i| check_register(function, register, types.fetch(i)) }
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
             unless type == :i32 || type == :i64
@@ -187,10 +206,28 @@ module Wardite
         end
         function.handlers.each do |handler|
           handler.clauses.each do |clause|
-            clause.payload_registers.each { |register| check_destination(function, register, :i32) }
+            types = payload_types(tags, clause.tag_index, clause.payload_registers.size)
+            clause.payload_registers.each_with_index do |register, i|
+              check_destination(function, register, types.fetch(i))
+            end
             check_destination(function, clause.reference_register, :exnref) if clause.reference_register >= 0
           end
         end
+      end
+
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      # @rbs index: Integer
+      # @rbs size: Integer
+      # @rbs return: Array[Symbol]
+      def payload_types(tags, index, size)
+        return Array.new(size, :i32) unless tags
+
+        tag = tags[index] if index >= 0
+        types = tag ? tag.parameter_types : [] #: Array[Symbol]
+        if (index >= 0 && !tag) || size != types.size
+          raise TranslationError, "invalid MIR exception payload"
+        end
+        types
       end
 
       # @rbs function: Wardite::Efflorescence::Function

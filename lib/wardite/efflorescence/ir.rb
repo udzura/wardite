@@ -116,6 +116,20 @@ module Wardite
       I64_REM_S = 102
       I64_REM_U = 103
 
+      I64_LOAD = 104
+      I64_LOAD8_S = 105
+      I64_LOAD8_U = 106
+      I64_LOAD16_S = 107
+      I64_LOAD16_U = 108
+      I64_LOAD32_S = 109
+      I64_LOAD32_U = 110
+      I64_STORE = 111
+      I64_STORE8 = 112
+      I64_STORE16 = 113
+      I64_STORE32 = 114
+      I64_GLOBAL_GET = 115
+      I64_GLOBAL_SET = 116
+
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
@@ -127,7 +141,9 @@ module Wardite
                  I64_CLZ I64_CTZ I64_POPCNT I64_EXTEND8_S I64_EXTEND16_S I64_EXTEND32_S
                  I64_EXTEND_I32_S I64_EXTEND_I32_U
                  I64_AND I64_OR I64_XOR I64_SHL I64_SHR_S I64_SHR_U I64_ROTL I64_ROTR
-                 I64_ADD I64_SUB I64_MUL I64_DIV_S I64_DIV_U I64_REM_S I64_REM_U].freeze
+                 I64_ADD I64_SUB I64_MUL I64_DIV_S I64_DIV_U I64_REM_S I64_REM_U
+                 I64_LOAD I64_LOAD8_S I64_LOAD8_U I64_LOAD16_S I64_LOAD16_U I64_LOAD32_S I64_LOAD32_U
+                 I64_STORE I64_STORE8 I64_STORE16 I64_STORE32 I64_GLOBAL_GET I64_GLOBAL_SET].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -168,12 +184,19 @@ module Wardite
         I64_REM_U => [:i64, :i64, :i64],
       }.freeze #: Hash[Integer, Array[Symbol]]
 
+      I64_LOADS = [I64_LOAD, I64_LOAD8_S, I64_LOAD8_U, I64_LOAD16_S, I64_LOAD16_U, I64_LOAD32_S, I64_LOAD32_U].freeze
+      I64_STORES = [I64_STORE, I64_STORE8, I64_STORE16, I64_STORE32].freeze
+
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Array[Integer]
       def self.read_positions(instruction)
         types = I64_ALU_TYPES[instruction[0]]
         return (2..types.size).to_a if types
+        opcode = instruction[0]
+        return [2] if I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_SET
+        return [1, 2] if I64_STORES.include?(opcode)
+        return [] if opcode == I64_GLOBAL_GET
 
         case instruction[0]
         when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
@@ -212,7 +235,7 @@ module Wardite
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
             (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) || opcode == MEMORY_SIZE || opcode == MEMORY_GROW ||
-            I64_ALU_TYPES.key?(opcode)
+            I64_ALU_TYPES.key?(opcode) || I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_GET
           instruction[1]
         else
           -1
@@ -230,6 +253,7 @@ module Wardite
       def self.may_trap?(opcode)
         opcode == TRAP || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
+          I64_LOADS.include?(opcode) || I64_STORES.include?(opcode) ||
           opcode == I64_DIV_S || opcode == I64_DIV_U || opcode == I64_REM_S || opcode == I64_REM_U
       end
 
@@ -256,14 +280,15 @@ module Wardite
       # @rbs return: bool
       def self.reads_store?(opcode)
         opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
-          opcode == MEMORY_SIZE || opcode == MEMORY_GROW || opcode == MEMORY_INIT || opcode == MEMORY_COPY
+          opcode == MEMORY_SIZE || opcode == MEMORY_GROW || opcode == MEMORY_INIT || opcode == MEMORY_COPY ||
+          opcode == I64_GLOBAL_GET || I64_LOADS.include?(opcode)
       end
 
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.writes_store?(opcode)
         opcode == GLOBAL_SET || (opcode >= I32_STORE && opcode <= I32_STORE16) ||
-          opcode == MEMORY_GROW || memory_site?(opcode)
+          opcode == MEMORY_GROW || memory_site?(opcode) || opcode == I64_GLOBAL_SET || I64_STORES.include?(opcode)
       end
 
       # @rbs opcode: Integer

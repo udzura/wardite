@@ -23,6 +23,10 @@ class WarditeSpinelM4Test < Test::Unit::TestCase
     run_worker("efflorescence_m4_vectors", "M4 vectors passed", "(module #{functions})", rows)
   end
 
+  test "native i64 memory, globals and EH preserve signed register bits" do
+    run_worker("efflorescence_m4_vectors", "M4 vectors passed", STORE_EH_WAT, STORE_EH_ROWS)
+  end
+
   private
 
   def run_worker(source, expected, wat = nil, rows = nil)

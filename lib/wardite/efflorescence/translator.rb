@@ -96,11 +96,24 @@ module Wardite
       # Natural alignment exponents; alignment is a hint, not an address rule.
       MEMORY_WIDTHS = { i32_load: 2, i32_load8_s: 0, i32_load8_u: 0,
                         i32_load16_s: 1, i32_load16_u: 1,
-                        i32_store: 2, i32_store8: 0, i32_store16: 1 }.freeze
+                        i32_store: 2, i32_store8: 0, i32_store16: 1,
+                        i64_load: 3, i64_load8_s: 0, i64_load8_u: 0, i64_load16_s: 1, i64_load16_u: 1, i64_load32_s: 2, i64_load32_u: 2,
+                        i64_store: 3, i64_store8: 0, i64_store16: 1, i64_store32: 2 }.freeze
       MEMORY_OPCODES = { i32_load: Opcode::I32_LOAD, i32_load8_s: Opcode::I32_LOAD8_S,
                          i32_load8_u: Opcode::I32_LOAD8_U, i32_load16_s: Opcode::I32_LOAD16_S,
                          i32_load16_u: Opcode::I32_LOAD16_U, i32_store: Opcode::I32_STORE,
-                         i32_store8: Opcode::I32_STORE8, i32_store16: Opcode::I32_STORE16 }.freeze
+                         i32_store8: Opcode::I32_STORE8, i32_store16: Opcode::I32_STORE16,
+                         i64_load: Opcode::I64_LOAD,
+                         i64_load8_s: Opcode::I64_LOAD8_S,
+                         i64_load8_u: Opcode::I64_LOAD8_U,
+                         i64_load16_s: Opcode::I64_LOAD16_S,
+                         i64_load16_u: Opcode::I64_LOAD16_U,
+                         i64_load32_s: Opcode::I64_LOAD32_S,
+                         i64_load32_u: Opcode::I64_LOAD32_U,
+                         i64_store: Opcode::I64_STORE,
+                         i64_store8: Opcode::I64_STORE8,
+                         i64_store16: Opcode::I64_STORE16,
+                         i64_store32: Opcode::I64_STORE32, }.freeze
       STORE_CODES = (MEMORY_WIDTHS.keys + %i[global_get global_set memory_size memory_grow memory_init memory_copy memory_fill]).freeze
 
       # @rbs @instance: Wardite::Instance
@@ -214,8 +227,8 @@ module Wardite
             elsif code == :try_table
               @function.uses_eh = true
               clauses = operands[1]
-              fail_translation("expected catch clauses") unless clauses.is_a?(Array)
-              descriptor = make_handler(clauses)
+              fail_translation("expected catch clauses") unless clauses.is_a?(Wardite::CatchClauses)
+              descriptor = make_handler(clauses.entries)
               id = @function.handlers.size
               @function.handlers << descriptor
               emit([Opcode::EH_ENTER, id]) if @reachable
@@ -228,16 +241,21 @@ module Wardite
           when :end
             end_control
           when :i32_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
-               :i32_store, :i32_store8, :i32_store16
+               :i32_store, :i32_store8, :i32_store16,
+               :i64_load, :i64_load8_s, :i64_load8_u, :i64_load16_s, :i64_load16_u, :i64_load32_s, :i64_load32_u,
+               :i64_store, :i64_store8, :i64_store16, :i64_store32
             opcode = MEMORY_OPCODES.fetch(code)
             offset = integer_operand(operands[1])
-            if code == :i32_store || code == :i32_store8 || code == :i32_store16
-              value = pop_typed(:i32)
+            i64_store = Opcode::I64_STORES.include?(opcode)
+            type = i64_store || Opcode::I64_LOADS.include?(opcode) ? :i64 : :i32
+            @function.uses_i64 = true if type == :i64
+            if i64_store || code == :i32_store || code == :i32_store8 || code == :i32_store16
+              value = pop_typed(type)
               address = pop_typed(:i32)
               emit([opcode, value, address, offset]) if @reachable
             else
               address = pop_typed(:i32)
-              dst = register
+              dst = register(type)
               emit([opcode, dst, address, offset]) if @reachable
               @stack << dst
             end
@@ -261,13 +279,17 @@ module Wardite
             @stack << dst
           when :global_get, :global_set
             index = integer_operand(operands[0])
+            type = @instance.store.globals.fetch(index).type
+            @function.uses_i64 = true if type == :i64
             if code == :global_get
-              dst = register
-              emit([Opcode::GLOBAL_GET, dst, index]) if @reachable
+              dst = register(type)
+              opcode = type == :i64 ? Opcode::I64_GLOBAL_GET : Opcode::GLOBAL_GET
+              emit([opcode, dst, index]) if @reachable
               @stack << dst
             else
-              source = pop_typed(:i32)
-              emit([Opcode::GLOBAL_SET, index, source]) if @reachable
+              source = pop_typed(type)
+              opcode = type == :i64 ? Opcode::I64_GLOBAL_SET : Opcode::GLOBAL_SET
+              emit([opcode, index, source]) if @reachable
             end
           when :local_get, :local_set, :local_tee
             local = integer_operand(operands[0])
@@ -429,10 +451,14 @@ module Wardite
           index = integer_operand(operands[0])
           global = index >= 0 ? @instance.store.globals[index] : nil
           fail_translation("invalid global index #{index}") unless global
-          unless global.type == :i32
-            raise UnsupportedFeature, context("only i32 global access is supported")
+          case global.type
+          when :i32
+            fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::I32)
+          when :i64
+            fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::I64)
+          else
+            raise UnsupportedFeature, context("only i32/i64 global access is supported")
           end
-          fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::I32)
           fail_translation("global.set on immutable global #{index}") if code == :global_set && !global.mutable
           return
         end

@@ -2,7 +2,18 @@
 
 module Wardite
   # @rbs!
-  #   type operandItem = Integer | Array[Integer] | Float | Block
+  #   type operandItem = Integer | Array[Integer] | Float | Block | CatchClauses
+
+  # Keep try_table descriptors distinct from br_table label vectors.
+  # The named operand also gives Spinel a concrete type in the mixed array.
+  class CatchClauses
+    attr_reader :entries #: Array[Integer]
+
+    # @rbs entries: Array[Integer]
+    def initialize(entries)
+      @entries = entries
+    end
+  end
 
   class Op
     # @see https://pengowray.github.io/wasm-ops/

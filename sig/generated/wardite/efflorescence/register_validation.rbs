@@ -28,7 +28,8 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       # @rbs ir: Wardite::Efflorescence::IR?
-      def validate: (Wardite::Efflorescence::Function function, ?Wardite::Efflorescence::IR? ir) -> void
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      def validate: (Wardite::Efflorescence::Function function, ?Wardite::Efflorescence::IR? ir, ?tags: Array[Wardite::Efflorescence::Tag]?) -> void
 
       private
 
@@ -37,7 +38,14 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       # @rbs ir: Wardite::Efflorescence::IR?
-      def validate_types: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR? ir) -> void
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      def validate_types: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR? ir, Array[Wardite::Efflorescence::Tag]? tags) -> void
+
+      # @rbs tags: Array[Wardite::Efflorescence::Tag]?
+      # @rbs index: Integer
+      # @rbs size: Integer
+      # @rbs return: Array[Symbol]
+      def payload_types: (Array[Wardite::Efflorescence::Tag]? tags, Integer index, Integer size) -> Array[Symbol]
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs register: Integer

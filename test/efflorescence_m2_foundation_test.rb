@@ -80,9 +80,9 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
     end
     assert_include error.message, 'data count'
     error = assert_raise(E::UnsupportedFeature) do
-      load_efflorescence('(module (global i64 (i64.const 42)) (func unreachable global.get 0 drop))')
+      load_efflorescence('(module (global f64 (f64.const 42)) (func unreachable global.get 0 drop))')
     end
-    assert_include error.message, 'only i32 global'
+    assert_include error.message, 'only i32/i64 global'
   end
 
   test 'shared limits reject unsupported flags and invalid page bounds before allocation' do

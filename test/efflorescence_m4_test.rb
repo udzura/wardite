@@ -73,6 +73,31 @@ class EfflorescenceM4Test < Test::Unit::TestCase
     assert_equal 1, vm.call_unboxed("run", [1])
   end
 
+  test "memory, globals and EH preserve signed bits in every execution mode" do
+    [{}, { disabled_optimizations: [:all] }, { disabled_optimizations: [:frames], mir_profile: true }].each do |options|
+      vm = load_efflorescence(STORE_EH_WAT, **options).runtime
+      STORE_EH_ROWS.each do |name, *arguments, expected|
+        case expected
+        when "bounds"
+          data = vm.instance.store.memories.fetch(0).data
+          before = data.dup
+          assert_raise_message("out of bounds memory access") { vm.call_unboxed(name, arguments) }
+          assert_equal before, data
+        when "void"
+          assert_nil vm.call_unboxed(name, arguments)
+        when "uncaught"
+          error = assert_raise(Wardite::UncaughtWasmException) { vm.call_unboxed(name, arguments) }
+          assert_equal [0xffffffff, arguments.fetch(0), 7], error.payload
+          assert_predicate error.payload, :frozen?
+          assert_same vm.instance.tags.fetch(0), error.tag
+        else
+          assert_equal expected, vm.call_unboxed(name, arguments), "#{name} #{arguments.inspect}"
+        end
+      end
+      assert_equal 2**64 - 1, vm.instance.store.globals.fetch(0).value.value
+    end
+  end
+
   test "dead concrete operands still have types" do
     assert_raise(Wardite::Efflorescence::TranslationError) do
       load_efflorescence('(module (func (local i64) unreachable i32.const 1 local.set 0))')

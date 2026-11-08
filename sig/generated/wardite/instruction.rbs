@@ -1,7 +1,14 @@
 # Generated from lib/wardite/instruction.rb with RBS::Inline
 
 module Wardite
-  type operandItem = Integer | Array[Integer] | Float | Block
+  type operandItem = Integer | Array[Integer] | Float | Block | CatchClauses
+
+  class CatchClauses
+    attr_reader entries: Array[Integer]
+
+    # @rbs entries: Array[Integer]
+    def initialize: (Array[Integer] entries) -> untyped
+  end
 
   class Op
     # @see https://pengowray.github.io/wasm-ops/
