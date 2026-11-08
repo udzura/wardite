@@ -1,6 +1,6 @@
 # ADR 0004: Efflorescence M4のi64対応
 
-- 状態: 提案。実装・性能検証は未実施。
+- 状態: 実装済み。[実装と検証の記録](../efflorescence-m4.md)
 - 日付: 2026-11-08
 - 調査基準: main `17200af`（M3とWASI専用経路のmerge後）
 - 前提: [M0調査](../efflorescence-coverage-ja.md)、[M3実装](../efflorescence-m3.md)、[ADR 0003](0003-efflorescence-m3-host-and-indirect-calls.md)

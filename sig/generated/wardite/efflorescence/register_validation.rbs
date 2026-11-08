@@ -41,6 +41,13 @@ module Wardite
       # @rbs tags: Array[Wardite::Efflorescence::Tag]?
       def validate_types: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR? ir, Array[Wardite::Efflorescence::Tag]? tags) -> void
 
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs reads: Array[Integer]
+      # @rbs destination: Integer
+      # @rbs return: void
+      def validate_i64_instruction: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Array[Integer] reads, Integer destination) -> void
+
       # @rbs tags: Array[Wardite::Efflorescence::Tag]?
       # @rbs index: Integer
       # @rbs size: Integer

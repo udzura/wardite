@@ -661,6 +661,7 @@ module Wardite
 
       attr_reader pool_index: Integer
 
+      # Numeric registers hold unsigned i32 or signed i64, as recorded in Function.
       attr_reader registers: Array[Integer]
 
       attr_reader exception_registers: Array[Wardite::Efflorescence::ExceptionValue?]

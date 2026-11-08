@@ -191,14 +191,8 @@ module Wardite
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Array[Integer]
       def self.read_positions(instruction)
-        types = I64_ALU_TYPES[instruction[0]]
-        return (2..types.size).to_a if types
         opcode = instruction[0]
-        return [2] if I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_SET
-        return [1, 2] if I64_STORES.include?(opcode)
-        return [] if opcode == I64_GLOBAL_GET
-
-        case instruction[0]
+        case opcode
         when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
              COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
              I32_XOR_IMM, I32_SHL_IMM, I32_SHR_U_IMM, I32_XOR_SHR_U_IMM, I32_XOR_SHL_IMM
@@ -222,7 +216,13 @@ module Wardite
         when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
           []
         else
-          raise UnsupportedFeature, "Efflorescence: unknown MIR opcode #{instruction[0]}"
+          types = I64_ALU_TYPES[opcode]
+          return types.size == 2 ? [2] : [2, 3] if types
+          return [2] if I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_SET
+          return [1, 2] if I64_STORES.include?(opcode)
+          return [] if opcode == I64_GLOBAL_GET
+
+          raise UnsupportedFeature, "Efflorescence: unknown MIR opcode #{opcode}"
         end
       end
 
@@ -235,7 +235,7 @@ module Wardite
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
             (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) || opcode == MEMORY_SIZE || opcode == MEMORY_GROW ||
-            I64_ALU_TYPES.key?(opcode) || I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_GET
+            (opcode > CALL_INDIRECT && (I64_ALU_TYPES.key?(opcode) || I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_GET))
           instruction[1]
         else
           -1
@@ -253,8 +253,8 @@ module Wardite
       def self.may_trap?(opcode)
         opcode == TRAP || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
-          I64_LOADS.include?(opcode) || I64_STORES.include?(opcode) ||
-          opcode == I64_DIV_S || opcode == I64_DIV_U || opcode == I64_REM_S || opcode == I64_REM_U
+          (opcode > CALL_INDIRECT && (I64_LOADS.include?(opcode) || I64_STORES.include?(opcode) ||
+            opcode == I64_DIV_S || opcode == I64_DIV_U || opcode == I64_REM_S || opcode == I64_REM_U))
       end
 
       # @rbs opcode: Integer
@@ -281,14 +281,15 @@ module Wardite
       def self.reads_store?(opcode)
         opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
           opcode == MEMORY_SIZE || opcode == MEMORY_GROW || opcode == MEMORY_INIT || opcode == MEMORY_COPY ||
-          opcode == I64_GLOBAL_GET || I64_LOADS.include?(opcode)
+          (opcode > CALL_INDIRECT && (opcode == I64_GLOBAL_GET || I64_LOADS.include?(opcode)))
       end
 
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.writes_store?(opcode)
         opcode == GLOBAL_SET || (opcode >= I32_STORE && opcode <= I32_STORE16) ||
-          opcode == MEMORY_GROW || memory_site?(opcode) || opcode == I64_GLOBAL_SET || I64_STORES.include?(opcode)
+          opcode == MEMORY_GROW || memory_site?(opcode) ||
+          (opcode > CALL_INDIRECT && (opcode == I64_GLOBAL_SET || I64_STORES.include?(opcode)))
       end
 
       # @rbs opcode: Integer
@@ -781,8 +782,8 @@ module Wardite
       # @rbs label: String
       # @rbs return: void
       def self.check_signature(params, results, label)
-        types = [:i32, :i64]
-        unless params.all? { |type| types.include?(type) } && results.size <= 1 && results.all? { |type| types.include?(type) }
+        unless params.all? { |type| type == :i32 || type == :i64 } &&
+            (results.empty? || (results.size == 1 && (results[0] == :i32 || results[0] == :i64)))
           raise UnsupportedFeature, "Efflorescence: #{label} requires an integer signature with at most one result (i32/i64)"
         end
       end
@@ -840,6 +841,7 @@ module Wardite
     class Frame
       attr_reader :function #: Wardite::Efflorescence::Function
       attr_reader :pool_index #: Integer
+      # Numeric registers hold unsigned i32 or signed i64, as recorded in Function.
       attr_reader :registers #: Array[Integer]
       attr_reader :exception_registers #: Array[Wardite::Efflorescence::ExceptionValue?]
       attr_reader :handlers #: Array[Integer]

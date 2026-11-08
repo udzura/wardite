@@ -97,7 +97,8 @@ module Wardite
       MEMORY_WIDTHS = { i32_load: 2, i32_load8_s: 0, i32_load8_u: 0,
                         i32_load16_s: 1, i32_load16_u: 1,
                         i32_store: 2, i32_store8: 0, i32_store16: 1,
-                        i64_load: 3, i64_load8_s: 0, i64_load8_u: 0, i64_load16_s: 1, i64_load16_u: 1, i64_load32_s: 2, i64_load32_u: 2,
+                        i64_load: 3, i64_load8_s: 0, i64_load8_u: 0,
+                        i64_load16_s: 1, i64_load16_u: 1, i64_load32_s: 2, i64_load32_u: 2,
                         i64_store: 3, i64_store8: 0, i64_store16: 1, i64_store32: 2 }.freeze
       MEMORY_OPCODES = { i32_load: Opcode::I32_LOAD, i32_load8_s: Opcode::I32_LOAD8_S,
                          i32_load8_u: Opcode::I32_LOAD8_U, i32_load16_s: Opcode::I32_LOAD16_S,
@@ -113,14 +114,15 @@ module Wardite
                          i64_store: Opcode::I64_STORE,
                          i64_store8: Opcode::I64_STORE8,
                          i64_store16: Opcode::I64_STORE16,
-                         i64_store32: Opcode::I64_STORE32, }.freeze
+                         i64_store32: Opcode::I64_STORE32 }.freeze
       STORE_CODES = (MEMORY_WIDTHS.keys + %i[global_get global_set memory_size memory_grow memory_init memory_copy memory_fill]).freeze
 
       # @rbs @instance: Wardite::Instance
       # @rbs @entries: Array[Wardite::Efflorescence::FunctionEntry]
       # @rbs @stack: Array[Integer]
       # @rbs @controls: Array[Wardite::Efflorescence::Translator::Control]
-      # @rbs @constants: Hash[Symbol, Hash[Integer, Integer]]
+      # @rbs @constants: Hash[Integer, Integer]
+      # @rbs @i64_constants: Hash[Integer, Integer]?
       # @rbs @function: Wardite::Efflorescence::Function
       # @rbs @reachable: bool
       # @rbs @wasm_pc: Integer
@@ -131,6 +133,7 @@ module Wardite
         @instance = instance
         @entries = []
         @stack, @controls, @constants = [], [], {}
+        @i64_constants = nil
         @reachable, @wasm_pc, @handler_depth = true, 0, 0
         @function = Function.new(0, [], [], 0)
       end
@@ -183,6 +186,7 @@ module Wardite
         wasm.locals_type.each_with_index { |type, i| wasm.locals_count.fetch(i).times { locals << type } }
         @function = Function.new(index, wasm.callsig, wasm.retsig, locals.size, local_types: locals, pool_index: pool_index)
         @stack, @controls, @constants = [], [], {}
+        @i64_constants = nil
         @reachable, @handler_depth = true, 0
         @controls << new_control(:function, wasm.retsig)
         wasm.body.each_with_index do |instruction, pc|
@@ -202,15 +206,6 @@ module Wardite
             emit([UNARY.fetch(code), dst, source]) if @reachable
             @stack << dst
             next
-          elsif I64_ALU.key?(code)
-            opcode = I64_ALU.fetch(code)
-            types = Opcode::I64_ALU_TYPES.fetch(opcode)
-            @function.uses_i64 = true
-            operands = types.drop(1).reverse.map { |type| pop_typed(type) }.reverse
-            dst = register(types.fetch(0))
-            emit([opcode, dst] + operands) if @reachable
-            @stack << dst
-            next
           end
           case code
           when :block, :loop, :if, :try_table
@@ -227,7 +222,7 @@ module Wardite
             elsif code == :try_table
               @function.uses_eh = true
               clauses = operands[1]
-              fail_translation("expected catch clauses") unless clauses.is_a?(Wardite::CatchClauses)
+              fail_translation("expected catch clauses") unless clauses.is_a?(Wardite::OperandVector)
               descriptor = make_handler(clauses.entries)
               id = @function.handlers.size
               @function.handlers << descriptor
@@ -336,8 +331,8 @@ module Wardite
             mark_unreachable if code == :br
           when :br_table
             depths = operands[0]
-            fail_translation("expected branch table") unless depths.is_a?(Array)
-            targets = depths.map { |depth| label(depth) }
+            fail_translation("expected branch table") unless depths.is_a?(Wardite::OperandVector)
+            targets = depths.entries.map { |depth| label(depth) }
             default = label(integer_operand(operands[1]))
             types = label_types(default)
             fail_translation("inconsistent br_table label types") unless targets.all? { |target| label_types(target) == types }
@@ -432,7 +427,14 @@ module Wardite
             pop_value
           when :nop
           else
-            raise UnsupportedFeature, context("unsupported instruction #{code}")
+            opcode = I64_ALU[code]
+            raise UnsupportedFeature, context("unsupported instruction #{code}") unless opcode
+            types = Opcode::I64_ALU_TYPES.fetch(opcode)
+            @function.uses_i64 = true
+            sources = types.drop(1).reverse.map { |type| pop_typed(type) }.reverse
+            dst = register(types.fetch(0))
+            emit([opcode, dst] + sources) if @reachable
+            @stack << dst
           end
         end
         fail_translation("missing function end") unless @controls.empty?
@@ -506,7 +508,11 @@ module Wardite
       # @rbs return: Integer
       # @rbs type: Symbol
       def constant(value, type = :i32)
-        constants = (@constants[type] ||= {})
+        constants = if type == :i64
+                      @i64_constants ||= {} #: Hash[Integer, Integer]
+                    else
+                      @constants
+                    end
         constants[value] ||= @function.allocate_constant(value, type: type)
       end
 
@@ -609,11 +615,16 @@ module Wardite
       # @rbs types: Array[Symbol]
       # @rbs return: Array[Integer]
       def top_values(types)
+        return [] if types.empty?
+
         control = @controls.last || raise(TranslationError, "missing control")
         available = @stack.size - control.entry_stack.size
-        missing = [types.size - available, 0].max
-        fail_translation("operand stack underflow") if missing > 0 && !control.polymorphic
-        values = Array.new(missing, -1) + @stack.last(types.size - missing)
+        if available < types.size
+          fail_translation("operand stack underflow") unless control.polymorphic
+          values = Array.new(types.size - available, -1) + @stack.last(available)
+        else
+          values = @stack.last(types.size)
+        end
         values.each_with_index do |value, i|
           fail_translation("branch result type mismatch") if value >= 0 && type_of(value) != types.fetch(i)
         end
@@ -672,7 +683,7 @@ module Wardite
         height = @stack.size - control.entry_stack.size
         fail_translation("incorrect stack height at end") if height > control.result_types.size
         sources = top_values(control.result_types)
-        parallel_copy(control.result_registers, sources) if @reachable
+        parallel_copy(control.result_registers, sources) if @reachable && !sources.empty?
       end
 
       # @rbs return: void

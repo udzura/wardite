@@ -67,8 +67,9 @@ class EfflorescenceM4HostTest < Test::Unit::TestCase
       vm = instance.runtime
       assert_nil vm.ir.hosts.fetch(0).unboxed_wasi
       memory = instance.store.memories.fetch(0).data
+      memory[32, 4] = [0xffffffff].pack("V")
       assert_equal Wardite::Wasi::ENOENT, vm.call_unboxed("open", [16])
-      assert_equal 0, memory.byteslice(32, 4).unpack1("V")
+      assert_equal 0xffffffff, memory.byteslice(32, 4).unpack1("V")
       assert_equal 0, vm.call_unboxed("open", [0])
       fd = memory.byteslice(32, 4).unpack1("V")
       assert_equal 4, fd

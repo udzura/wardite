@@ -562,8 +562,9 @@ module Wardite
         frame.pc = pc
 
       when :br_table
-        level_vec = operand[0]
-        raise EvalError, "no level vector" if !level_vec.is_a?(Array)
+        levels = operand[0]
+        raise EvalError, "no level vector" unless levels.is_a?(OperandVector)
+        level_vec = levels.entries
         default = operand[1]
         raise EvalError, "no default specified" if !default.is_a?(Integer)
         idx = stack.pop 

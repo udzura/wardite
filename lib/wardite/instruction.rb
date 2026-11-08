@@ -2,11 +2,10 @@
 
 module Wardite
   # @rbs!
-  #   type operandItem = Integer | Array[Integer] | Float | Block | CatchClauses
+  #   type operandItem = Integer | Float | Block | OperandVector
 
-  # Keep try_table descriptors distinct from br_table label vectors.
-  # The named operand also gives Spinel a concrete type in the mixed array.
-  class CatchClauses
+  # Give br_table and try_table vectors a concrete type in the mixed operand list.
+  class OperandVector
     attr_reader :entries #: Array[Integer]
 
     # @rbs entries: Array[Integer]

@@ -166,26 +166,11 @@ module Wardite
           end
           reads = function.reads(instruction)
           destination = Opcode.destination(instruction)
-          types = Opcode::I64_ALU_TYPES[opcode]
-          if types
-            check_register(function, destination, types.fetch(0))
-            reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }
-            next
-          end
-          if Opcode::I64_LOADS.include?(opcode)
-            check_register(function, destination, :i64)
-            check_register(function, instruction[2], :i32)
-            next
-          elsif Opcode::I64_STORES.include?(opcode)
-            check_register(function, instruction[1], :i64)
-            check_register(function, instruction[2], :i32)
+          if opcode > Opcode::CALL_INDIRECT
+            validate_i64_instruction(function, instruction, reads, destination)
             next
           end
           case opcode
-          when Opcode::I64_GLOBAL_GET
-            check_register(function, destination, :i64)
-          when Opcode::I64_GLOBAL_SET
-            check_register(function, instruction[2], :i64)
           when Opcode::THROW
             site = function.throw_sites.fetch(instruction[1])
             types = payload_types(tags, site.tag_index, reads.size)
@@ -224,6 +209,30 @@ module Wardite
             end
             check_destination(function, clause.reference_register, :exnref) if clause.reference_register >= 0
           end
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs reads: Array[Integer]
+      # @rbs destination: Integer
+      # @rbs return: void
+      def validate_i64_instruction(function, instruction, reads, destination)
+        opcode = instruction[0]
+        types = Opcode::I64_ALU_TYPES[opcode]
+        if types
+          check_register(function, destination, types.fetch(0))
+          reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }
+        elsif Opcode::I64_LOADS.include?(opcode)
+          check_register(function, destination, :i64)
+          check_register(function, instruction[2], :i32)
+        elsif Opcode::I64_STORES.include?(opcode)
+          check_register(function, instruction[1], :i64)
+          check_register(function, instruction[2], :i32)
+        elsif opcode == Opcode::I64_GLOBAL_GET
+          check_register(function, destination, :i64)
+        elsif opcode == Opcode::I64_GLOBAL_SET
+          check_register(function, instruction[2], :i64)
         end
       end
 

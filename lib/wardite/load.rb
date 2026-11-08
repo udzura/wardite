@@ -690,7 +690,7 @@ module Wardite
             len.times do
               vec << fetch_uleb128(buf)
             end
-            operand << vec
+            operand << OperandVector.new(vec)
           when :i32
             operand << fetch_sleb128(buf)
           when :i64
@@ -723,7 +723,7 @@ module Wardite
               depth = fetch_uleb128(buf)
               clauses << kind << tag << depth
             end
-            operand << CatchClauses.new(clauses)
+            operand << OperandVector.new(clauses)
           else
             $stderr.puts "warning: unknown type #{typ.inspect}. defaulting to u32"
             operand << fetch_uleb128(buf)
