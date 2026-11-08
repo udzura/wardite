@@ -79,17 +79,86 @@ module Wardite
       CALL_HOST = 67
       CALL_INDIRECT = 68
 
+      I64_EQZ = 69
+      I32_WRAP_I64 = 70
+      I64_EQ = 71
+      I64_NE = 72
+      I64_LTS = 73
+      I64_LTU = 74
+      I64_GTS = 75
+      I64_GTU = 76
+      I64_LES = 77
+      I64_LEU = 78
+      I64_GES = 79
+      I64_GEU = 80
+      I64_CLZ = 81
+      I64_CTZ = 82
+      I64_POPCNT = 83
+      I64_EXTEND8_S = 84
+      I64_EXTEND16_S = 85
+      I64_EXTEND32_S = 86
+      I64_EXTEND_I32_S = 87
+      I64_EXTEND_I32_U = 88
+      I64_AND = 89
+      I64_OR = 90
+      I64_XOR = 91
+      I64_SHL = 92
+      I64_SHR_S = 93
+      I64_SHR_U = 94
+      I64_ROTL = 95
+      I64_ROTR = 96
+
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
                  I32_XOR_SHR_U_IMM I32_XOR_SHL_IMM PROFILE
                  I32_EQ I32_NE I32_LTS I32_LTU I32_GTS I32_GTU I32_LES I32_LEU I32_GES I32_GEU I32_CLZ I32_CTZ I32_POPCNT I32_DIV_S I32_DIV_U I32_REM_S I32_REM_U I32_AND I32_OR I32_SHR_S I32_ROTL I32_ROTR I32_EXTEND8_S I32_EXTEND16_S COPY_REF EH_ENTER EH_TRIM THROW THROW_REF
-                 GLOBAL_GET GLOBAL_SET I32_LOAD I32_LOAD8_S I32_LOAD8_U I32_LOAD16_S I32_LOAD16_U I32_STORE I32_STORE8 I32_STORE16 MEMORY_SIZE MEMORY_GROW MEMORY_INIT MEMORY_COPY MEMORY_FILL CALL_HOST CALL_INDIRECT].freeze
+                 GLOBAL_GET GLOBAL_SET I32_LOAD I32_LOAD8_S I32_LOAD8_U I32_LOAD16_S I32_LOAD16_U I32_STORE I32_STORE8 I32_STORE16 MEMORY_SIZE MEMORY_GROW MEMORY_INIT MEMORY_COPY MEMORY_FILL CALL_HOST CALL_INDIRECT
+                 I64_EQZ I32_WRAP_I64
+                 I64_EQ I64_NE I64_LTS I64_LTU I64_GTS I64_GTU I64_LES I64_LEU I64_GES I64_GEU
+                 I64_CLZ I64_CTZ I64_POPCNT I64_EXTEND8_S I64_EXTEND16_S I64_EXTEND32_S
+                 I64_EXTEND_I32_S I64_EXTEND_I32_U
+                 I64_AND I64_OR I64_XOR I64_SHL I64_SHR_S I64_SHR_U I64_ROTL I64_ROTR].freeze
+
+      # Each signature lists the destination type followed by the source types.
+      I64_ALU_TYPES = {
+        I64_EQZ => [:i32, :i64],
+        I32_WRAP_I64 => [:i32, :i64],
+        I64_EQ => [:i32, :i64, :i64],
+        I64_NE => [:i32, :i64, :i64],
+        I64_LTS => [:i32, :i64, :i64],
+        I64_LTU => [:i32, :i64, :i64],
+        I64_GTS => [:i32, :i64, :i64],
+        I64_GTU => [:i32, :i64, :i64],
+        I64_LES => [:i32, :i64, :i64],
+        I64_LEU => [:i32, :i64, :i64],
+        I64_GES => [:i32, :i64, :i64],
+        I64_GEU => [:i32, :i64, :i64],
+        I64_CLZ => [:i64, :i64],
+        I64_CTZ => [:i64, :i64],
+        I64_POPCNT => [:i64, :i64],
+        I64_EXTEND8_S => [:i64, :i64],
+        I64_EXTEND16_S => [:i64, :i64],
+        I64_EXTEND32_S => [:i64, :i64],
+        I64_EXTEND_I32_S => [:i64, :i32],
+        I64_EXTEND_I32_U => [:i64, :i32],
+        I64_AND => [:i64, :i64, :i64],
+        I64_OR => [:i64, :i64, :i64],
+        I64_XOR => [:i64, :i64, :i64],
+        I64_SHL => [:i64, :i64, :i64],
+        I64_SHR_S => [:i64, :i64, :i64],
+        I64_SHR_U => [:i64, :i64, :i64],
+        I64_ROTL => [:i64, :i64, :i64],
+        I64_ROTR => [:i64, :i64, :i64],
+      }.freeze #: Hash[Integer, Array[Symbol]]
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Array[Integer]
       def self.read_positions(instruction)
+        types = I64_ALU_TYPES[instruction[0]]
+        return (2..types.size).to_a if types
+
         case instruction[0]
         when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
              COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
@@ -126,7 +195,8 @@ module Wardite
             (opcode >= I32_ADD_IMM && opcode <= I32_SHR_U_IMM) ||
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
-            (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) || opcode == MEMORY_SIZE || opcode == MEMORY_GROW
+            (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) || opcode == MEMORY_SIZE || opcode == MEMORY_GROW ||
+            I64_ALU_TYPES.key?(opcode)
           instruction[1]
         else
           -1

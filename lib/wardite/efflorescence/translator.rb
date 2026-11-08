@@ -55,6 +55,37 @@ module Wardite
                 i32_ctz: Opcode::I32_CTZ, i32_popcnt: Opcode::I32_POPCNT,
                 i32_extend8_s: Opcode::I32_EXTEND8_S, i32_extend16_s: Opcode::I32_EXTEND16_S }.freeze
 
+      I64_ALU = {
+        i64_eqz: Opcode::I64_EQZ,
+        i32_wrap_i64: Opcode::I32_WRAP_I64,
+        i64_eq: Opcode::I64_EQ,
+        i64_ne: Opcode::I64_NE,
+        i64_lts: Opcode::I64_LTS,
+        i64_ltu: Opcode::I64_LTU,
+        i64_gts: Opcode::I64_GTS,
+        i64_gtu: Opcode::I64_GTU,
+        i64_les: Opcode::I64_LES,
+        i64_leu: Opcode::I64_LEU,
+        i64_ges: Opcode::I64_GES,
+        i64_geu: Opcode::I64_GEU,
+        i64_clz: Opcode::I64_CLZ,
+        i64_ctz: Opcode::I64_CTZ,
+        i64_popcnt: Opcode::I64_POPCNT,
+        i64_extend8_s: Opcode::I64_EXTEND8_S,
+        i64_extend16_s: Opcode::I64_EXTEND16_S,
+        i64_extend32_s: Opcode::I64_EXTEND32_S,
+        i64_extend_i32_s: Opcode::I64_EXTEND_I32_S,
+        i64_extend_i32_u: Opcode::I64_EXTEND_I32_U,
+        i64_and: Opcode::I64_AND,
+        i64_or: Opcode::I64_OR,
+        i64_xor: Opcode::I64_XOR,
+        i64_shl: Opcode::I64_SHL,
+        i64_shr_s: Opcode::I64_SHR_S,
+        i64_shr_u: Opcode::I64_SHR_U,
+        i64_rotl: Opcode::I64_ROTL,
+        i64_rotr: Opcode::I64_ROTR,
+      }.freeze
+
       # Natural alignment exponents; alignment is a hint, not an address rule.
       MEMORY_WIDTHS = { i32_load: 2, i32_load8_s: 0, i32_load8_u: 0,
                         i32_load16_s: 1, i32_load16_u: 1,
@@ -149,6 +180,15 @@ module Wardite
             source = pop_typed(:i32)
             dst = register
             emit([UNARY.fetch(code), dst, source]) if @reachable
+            @stack << dst
+            next
+          elsif I64_ALU.key?(code)
+            opcode = I64_ALU.fetch(code)
+            types = Opcode::I64_ALU_TYPES.fetch(opcode)
+            @function.uses_i64 = true
+            operands = types.drop(1).reverse.map { |type| pop_typed(type) }.reverse
+            dst = register(types.fetch(0))
+            emit([opcode, dst] + operands) if @reachable
             @stack << dst
             next
           end

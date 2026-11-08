@@ -694,6 +694,108 @@ module Wardite
             @store_access.bulk(65, frame.function.memory_site(a), registers)
           when 66 # Opcode::MEMORY_FILL
             @store_access.bulk(66, frame.function.memory_site(a), registers)
+          when 69 # Opcode::I64_EQZ
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(69, registers[b], 0)
+          when 70 # Opcode::I32_WRAP_I64
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(70, registers[b], 0)
+          when 71 # Opcode::I64_EQ
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(71, registers[b], registers[c])
+          when 72 # Opcode::I64_NE
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(72, registers[b], registers[c])
+          when 73 # Opcode::I64_LTS
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(73, registers[b], registers[c])
+          when 74 # Opcode::I64_LTU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(74, registers[b], registers[c])
+          when 75 # Opcode::I64_GTS
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(75, registers[b], registers[c])
+          when 76 # Opcode::I64_GTU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(76, registers[b], registers[c])
+          when 77 # Opcode::I64_LES
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(77, registers[b], registers[c])
+          when 78 # Opcode::I64_LEU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(78, registers[b], registers[c])
+          when 79 # Opcode::I64_GES
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(79, registers[b], registers[c])
+          when 80 # Opcode::I64_GEU
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(80, registers[b], registers[c])
+          when 81 # Opcode::I64_CLZ
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(81, registers[b], 0)
+          when 82 # Opcode::I64_CTZ
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(82, registers[b], 0)
+          when 83 # Opcode::I64_POPCNT
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(83, registers[b], 0)
+          when 84 # Opcode::I64_EXTEND8_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(84, registers[b], 0)
+          when 85 # Opcode::I64_EXTEND16_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(85, registers[b], 0)
+          when 86 # Opcode::I64_EXTEND32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(86, registers[b], 0)
+          when 87 # Opcode::I64_EXTEND_I32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(87, registers[b], 0)
+          when 88 # Opcode::I64_EXTEND_I32_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = I64Arithmetic.calculate(88, registers[b], 0)
+          when 89 # Opcode::I64_AND
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(89, registers[b], registers[c])
+          when 90 # Opcode::I64_OR
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(90, registers[b], registers[c])
+          when 91 # Opcode::I64_XOR
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(91, registers[b], registers[c])
+          when 92 # Opcode::I64_SHL
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(92, registers[b], registers[c])
+          when 93 # Opcode::I64_SHR_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(93, registers[b], registers[c])
+          when 94 # Opcode::I64_SHR_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(94, registers[b], registers[c])
+          when 95 # Opcode::I64_ROTL
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(95, registers[b], registers[c])
+          when 96 # Opcode::I64_ROTR
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(96, registers[b], registers[c])
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

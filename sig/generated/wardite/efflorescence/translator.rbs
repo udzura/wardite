@@ -48,6 +48,8 @@ module Wardite
 
       UNARY: untyped
 
+      I64_ALU: untyped
+
       # Natural alignment exponents; alignment is a hint, not an address rule.
       MEMORY_WIDTHS: untyped
 

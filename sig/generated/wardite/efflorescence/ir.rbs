@@ -147,7 +147,66 @@ module Wardite
 
       CALL_INDIRECT: ::Integer
 
+      I64_EQZ: ::Integer
+
+      I32_WRAP_I64: ::Integer
+
+      I64_EQ: ::Integer
+
+      I64_NE: ::Integer
+
+      I64_LTS: ::Integer
+
+      I64_LTU: ::Integer
+
+      I64_GTS: ::Integer
+
+      I64_GTU: ::Integer
+
+      I64_LES: ::Integer
+
+      I64_LEU: ::Integer
+
+      I64_GES: ::Integer
+
+      I64_GEU: ::Integer
+
+      I64_CLZ: ::Integer
+
+      I64_CTZ: ::Integer
+
+      I64_POPCNT: ::Integer
+
+      I64_EXTEND8_S: ::Integer
+
+      I64_EXTEND16_S: ::Integer
+
+      I64_EXTEND32_S: ::Integer
+
+      I64_EXTEND_I32_S: ::Integer
+
+      I64_EXTEND_I32_U: ::Integer
+
+      I64_AND: ::Integer
+
+      I64_OR: ::Integer
+
+      I64_XOR: ::Integer
+
+      I64_SHL: ::Integer
+
+      I64_SHR_S: ::Integer
+
+      I64_SHR_U: ::Integer
+
+      I64_ROTL: ::Integer
+
+      I64_ROTR: ::Integer
+
       NAMES: untyped
+
+      # Each signature lists the destination type followed by the source types.
+      I64_ALU_TYPES: Hash[Integer, Array[Symbol]]
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction

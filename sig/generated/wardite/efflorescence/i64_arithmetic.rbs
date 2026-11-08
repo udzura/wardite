@@ -23,6 +23,46 @@ module Wardite
       # @rbs value: Integer
       # @rbs return: Integer
       def self.normalize: (Integer value) -> Integer
+
+      # Sign extension for an integer field of at most 32 bits.
+      # @rbs value: Integer
+      # @rbs width: Integer
+      # @rbs return: Integer
+      def self.extend: (Integer value, Integer width) -> Integer
+
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: bool
+      def self.unsigned_less?: (Integer left, Integer right) -> bool
+
+      # @rbs value: Integer
+      # @rbs count: Integer
+      # @rbs return: Integer
+      def self.shift_left: (Integer value, Integer count) -> Integer
+
+      # @rbs value: Integer
+      # @rbs count: Integer
+      # @rbs signed: bool
+      # @rbs return: Integer
+      def self.shift_right: (Integer value, Integer count, bool signed) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.clz32: (Integer value) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.ctz32: (Integer value) -> Integer
+
+      # @rbs value: Integer
+      # @rbs return: Integer
+      def self.popcnt32: (Integer value) -> Integer
+
+      # @rbs opcode: Integer
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.calculate: (Integer opcode, Integer left, Integer right) -> Integer
     end
   end
 end

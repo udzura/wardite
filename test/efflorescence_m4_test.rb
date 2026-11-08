@@ -3,10 +3,12 @@
 require "test_helper"
 require_relative "support/efflorescence_helper"
 require_relative "support/efflorescence_m4_cases"
+require_relative "support/efflorescence_m4_alu_cases"
 
 class EfflorescenceM4Test < Test::Unit::TestCase
   include EfflorescenceHelper
   include EfflorescenceM4Cases
+  include EfflorescenceM4ALUCases
 
   test "mixed control, recursion, local snapshots and frame reuse" do
     [{}, { disabled_optimizations: [:all] }, { disabled_optimizations: [:frames], mir_profile: true }].each do |options|
@@ -26,6 +28,26 @@ class EfflorescenceM4Test < Test::Unit::TestCase
       branch = runtime.semantic_ir.function_at(runtime.instance.export_section.exports.fetch("branch").index)
       ones = branch.constant_registers.select { |register| branch.initial_value(register) == 1 }
       assert_equal [:i32, :i64], ones.map { |register| branch.register_types.fetch(register) }
+    end
+  end
+
+  test "all supported ALU instructions match an arbitrary-precision reference" do
+    functions, rows = alu_cases
+    vm = load_efflorescence("(module #{functions})").runtime
+    rows.each do |name, *arguments, expected|
+      assert_equal expected, vm.call_unboxed(name, arguments), "#{name} #{arguments.inspect}"
+    end
+  end
+
+  test "comparison feeds an i32 condition and rejects i64 shift type errors" do
+    vm = load_efflorescence(<<~WAT).runtime
+      (module (func (export "run") (result i64)
+        i64.const -1 i64.const 1 i64.lt_s
+        if (result i64) i64.const 42 else i64.const 0 end))
+    WAT
+    assert_equal 42, vm.call_unboxed("run", [])
+    assert_raise(Wardite::Efflorescence::TranslationError) do
+      load_efflorescence('(module (func unreachable i64.const 1 i32.const 1 i64.shl drop))')
     end
   end
 

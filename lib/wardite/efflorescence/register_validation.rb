@@ -152,6 +152,12 @@ module Wardite
           end
           reads = function.reads(instruction)
           destination = Opcode.destination(instruction)
+          types = Opcode::I64_ALU_TYPES[opcode]
+          if types
+            check_register(function, destination, types.fetch(0))
+            reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }
+            next
+          end
           case opcode
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
