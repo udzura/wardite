@@ -69,6 +69,27 @@ module EfflorescenceM4ALUCases
     add.call("i64.extend_i32_s", [:i32], :i64, i32_words) { |a| signed_field(a, 32) }
     add.call("i64.extend_i32_u", [:i32], :i64, i32_words) { |a| a }
 
+    { "add" => :+, "sub" => :-, "mul" => :* }.each do |op, calculate|
+      add.call("i64.#{op}", [:i64, :i64], :i64, pairs) { |a, b| signed_field(a.public_send(calculate, b), 64) }
+    end
+    %w[div_s rem_s div_u rem_u].each do |op|
+      add.call("i64.#{op}", [:i64, :i64], :i64, pairs) do |a, b|
+        if b.zero?
+          "zero"
+        elsif op == "div_s" && a == MIN && b == -1
+          "overflow"
+        elsif op.end_with?("_u")
+          unsigned_a, unsigned_b = a % MODULUS, b % MODULUS
+          signed_field(op == "div_u" ? unsigned_a.div(unsigned_b) : unsigned_a % unsigned_b, 64)
+        elsif op == "rem_s"
+          a.remainder(b)
+        else
+          quotient = a.abs.div(b.abs)
+          a.negative? == b.negative? ? quotient : -quotient
+        end
+      end
+    end
+
     [operations.values.map(&:first).join("\n"), operations.values.flat_map(&:last)]
   end
 end

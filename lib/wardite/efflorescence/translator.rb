@@ -84,6 +84,13 @@ module Wardite
         i64_shr_u: Opcode::I64_SHR_U,
         i64_rotl: Opcode::I64_ROTL,
         i64_rotr: Opcode::I64_ROTR,
+        i64_add: Opcode::I64_ADD,
+        i64_sub: Opcode::I64_SUB,
+        i64_mul: Opcode::I64_MUL,
+        i64_div_s: Opcode::I64_DIV_S,
+        i64_div_u: Opcode::I64_DIV_U,
+        i64_rem_s: Opcode::I64_REM_S,
+        i64_rem_u: Opcode::I64_REM_U,
       }.freeze
 
       # Natural alignment exponents; alignment is a hint, not an address rule.

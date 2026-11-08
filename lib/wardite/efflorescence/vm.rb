@@ -796,6 +796,34 @@ module Wardite
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
             registers[a] = I64Arithmetic.calculate(96, registers[b], registers[c])
+          when 97 # Opcode::I64_ADD
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(97, registers[b], registers[c])
+          when 98 # Opcode::I64_SUB
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(98, registers[b], registers[c])
+          when 99 # Opcode::I64_MUL
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(99, registers[b], registers[c])
+          when 100 # Opcode::I64_DIV_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(100, registers[b], registers[c])
+          when 101 # Opcode::I64_DIV_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(101, registers[b], registers[c])
+          when 102 # Opcode::I64_REM_S
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(102, registers[b], registers[c])
+          when 103 # Opcode::I64_REM_U
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = I64Arithmetic.calculate(103, registers[b], registers[c])
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

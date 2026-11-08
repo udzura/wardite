@@ -35,7 +35,14 @@ class EfflorescenceM4Test < Test::Unit::TestCase
     functions, rows = alu_cases
     vm = load_efflorescence("(module #{functions})").runtime
     rows.each do |name, *arguments, expected|
-      assert_equal expected, vm.call_unboxed(name, arguments), "#{name} #{arguments.inspect}"
+      case expected
+      when "zero"
+        assert_raise_message("integer divide by zero") { vm.call_unboxed(name, arguments) }
+      when "overflow"
+        assert_raise(Wardite::IntegerOverflow) { vm.call_unboxed(name, arguments) }
+      else
+        assert_equal expected, vm.call_unboxed(name, arguments), "#{name} #{arguments.inspect}"
+      end
     end
   end
 
@@ -49,6 +56,21 @@ class EfflorescenceM4Test < Test::Unit::TestCase
     assert_raise(Wardite::Efflorescence::TranslationError) do
       load_efflorescence('(module (func unreachable i64.const 1 i32.const 1 i64.shl drop))')
     end
+  end
+
+  test "unused division still traps through a Wasm catch_all" do
+    vm = load_efflorescence(<<~WAT).runtime
+      (module (func (export "run") (param i64) (result i64)
+        block $caught
+          try_table (catch_all $caught)
+            i64.const 7 local.get 0 i64.div_s drop
+          end
+          i64.const 1 return
+        end
+        i64.const -1))
+    WAT
+    assert_raise_message("integer divide by zero") { vm.call_unboxed("run", [0]) }
+    assert_equal 1, vm.call_unboxed("run", [1])
   end
 
   test "dead concrete operands still have types" do

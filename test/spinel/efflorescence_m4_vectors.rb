@@ -14,8 +14,16 @@ File.open(ARGV.fetch(1), "r") do |file|
     name = fields.shift || raise("missing operation")
     expected = fields.pop || raise("missing expected result")
     arguments = fields.map { |field| field.to_i }
-    actual = M2Probe.call(vm, name, arguments)
-    raise "#{name} #{arguments.inspect}: expected #{expected}, got #{actual}" unless actual == expected.to_i
+    begin
+      actual = M2Probe.call(vm, name, arguments)
+      if expected == "zero" || expected == "overflow" || actual != expected.to_i
+        raise "#{name} #{arguments.inspect}: expected #{expected}, got #{actual}"
+      end
+    rescue Wardite::IntegerOverflow
+      raise "unexpected overflow for #{name} #{arguments.inspect}" unless expected == "overflow"
+    rescue Wardite::EvalError => error
+      raise error unless expected == "zero" && error.message == "integer divide by zero"
+    end
   end
 end
 puts "M4 vectors passed"

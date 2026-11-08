@@ -108,6 +108,14 @@ module Wardite
       I64_ROTL = 95
       I64_ROTR = 96
 
+      I64_ADD = 97
+      I64_SUB = 98
+      I64_MUL = 99
+      I64_DIV_S = 100
+      I64_DIV_U = 101
+      I64_REM_S = 102
+      I64_REM_U = 103
+
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
@@ -118,7 +126,8 @@ module Wardite
                  I64_EQ I64_NE I64_LTS I64_LTU I64_GTS I64_GTU I64_LES I64_LEU I64_GES I64_GEU
                  I64_CLZ I64_CTZ I64_POPCNT I64_EXTEND8_S I64_EXTEND16_S I64_EXTEND32_S
                  I64_EXTEND_I32_S I64_EXTEND_I32_U
-                 I64_AND I64_OR I64_XOR I64_SHL I64_SHR_S I64_SHR_U I64_ROTL I64_ROTR].freeze
+                 I64_AND I64_OR I64_XOR I64_SHL I64_SHR_S I64_SHR_U I64_ROTL I64_ROTR
+                 I64_ADD I64_SUB I64_MUL I64_DIV_S I64_DIV_U I64_REM_S I64_REM_U].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -150,6 +159,13 @@ module Wardite
         I64_SHR_U => [:i64, :i64, :i64],
         I64_ROTL => [:i64, :i64, :i64],
         I64_ROTR => [:i64, :i64, :i64],
+        I64_ADD => [:i64, :i64, :i64],
+        I64_SUB => [:i64, :i64, :i64],
+        I64_MUL => [:i64, :i64, :i64],
+        I64_DIV_S => [:i64, :i64, :i64],
+        I64_DIV_U => [:i64, :i64, :i64],
+        I64_REM_S => [:i64, :i64, :i64],
+        I64_REM_U => [:i64, :i64, :i64],
       }.freeze #: Hash[Integer, Array[Symbol]]
 
       # These are semantic register accesses, excluding frame initialization.
@@ -213,7 +229,8 @@ module Wardite
       # @rbs return: bool
       def self.may_trap?(opcode)
         opcode == TRAP || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
-          (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode)
+          (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
+          opcode == I64_DIV_S || opcode == I64_DIV_U || opcode == I64_REM_S || opcode == I64_REM_U
       end
 
       # @rbs opcode: Integer

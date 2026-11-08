@@ -58,6 +58,37 @@ module Wardite
       # @rbs return: Integer
       def self.popcnt32: (Integer value) -> Integer
 
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.add_i64: (Integer left, Integer right) -> Integer
+
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.subtract_i64: (Integer left, Integer right) -> Integer
+
+      # Only the four least significant base-2**16 digits contribute.
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.multiply_i64: (Integer left, Integer right) -> Integer
+
+      # The sign bit remains part of the unsigned magnitude, including MIN.
+      # @rbs opcode: Integer
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.divide: (Integer opcode, Integer left, Integer right) -> Integer
+
+      # Shift in one dividend bit per step. Preserve the extra remainder bit
+      # until comparison and subtraction have consumed it.
+      # @rbs dividend: Integer
+      # @rbs divisor: Integer
+      # @rbs remainder: bool
+      # @rbs return: Integer
+      def self.unsigned_divide: (Integer dividend, Integer divisor, bool remainder) -> Integer
+
       # @rbs opcode: Integer
       # @rbs left: Integer
       # @rbs right: Integer

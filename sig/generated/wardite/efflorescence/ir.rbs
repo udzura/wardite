@@ -203,6 +203,20 @@ module Wardite
 
       I64_ROTR: ::Integer
 
+      I64_ADD: ::Integer
+
+      I64_SUB: ::Integer
+
+      I64_MUL: ::Integer
+
+      I64_DIV_S: ::Integer
+
+      I64_DIV_U: ::Integer
+
+      I64_REM_S: ::Integer
+
+      I64_REM_U: ::Integer
+
       NAMES: untyped
 
       # Each signature lists the destination type followed by the source types.
