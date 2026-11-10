@@ -12,6 +12,17 @@ class EfflorescenceM5Test < Test::Unit::TestCase
     assert_equal "M5 float bit and rounding probes passed\n", output
   end
 
+  test "float control and public API on CRuby" do
+    Dir.mktmpdir("wardite-m5-control") do |dir|
+      wasm = File.join(dir, "control.wasm")
+      wat = File.read(File.join(__dir__, "fixtures/efflorescence/m5_control.wat"))
+      File.binwrite(wasm, compile_efflorescence_wat(wat))
+      output, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "test/spinel/efflorescence_m5_control.rb", wasm)
+      assert status.success?, output
+      assert_equal "M5 float control passed\n", output
+    end
+  end
+
   test "decoder retains NaN immediates and Stack VM can still read floats" do
     wasm = compile_efflorescence_wat(<<~WAT)
       (module

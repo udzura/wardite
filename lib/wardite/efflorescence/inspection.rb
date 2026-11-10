@@ -104,10 +104,18 @@ module Wardite
         end
         ir.functions.each do |function|
           lines << "function #{function.index}: params=#{function.parameter_count} locals=#{function.local_count} registers=#{function.register_count}"
-          if function.uses_i64
+          if function.uses_i64 || function.uses_float
             lines << "  types: #{function.register_types.inspect} -> #{function.result_types.inspect}"
             function.constant_registers.each do |register|
-              lines << "  const r#{register}: #{function.initial_value(register)}"
+              type = function.register_types.fetch(register)
+              value = function.initial_value(register)
+              if FloatBits.float_type?(type)
+                high = type == :f64 ? I64Arithmetic.high(value).to_s(16).rjust(8, "0") : ""
+                low = I64Arithmetic.low(value).to_s(16).rjust(8, "0")
+                lines << "  const r#{register}: #{type} 0x#{high}#{low}"
+              else
+                lines << "  const r#{register}: #{value}"
+              end
             end
           end
           function.handlers.each_with_index do |handler, i|

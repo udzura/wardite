@@ -7,6 +7,17 @@ class WarditeSpinelM5Test < Test::Unit::TestCase
     run_worker("efflorescence_m5_bits", "M5 float bit and rounding probes passed")
   end
 
+  test "native float control and public API" do
+    omit "Run make spinel-test to test the native executable" unless ENV["WARDITE_SPINEL_BIN"]
+    Dir.mktmpdir("wardite-m5-control") do |dir|
+      wasm = File.join(dir, "control.wasm")
+      wat = File.expand_path("../fixtures/efflorescence/m5_control.wat", __dir__)
+      output, status = Open3.capture2e("wasm-tools", "parse", wat, "-o", wasm)
+      assert status.success?, output
+      run_worker("efflorescence_m5_control", "M5 float control passed", wasm)
+    end
+  end
+
   private
 
   def run_worker(source, expected, *arguments)

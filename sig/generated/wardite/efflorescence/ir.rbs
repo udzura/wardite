@@ -444,6 +444,8 @@ module Wardite
 
       attr_accessor uses_i64: bool
 
+      attr_accessor uses_float: bool
+
       attr_accessor uses_eh: bool
 
       attr_accessor uses_store: bool
@@ -621,8 +623,14 @@ module Wardite
       # @rbs params: Array[Symbol]
       # @rbs results: Array[Symbol]
       # @rbs label: String
+      # @rbs allow_float: bool
       # @rbs return: void
-      def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label) -> void
+      def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label, ?allow_float: bool) -> void
+
+      # @rbs type: Symbol
+      # @rbs allow_float: bool
+      # @rbs return: bool
+      def self.numeric_type?: (Symbol type, ?bool allow_float) -> bool
 
       # @rbs return: Wardite::Efflorescence::FunctionEntry
       def copy: () -> Wardite::Efflorescence::FunctionEntry
@@ -661,7 +669,7 @@ module Wardite
 
       attr_reader pool_index: Integer
 
-      # Numeric registers hold unsigned i32 or signed i64, as recorded in Function.
+      # Numeric registers hold unsigned 32-bit or signed 64-bit carriers.
       attr_reader registers: Array[Integer]
 
       attr_reader exception_registers: Array[Wardite::Efflorescence::ExceptionValue?]

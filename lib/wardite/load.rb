@@ -147,6 +147,8 @@ module Wardite
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
       def initialize(&blk)
+        @locals_count = []
+        @locals_type = []
         blk.call(self)
       end
     end
@@ -629,35 +631,32 @@ module Wardite
       sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
 
       len = fetch_uleb128(sbuf)
-      len.times do |i|
-        ilen = fetch_uleb128(sbuf)
-        code = assert_read(sbuf, ilen)
-        last_code = code[-1]
-        if ! last_code
-          raise "[BUG] empty code fetched" # guard for steep check
-        end
-        if last_code.ord != 0x0b
-          $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{last_code.ord}" 
-        end
-        cbuf = StringIO.new(code)
-        locals_count = [] #: Array[Integer]
-        locals_type = [] #: Array[Symbol]
-        locals_len = fetch_uleb128(cbuf)
-        locals_len.times do
-          type_count = fetch_uleb128(cbuf)
-          locals_count << type_count
-          value_type = assert_read(cbuf, 1)&.ord
-          locals_type << Op.i2type(value_type || -1)
-        end
-        body = code_body(cbuf)
-        
-        dest.func_codes << CodeSection::CodeBody.new do |b|
-          b.locals_count = locals_count
-          b.locals_type = locals_type
-          b.body = body
-        end
-      end
+      len.times { dest.func_codes << read_function_body(sbuf) }
       dest
+    end
+
+    # @rbs sbuf: StringIO
+    # @rbs return: CodeSection::CodeBody
+    def self.read_function_body(sbuf)
+      ilen = fetch_uleb128(sbuf)
+      code = assert_read(sbuf, ilen)
+      last_code = code[-1]
+      if ! last_code
+        raise "[BUG] empty code fetched" # guard for steep check
+      end
+      if last_code.ord != 0x0b
+        $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{last_code.ord}"
+      end
+      cbuf = StringIO.new(code)
+      CodeSection::CodeBody.new do |body|
+        locals_len = fetch_uleb128(cbuf)
+        while locals_len > 0
+          body.locals_count << fetch_uleb128(cbuf)
+          body.locals_type << Op.i2type(assert_read(cbuf, 1).ord)
+          locals_len -= 1
+        end
+        body.body = code_body(cbuf)
+      end
     end
 
     # @rbs buf: StringIO

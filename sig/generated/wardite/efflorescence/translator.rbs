@@ -69,6 +69,10 @@ module Wardite
 
       @i64_constants: Hash[Integer, Integer]?
 
+      @f32_constants: Hash[Integer, Integer]?
+
+      @f64_constants: Hash[Integer, Integer]?
+
       @function: Wardite::Efflorescence::Function
 
       @reachable: bool

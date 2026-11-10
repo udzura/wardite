@@ -3,6 +3,12 @@
 
 module Wardite
   module FloatBits
+    # @rbs type: Symbol
+    # @rbs return: bool
+    def self.float_type?(type)
+      type == :f32 || type == :f64
+    end
+
     # f32 carriers are unsigned, f64 carriers are signed.
     # @rbs type: Symbol
     # @rbs bytes: String

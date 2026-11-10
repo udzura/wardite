@@ -177,7 +177,7 @@ module Wardite
             reads.each_with_index { |register, i| check_register(function, register, types.fetch(i)) }
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
-            unless type == :i32 || type == :i64
+            unless type && FunctionEntry.numeric_type?(type)
               raise TranslationError, "invalid MIR numeric copy destination r#{destination}"
             end
             check_register(function, instruction[2], type)

@@ -25,19 +25,19 @@ module Wardite
       # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: (Wardite::I32 | Wardite::I64)?
-      def call: (String | Symbol name, Array[Object] arguments) -> (Wardite::I32 | Wardite::I64)?
+      # @rbs return: Wardite::wasmValue?
+      def call: (String | Symbol name, Array[Object] arguments) -> Wardite::wasmValue?
 
-      # i32 results are unsigned and i64 results are signed.
+      # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Integer?
-      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> Integer?
+      # @rbs return: (Integer | Float)?
+      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float)?
 
       # @rbs name: Symbol
       # @rbs *arguments: Object
-      # @rbs return: (Wardite::I32 | Wardite::I64)?
-      def method_missing: (Symbol name, *Object arguments) -> (Wardite::I32 | Wardite::I64)?
+      # @rbs return: Wardite::wasmValue?
+      def method_missing: (Symbol name, *Object arguments) -> Wardite::wasmValue?
 
       # @rbs name: String|Symbol
       # @rbs include_private: bool
@@ -57,6 +57,21 @@ module Wardite
       # @rbs arguments: Array[Object]
       # @rbs return: Integer?
       def execute_public: (Wardite::Efflorescence::FunctionEntry entry, Array[Object] arguments) -> Integer?
+
+      # @rbs type: Symbol
+      # @rbs value: Object
+      # @rbs return: Integer?
+      def float_argument: (Symbol type, Object value) -> Integer?
+
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: Integer | Float
+      def unbox_result: (Symbol type, Integer bits) -> (Integer | Float)
+
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: Wardite::wasmValue
+      def box_result: (Symbol type, Integer bits) -> Wardite::wasmValue
 
       # A concrete return type breaks the inference cycle between the current
       # frame and the array it is restored from after every internal RETURN.

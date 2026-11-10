@@ -123,6 +123,8 @@ module Wardite
       # @rbs @controls: Array[Wardite::Efflorescence::Translator::Control]
       # @rbs @constants: Hash[Integer, Integer]
       # @rbs @i64_constants: Hash[Integer, Integer]?
+      # @rbs @f32_constants: Hash[Integer, Integer]?
+      # @rbs @f64_constants: Hash[Integer, Integer]?
       # @rbs @function: Wardite::Efflorescence::Function
       # @rbs @reachable: bool
       # @rbs @wasm_pc: Integer
@@ -134,6 +136,8 @@ module Wardite
         @entries = []
         @stack, @controls, @constants = [], [], {}
         @i64_constants = nil
+        @f32_constants = nil
+        @f64_constants = nil
         @reachable, @wasm_pc, @handler_depth = true, 0, 0
         @function = Function.new(0, [], [], 0)
       end
@@ -179,7 +183,7 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::Function
       def translate_function(wasm, index, pool_index)
         FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}")
-        unless wasm.locals_type.all? { |type| type == :i32 || type == :i64 || type == :exnref }
+        unless wasm.locals_type.all? { |type| FunctionEntry.numeric_type?(type) || type == :exnref }
           raise UnsupportedFeature, "Efflorescence: function #{index} has unsupported locals"
         end
         locals = [] #: Array[Symbol]
@@ -187,6 +191,8 @@ module Wardite
         @function = Function.new(index, wasm.callsig, wasm.retsig, locals.size, local_types: locals, pool_index: pool_index)
         @stack, @controls, @constants = [], [], {}
         @i64_constants = nil
+        @f32_constants = nil
+        @f64_constants = nil
         @reachable, @handler_depth = true, 0
         @controls << new_control(:function, wasm.retsig)
         wasm.body.each_with_index do |instruction, pc|
@@ -211,7 +217,7 @@ module Wardite
           when :block, :loop, :if, :try_table
             block = operands[0]
             fail_translation("expected block signature") unless block.is_a?(Wardite::Block)
-            unless block.parameter_types.empty? && block.result_types.all? { |type| type == :i32 || type == :i64 || type == :exnref }
+            unless block.parameter_types.empty? && block.result_types.all? { |type| FunctionEntry.numeric_type?(type) || type == :exnref }
               raise UnsupportedFeature, context("block parameters and unsupported block result types are not supported")
             end
             condition = code == :if ? pop_typed(:i32) : -1
@@ -307,6 +313,13 @@ module Wardite
             else
               @stack << constant(immediate & 0xffffffff)
             end
+          when :f32_const, :f64_const
+            operand = operands[0]
+            type = code == :f32_const ? :f32 : :f64
+            unless operand.is_a?(FloatImmediate) && operand.type == type
+              fail_translation("invalid float immediate")
+            end
+            @stack << constant(operand.bits, type)
           when :br, :br_if
             target = label(integer_operand(operands[0]))
             condition = code == :br_if ? pop_typed(:i32) : -1
@@ -354,7 +367,7 @@ module Wardite
           when :select
             condition, right, left = pop_typed(:i32), pop_value, pop_value
             type = right < 0 ? type_of(left) : type_of(right)
-            unless (type == :i32 || type == :i64 || type == :unknown) && (left < 0 || type_of(left) == type)
+            unless (FunctionEntry.numeric_type?(type) || type == :unknown) && (left < 0 || type_of(left) == type)
               fail_translation("select requires matching integer operands")
             end
             dst = type == :unknown ? -1 : register(type)
@@ -390,7 +403,7 @@ module Wardite
             fail_translation("call_indirect requires funcref table 0") unless table && table.type == :funcref
             type = @instance.types[type_index] if type_index >= 0
             fail_translation("invalid indirect call type index #{type_index}") unless type
-            FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}")
+            FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}", allow_float: false)
             @function.uses_dynamic_calls = true
             selector = pop_typed(:i32)
             arguments = type.callsig.reverse.map { |param| pop_typed(param) }.reverse
@@ -508,10 +521,11 @@ module Wardite
       # @rbs return: Integer
       # @rbs type: Symbol
       def constant(value, type = :i32)
-        constants = if type == :i64
-                      @i64_constants ||= {} #: Hash[Integer, Integer]
-                    else
-                      @constants
+        constants = case type
+                    when :i64 then @i64_constants ||= {} #: Hash[Integer, Integer]
+                    when :f32 then @f32_constants ||= {} #: Hash[Integer, Integer]
+                    when :f64 then @f64_constants ||= {} #: Hash[Integer, Integer]
+                    else @constants
                     end
         constants[value] ||= @function.allocate_constant(value, type: type)
       end

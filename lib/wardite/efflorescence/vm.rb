@@ -53,25 +53,28 @@ module Wardite
       # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: (Wardite::I32 | Wardite::I64)?
+      # @rbs return: Wardite::wasmValue?
       def call(name, arguments)
         entry = export_entry(name)
         result = execute_public(entry, arguments)
         return nil if result.nil?
-        entry.result_types[0] == :i64 ? Wardite::I64(result) : Wardite::I32.new(result)
+        box_result(entry.result_types.fetch(0), result)
       end
 
-      # i32 results are unsigned and i64 results are signed.
+      # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Integer?
+      # @rbs return: (Integer | Float)?
       def call_unboxed(name, arguments)
-        execute_public(export_entry(name), arguments)
+        entry = export_entry(name)
+        result = execute_public(entry, arguments)
+        return nil if result.nil?
+        unbox_result(entry.result_types.fetch(0), result)
       end
 
       # @rbs name: Symbol
       # @rbs *arguments: Object
-      # @rbs return: (Wardite::I32 | Wardite::I64)?
+      # @rbs return: Wardite::wasmValue?
       def method_missing(name, *arguments)
         callable?(name) ? call(name, arguments) : super
       end
@@ -111,7 +114,11 @@ module Wardite
         values = [] #: Array[Integer]
         arguments.each_with_index do |value, i|
           type = entry.parameter_types.fetch(i)
-          if type == :i64 && value.is_a?(Wardite::I64)
+          if FloatBits.float_type?(type)
+            bits = float_argument(type, value)
+            raise Wardite::ArgumentError, "type mismatch: #{type}(#{value})" if bits.nil?
+            values << bits
+          elsif type == :i64 && value.is_a?(Wardite::I64)
             values << value.value_s
           elsif value.is_a?(Integer)
             values << (type == :i64 ? I64Arithmetic.normalize(value) : value & 0xffffffff)
@@ -120,6 +127,37 @@ module Wardite
           end
         end
         execute(entry, values)
+      end
+
+      # @rbs type: Symbol
+      # @rbs value: Object
+      # @rbs return: Integer?
+      def float_argument(type, value)
+        return FloatBits.from_float(type, value) if value.is_a?(Float)
+        if type == :f32 && value.is_a?(Wardite::F32)
+          FloatBits.from_float(type, value.value)
+        elsif type == :f64 && value.is_a?(Wardite::F64)
+          FloatBits.from_float(type, value.value)
+        end
+      end
+
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: Integer | Float
+      def unbox_result(type, bits)
+        FloatBits.float_type?(type) ? FloatBits.to_float(type, bits) : bits
+      end
+
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: Wardite::wasmValue
+      def box_result(type, bits)
+        case type
+        when :i64 then Wardite::I64(bits)
+        when :f32 then Wardite::F32(FloatBits.to_float(type, bits))
+        when :f64 then Wardite::F64(FloatBits.to_float(type, bits))
+        else Wardite::I32.new(bits)
+        end
       end
 
       # A concrete return type breaks the inference cycle between the current

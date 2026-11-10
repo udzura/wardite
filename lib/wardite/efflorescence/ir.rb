@@ -477,6 +477,7 @@ module Wardite
       attr_reader :flat_handlers #: Array[Wardite::Efflorescence::HandlerDescriptor]
       attr_reader :throw_sites #: Array[Wardite::Efflorescence::ThrowSite]
       attr_accessor :uses_i64 #: bool
+      attr_accessor :uses_float #: bool
       attr_accessor :uses_eh #: bool
       attr_accessor :uses_store #: bool
       attr_accessor :uses_dynamic_calls #: bool
@@ -505,6 +506,7 @@ module Wardite
         @uses_dynamic_calls = false
         @dynamic_sites = []
         @uses_i64 = @register_types.include?(:i64) || result_types.include?(:i64)
+        @uses_float = @register_types.any? { |type| FloatBits.float_type?(type) } || result_types.any? { |type| FloatBits.float_type?(type) }
         @uses_eh = @register_types.include?(:exnref)
         @instructions = []
         @initial_registers = Array.new(parameter_types.size + local_count, 0)
@@ -536,6 +538,7 @@ module Wardite
         slot = @initial_registers.size
         @initial_registers << value
         @uses_i64 = true if type == :i64
+        @uses_float = true if FloatBits.float_type?(type)
         @register_types << type
         slot
       end
@@ -652,6 +655,7 @@ module Wardite
       def copy
         result = Function.new(@index, @parameter_types, @result_types, @local_count, local_types: @register_types[@parameter_types.size, @local_count], pool_index: @pool_index)
         result.uses_i64 = @uses_i64
+        result.uses_float = @uses_float
         result.uses_eh = @uses_eh
         result.uses_store = @uses_store
         result.uses_dynamic_calls = @uses_dynamic_calls
@@ -780,12 +784,21 @@ module Wardite
       # @rbs params: Array[Symbol]
       # @rbs results: Array[Symbol]
       # @rbs label: String
+      # @rbs allow_float: bool
       # @rbs return: void
-      def self.check_signature(params, results, label)
-        unless params.all? { |type| type == :i32 || type == :i64 } &&
-            (results.empty? || (results.size == 1 && (results[0] == :i32 || results[0] == :i64)))
-          raise UnsupportedFeature, "Efflorescence: #{label} requires an integer signature with at most one result (i32/i64)"
+      def self.check_signature(params, results, label, allow_float: true)
+        unless results.size <= 1 && params.all? { |type| numeric_type?(type, allow_float) } &&
+            results.all? { |type| numeric_type?(type, allow_float) }
+          types = allow_float ? "i32/i64/f32/f64" : "i32/i64"
+          raise UnsupportedFeature, "Efflorescence: #{label} requires a numeric signature with at most one result (#{types})"
         end
+      end
+
+      # @rbs type: Symbol
+      # @rbs allow_float: bool
+      # @rbs return: bool
+      def self.numeric_type?(type, allow_float = true)
+        type == :i32 || type == :i64 || (allow_float && FloatBits.float_type?(type))
       end
 
       # @rbs return: Wardite::Efflorescence::FunctionEntry
@@ -841,7 +854,7 @@ module Wardite
     class Frame
       attr_reader :function #: Wardite::Efflorescence::Function
       attr_reader :pool_index #: Integer
-      # Numeric registers hold unsigned i32 or signed i64, as recorded in Function.
+      # Numeric registers hold unsigned 32-bit or signed 64-bit carriers.
       attr_reader :registers #: Array[Integer]
       attr_reader :exception_registers #: Array[Wardite::Efflorescence::ExceptionValue?]
       attr_reader :handlers #: Array[Integer]
