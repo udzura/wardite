@@ -59,9 +59,9 @@ module Wardite
       def execute_public: (Wardite::Efflorescence::FunctionEntry entry, Array[Object] arguments) -> Integer?
 
       # @rbs type: Symbol
-      # @rbs value: Object
+      # @rbs value: Object?
       # @rbs return: Integer?
-      def float_argument: (Symbol type, Object value) -> Integer?
+      def float_argument: (Symbol type, Object? value) -> Integer?
 
       # @rbs type: Symbol
       # @rbs bits: Integer
@@ -118,7 +118,7 @@ module Wardite
       # @rbs arguments: Array[Integer]
       # @rbs sources: Array[Integer]?
       # @rbs return: Integer?
-      def invoke_i64_host: (Wardite::Efflorescence::HostFunction host, Array[Integer] arguments, Array[Integer]? sources) -> Integer?
+      def invoke_typed_host: (Wardite::Efflorescence::HostFunction host, Array[Integer] arguments, Array[Integer]? sources) -> Integer?
 
       # Each public entry owns its frames, pools and counters, including when a
       # host callback re-enters the VM. Store mutations are shared immediately.

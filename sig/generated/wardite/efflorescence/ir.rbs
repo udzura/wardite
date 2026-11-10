@@ -754,7 +754,7 @@ module Wardite
 
       attr_reader callable: Wardite::_WasmCallable
 
-      attr_reader uses_i64: bool
+      attr_reader typed_abi: bool
 
       attr_reader unboxed_wasi: Wardite::Efflorescence::_WasiCallable?
 
@@ -789,14 +789,12 @@ module Wardite
       # @rbs params: Array[Symbol]
       # @rbs results: Array[Symbol]
       # @rbs label: String
-      # @rbs allow_float: bool
       # @rbs return: void
-      def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label, ?allow_float: bool) -> void
+      def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label) -> void
 
       # @rbs type: Symbol
-      # @rbs allow_float: bool
       # @rbs return: bool
-      def self.numeric_type?: (Symbol type, ?bool allow_float) -> bool
+      def self.numeric_type?: (Symbol type) -> bool
 
       # @rbs return: Wardite::Efflorescence::FunctionEntry
       def copy: () -> Wardite::Efflorescence::FunctionEntry

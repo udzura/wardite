@@ -946,7 +946,7 @@ module Wardite
       attr_reader :external #: Wardite::ExternalFunction
       attr_reader :entry #: Wardite::Efflorescence::FunctionEntry
       attr_reader :callable #: Wardite::_WasmCallable
-      attr_reader :uses_i64 #: bool
+      attr_reader :typed_abi #: bool
       attr_reader :unboxed_wasi #: Wardite::Efflorescence::_WasiCallable?
 
       # @rbs external: Wardite::ExternalFunction
@@ -957,7 +957,7 @@ module Wardite
         @external = external
         @entry = entry
         @callable = callable
-        @uses_i64 = entry.parameter_types.include?(:i64) || entry.result_types.include?(:i64)
+        @typed_abi = entry.parameter_types.any? { |type| type != :i32 } || entry.result_types.any? { |type| type != :i32 }
         @unboxed_wasi = unboxed_wasi
       end
 
@@ -990,21 +990,18 @@ module Wardite
       # @rbs params: Array[Symbol]
       # @rbs results: Array[Symbol]
       # @rbs label: String
-      # @rbs allow_float: bool
       # @rbs return: void
-      def self.check_signature(params, results, label, allow_float: true)
-        unless results.size <= 1 && params.all? { |type| numeric_type?(type, allow_float) } &&
-            results.all? { |type| numeric_type?(type, allow_float) }
-          types = allow_float ? "i32/i64/f32/f64" : "i32/i64"
-          raise UnsupportedFeature, "Efflorescence: #{label} requires a numeric signature with at most one result (#{types})"
+      def self.check_signature(params, results, label)
+        unless results.size <= 1 && params.all? { |type| numeric_type?(type) } &&
+            results.all? { |type| numeric_type?(type) }
+          raise UnsupportedFeature, "Efflorescence: #{label} requires a numeric signature with at most one result (i32/i64/f32/f64)"
         end
       end
 
       # @rbs type: Symbol
-      # @rbs allow_float: bool
       # @rbs return: bool
-      def self.numeric_type?(type, allow_float = true)
-        type == :i32 || type == :i64 || (allow_float && FloatBits.float_type?(type))
+      def self.numeric_type?(type)
+        type == :i32 || type == :i64 || FloatBits.float_type?(type)
       end
 
       # @rbs return: Wardite::Efflorescence::FunctionEntry

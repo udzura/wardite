@@ -130,7 +130,7 @@ module Wardite
       end
 
       # @rbs type: Symbol
-      # @rbs value: Object
+      # @rbs value: Object?
       # @rbs return: Integer?
       def float_argument(type, value)
         return FloatBits.from_float(type, value) if value.is_a?(Float)
@@ -300,7 +300,7 @@ module Wardite
           wasi = host.unboxed_wasi
           return wasi.call(@instance.store, arguments, sources) if wasi
         end
-        return invoke_i64_host(host, arguments, sources) if host.uses_i64
+        return invoke_typed_host(host, arguments, sources) if host.typed_abi
 
         boxed = [] #: Array[Wardite::wasmValue]
         if sources
@@ -323,20 +323,24 @@ module Wardite
       # @rbs arguments: Array[Integer]
       # @rbs sources: Array[Integer]?
       # @rbs return: Integer?
-      def invoke_i64_host(host, arguments, sources)
+      def invoke_typed_host(host, arguments, sources)
         boxed = [] #: Array[Wardite::wasmValue]
         host.entry.parameter_types.each_with_index do |type, i|
           index = sources ? sources.fetch(i) : i
           value = arguments.fetch(index)
-          boxed << (type == :i64 ? Wardite::I64(value) : Wardite::I32.new(value))
+          boxed << box_result(type, value)
         end
         result = host.callable.call(@instance.store, boxed)
-        case host.entry.result_types[0]
+        type = host.entry.result_types[0]
+        case type
         when nil
           return nil if result.nil?
         when :i64
           return result.value_s if result.is_a?(Wardite::I64)
           return I64Arithmetic.normalize(result) if result.is_a?(Integer)
+        when :f32, :f64
+          bits = float_argument(type, result)
+          return bits unless bits.nil?
         when :i32
           return result.value & 0xffffffff if result.is_a?(Wardite::I32)
           return result & 0xffffffff if result.is_a?(Integer)

@@ -492,7 +492,7 @@ module Wardite
             fail_translation("call_indirect requires funcref table 0") unless table && table.type == :funcref
             type = @instance.types[type_index] if type_index >= 0
             fail_translation("invalid indirect call type index #{type_index}") unless type
-            FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}", allow_float: false)
+            FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}")
             @function.uses_dynamic_calls = true
             selector = pop_typed(:i32)
             arguments = type.callsig.reverse.map { |param| pop_typed(param) }.reverse

@@ -94,7 +94,7 @@ module Wardite
           params = types&.defined_types&.[](import.sig_index)
           results = types&.defined_results&.[](import.sig_index)
           raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
-          Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}", allow_float: false)
+          Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
         end
       end
       tag_section = @sections.find { |section| section.is_a?(TagSection) }

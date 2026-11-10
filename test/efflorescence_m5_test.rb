@@ -8,6 +8,17 @@ class EfflorescenceM5Test < Test::Unit::TestCase
   include EfflorescenceHelper
   include EfflorescenceM5Cases
 
+  test "mixed float host and indirect calls" do
+    Dir.mktmpdir("wardite-m5-host") do |dir|
+      wat = File.read(File.expand_path("./fixtures/efflorescence/m5_host.wat", __dir__))
+      wasm = File.join(dir, "host.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(wat))
+      output, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "test/spinel/efflorescence_m5_host.rb", wasm)
+      assert status.success?, output
+      assert_equal "M5 float host and indirect calls passed\n", output
+    end
+  end
+
   test "float Store and EH retain raw bits" do
     Dir.mktmpdir("wardite-m5-store") do |dir|
       wat = File.read(File.expand_path("./fixtures/efflorescence/m5_store_eh.wat", __dir__))

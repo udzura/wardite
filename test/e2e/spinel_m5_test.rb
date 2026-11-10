@@ -8,6 +8,16 @@ class WarditeSpinelM5Test < Test::Unit::TestCase
   include EfflorescenceHelper
   include EfflorescenceM5Cases
 
+  test "mixed float host and indirect calls" do
+    omit "Run make spinel-test to test the native executable" unless ENV["WARDITE_SPINEL_BIN"]
+    Dir.mktmpdir("wardite-m5-host") do |dir|
+      wat = File.read(File.expand_path("../fixtures/efflorescence/m5_host.wat", __dir__))
+      wasm = File.join(dir, "host.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(wat))
+      run_worker("efflorescence_m5_host", "M5 float host and indirect calls passed", wasm)
+    end
+  end
+
   test "float Store and EH retain raw bits" do
     omit "Run make spinel-test to test the native executable" unless ENV["WARDITE_SPINEL_BIN"]
     Dir.mktmpdir("wardite-m5-store") do |dir|
