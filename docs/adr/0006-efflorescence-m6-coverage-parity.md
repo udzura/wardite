@@ -1,6 +1,6 @@
 # ADR 0006: Efflorescence M6の既存対応範囲との一致
 
-- 状態: 提案。M5完了後に実施する。現時点で対応完了を意味しない。
+- 状態: 実装・検証済み。[実装記録](../efflorescence-m6.md)
 - 日付: 2026-11-10
 - 基準: main `b50073d`、[M0調査](../efflorescence-coverage-ja.md)
 - 前提: [M5 ADR](0005-efflorescence-m5-floating-point.md)とM1〜M4の実装記録

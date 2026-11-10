@@ -27,7 +27,7 @@ binary64 の四則と平方根はホストの binary64 演算を使う。平方�
 | `f32.demote_f64`、`f64.promote_f32` | 2 | 目的精度への丸めと正確な拡張 |
 | `f32↔i32`、`f64↔i64` の `reinterpret` | 4 | 同幅のbit列をそのまま転送 |
 
-`f32` は unsigned 32 bit、`f64` は signed 64 bitのcarrierで保持する。local、COPY、select、ブロック合流、定義関数への直接・間接呼び出しとフレーム再利用でFloatへ変換しない。globalでは共有Storeが値を所有し、Float wrapperの `value=` はraw表現を破棄して更新する。EHの `payload_bits` はcatchとthrow_refで保持し、未捕捉時の公開 `payload` でだけfloatをデコードする。
+`f32` は unsigned 32 bit、`f64` は signed 64 bitのcarrierで保持する。local、COPY、select、ブロック合流、定義関数への直接・間接呼び出しとフレーム再利用でFloatへ変換しない。globalでは共有Storeが値を所有し、Float wrapperの `value=` はraw表現を破棄して更新する。`F32.from_bits` にはunsigned 32 bit、`F64.from_bits` にはsigned 64 bitを渡す。EHの `payload_bits` はcatchとthrow_refで保持し、未捕捉時の公開 `payload` でだけfloatをデコードする。
 
 `call_unboxed` のf32/f64結果はRuby Float、`call` は対応するwrapperを返す。float引数はFloatまたは対応wrapperを受理し、通常hostにはシグネチャ順にI32/I64/F32/F64を渡す。通常hostのfloat結果もFloatまたは対応wrapperを受理する。Ruby Floatを経由する公開境界でNaN payloadの完全保持は保証しない。i32専用のWASI経路は既存のsignature検査を通る。
 

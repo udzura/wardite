@@ -18,7 +18,7 @@
 
 M6開始時に共有デコーダーと旧VMの実行分岐を再照合した結果、基準 `5534486` から対象の増減はなかった。新形式EHの `try_table`、`throw`、`throw_ref` はEfflorescenceの拡張。到達不能な生成ハンドラと、旧VMに実行経路のない命令は下記の対象外一覧のとおり。
 
-[命令manifest](../test/support/efflorescence_opcodes.tsv)に、バイナリopcode、共有デコーダーの内部名、導入段階、Translatorの経路、MIR実行証拠の種別、fixture ID、制限を記録する。`source` は独立したMIR命令を持たない構文またはstack操作、`frame` は定数レジスタ初期化を表す。`n/a` は妥当な命令入力に動的trap条件がないことを示す。`unreachable` は常にtrapする。fixtureの実行結果は静的な経路照合と分ける。
+[命令manifest](../test/support/efflorescence_opcodes.tsv)に、バイナリopcode、共有デコーダーの内部名、導入段階、Translatorの経路、MIR実行証拠の種別、fixture ID、制限を記録する。`source` は独立したMIR命令を持たない構文またはstack操作、`frame` は定数レジスタ初期化を表す。`n/a` は妥当な命令入力に動的trap条件がないことを示す。`unreachable` は常にtrapする。CRubyとSpinelの実行結果は静的な経路照合と分ける。M6の436 fixtureの実行結果と再現方法は [M6の検証記録](efflorescence-m6.md) を参照。
 
 ## M0時点の調査記録
 

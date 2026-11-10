@@ -2,7 +2,8 @@
 
 [English](efflorescence.md)
 
-現在の対応範囲は [M1](efflorescence-m1.md)、[M2](efflorescence-m2.md)、[M3](efflorescence-m3.md)、[M4](efflorescence-m4.md) の実装記録を参照してください。
+現在の対応範囲は [M1](efflorescence-m1.md)、[M2](efflorescence-m2.md)、[M3](efflorescence-m3.md)、[M4](efflorescence-m4.md)、[M5](efflorescence-m5.md) の実装記録を参照してください。
+[M6](efflorescence-m6.md) にM0の188命令と新形式EHの実行証拠を記録しています。
 以下のPhase 1の制限は実装当時の記録です。
 
 この文書はPhase 1（`67fbfae`）の記録です。現在のEfflorescenceでは、

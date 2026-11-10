@@ -60,7 +60,7 @@ $ wardite examples/test.wasm
 
 ### Efflorescence register VM (experimental)
 
-Use `--new-engine` to select the MIR-based integer engine; the stack VM remains the
+Use `--new-engine` to select the MIR-based register engine. The stack VM is the
 default. The same option is available in Spinel builds.
 
 ```sh
@@ -82,7 +82,7 @@ See [Phase 2](docs/efflorescence-phase2.md) ([日本語](docs/efflorescence-phas
 
 [M1](docs/efflorescence-m1.md) adds the remaining basic i32 operations,
 if/else/select/br_table, and new exception handling (try_table/throw/throw_ref).
-Tags support integer payloads; nullable exnref locals and multi-result blocks carry
+Tags can carry numeric payloads. Nullable exnref locals and multi-result blocks carry
 caught values. Uncaught exceptions expose their tag and payload through
 `Wardite::UncaughtWasmException`. EH remains exclusive to Efflorescence.
 
@@ -100,6 +100,15 @@ regular host callbacks.
 mixed signatures, memory, globals and exception payloads. For an i64 result,
 `runtime.call` returns a `Wardite::I64` and `runtime.call_unboxed` returns a
 signed 64-bit Integer. The i32 unboxed result remains unsigned.
+
+[M5](docs/efflorescence-m5.md) adds f32 and f64 arithmetic, conversions, memory,
+globals, calls and exception payloads. Float arguments accept Ruby Float or the
+matching wrapper. Float results are Ruby Float from `call_unboxed` and
+`Wardite::F32` or `Wardite::F64` from `call`.
+
+[M6](docs/efflorescence-m6.md) verifies the 188 opcodes in the M0 legacy coverage
+baseline and three additional EH opcodes on CRuby and Spinel. Run
+`bundle exec rake parity` with Spinel, wasm-tools and Wasmtime installed.
 
 ## Development
 
