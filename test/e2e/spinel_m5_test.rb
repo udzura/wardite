@@ -8,6 +8,16 @@ class WarditeSpinelM5Test < Test::Unit::TestCase
   include EfflorescenceHelper
   include EfflorescenceM5Cases
 
+  test "float Store and EH retain raw bits" do
+    omit "Run make spinel-test to test the native executable" unless ENV["WARDITE_SPINEL_BIN"]
+    Dir.mktmpdir("wardite-m5-store") do |dir|
+      wat = File.read(File.expand_path("../fixtures/efflorescence/m5_store_eh.wat", __dir__))
+      wasm = File.join(dir, "store.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(wat))
+      run_worker("efflorescence_m5_store_eh", "M5 float Store and EH passed", wasm)
+    end
+  end
+
   test "all float ALU and conversion operations match the bit vectors" do
     omit "Run make spinel-test to test the native executable" unless ENV["WARDITE_SPINEL_BIN"]
     Dir.mktmpdir("wardite-m5-alu") do |dir|

@@ -383,6 +383,22 @@ module Wardite
 
       F64_REINTERPRET_I64: ::Integer
 
+      F32_LOAD: ::Integer
+
+      F64_LOAD: ::Integer
+
+      F32_STORE: ::Integer
+
+      F64_STORE: ::Integer
+
+      F32_GLOBAL_GET: ::Integer
+
+      F64_GLOBAL_GET: ::Integer
+
+      F32_GLOBAL_SET: ::Integer
+
+      F64_GLOBAL_SET: ::Integer
+
       NAMES: untyped
 
       # Each signature lists the destination type followed by the source types.
@@ -394,9 +410,13 @@ module Wardite
       # @rbs return: Array[Symbol]?
       def self.extended_alu_types: (Integer opcode) -> Array[Symbol]?
 
-      I64_LOADS: untyped
+      EXTENDED_LOAD_TYPES: Hash[Integer, Symbol]
 
-      I64_STORES: untyped
+      EXTENDED_STORE_TYPES: Hash[Integer, Symbol]
+
+      EXTENDED_GLOBAL_GET_TYPES: Hash[Integer, Symbol]
+
+      EXTENDED_GLOBAL_SET_TYPES: Hash[Integer, Symbol]
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction
@@ -454,11 +474,11 @@ module Wardite
     class ExceptionValue
       attr_reader tag: Wardite::Efflorescence::Tag
 
-      attr_reader payload: Array[Integer]
+      attr_reader payload_bits: Array[Integer]
 
       # @rbs tag: Wardite::Efflorescence::Tag
-      # @rbs payload: Array[Integer]
-      def initialize: (Wardite::Efflorescence::Tag tag, Array[Integer] payload) -> untyped
+      # @rbs payload_bits: Array[Integer]
+      def initialize: (Wardite::Efflorescence::Tag tag, Array[Integer] payload_bits) -> untyped
     end
 
     class CatchTarget

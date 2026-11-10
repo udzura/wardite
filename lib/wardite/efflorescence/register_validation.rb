@@ -223,16 +223,18 @@ module Wardite
         if types
           check_register(function, destination, types.fetch(0))
           reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }
-        elsif Opcode::I64_LOADS.include?(opcode)
-          check_register(function, destination, :i64)
+        elsif (type = Opcode::EXTENDED_LOAD_TYPES[opcode])
+          check_register(function, destination, type)
           check_register(function, instruction[2], :i32)
-        elsif Opcode::I64_STORES.include?(opcode)
-          check_register(function, instruction[1], :i64)
+        elsif (type = Opcode::EXTENDED_STORE_TYPES[opcode])
+          check_register(function, instruction[1], type)
           check_register(function, instruction[2], :i32)
-        elsif opcode == Opcode::I64_GLOBAL_GET
-          check_register(function, destination, :i64)
-        elsif opcode == Opcode::I64_GLOBAL_SET
-          check_register(function, instruction[2], :i64)
+        elsif (type = Opcode::EXTENDED_GLOBAL_GET_TYPES[opcode])
+          check_register(function, destination, type)
+        elsif (type = Opcode::EXTENDED_GLOBAL_SET_TYPES[opcode])
+          check_register(function, instruction[2], type)
+        else
+          raise TranslationError, "unknown extended MIR opcode #{opcode}"
         end
       end
 

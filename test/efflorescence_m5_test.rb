@@ -8,6 +8,17 @@ class EfflorescenceM5Test < Test::Unit::TestCase
   include EfflorescenceHelper
   include EfflorescenceM5Cases
 
+  test "float Store and EH retain raw bits" do
+    Dir.mktmpdir("wardite-m5-store") do |dir|
+      wat = File.read(File.expand_path("./fixtures/efflorescence/m5_store_eh.wat", __dir__))
+      wasm = File.join(dir, "store.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(wat))
+      output, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "test/spinel/efflorescence_m5_store_eh.rb", wasm)
+      assert status.success?, output
+      assert_equal "M5 float Store and EH passed\n", output
+    end
+  end
+
   test "all float ALU and conversion operations match the bit vectors" do
     Dir.mktmpdir("wardite-m5-alu") do |dir|
       wat, vectors = float_vectors(float_alu_cases + float_conversion_cases)

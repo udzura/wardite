@@ -915,11 +915,11 @@ module Wardite
       when :f32_const
         arg = op[2][0]
         raise "Invalid definition of operand" unless arg.is_a?(FloatImmediate)
-        return F32(arg.value)
+        return F32.from_bits(arg.bits)
       when :f64_const
         arg = op[2][0]
         raise "Invalid definition of operand" unless arg.is_a?(FloatImmediate)
-        return F64(arg.value)
+        return F64.from_bits(arg.bits)
       else
         raise "Unimplemented offset op: #{op.inspect}"
       end

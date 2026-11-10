@@ -79,10 +79,6 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
       Wardite::BinaryLoader.load_from_buffer(StringIO.new(missing_count), engine: :efflorescence, enable_wasi: false)
     end
     assert_include error.message, 'data count'
-    error = assert_raise(E::UnsupportedFeature) do
-      load_efflorescence('(module (global f64 (f64.const 42)) (func unreachable global.get 0 drop))')
-    end
-    assert_include error.message, 'only i32/i64 global'
   end
 
   test 'shared limits reject unsupported flags and invalid page bounds before allocation' do

@@ -202,6 +202,15 @@ module Wardite
       F32_REINTERPRET_I32 = 185
       F64_REINTERPRET_I64 = 186
 
+      F32_LOAD = 187
+      F64_LOAD = 188
+      F32_STORE = 189
+      F64_STORE = 190
+      F32_GLOBAL_GET = 191
+      F64_GLOBAL_GET = 192
+      F32_GLOBAL_SET = 193
+      F64_GLOBAL_SET = 194
+
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
@@ -228,7 +237,9 @@ module Wardite
                  F32_CONVERT_I32_S F32_CONVERT_I32_U F32_CONVERT_I64_S F32_CONVERT_I64_U
                  F64_CONVERT_I32_S F64_CONVERT_I32_U F64_CONVERT_I64_S F64_CONVERT_I64_U
                  F32_DEMOTE_F64 F64_PROMOTE_F32 I32_REINTERPRET_F32 I64_REINTERPRET_F64
-                 F32_REINTERPRET_I32 F64_REINTERPRET_I64].freeze
+                 F32_REINTERPRET_I32 F64_REINTERPRET_I64
+                 F32_LOAD F64_LOAD F32_STORE F64_STORE
+                 F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -348,8 +359,38 @@ module Wardite
         opcode >= F32_EQ ? FLOAT_ALU_TYPES[opcode] : I64_ALU_TYPES[opcode]
       end
 
-      I64_LOADS = [I64_LOAD, I64_LOAD8_S, I64_LOAD8_U, I64_LOAD16_S, I64_LOAD16_U, I64_LOAD32_S, I64_LOAD32_U].freeze
-      I64_STORES = [I64_STORE, I64_STORE8, I64_STORE16, I64_STORE32].freeze
+      EXTENDED_LOAD_TYPES = {
+        I64_LOAD => :i64,
+        I64_LOAD8_S => :i64,
+        I64_LOAD8_U => :i64,
+        I64_LOAD16_S => :i64,
+        I64_LOAD16_U => :i64,
+        I64_LOAD32_S => :i64,
+        I64_LOAD32_U => :i64,
+        F32_LOAD => :f32,
+        F64_LOAD => :f64,
+      }.freeze #: Hash[Integer, Symbol]
+
+      EXTENDED_STORE_TYPES = {
+        I64_STORE => :i64,
+        I64_STORE8 => :i64,
+        I64_STORE16 => :i64,
+        I64_STORE32 => :i64,
+        F32_STORE => :f32,
+        F64_STORE => :f64,
+      }.freeze #: Hash[Integer, Symbol]
+
+      EXTENDED_GLOBAL_GET_TYPES = {
+        I64_GLOBAL_GET => :i64,
+        F32_GLOBAL_GET => :f32,
+        F64_GLOBAL_GET => :f64,
+      }.freeze #: Hash[Integer, Symbol]
+
+      EXTENDED_GLOBAL_SET_TYPES = {
+        I64_GLOBAL_SET => :i64,
+        F32_GLOBAL_SET => :f32,
+        F64_GLOBAL_SET => :f64,
+      }.freeze #: Hash[Integer, Symbol]
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction
@@ -382,9 +423,9 @@ module Wardite
         else
           types = extended_alu_types(opcode)
           return types.size == 2 ? [2] : [2, 3] if types
-          return [2] if I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_SET
-          return [1, 2] if I64_STORES.include?(opcode)
-          return [] if opcode == I64_GLOBAL_GET
+          return [2] if EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_GLOBAL_SET_TYPES.key?(opcode)
+          return [1, 2] if EXTENDED_STORE_TYPES.key?(opcode)
+          return [] if EXTENDED_GLOBAL_GET_TYPES.key?(opcode)
 
           raise UnsupportedFeature, "Efflorescence: unknown MIR opcode #{opcode}"
         end
@@ -399,7 +440,7 @@ module Wardite
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
             (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) || opcode == MEMORY_SIZE || opcode == MEMORY_GROW ||
-            (opcode > CALL_INDIRECT && (extended_alu_types(opcode) || I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_GET))
+            (opcode > CALL_INDIRECT && (extended_alu_types(opcode) || EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_GLOBAL_GET_TYPES.key?(opcode)))
           instruction[1]
         else
           -1
@@ -418,7 +459,7 @@ module Wardite
         opcode == TRAP || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
           (opcode >= I32_TRUNC_F32_S && opcode <= I64_TRUNC_F64_U) ||
-          (opcode > CALL_INDIRECT && (I64_LOADS.include?(opcode) || I64_STORES.include?(opcode) ||
+          (opcode > CALL_INDIRECT && (EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode) ||
             opcode == I64_DIV_S || opcode == I64_DIV_U || opcode == I64_REM_S || opcode == I64_REM_U))
       end
 
@@ -446,7 +487,7 @@ module Wardite
       def self.reads_store?(opcode)
         opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
           opcode == MEMORY_SIZE || opcode == MEMORY_GROW || opcode == MEMORY_INIT || opcode == MEMORY_COPY ||
-          (opcode > CALL_INDIRECT && (opcode == I64_GLOBAL_GET || I64_LOADS.include?(opcode)))
+          (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_GET_TYPES.key?(opcode) || EXTENDED_LOAD_TYPES.key?(opcode)))
       end
 
       # @rbs opcode: Integer
@@ -454,7 +495,7 @@ module Wardite
       def self.writes_store?(opcode)
         opcode == GLOBAL_SET || (opcode >= I32_STORE && opcode <= I32_STORE16) ||
           opcode == MEMORY_GROW || memory_site?(opcode) ||
-          (opcode > CALL_INDIRECT && (opcode == I64_GLOBAL_SET || I64_STORES.include?(opcode)))
+          (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_SET_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode)))
       end
 
       # @rbs opcode: Integer
@@ -485,13 +526,13 @@ module Wardite
 
     class ExceptionValue
       attr_reader :tag #: Wardite::Efflorescence::Tag
-      attr_reader :payload #: Array[Integer]
+      attr_reader :payload_bits #: Array[Integer]
 
       # @rbs tag: Wardite::Efflorescence::Tag
-      # @rbs payload: Array[Integer]
-      def initialize(tag, payload)
+      # @rbs payload_bits: Array[Integer]
+      def initialize(tag, payload_bits)
         @tag = tag
-        @payload = payload.dup.freeze
+        @payload_bits = payload_bits.dup.freeze
         freeze
       end
     end

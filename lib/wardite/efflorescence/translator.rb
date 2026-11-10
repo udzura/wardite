@@ -172,7 +172,8 @@ module Wardite
                         i32_store: 2, i32_store8: 0, i32_store16: 1,
                         i64_load: 3, i64_load8_s: 0, i64_load8_u: 0,
                         i64_load16_s: 1, i64_load16_u: 1, i64_load32_s: 2, i64_load32_u: 2,
-                        i64_store: 3, i64_store8: 0, i64_store16: 1, i64_store32: 2 }.freeze
+                        i64_store: 3, i64_store8: 0, i64_store16: 1, i64_store32: 2,
+                        f32_load: 2, f32_store: 2, f64_load: 3, f64_store: 3 }.freeze
       MEMORY_OPCODES = { i32_load: Opcode::I32_LOAD, i32_load8_s: Opcode::I32_LOAD8_S,
                          i32_load8_u: Opcode::I32_LOAD8_U, i32_load16_s: Opcode::I32_LOAD16_S,
                          i32_load16_u: Opcode::I32_LOAD16_U, i32_store: Opcode::I32_STORE,
@@ -187,7 +188,9 @@ module Wardite
                          i64_store: Opcode::I64_STORE,
                          i64_store8: Opcode::I64_STORE8,
                          i64_store16: Opcode::I64_STORE16,
-                         i64_store32: Opcode::I64_STORE32 }.freeze
+                         i64_store32: Opcode::I64_STORE32,
+                         f32_load: Opcode::F32_LOAD, f32_store: Opcode::F32_STORE,
+                         f64_load: Opcode::F64_LOAD, f64_store: Opcode::F64_STORE }.freeze
       STORE_CODES = (MEMORY_WIDTHS.keys + %i[global_get global_set memory_size memory_grow memory_init memory_copy memory_fill]).freeze
 
       # @rbs @instance: Wardite::Instance
@@ -317,13 +320,15 @@ module Wardite
           when :i32_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
                :i32_store, :i32_store8, :i32_store16,
                :i64_load, :i64_load8_s, :i64_load8_u, :i64_load16_s, :i64_load16_u, :i64_load32_s, :i64_load32_u,
-               :i64_store, :i64_store8, :i64_store16, :i64_store32
+               :i64_store, :i64_store8, :i64_store16, :i64_store32,
+               :f32_load, :f64_load, :f32_store, :f64_store
             opcode = MEMORY_OPCODES.fetch(code)
             offset = integer_operand(operands[1])
-            i64_store = Opcode::I64_STORES.include?(opcode)
-            type = i64_store || Opcode::I64_LOADS.include?(opcode) ? :i64 : :i32
+            store_type = Opcode::EXTENDED_STORE_TYPES[opcode]
+            type = store_type || Opcode::EXTENDED_LOAD_TYPES[opcode] || :i32
             @function.uses_i64 = true if type == :i64
-            if i64_store || code == :i32_store || code == :i32_store8 || code == :i32_store16
+            @function.uses_float = true if FloatBits.float_type?(type)
+            if store_type || code == :i32_store || code == :i32_store8 || code == :i32_store16
               value = pop_typed(type)
               address = pop_typed(:i32)
               emit([opcode, value, address, offset]) if @reachable
@@ -355,14 +360,25 @@ module Wardite
             index = integer_operand(operands[0])
             type = @instance.store.globals.fetch(index).type
             @function.uses_i64 = true if type == :i64
+            @function.uses_float = true if FloatBits.float_type?(type)
             if code == :global_get
               dst = register(type)
-              opcode = type == :i64 ? Opcode::I64_GLOBAL_GET : Opcode::GLOBAL_GET
+              opcode = case type
+                       when :i64 then Opcode::I64_GLOBAL_GET
+                       when :f32 then Opcode::F32_GLOBAL_GET
+                       when :f64 then Opcode::F64_GLOBAL_GET
+                       else Opcode::GLOBAL_GET
+                       end
               emit([opcode, dst, index]) if @reachable
               @stack << dst
             else
               source = pop_typed(type)
-              opcode = type == :i64 ? Opcode::I64_GLOBAL_SET : Opcode::GLOBAL_SET
+              opcode = case type
+                       when :i64 then Opcode::I64_GLOBAL_SET
+                       when :f32 then Opcode::F32_GLOBAL_SET
+                       when :f64 then Opcode::F64_GLOBAL_SET
+                       else Opcode::GLOBAL_SET
+                       end
               emit([opcode, index, source]) if @reachable
             end
           when :local_get, :local_set, :local_tee
@@ -548,8 +564,12 @@ module Wardite
             fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::I32)
           when :i64
             fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::I64)
+          when :f32
+            fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::F32)
+          when :f64
+            fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::F64)
           else
-            raise UnsupportedFeature, context("only i32/i64 global access is supported")
+            raise UnsupportedFeature, context("only numeric global access is supported")
           end
           fail_translation("global.set on immutable global #{index}") if code == :global_set && !global.mutable
           return

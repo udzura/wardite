@@ -135,9 +135,9 @@ module Wardite
       def float_argument(type, value)
         return FloatBits.from_float(type, value) if value.is_a?(Float)
         if type == :f32 && value.is_a?(Wardite::F32)
-          FloatBits.from_float(type, value.value)
+          value.raw_bits
         elsif type == :f64 && value.is_a?(Wardite::F64)
-          FloatBits.from_float(type, value.value)
+          value.raw_bits
         end
       end
 
@@ -154,8 +154,8 @@ module Wardite
       def box_result(type, bits)
         case type
         when :i64 then Wardite::I64(bits)
-        when :f32 then Wardite::F32(FloatBits.to_float(type, bits))
-        when :f64 then Wardite::F64(FloatBits.to_float(type, bits))
+        when :f32 then Wardite::F32.from_bits(bits)
+        when :f64 then Wardite::F64.from_bits(bits)
         else Wardite::I32.new(bits)
         end
       end
@@ -258,7 +258,7 @@ module Wardite
               if clause.tag_index < 0 || @instance.tags.fetch(clause.tag_index).equal?(value.tag)
                 frame.trim_handlers(clause.handler_depth)
                 clause.payload_registers.each_with_index do |register, i|
-                  frame.registers[register] = value.payload.fetch(i)
+                  frame.registers[register] = value.payload_bits.fetch(i)
                 end
                 frame.exception_registers[clause.reference_register] = value if clause.reference_register >= 0
                 frame.pc = Integer(clause.target_pc)
@@ -1149,6 +1149,34 @@ module Wardite
           when 186 # Opcode::F64_REINTERPRET_I64
             b = instructions.fetch(pc + 2)
             registers[a] = registers[b]
+          when 187 # Opcode::F32_LOAD
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], c, 4, false)
+          when 188 # Opcode::F64_LOAD
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], c, 8, false)
+          when 189 # Opcode::F32_STORE
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 4, registers[a])
+          when 190 # Opcode::F64_STORE
+            b = instructions.fetch(pc + 2)
+            c = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], c, 8, registers[a])
+          when 191 # Opcode::F32_GLOBAL_GET
+            b = instructions.fetch(pc + 2)
+            registers[a] = @store_access.global_get_float(b, :f32)
+          when 192 # Opcode::F64_GLOBAL_GET
+            b = instructions.fetch(pc + 2)
+            registers[a] = @store_access.global_get_float(b, :f64)
+          when 193 # Opcode::F32_GLOBAL_SET
+            b = instructions.fetch(pc + 2)
+            @store_access.global_set_float(a, :f32, registers[b])
+          when 194 # Opcode::F64_GLOBAL_SET
+            b = instructions.fetch(pc + 2)
+            @store_access.global_set_float(a, :f64, registers[b])
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

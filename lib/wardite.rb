@@ -104,8 +104,8 @@ module Wardite
           params = types&.defined_types&.[](index)
           results = types&.defined_results&.[](index)
           raise LoadError, "invalid tag type index #{index}" unless params && results
-          unless params.all? { |type| type == :i32 || type == :i64 } && results.empty?
-            raise LoadError, "only integer tag payloads with no results are supported"
+          unless params.all? { |type| Efflorescence::FunctionEntry.numeric_type?(type) } && results.empty?
+            raise LoadError, "only numeric tag payloads with no results are supported"
           end
           @tags << Efflorescence::Tag.new(params)
         end

@@ -8,14 +8,19 @@ module Wardite
   class UncaughtWasmException < WebAssemblyError
     attr_reader :exception_value #: Wardite::Efflorescence::ExceptionValue
     attr_reader :tag #: Wardite::Efflorescence::Tag
-    # Payload integers follow tag order, with unsigned i32 and signed i64.
-    attr_reader :payload #: Array[Integer]
+    # Public payloads follow tag order, with floats decoded at the boundary.
+    attr_reader :payload #: Array[Integer | Float]
 
     # @rbs value: Wardite::Efflorescence::ExceptionValue
     def initialize(value)
       @exception_value = value
       @tag = value.tag
-      @payload = value.payload
+      @payload = [] #: Array[Integer | Float]
+      @tag.parameter_types.each_with_index do |type, i|
+        bits = value.payload_bits.fetch(i)
+        @payload << (FloatBits.float_type?(type) ? FloatBits.to_float(type, bits) : bits)
+      end
+      @payload.freeze
       super("uncaught Wasm exception: #{@payload.inspect}")
     end
   end
