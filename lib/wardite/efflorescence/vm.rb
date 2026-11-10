@@ -1059,6 +1059,96 @@ module Wardite
           when 156 # Opcode::F64_COPYSIGN
             b = instructions.fetch(pc + 2)
             registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 157 # Opcode::I32_TRUNC_F32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 158 # Opcode::I32_TRUNC_F32_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 159 # Opcode::I32_TRUNC_F64_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 160 # Opcode::I32_TRUNC_F64_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 161 # Opcode::I64_TRUNC_F32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 162 # Opcode::I64_TRUNC_F32_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 163 # Opcode::I64_TRUNC_F64_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 164 # Opcode::I64_TRUNC_F64_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 165 # Opcode::I32_TRUNC_SAT_F32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 166 # Opcode::I32_TRUNC_SAT_F32_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 167 # Opcode::I32_TRUNC_SAT_F64_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 168 # Opcode::I32_TRUNC_SAT_F64_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 169 # Opcode::I64_TRUNC_SAT_F32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 170 # Opcode::I64_TRUNC_SAT_F32_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 171 # Opcode::I64_TRUNC_SAT_F64_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 172 # Opcode::I64_TRUNC_SAT_F64_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 173 # Opcode::F32_CONVERT_I32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 174 # Opcode::F32_CONVERT_I32_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 175 # Opcode::F32_CONVERT_I64_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 176 # Opcode::F32_CONVERT_I64_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 177 # Opcode::F64_CONVERT_I32_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 178 # Opcode::F64_CONVERT_I32_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 179 # Opcode::F64_CONVERT_I64_S
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 180 # Opcode::F64_CONVERT_I64_U
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 181 # Opcode::F32_DEMOTE_F64
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 182 # Opcode::F64_PROMOTE_F32
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.convert(opcode, registers[b])
+          when 183 # Opcode::I32_REINTERPRET_F32
+            b = instructions.fetch(pc + 2)
+            registers[a] = registers[b]
+          when 184 # Opcode::I64_REINTERPRET_F64
+            b = instructions.fetch(pc + 2)
+            registers[a] = registers[b]
+          when 185 # Opcode::F32_REINTERPRET_I32
+            b = instructions.fetch(pc + 2)
+            registers[a] = registers[b]
+          when 186 # Opcode::F64_REINTERPRET_I64
+            b = instructions.fetch(pc + 2)
+            registers[a] = registers[b]
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

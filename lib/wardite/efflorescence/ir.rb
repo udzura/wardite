@@ -171,6 +171,37 @@ module Wardite
       F64_MAX = 155
       F64_COPYSIGN = 156
 
+      I32_TRUNC_F32_S = 157
+      I32_TRUNC_F32_U = 158
+      I32_TRUNC_F64_S = 159
+      I32_TRUNC_F64_U = 160
+      I64_TRUNC_F32_S = 161
+      I64_TRUNC_F32_U = 162
+      I64_TRUNC_F64_S = 163
+      I64_TRUNC_F64_U = 164
+      I32_TRUNC_SAT_F32_S = 165
+      I32_TRUNC_SAT_F32_U = 166
+      I32_TRUNC_SAT_F64_S = 167
+      I32_TRUNC_SAT_F64_U = 168
+      I64_TRUNC_SAT_F32_S = 169
+      I64_TRUNC_SAT_F32_U = 170
+      I64_TRUNC_SAT_F64_S = 171
+      I64_TRUNC_SAT_F64_U = 172
+      F32_CONVERT_I32_S = 173
+      F32_CONVERT_I32_U = 174
+      F32_CONVERT_I64_S = 175
+      F32_CONVERT_I64_U = 176
+      F64_CONVERT_I32_S = 177
+      F64_CONVERT_I32_U = 178
+      F64_CONVERT_I64_S = 179
+      F64_CONVERT_I64_U = 180
+      F32_DEMOTE_F64 = 181
+      F64_PROMOTE_F32 = 182
+      I32_REINTERPRET_F32 = 183
+      I64_REINTERPRET_F64 = 184
+      F32_REINTERPRET_I32 = 185
+      F64_REINTERPRET_I64 = 186
+
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
@@ -189,7 +220,15 @@ module Wardite
                  F32_CEIL F32_FLOOR F32_TRUNC F32_NEAREST F32_SQRT F32_ADD F32_SUB F32_MUL
                  F32_DIV F32_MIN F32_MAX F32_COPYSIGN F64_EQ F64_NE F64_LT F64_GT
                  F64_LE F64_GE F64_ABS F64_NEG F64_CEIL F64_FLOOR F64_TRUNC F64_NEAREST
-                 F64_SQRT F64_ADD F64_SUB F64_MUL F64_DIV F64_MIN F64_MAX F64_COPYSIGN].freeze
+                 F64_SQRT F64_ADD F64_SUB F64_MUL F64_DIV F64_MIN F64_MAX F64_COPYSIGN
+                 I32_TRUNC_F32_S I32_TRUNC_F32_U I32_TRUNC_F64_S I32_TRUNC_F64_U
+                 I64_TRUNC_F32_S I64_TRUNC_F32_U I64_TRUNC_F64_S I64_TRUNC_F64_U
+                 I32_TRUNC_SAT_F32_S I32_TRUNC_SAT_F32_U I32_TRUNC_SAT_F64_S I32_TRUNC_SAT_F64_U
+                 I64_TRUNC_SAT_F32_S I64_TRUNC_SAT_F32_U I64_TRUNC_SAT_F64_S I64_TRUNC_SAT_F64_U
+                 F32_CONVERT_I32_S F32_CONVERT_I32_U F32_CONVERT_I64_S F32_CONVERT_I64_U
+                 F64_CONVERT_I32_S F64_CONVERT_I32_U F64_CONVERT_I64_S F64_CONVERT_I64_U
+                 F32_DEMOTE_F64 F64_PROMOTE_F32 I32_REINTERPRET_F32 I64_REINTERPRET_F64
+                 F32_REINTERPRET_I32 F64_REINTERPRET_I64].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -271,6 +310,36 @@ module Wardite
         F64_MIN => [:f64, :f64, :f64],
         F64_MAX => [:f64, :f64, :f64],
         F64_COPYSIGN => [:f64, :f64, :f64],
+        I32_TRUNC_F32_S => [:i32, :f32],
+        I32_TRUNC_F32_U => [:i32, :f32],
+        I32_TRUNC_F64_S => [:i32, :f64],
+        I32_TRUNC_F64_U => [:i32, :f64],
+        I64_TRUNC_F32_S => [:i64, :f32],
+        I64_TRUNC_F32_U => [:i64, :f32],
+        I64_TRUNC_F64_S => [:i64, :f64],
+        I64_TRUNC_F64_U => [:i64, :f64],
+        I32_TRUNC_SAT_F32_S => [:i32, :f32],
+        I32_TRUNC_SAT_F32_U => [:i32, :f32],
+        I32_TRUNC_SAT_F64_S => [:i32, :f64],
+        I32_TRUNC_SAT_F64_U => [:i32, :f64],
+        I64_TRUNC_SAT_F32_S => [:i64, :f32],
+        I64_TRUNC_SAT_F32_U => [:i64, :f32],
+        I64_TRUNC_SAT_F64_S => [:i64, :f64],
+        I64_TRUNC_SAT_F64_U => [:i64, :f64],
+        F32_CONVERT_I32_S => [:f32, :i32],
+        F32_CONVERT_I32_U => [:f32, :i32],
+        F32_CONVERT_I64_S => [:f32, :i64],
+        F32_CONVERT_I64_U => [:f32, :i64],
+        F64_CONVERT_I32_S => [:f64, :i32],
+        F64_CONVERT_I32_U => [:f64, :i32],
+        F64_CONVERT_I64_S => [:f64, :i64],
+        F64_CONVERT_I64_U => [:f64, :i64],
+        F32_DEMOTE_F64 => [:f32, :f64],
+        F64_PROMOTE_F32 => [:f64, :f32],
+        I32_REINTERPRET_F32 => [:i32, :f32],
+        I64_REINTERPRET_F64 => [:i64, :f64],
+        F32_REINTERPRET_I32 => [:f32, :i32],
+        F64_REINTERPRET_I64 => [:f64, :i64],
       }.freeze #: Hash[Integer, Array[Symbol]]
 
       # @rbs opcode: Integer
@@ -348,6 +417,7 @@ module Wardite
       def self.may_trap?(opcode)
         opcode == TRAP || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
+          (opcode >= I32_TRUNC_F32_S && opcode <= I64_TRUNC_F64_U) ||
           (opcode > CALL_INDIRECT && (I64_LOADS.include?(opcode) || I64_STORES.include?(opcode) ||
             opcode == I64_DIV_S || opcode == I64_DIV_U || opcode == I64_REM_S || opcode == I64_REM_U))
       end

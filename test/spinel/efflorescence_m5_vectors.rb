@@ -22,7 +22,11 @@ class M5Vectors
               else
                 expected != "nan" && actual == expected.to_i
               end
-    raise "#{name}: expected #{expected}, got #{actual.inspect}" unless matches
+    raise "#{name}: expected #{expected}, got #{actual.inspect}" unless matches && expected != "overflow" && expected != "invalid"
+  rescue Wardite::IntegerOverflow => error
+    raise error unless expected == "overflow"
+  rescue Wardite::EvalError => error
+    raise error unless expected == "invalid" && error.message == "invalid conversion to integer"
   end
 end
 

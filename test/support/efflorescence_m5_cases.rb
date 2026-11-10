@@ -62,6 +62,108 @@ module EfflorescenceM5Cases
     end
   end
 
+  def float_conversion_cases
+    cases = %w[i32 i64].flat_map do |dest|
+      width = Integer(dest.delete_prefix("i"))
+      %w[f32 f64].flat_map do |source|
+        precision = source == "f32" ? 24 : 53
+        %w[s u].flat_map do |sign|
+          upper_exponent = sign == "s" ? width - 1 : width
+          limit = 1 << upper_exponent
+          step = 1 << [upper_exponent - precision, 0].max
+          minimum = sign == "s" ? -limit : 0
+          inputs = [
+            ["0", 0], ["-0", 0], ["-0.75", 0], ["1.75", 1],
+            ["-1", sign == "s" ? -1 : "overflow"],
+            ["inf", "overflow"], ["-inf", "overflow"], ["-nan:0x123", "invalid"],
+            ["0x1p#{upper_exponent}", "overflow"],
+            [(limit - step).to_s, limit - step]
+          ]
+          if sign == "s"
+            inputs << [minimum.to_s, minimum]
+            step_below_min = 1 << [upper_exponent + 1 - precision, 0].max
+            inputs << [(minimum - step_below_min).to_s, "overflow"]
+            inputs << ["-2147483648.75", minimum] if dest == "i32" && source == "f64"
+          end
+          [false, true].flat_map do |sat|
+            op = "#{dest}.trunc#{sat ? '_sat' : ''}_#{source}_#{sign}"
+            inputs.map do |literal, expected|
+              if sat
+                expected = case expected
+                           when "invalid" then 0
+                           when "overflow" then literal.start_with?("-") ? minimum : limit - 1
+                           else expected
+                           end
+              end
+              expected = integer_carrier(dest, expected) if expected.is_a?(Integer)
+              [op, "#{source}.const #{literal}", dest, expected]
+            end
+          end
+        end
+      end
+    end
+
+    double_rounding = (1 << 62) + (1 << 38)
+    %w[f32 f64].each do |dest|
+      %w[i32 i64].each do |source|
+        %w[s u].each do |sign|
+          op = "#{dest}.convert_#{source}_#{sign}"
+          width = Integer(source.delete_prefix("i"))
+          boundary = sign == "s" ? -1 : (1 << width) - 1
+          expected = sign == "s" ? "-1" : (dest == "f64" && width == 32 ? "4294967295" : "0x1p#{width}")
+          cases.concat([
+            [op, "#{source}.const 0", dest, "0"],
+            [op, "#{source}.const #{boundary}", dest, expected],
+          ])
+          if dest == "f32" && source == "i64"
+            cases.concat([
+              [op, "i64.const #{double_rounding}", dest, "0x1p62"],
+              [op, "i64.const #{double_rounding + 1}", dest, "0x1.000002p62"],
+              [op, "i64.const #{double_rounding - 1}", dest, "0x1p62"],
+              [op, "i64.const #{double_rounding + (1 << 39)}", dest, "0x1.000004p62"],
+            ])
+          end
+          if dest == "f64" && source == "i64"
+            exponent = sign == "s" ? 62 : 63
+            half = 1 << (exponent - 53)
+            cases << [op, "i64.const #{(1 << exponent) + half}", dest, "0x1p#{exponent}"]
+            cases << [op, "i64.const #{(1 << exponent) + half + 1}", dest, "0x1.0000000000001p#{exponent}"]
+          end
+        end
+      end
+    end
+    cases.concat([
+      ["i32.reinterpret_f32", "f32.const -nan:0x123 f32.abs", "i32", 0x7f800123],
+      ["i32.reinterpret_f32", "f32.const nan:0x123 f32.neg", "i32", 0xff800123],
+      ["i32.reinterpret_f32", "f32.const nan:0x123 f32.const -0 f32.copysign", "i32", 0xff800123],
+      ["i64.reinterpret_f64", "f64.const -nan:0x123 f64.abs", "i64", 0x7ff0000000000123],
+      ["i64.reinterpret_f64", "f64.const nan:0x123 f64.neg", "i64", -0x000ffffffffffedd],
+      ["i64.reinterpret_f64", "f64.const nan:0x123 f64.const -0 f64.copysign", "i64", -0x000ffffffffffedd],
+      ["i32.reinterpret_f32", "f32.const 1 f32.const 0x1p-24 f32.add f32.const 1 f32.sub", "i32", 0],
+      ["f32.convert_i64_s", "i64.const #{-double_rounding - 1}", "f32", "-0x1.000002p62"],
+      ["f32.convert_i64_s", "i64.const -9223372036854775808", "f32", "-0x1p63"],
+      ["f32.demote_f64", "f64.const 0x1.000001p0", "f32", "1"],
+      ["f32.demote_f64", "f64.const 0x1.0000010000001p0", "f32", "0x1.000002p0"],
+      ["f32.demote_f64", "f64.const 0x1.ffffffp127", "f32", "inf"],
+      ["f32.demote_f64", "f64.const -0x1p-150", "f32", "-0"],
+      ["f32.demote_f64", "f64.const -0x1.0000000000001p-150", "f32", "-0x1p-149"],
+      ["f32.demote_f64", "f64.const -nan:0x123", "f32", "nan"],
+      ["f64.promote_f32", "f32.const 0x1p-149", "f64", "0x1p-149"],
+      ["f64.promote_f32", "f32.const 0x1.fffffep127", "f64", "0x1.fffffep127"],
+      ["f64.promote_f32", "f32.const -0", "f64", "-0"],
+      ["f64.promote_f32", "f32.const nan:0x123", "f64", "nan"],
+      ["f32.reinterpret_i32", "i32.const 0x80000000", "f32", "-0"],
+      ["f64.reinterpret_i64", "i64.const 0x8000000000000000", "f64", "-0"],
+      ["i32.reinterpret_f32", "f32.const -nan:0x123", "i32", 0xff800123],
+      ["i64.reinterpret_f64", "f64.const -nan:0x123", "i64", -0x000ffffffffffedd],
+    ])
+  end
+
+  def integer_carrier(type, value)
+    return value & 0xffffffff if type == "i32"
+    ((value + (1 << 63)) % (1 << 64)) - (1 << 63)
+  end
+
   def float_vectors(cases)
     functions, rows = cases.each_with_index.map do |(op, operands, type, expected), index|
       name = "case#{index}"

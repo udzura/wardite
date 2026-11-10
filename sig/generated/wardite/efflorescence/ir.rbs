@@ -323,6 +323,66 @@ module Wardite
 
       F64_COPYSIGN: ::Integer
 
+      I32_TRUNC_F32_S: ::Integer
+
+      I32_TRUNC_F32_U: ::Integer
+
+      I32_TRUNC_F64_S: ::Integer
+
+      I32_TRUNC_F64_U: ::Integer
+
+      I64_TRUNC_F32_S: ::Integer
+
+      I64_TRUNC_F32_U: ::Integer
+
+      I64_TRUNC_F64_S: ::Integer
+
+      I64_TRUNC_F64_U: ::Integer
+
+      I32_TRUNC_SAT_F32_S: ::Integer
+
+      I32_TRUNC_SAT_F32_U: ::Integer
+
+      I32_TRUNC_SAT_F64_S: ::Integer
+
+      I32_TRUNC_SAT_F64_U: ::Integer
+
+      I64_TRUNC_SAT_F32_S: ::Integer
+
+      I64_TRUNC_SAT_F32_U: ::Integer
+
+      I64_TRUNC_SAT_F64_S: ::Integer
+
+      I64_TRUNC_SAT_F64_U: ::Integer
+
+      F32_CONVERT_I32_S: ::Integer
+
+      F32_CONVERT_I32_U: ::Integer
+
+      F32_CONVERT_I64_S: ::Integer
+
+      F32_CONVERT_I64_U: ::Integer
+
+      F64_CONVERT_I32_S: ::Integer
+
+      F64_CONVERT_I32_U: ::Integer
+
+      F64_CONVERT_I64_S: ::Integer
+
+      F64_CONVERT_I64_U: ::Integer
+
+      F32_DEMOTE_F64: ::Integer
+
+      F64_PROMOTE_F32: ::Integer
+
+      I32_REINTERPRET_F32: ::Integer
+
+      I64_REINTERPRET_F64: ::Integer
+
+      F32_REINTERPRET_I32: ::Integer
+
+      F64_REINTERPRET_I64: ::Integer
+
       NAMES: untyped
 
       # Each signature lists the destination type followed by the source types.

@@ -8,10 +8,10 @@ class WarditeSpinelM5Test < Test::Unit::TestCase
   include EfflorescenceHelper
   include EfflorescenceM5Cases
 
-  test "all float ALU operations match the bit vectors" do
+  test "all float ALU and conversion operations match the bit vectors" do
     omit "Run make spinel-test to test the native executable" unless ENV["WARDITE_SPINEL_BIN"]
     Dir.mktmpdir("wardite-m5-alu") do |dir|
-      wat, vectors = float_vectors(float_alu_cases)
+      wat, vectors = float_vectors(float_alu_cases + float_conversion_cases)
       wasm = File.join(dir, "alu.wasm")
       expected = File.join(dir, "vectors.txt")
       File.binwrite(wasm, compile_efflorescence_wat(wat))
