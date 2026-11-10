@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Usage: bundle exec ruby -Ilib benchmark/measure_m4.rb /path/to/m3-checkout
+# Usage: bundle exec ruby -Ilib benchmark/measure_m4.rb /path/to/baseline [M3|M4|M5]
 require "wardite"
 require "open3"
 require "rbconfig"
@@ -9,6 +9,8 @@ require "tmpdir"
 
 root = File.expand_path("..", __dir__)
 baseline = File.expand_path(ARGV.fetch(0))
+previous = ARGV.fetch(1, "M3")
+current = { "M3" => "M4", "M4" => "M5", "M5" => "M6" }.fetch(previous)
 worker = File.join(__dir__, "m3_call_worker.rb")
 rounds = Integer(ENV.fetch("ROUNDS", "100000"))
 i64_rounds = Integer(ENV.fetch("I64_ROUNDS", "20000"))
@@ -83,7 +85,7 @@ Dir.mktmpdir("wardite-m4-bench") do |dir|
   runners = {}
   compiler = Shellwords.split(ENV.fetch("SPINEL", "spinel"))
   flags = Shellwords.split(ENV.fetch("SPINELFLAGS", "-O2"))
-  { "M3" => baseline, "M4" => root }.each do |version, path|
+  { previous => baseline, current => root }.each do |version, path|
     native = File.join(dir, "#{version}-worker")
     capture!(*compiler, "-I#{path}/lib", "--strict-require", *flags, worker, "-o", native)
     runners[["CRuby", version]] = [RbConfig.ruby, "--disable-yjit", "-I#{path}/lib", worker]
@@ -96,14 +98,17 @@ Dir.mktmpdir("wardite-m4-bench") do |dir|
     File.join(__dir__, "i32_mix.wat") => [%w[inline_mix call_mix], rounds, false],
     File.join(__dir__, "i32_call_arities.wat") => [%w[empty_loop call_zero call_one call_two call_three call_four], rounds, false],
     call_source => [calls.keys, rounds, false],
-    File.join(__dir__, "i64_m4.wat") => [%w[alu division memory mixed_call], i64_rounds, true]
+    File.join(__dir__, "i64_m4.wat") => [%w[alu division memory mixed_call], i64_rounds, true, previous == "M3"],
+    File.join(__dir__, "float_m5.wat") => [%w[float_alu float_convert float_mixed_call], i64_rounds, true, previous == "M4"]
   }
 
+  suites.delete(File.join(__dir__, "float_m5.wat")) if previous == "M3"
+
   puts "runtime,version,case,rounds,checksum,load_median_ms,load_min_ms,load_max_ms,execute_median_ms,execute_min_ms,execute_max_ms"
-  suites.each do |source, (exports, count, i64)|
+  suites.each do |source, (exports, count, i64, current_only)|
     binary = File.join(dir, "input.wasm")
     capture!("wasm-tools", "parse", source, "-o", binary)
-    commands = i64 ? runners.select { |(_, version), _| version == "M4" } : runners
+    commands = current_only ? runners.select { |(_, version), _| version == current } : runners
     exports.each do |export|
       checksum = if source == call_source
                    (count + 123) % 2**32
@@ -123,7 +128,7 @@ Dir.mktmpdir("wardite-m4-bench") do |dir|
         load, execute = observations.transpose
         puts [runtime, version, export, count, checksum, *stats(load), *stats(execute)].join(",")
       end
-      allocation_probe(binary, export, count, checksum) if i64
+      allocation_probe(binary, export, count, checksum) if source.end_with?("/i64_m4.wat")
     end
   end
 end
