@@ -44,7 +44,7 @@ module Wardite
           opts.on("--no-wasi", "Disable WASI feature") {|_v|
             @wasi = false
           }
-          opts.on("--new-engine", "Use the Efflorescence register VM (i32 subset)") {|_v|
+          opts.on("--new-engine", "Use the Efflorescence register VM") {|_v|
             @new_engine = true
           }
           opts.on("--mir-disable NAME", "Disable copy, immediate, branch, superinstruction, inline, frames, or all (repeatable)") {|v|

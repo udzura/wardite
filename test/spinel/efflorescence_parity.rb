@@ -147,9 +147,27 @@ class ParityWorker
       capture_i32: ->(store, arguments) { host.capture_i32(store, arguments) },
       write_i32: ->(store, arguments) { host.write_i32(store, arguments) }
     })
-    instance = File.open(path, "rb") do |file|
-      Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: engine,
-        import_object: { env: imports }, mir_profile: true, disabled_optimizations: disabled)
+    begin
+      instance = File.open(path, "rb") do |file|
+        Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: engine,
+          import_object: { env: imports }, mir_profile: true, disabled_optimizations: disabled)
+      end
+    rescue Wardite::LoadError => error
+      raise error unless exports == "-"
+      output.puts([id, "-", "load:#{error.message}", "-", "", host.events.join(","), "-"].join("\t"))
+      return
+    rescue NameError => error
+      raise error unless exports == "-"
+      output.puts([id, "-", "link:#{error.message}", "-", "", host.events.join(","), "-"].join("\t"))
+      return
+    rescue Wardite::Unreachable => error
+      raise error unless exports == "-"
+      output.puts([id, "-", "trap:unreachable", "-", "", host.events.join(","), "-"].join("\t"))
+      return
+    end
+    if exports == "-"
+      output.puts([id, "-", "load:success", "-", "", host.events.join(","), "-"].join("\t"))
+      return
     end
     runtime = instance.runtime
     store = instance.store
@@ -162,12 +180,26 @@ class ParityWorker
   end
 end
 
-engine = ARGV.fetch(0).to_sym
-disabled = ARGV.fetch(3).split(",").map { |value| value.to_sym }
-File.open(ARGV.fetch(2), "w") do |output|
-  File.open(ARGV.fetch(1), "r") do |input|
-    while row = input.gets
-      ParityWorker.observe(output, row.chomp.split("\t"), engine, disabled)
+if ARGV.fetch(0) == "wasi-rejection"
+  [:stack, :efflorescence].each do |engine|
+    begin
+      File.open(ARGV.fetch(1), "rb") do |file|
+        Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: true, engine: engine)
+      end
+      raise "Spinel accepted WASI"
+    rescue Wardite::LoadError => error
+      raise error unless error.message.include?("WASI is not supported in Spinel builds")
+    end
+  end
+  puts "Spinel WASI rejection passed"
+else
+  engine = ARGV.fetch(0).to_sym
+  disabled = ARGV.fetch(3).split(",").map { |value| value.to_sym }
+  File.open(ARGV.fetch(2), "w") do |output|
+    File.open(ARGV.fetch(1), "r") do |input|
+      while row = input.gets
+        ParityWorker.observe(output, row.chomp.split("\t"), engine, disabled)
+      end
     end
   end
 end

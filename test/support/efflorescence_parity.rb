@@ -72,7 +72,7 @@ module EfflorescenceParity
     (Integer(value) & mask) == mask
   end
 
-  def self.check_rows(engine, fixtures, rows)
+  def self.check_rows(engine, fixtures, rows, check_dispatch: true)
     index = 0
     fixtures.each do |fixture|
       fixture.steps.each do |export, expected|
@@ -83,7 +83,7 @@ module EfflorescenceParity
             expected.globals == actual.globals && expected.host == actual.host
           raise "#{label}\nexpected #{expected.inspect}\nobserved #{actual.inspect}"
         end
-        if engine == :efflorescence
+        if engine == :efflorescence && check_dispatch
           missing = expected.dispatch - actual.dispatch
           raise "#{label} did not dispatch #{missing.join(', ')}" unless missing.empty?
         end
@@ -99,13 +99,19 @@ module EfflorescenceParity
       binaries = compile(directory, fixtures)
       configurations.each do |disabled|
         rows = observe(command, directory, :efflorescence, fixtures, binaries, disabled)
-        check_rows(:efflorescence, fixtures, rows)
+        check_rows(:efflorescence, fixtures, rows, check_dispatch: disabled.include?(:all))
       end
-      legacy = fixtures.select { |fixture| fixture.legacy == true }
+      legacy = fixtures.filter_map do |fixture|
+        case fixture.legacy
+        when true then fixture
+        when Array then fixture.with(steps: fixture.legacy)
+        end
+      end
       unless legacy.empty?
         rows = observe(command, directory, :stack, legacy, binaries, [])
         check_rows(:stack, legacy, rows)
       end
+      yield command, binaries if block_given?
     end
   end
 
@@ -129,7 +135,7 @@ module EfflorescenceParity
           i32.const 3 call $record
           unreachable
           i32.const 4 call $record)
-      )
+        (func (export "recover") (result i32) i32.const 4 i32.load8_u))
     WAT
     first = Observation.new(result: "i32:10", memory: "1:65536:2a61626300000000", globals: "i32:10",
       host: "1,2", dispatch: %w[I32_STORE8 GLOBAL_GET GLOBAL_SET CALL_HOST])

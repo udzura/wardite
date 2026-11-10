@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require_relative "support/efflorescence_parity"
-
+require_relative "support/efflorescence_boundary_cases"
 require_relative "support/efflorescence_helper"
 require_relative "support/efflorescence_invalid_cases"
 
@@ -21,10 +20,16 @@ class EfflorescenceParityTest < Test::Unit::TestCase
     end
   end
 
-  test "parity runner compares state and the position of a trap" do
+  test "initialization, Store and failure ordering across optimization modes" do
     assert_nothing_raised do
-      EfflorescenceParity.run([EfflorescenceParity.state_fixture], runtime: :cruby)
+      cases = EfflorescenceBoundaryCases
+      EfflorescenceParity.run(cases.fixtures, runtime: :cruby, configurations: cases.configurations)
     end
+  end
+
+  test "CLI reports typed MIR, startup results and optimization boundaries" do
+    root = EfflorescenceParity::ROOT
+    EfflorescenceBoundaryCases.check_cli(self, [RbConfig.ruby, "-I#{root}/lib", "#{root}/exe/wardite"])
   end
 
   test "parity comparison distinguishes exact bits and arithmetic NaNs" do
