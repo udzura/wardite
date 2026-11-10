@@ -559,8 +559,7 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        typeb = fetch_uleb128(sbuf)
-        gtype = Op.i2type(typeb)
+        gtype = Op.i2type(assert_read(sbuf, 1).ord)
         mut = sbuf.read 1
         if !mut
           raise LoadError, "global section too short"
@@ -571,6 +570,14 @@ module Wardite
         
         code = fetch_insn_while_end(sbuf)
         ops = code_body(StringIO.new(code))
+        expected = case gtype
+                   when :i32 then :i32_const
+                   when :i64 then :i64_const
+                   when :f32 then :f32_const
+                   when :f64 then :f64_const
+                   else raise LoadError, "unsupported global type #{gtype}"
+                   end
+        raise LoadError, "global initializer type mismatch" unless ops.first&.[](1) == expected
         value = decode_global_expr(ops)
 
         global = GlobalSection::Global.new do |g|
@@ -691,7 +698,7 @@ module Wardite
             end
             operand << OperandVector.new(vec)
           when :i32
-            operand << fetch_sleb128(buf)
+            operand << fetch_sleb128(buf, width: 32)
           when :i64
             operand << fetch_sleb128(buf, width: 64)
           when :f32, :f64
@@ -859,7 +866,7 @@ module Wardite
       first = sbuf.pos
       opcode = assert_read(sbuf, 1).ord
       case opcode
-      when 0x41 then fetch_sleb128(sbuf)
+      when 0x41 then fetch_sleb128(sbuf, width: 32)
       when 0x42 then fetch_sleb128(sbuf, width: 64)
       when 0x43 then assert_read(sbuf, 4)
       when 0x44 then assert_read(sbuf, 8)

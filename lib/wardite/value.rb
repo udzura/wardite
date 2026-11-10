@@ -506,6 +506,9 @@ module Wardite
     # discards the raw representation so existing value= callers stay current.
     # @rbs bits: Integer?
     def initialize(bits: nil)
+      if bits && (bits < 0 || bits > 0xffffffff)
+        raise RangeError, "f32 bits outside carrier range"
+      end
       @bits = bits
       @value = 0.0
     end
@@ -661,6 +664,9 @@ module Wardite
     # discards the raw representation so existing value= callers stay current.
     # @rbs bits: Integer?
     def initialize(bits: nil)
+      if bits && (bits < -9223372036854775807 - 1 || bits > 9223372036854775807)
+        raise RangeError, "f64 bits outside carrier range"
+      end
       @bits = bits
       @value = 0.0
     end

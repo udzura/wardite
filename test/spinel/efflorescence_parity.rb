@@ -91,8 +91,14 @@ class ParityWorker
     return "trap:zero" if message.include?("divide by zero") || message.include?("division by zero")
     return "trap:invalid" if message.include?("invalid conversion to integer")
     return "trap:bounds" if message.include?("out of bounds memory access") || message.include?("invalid memory range")
-    return "trap:indirect" if message.include?("call_indirect")
+    return "trap:indirect" if message.include?("call_indirect") || message.start_with?("uninitialized element")
+    raise error unless runtime.is_a?(Wardite::Runtime)
     "legacy_error:#{message.gsub(/\s+/, ' ')}"
+  rescue StandardError => error
+    raise error unless runtime.is_a?(Wardite::Runtime)
+    message = error.message
+    return "trap:bounds" if message.start_with?("broken string or unsupported size:") || message == "invalid float bytes"
+    "legacy_error:#{error.class}:#{error.message.gsub(/\s+/, ' ')}"
   end
 
   # @rbs store: Wardite::Store

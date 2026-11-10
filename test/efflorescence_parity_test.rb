@@ -3,7 +3,24 @@
 require "test_helper"
 require_relative "support/efflorescence_parity"
 
+require_relative "support/efflorescence_helper"
+require_relative "support/efflorescence_invalid_cases"
+
 class EfflorescenceParityTest < Test::Unit::TestCase
+  include EfflorescenceHelper
+  include EfflorescenceInvalidCases
+
+  test "reject invalid i32 immediates and unreferenced globals" do
+    malformed_numeric_fixtures.each do |bytes, reason|
+      [:stack, :efflorescence].each do |engine|
+        error = assert_raise(Wardite::LoadError) do
+          Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), engine: engine, enable_wasi: false)
+        end
+        assert_include error.message, reason
+      end
+    end
+  end
+
   test "parity runner compares state and the position of a trap" do
     assert_nothing_raised do
       EfflorescenceParity.run([EfflorescenceParity.state_fixture], runtime: :cruby)
