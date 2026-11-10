@@ -1,0 +1,22 @@
+# Generated from lib/wardite/efflorescence/float_arithmetic.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    module FloatArithmetic
+      # A normalized quotient of binary32 inputs is A/B scaled by a power of
+      # two. B < 2**24. Its distance from a binary32 midpoint, unless equal,
+      # exceeds 2**-48 in the quotient's binade scaled to [1, 2).
+      # @rbs left: Float
+      # @rbs right: Float
+      # @rbs return: Float
+      def self.divide: (Float left, Float right) -> Float
+
+      # Squaring a binary32 midpoint gives a dyadic with at most 48 fractional
+      # bits in that binade's scale. A distinct binary32 radicand differs by at
+      # least 2**-48, so its square root differs by more than 2**-50.
+      # @rbs value: Float
+      # @rbs return: Float
+      def self.sqrt: (Float value) -> Float
+    end
+  end
+end

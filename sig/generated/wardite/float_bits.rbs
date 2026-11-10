@@ -1,0 +1,26 @@
+# Generated from lib/wardite/float_bits.rb with RBS::Inline
+
+module Wardite
+  module FloatBits
+    # f32 carriers are unsigned, f64 carriers are signed.
+    # @rbs type: Symbol
+    # @rbs bytes: String
+    # @rbs return: Integer
+    def self.read: (Symbol type, String bytes) -> Integer
+
+    # @rbs type: Symbol
+    # @rbs bits: Integer
+    # @rbs return: String
+    def self.write: (Symbol type, Integer bits) -> String
+
+    # @rbs type: Symbol
+    # @rbs bits: Integer
+    # @rbs return: Float
+    def self.to_float: (Symbol type, Integer bits) -> Float
+
+    # @rbs type: Symbol
+    # @rbs value: Float
+    # @rbs return: Integer
+    def self.from_float: (Symbol type, Float value) -> Integer
+  end
+end

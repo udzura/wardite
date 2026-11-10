@@ -2,9 +2,26 @@
 
 module Wardite
   # @rbs!
-  #   type operandItem = Integer | Float | Block | OperandVector
+  #   type operandItem = Integer | Float | Block | OperandVector | FloatImmediate
 
   # Give br_table and try_table vectors a concrete type in the mixed operand list.
+  class FloatImmediate
+    attr_reader :bits #: Integer
+    attr_reader :type #: Symbol
+
+    # @rbs type: Symbol
+    # @rbs bits: Integer
+    def initialize(type, bits)
+      @type = type
+      @bits = bits
+    end
+
+    # @rbs return: Float
+    def value
+      FloatBits.to_float(@type, @bits)
+    end
+  end
+
   class OperandVector
     attr_reader :entries #: Array[Integer]
 

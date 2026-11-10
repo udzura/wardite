@@ -695,22 +695,9 @@ module Wardite
             operand << fetch_sleb128(buf)
           when :i64
             operand << fetch_sleb128(buf, width: 64)
-          when :f32
-            data = buf.read 4
-            if !data || data.size != 4
-              raise LoadError, "buffer too short"
-            end
-            v = data.unpack("e")[0]
-            raise "String#unpack is broken" if !v.is_a?(Float)
-            operand << v
-          when :f64
-            data = buf.read 8
-            if !data || data.size != 8
-              raise LoadError, "buffer too short"
-            end
-            v = data.unpack("E")[0]
-            raise "String#unpack is broken" if !v.is_a?(Float)
-            operand << v
+          when :f32, :f64
+            data = assert_read(buf, typ == :f32 ? 4 : 8)
+            operand << FloatImmediate.new(typ, FloatBits.read(typ, data))
           when :u8_block, :blocktype
             value = read_blocktype(buf)
             operand << value
@@ -928,16 +915,12 @@ module Wardite
         return I64(arg)
       when :f32_const
         arg = op[2][0]
-        if !arg.is_a?(Float)
-          raise "Invalid definition of operand"
-        end
-        return F32(arg)
+        raise "Invalid definition of operand" unless arg.is_a?(FloatImmediate)
+        return F32(arg.value)
       when :f64_const
         arg = op[2][0]
-        if !arg.is_a?(Float)
-          raise "Invalid definition of operand"
-        end
-        return F64(arg)
+        raise "Invalid definition of operand" unless arg.is_a?(FloatImmediate)
+        return F64(arg.value)
       else
         raise "Unimplemented offset op: #{op.inspect}"
       end

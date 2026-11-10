@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "efflorescence/i64_arithmetic"
+require_relative "efflorescence/float_arithmetic"
 require_relative "efflorescence/ir"
 require_relative "efflorescence/store_access"
 require_relative "efflorescence/translator"

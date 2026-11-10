@@ -4,6 +4,7 @@
 require_relative "wardite/version"
 require_relative "wardite/leb128"
 require_relative "wardite/const"
+require_relative "wardite/float_bits"
 require_relative "wardite/instruction"
 require_relative "wardite/value"
 require_relative "wardite/wasm_module"
