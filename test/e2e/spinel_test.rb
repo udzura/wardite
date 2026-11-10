@@ -25,9 +25,15 @@ class WarditeSpinelTest < Test::Unit::TestCase
       body = code[/^static [^\n]+sp_(?:Wardite__Efflorescence__)?VM_execute_flat\([^;\n]*\) \{.*?(?=^static |\z)/m]
       assert_not_nil body, "Missing generated execute_flat"
       assert_match(/switch \([^\n]*_t\d+/, body)
-      assert_equal (0...Wardite::Efflorescence::Opcode::NAMES.size).to_a,
+      assert_equal (0..Wardite::Efflorescence::Opcode::I64_GLOBAL_SET).to_a,
         body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
-        "execute_flat should dispatch every opcode through the literal switch"
+        "execute_flat should dispatch the integer and control opcodes through the literal switch"
+      assert_match(/sp_(?:Wardite__Efflorescence__)?VM_execute_float\(/, body,
+        "float opcodes must use the cold dispatch helper")
+      float_body = code[/^static [^\n]+sp_(?:Wardite__Efflorescence__)?VM_execute_float\([^;\n]*\) \{.*?(?=^static |\z)/m]
+      assert_not_nil float_body, "Missing generated execute_float"
+      assert_match(/sp_IntArray \* lv_registers/, float_body,
+        "float dispatch must retain integer bit carriers")
       assert_match(/Frame \* lv_frame(?:__in)?, sp_PtrArray \* lv_pools/, body,
         "execute_flat must retain the concrete current frame and pool element types")
       assert_match(/sp_PtrArray \* lv_frames =/, body,

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Usage: bundle exec ruby -Ilib benchmark/measure_m4.rb /path/to/baseline [M3|M4|M5]
+# Usage: bundle exec ruby -Ilib benchmark/measure_m4.rb /path/to/baseline [M3|M4|M5] [current-label]
 require "wardite"
 require "open3"
 require "rbconfig"
@@ -10,7 +10,7 @@ require "tmpdir"
 root = File.expand_path("..", __dir__)
 baseline = File.expand_path(ARGV.fetch(0))
 previous = ARGV.fetch(1, "M3")
-current = { "M3" => "M4", "M4" => "M5", "M5" => "M6" }.fetch(previous)
+current = ARGV.fetch(2) { { "M3" => "M4", "M4" => "M5", "M5" => "M6" }.fetch(previous) }
 worker = File.join(__dir__, "m3_call_worker.rb")
 rounds = Integer(ENV.fetch("ROUNDS", "100000"))
 i64_rounds = Integer(ENV.fetch("I64_ROUNDS", "20000"))

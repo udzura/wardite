@@ -36,6 +36,8 @@ class EfflorescenceParityTest < Test::Unit::TestCase
     compare = EfflorescenceParity.method(:result_matches?)
     assert_true compare.call("f32:qnan", "f32:2143289345")
     assert_false compare.call("f32:qnan", "f32:2139095041")
+    assert_true compare.call("f32:cnan", "f32:4290772992")
+    assert_false compare.call("f32:cnan", "f32:2143289345")
     assert_false compare.call("f32:2147483648", "f32:0")
     assert_false compare.call("f32:2143289345", "f32:2143289346")
   end

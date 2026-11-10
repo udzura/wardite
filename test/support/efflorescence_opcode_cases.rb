@@ -152,7 +152,7 @@ module EfflorescenceOpcodeCases
       encoded = case expected
                 when Integer then expected
                 when "invalid", "overflow" then "trap:#{expected}"
-                when "nan" then "#{type}:qnan"
+                when "nan" then "#{type}:#{operands.include?('nan:') ? 'qnan' : 'cnan'}"
                 else literal_bits(type, expected)
                 end
       example(op, label, "#{operands} #{op}", encoded, type: type)

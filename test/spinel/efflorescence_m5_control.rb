@@ -28,6 +28,13 @@ class M5ControlProbe
     raise "typed constant deduplication" unless function.constant_registers.size == 6
     raise "void result" unless vm.call_unboxed("void", [0.0]).nil?
 
+    raw64 = -4503599627370205
+    identity = vm.call("identity", [Wardite::F64.from_bits(raw64)])
+    raise "boxed f64 payload" unless identity.is_a?(Wardite::F64) && identity.raw_bits == raw64
+    raise "recursive f64 payload" unless vm.call_unboxed("raw64", [1]) == raw64
+    raise "f64 select payload" unless vm.call_unboxed("raw64", [0]) == 0x7ff0000000000124
+    raise "mixed parallel copy payload" unless vm.call_unboxed("parallel", []) == (raw64 ^ 0xff800456)
+
     invalid = [1, Wardite::F64(1.0)] #: Array[Object]
     invalid.each do |argument|
       begin

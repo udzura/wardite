@@ -29,6 +29,9 @@ module EfflorescenceM5Cases
       cases += %w[ceil floor trunc nearest].flat_map do |op|
         %w[-0 inf -inf nan].map { |value| [op, [value], value] }
       end
+      above_half = type == "f32" ? "0x1.000002p-1" : "0x1.0000000000001p-1"
+      below_half = type == "f32" ? "0x1.fffffep-2" : "0x1.fffffffffffffp-2"
+      cases += [["nearest", [above_half], "1"], ["nearest", [below_half], "0"]]
       cases += {
         "0.49999999999999994" => "0", "0.5" => "0", "-0.5" => "-0",
         "1.5" => "2", "-1.5" => "-2", "2.5" => "2", "-2.5" => "-2"

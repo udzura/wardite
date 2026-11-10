@@ -64,12 +64,18 @@ module EfflorescenceParity
   end
 
   def self.result_matches?(expected, actual)
-    return expected == actual unless expected.end_with?(":qnan")
+    expected_type, nan = expected.split(":", 2)
+    return expected == actual unless %w[cnan qnan].include?(nan)
     type, value = actual.split(":", 2)
-    return false unless expected.start_with?("#{type}:") && value
+    return false unless type == expected_type && value
 
-    mask = type == "f32" ? 0x7fc00000 : 0x7ff8000000000000
-    (Integer(value) & mask) == mask
+    canonical = type == "f32" ? 0x7fc00000 : 0x7ff8000000000000
+    mask = if nan == "cnan"
+             type == "f32" ? 0x7fffffff : 0x7fffffffffffffff
+           else
+             canonical
+           end
+    (Integer(value) & mask) == canonical
   end
 
   def self.check_rows(engine, fixtures, rows, check_dispatch: true)

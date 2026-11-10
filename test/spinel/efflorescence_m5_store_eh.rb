@@ -5,8 +5,10 @@ require "wardite"
 
 class M5StoreProbe
   # @rbs vm: Wardite::Efflorescence::VM
+  # @rbs reuse_frames: bool
+  # @rbs profile: bool
   # @rbs return: void
-  def self.verify(vm)
+  def self.verify(vm, reuse_frames, profile)
     nan32 = 0xff800123
     nan64 = -4503599627369386
     min = -9223372036854775807 - 1
@@ -21,6 +23,11 @@ class M5StoreProbe
     raise "global wrapper" unless value.is_a?(Wardite::F32)
     value.value = -0.0
     raise "stale raw global value" unless vm.call_unboxed("global32", []) == 0x80000000
+
+    large = vm.instance.store.globals.fetch(1).value
+    raise "f64 global wrapper" unless large.is_a?(Wardite::F64)
+    large.value = 1.25
+    raise "stale raw f64 global value" unless vm.call_unboxed("global64", []) == 0x3ff4000000000000
 
     raise "float store result" unless vm.call_unboxed("write32", [65531, nan32]).nil?
     raise "float load32 payload" unless vm.call_unboxed("read32", [65531]) == nan32
@@ -41,6 +48,9 @@ class M5StoreProbe
     end
 
     raise "caught/rethrown payload" unless vm.call_unboxed("eh", []) == 1
+    raise "repeated mixed catch" unless vm.call_unboxed("repeat_eh", []) == 1
+    expected_frames = reuse_frames ? 3 : 5
+    raise "mixed EH frame release" if profile && vm.metrics.frames_created != expected_frames
     begin
       vm.call_unboxed("raise", [])
       raise "expected uncaught exception"
@@ -70,7 +80,7 @@ end
         disabled_optimizations: disabled, mir_profile: profile).runtime
     end
     raise "wrong runtime" unless vm.is_a?(Wardite::Efflorescence::VM)
-    M5StoreProbe.verify(vm)
+    M5StoreProbe.verify(vm, disabled.empty?, profile)
   end
 end
 puts "M5 float Store and EH passed"

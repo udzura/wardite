@@ -24,7 +24,7 @@
   (func $raise (export "raise")
     i32.const -1 f32.const -nan:0x123 i64.const -7 f64.const -0
     throw $mixed)
-  (func (export "eh") (result i32) (local $check i32)
+  (func $eh (export "eh") (result i32) (local $check i32)
     block $done (result i32 f32 i64 f64)
       try_table (catch $mixed $done)
         block $caught (result i32 f32 i64 f64 exnref)
@@ -47,4 +47,5 @@
       try_table (catch_all $caught)
         f64.const nan i32.trunc_f64_s drop
       end
-    end))
+    end)
+  (func (export "repeat_eh") (result i32) call $eh drop call $eh))

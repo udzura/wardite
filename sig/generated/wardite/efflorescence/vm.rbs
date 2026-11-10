@@ -158,6 +158,16 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::Frame
       def execute_indirect: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] frames, Integer destination, Integer site_id, Integer selector, Wardite::Efflorescence::Metrics metrics) -> Wardite::Efflorescence::Frame
 
+      # Float instructions use the same flat words and integer registers.
+      # Their dispatch stays outside the main integer switch.
+      # @rbs opcode: Integer
+      # @rbs instructions: Array[Integer]
+      # @rbs pc: Integer
+      # @rbs a: Integer
+      # @rbs registers: Array[Integer]
+      # @rbs return: void
+      def execute_float: (Integer opcode, Array[Integer] instructions, Integer pc, Integer a, Array[Integer] registers) -> void
+
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
       # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
