@@ -1,8 +1,25 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require_relative "../support/efflorescence_helper"
+require_relative "../support/efflorescence_m5_cases"
 
 class WarditeSpinelM5Test < Test::Unit::TestCase
+  include EfflorescenceHelper
+  include EfflorescenceM5Cases
+
+  test "all float ALU operations match the bit vectors" do
+    omit "Run make spinel-test to test the native executable" unless ENV["WARDITE_SPINEL_BIN"]
+    Dir.mktmpdir("wardite-m5-alu") do |dir|
+      wat, vectors = float_vectors(float_alu_cases)
+      wasm = File.join(dir, "alu.wasm")
+      expected = File.join(dir, "vectors.txt")
+      File.binwrite(wasm, compile_efflorescence_wat(wat))
+      File.write(expected, vectors)
+      run_worker("efflorescence_m5_vectors", "M5 vectors passed", wasm, expected)
+    end
+  end
+
   test "native float bit and rounding probes" do
     run_worker("efflorescence_m5_bits", "M5 float bit and rounding probes passed")
   end

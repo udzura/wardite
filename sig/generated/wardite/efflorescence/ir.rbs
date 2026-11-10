@@ -243,10 +243,96 @@ module Wardite
 
       I64_GLOBAL_SET: ::Integer
 
+      F32_EQ: ::Integer
+
+      F32_NE: ::Integer
+
+      F32_LT: ::Integer
+
+      F32_GT: ::Integer
+
+      F32_LE: ::Integer
+
+      F32_GE: ::Integer
+
+      F32_ABS: ::Integer
+
+      F32_NEG: ::Integer
+
+      F32_CEIL: ::Integer
+
+      F32_FLOOR: ::Integer
+
+      F32_TRUNC: ::Integer
+
+      F32_NEAREST: ::Integer
+
+      F32_SQRT: ::Integer
+
+      F32_ADD: ::Integer
+
+      F32_SUB: ::Integer
+
+      F32_MUL: ::Integer
+
+      F32_DIV: ::Integer
+
+      F32_MIN: ::Integer
+
+      F32_MAX: ::Integer
+
+      F32_COPYSIGN: ::Integer
+
+      F64_EQ: ::Integer
+
+      F64_NE: ::Integer
+
+      F64_LT: ::Integer
+
+      F64_GT: ::Integer
+
+      F64_LE: ::Integer
+
+      F64_GE: ::Integer
+
+      F64_ABS: ::Integer
+
+      F64_NEG: ::Integer
+
+      F64_CEIL: ::Integer
+
+      F64_FLOOR: ::Integer
+
+      F64_TRUNC: ::Integer
+
+      F64_NEAREST: ::Integer
+
+      F64_SQRT: ::Integer
+
+      F64_ADD: ::Integer
+
+      F64_SUB: ::Integer
+
+      F64_MUL: ::Integer
+
+      F64_DIV: ::Integer
+
+      F64_MIN: ::Integer
+
+      F64_MAX: ::Integer
+
+      F64_COPYSIGN: ::Integer
+
       NAMES: untyped
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES: Hash[Integer, Array[Symbol]]
+
+      FLOAT_ALU_TYPES: Hash[Integer, Array[Symbol]]
+
+      # @rbs opcode: Integer
+      # @rbs return: Array[Symbol]?
+      def self.extended_alu_types: (Integer opcode) -> Array[Symbol]?
 
       I64_LOADS: untyped
 

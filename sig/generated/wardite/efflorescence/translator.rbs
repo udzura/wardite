@@ -51,6 +51,8 @@ module Wardite
       I64_ALU: untyped
 
       # Natural alignment exponents; alignment is a hint, not an address rule.
+      FLOAT_ALU: Hash[Symbol, Integer]
+
       MEMORY_WIDTHS: untyped
 
       MEMORY_OPCODES: untyped

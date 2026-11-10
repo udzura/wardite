@@ -628,7 +628,7 @@ module Wardite
       dest = CodeSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
       len.times { dest.func_codes << read_function_body(sbuf) }
@@ -971,7 +971,7 @@ module Wardite
       if !ret
         raise LoadError, "too short section size"
       end
-      if ret.size != n
+      if ret.bytesize != n
         raise LoadError, "too short section size"
       end
       ret

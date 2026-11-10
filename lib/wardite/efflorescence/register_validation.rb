@@ -167,7 +167,7 @@ module Wardite
           reads = function.reads(instruction)
           destination = Opcode.destination(instruction)
           if opcode > Opcode::CALL_INDIRECT
-            validate_i64_instruction(function, instruction, reads, destination)
+            validate_extended_instruction(function, instruction, reads, destination)
             next
           end
           case opcode
@@ -217,9 +217,9 @@ module Wardite
       # @rbs reads: Array[Integer]
       # @rbs destination: Integer
       # @rbs return: void
-      def validate_i64_instruction(function, instruction, reads, destination)
+      def validate_extended_instruction(function, instruction, reads, destination)
         opcode = instruction[0]
-        types = Opcode::I64_ALU_TYPES[opcode]
+        types = Opcode.extended_alu_types(opcode)
         if types
           check_register(function, destination, types.fetch(0))
           reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }

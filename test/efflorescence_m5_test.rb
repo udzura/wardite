@@ -2,9 +2,24 @@
 
 require "test_helper"
 require_relative "support/efflorescence_helper"
+require_relative "support/efflorescence_m5_cases"
 
 class EfflorescenceM5Test < Test::Unit::TestCase
   include EfflorescenceHelper
+  include EfflorescenceM5Cases
+
+  test "all float ALU operations match the bit vectors" do
+    Dir.mktmpdir("wardite-m5-alu") do |dir|
+      wat, vectors = float_vectors(float_alu_cases)
+      wasm = File.join(dir, "alu.wasm")
+      expected = File.join(dir, "vectors.txt")
+      File.binwrite(wasm, compile_efflorescence_wat(wat))
+      File.write(expected, vectors)
+      output, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "test/spinel/efflorescence_m5_vectors.rb", wasm, expected)
+      assert status.success?, output
+      assert_equal "M5 vectors passed\n", output
+    end
+  end
 
   test "float bit and rounding probes on CRuby" do
     output, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "test/spinel/efflorescence_m5_bits.rb")

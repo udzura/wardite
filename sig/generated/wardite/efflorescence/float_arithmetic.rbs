@@ -3,6 +3,27 @@
 module Wardite
   module Efflorescence
     module FloatArithmetic
+      F32_SIGN: ::Integer
+
+      F32_INFINITY: ::Integer
+
+      F64_INFINITY: ::Integer
+
+      F32_NAN: ::Integer
+
+      F64_NAN: ::Integer
+
+      # @rbs opcode: Integer
+      # @rbs left: Integer
+      # @rbs right: Integer
+      # @rbs return: Integer
+      def self.calculate: (Integer opcode, Integer left, Integer right) -> Integer
+
+      # @rbs op: Integer
+      # @rbs value: Float
+      # @rbs return: Integer
+      def self.integral: (Integer op, Float value) -> Integer
+
       # A normalized quotient of binary32 inputs is A/B scaled by a power of
       # two. B < 2**24. Its distance from a binary32 midpoint, unless equal,
       # exceeds 2**-48 in the quotient's binade scaled to [1, 2).

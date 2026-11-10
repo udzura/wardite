@@ -939,6 +939,126 @@ module Wardite
           when 116 # Opcode::I64_GLOBAL_SET
             b = instructions.fetch(pc + 2)
             @store_access.global_set_i64(a, registers[b])
+          when 117 # Opcode::F32_EQ
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 118 # Opcode::F32_NE
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 119 # Opcode::F32_LT
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 120 # Opcode::F32_GT
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 121 # Opcode::F32_LE
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 122 # Opcode::F32_GE
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 123 # Opcode::F32_ABS
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 124 # Opcode::F32_NEG
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 125 # Opcode::F32_CEIL
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 126 # Opcode::F32_FLOOR
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 127 # Opcode::F32_TRUNC
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 128 # Opcode::F32_NEAREST
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 129 # Opcode::F32_SQRT
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 130 # Opcode::F32_ADD
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 131 # Opcode::F32_SUB
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 132 # Opcode::F32_MUL
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 133 # Opcode::F32_DIV
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 134 # Opcode::F32_MIN
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 135 # Opcode::F32_MAX
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 136 # Opcode::F32_COPYSIGN
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 137 # Opcode::F64_EQ
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 138 # Opcode::F64_NE
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 139 # Opcode::F64_LT
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 140 # Opcode::F64_GT
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 141 # Opcode::F64_LE
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 142 # Opcode::F64_GE
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 143 # Opcode::F64_ABS
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 144 # Opcode::F64_NEG
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 145 # Opcode::F64_CEIL
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 146 # Opcode::F64_FLOOR
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 147 # Opcode::F64_TRUNC
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 148 # Opcode::F64_NEAREST
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 149 # Opcode::F64_SQRT
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], 0)
+          when 150 # Opcode::F64_ADD
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 151 # Opcode::F64_SUB
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 152 # Opcode::F64_MUL
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 153 # Opcode::F64_DIV
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 154 # Opcode::F64_MIN
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 155 # Opcode::F64_MAX
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
+          when 156 # Opcode::F64_COPYSIGN
+            b = instructions.fetch(pc + 2)
+            registers[a] = FloatArithmetic.calculate(opcode, registers[b], registers[instructions.fetch(pc + 3)])
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

@@ -94,6 +94,49 @@ module Wardite
       }.freeze
 
       # Natural alignment exponents; alignment is a hint, not an address rule.
+      FLOAT_ALU = {
+        f32_eq: Opcode::F32_EQ,
+        f32_ne: Opcode::F32_NE,
+        f32_lt: Opcode::F32_LT,
+        f32_gt: Opcode::F32_GT,
+        f32_le: Opcode::F32_LE,
+        f32_ge: Opcode::F32_GE,
+        f32_abs: Opcode::F32_ABS,
+        f32_neg: Opcode::F32_NEG,
+        f32_ceil: Opcode::F32_CEIL,
+        f32_floor: Opcode::F32_FLOOR,
+        f32_trunc: Opcode::F32_TRUNC,
+        f32_nearest: Opcode::F32_NEAREST,
+        f32_sqrt: Opcode::F32_SQRT,
+        f32_add: Opcode::F32_ADD,
+        f32_sub: Opcode::F32_SUB,
+        f32_mul: Opcode::F32_MUL,
+        f32_div: Opcode::F32_DIV,
+        f32_min: Opcode::F32_MIN,
+        f32_max: Opcode::F32_MAX,
+        f32_copysign: Opcode::F32_COPYSIGN,
+        f64_eq: Opcode::F64_EQ,
+        f64_ne: Opcode::F64_NE,
+        f64_lt: Opcode::F64_LT,
+        f64_gt: Opcode::F64_GT,
+        f64_le: Opcode::F64_LE,
+        f64_ge: Opcode::F64_GE,
+        f64_abs: Opcode::F64_ABS,
+        f64_neg: Opcode::F64_NEG,
+        f64_ceil: Opcode::F64_CEIL,
+        f64_floor: Opcode::F64_FLOOR,
+        f64_trunc: Opcode::F64_TRUNC,
+        f64_nearest: Opcode::F64_NEAREST,
+        f64_sqrt: Opcode::F64_SQRT,
+        f64_add: Opcode::F64_ADD,
+        f64_sub: Opcode::F64_SUB,
+        f64_mul: Opcode::F64_MUL,
+        f64_div: Opcode::F64_DIV,
+        f64_min: Opcode::F64_MIN,
+        f64_max: Opcode::F64_MAX,
+        f64_copysign: Opcode::F64_COPYSIGN,
+      }.freeze #: Hash[Symbol, Integer]
+
       MEMORY_WIDTHS = { i32_load: 2, i32_load8_s: 0, i32_load8_u: 0,
                         i32_load16_s: 1, i32_load16_u: 1,
                         i32_store: 2, i32_store8: 0, i32_store16: 1,
@@ -440,10 +483,14 @@ module Wardite
             pop_value
           when :nop
           else
-            opcode = I64_ALU[code]
+            opcode = I64_ALU[code] || FLOAT_ALU[code]
             raise UnsupportedFeature, context("unsupported instruction #{code}") unless opcode
-            types = Opcode::I64_ALU_TYPES.fetch(opcode)
-            @function.uses_i64 = true
+            types = Opcode.extended_alu_types(opcode) || raise(TranslationError, context("missing ALU signature"))
+            if opcode >= Opcode::F32_EQ
+              @function.uses_float = true
+            else
+              @function.uses_i64 = true
+            end
             sources = types.drop(1).reverse.map { |type| pop_typed(type) }.reverse
             dst = register(types.fetch(0))
             emit([opcode, dst] + sources) if @reachable

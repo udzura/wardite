@@ -130,6 +130,47 @@ module Wardite
       I64_GLOBAL_GET = 115
       I64_GLOBAL_SET = 116
 
+      F32_EQ = 117
+      F32_NE = 118
+      F32_LT = 119
+      F32_GT = 120
+      F32_LE = 121
+      F32_GE = 122
+      F32_ABS = 123
+      F32_NEG = 124
+      F32_CEIL = 125
+      F32_FLOOR = 126
+      F32_TRUNC = 127
+      F32_NEAREST = 128
+      F32_SQRT = 129
+      F32_ADD = 130
+      F32_SUB = 131
+      F32_MUL = 132
+      F32_DIV = 133
+      F32_MIN = 134
+      F32_MAX = 135
+      F32_COPYSIGN = 136
+      F64_EQ = 137
+      F64_NE = 138
+      F64_LT = 139
+      F64_GT = 140
+      F64_LE = 141
+      F64_GE = 142
+      F64_ABS = 143
+      F64_NEG = 144
+      F64_CEIL = 145
+      F64_FLOOR = 146
+      F64_TRUNC = 147
+      F64_NEAREST = 148
+      F64_SQRT = 149
+      F64_ADD = 150
+      F64_SUB = 151
+      F64_MUL = 152
+      F64_DIV = 153
+      F64_MIN = 154
+      F64_MAX = 155
+      F64_COPYSIGN = 156
+
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
@@ -143,7 +184,12 @@ module Wardite
                  I64_AND I64_OR I64_XOR I64_SHL I64_SHR_S I64_SHR_U I64_ROTL I64_ROTR
                  I64_ADD I64_SUB I64_MUL I64_DIV_S I64_DIV_U I64_REM_S I64_REM_U
                  I64_LOAD I64_LOAD8_S I64_LOAD8_U I64_LOAD16_S I64_LOAD16_U I64_LOAD32_S I64_LOAD32_U
-                 I64_STORE I64_STORE8 I64_STORE16 I64_STORE32 I64_GLOBAL_GET I64_GLOBAL_SET].freeze
+                 I64_STORE I64_STORE8 I64_STORE16 I64_STORE32 I64_GLOBAL_GET I64_GLOBAL_SET
+                 F32_EQ F32_NE F32_LT F32_GT F32_LE F32_GE F32_ABS F32_NEG
+                 F32_CEIL F32_FLOOR F32_TRUNC F32_NEAREST F32_SQRT F32_ADD F32_SUB F32_MUL
+                 F32_DIV F32_MIN F32_MAX F32_COPYSIGN F64_EQ F64_NE F64_LT F64_GT
+                 F64_LE F64_GE F64_ABS F64_NEG F64_CEIL F64_FLOOR F64_TRUNC F64_NEAREST
+                 F64_SQRT F64_ADD F64_SUB F64_MUL F64_DIV F64_MIN F64_MAX F64_COPYSIGN].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -184,6 +230,55 @@ module Wardite
         I64_REM_U => [:i64, :i64, :i64],
       }.freeze #: Hash[Integer, Array[Symbol]]
 
+      FLOAT_ALU_TYPES = {
+        F32_EQ => [:i32, :f32, :f32],
+        F32_NE => [:i32, :f32, :f32],
+        F32_LT => [:i32, :f32, :f32],
+        F32_GT => [:i32, :f32, :f32],
+        F32_LE => [:i32, :f32, :f32],
+        F32_GE => [:i32, :f32, :f32],
+        F32_ABS => [:f32, :f32],
+        F32_NEG => [:f32, :f32],
+        F32_CEIL => [:f32, :f32],
+        F32_FLOOR => [:f32, :f32],
+        F32_TRUNC => [:f32, :f32],
+        F32_NEAREST => [:f32, :f32],
+        F32_SQRT => [:f32, :f32],
+        F32_ADD => [:f32, :f32, :f32],
+        F32_SUB => [:f32, :f32, :f32],
+        F32_MUL => [:f32, :f32, :f32],
+        F32_DIV => [:f32, :f32, :f32],
+        F32_MIN => [:f32, :f32, :f32],
+        F32_MAX => [:f32, :f32, :f32],
+        F32_COPYSIGN => [:f32, :f32, :f32],
+        F64_EQ => [:i32, :f64, :f64],
+        F64_NE => [:i32, :f64, :f64],
+        F64_LT => [:i32, :f64, :f64],
+        F64_GT => [:i32, :f64, :f64],
+        F64_LE => [:i32, :f64, :f64],
+        F64_GE => [:i32, :f64, :f64],
+        F64_ABS => [:f64, :f64],
+        F64_NEG => [:f64, :f64],
+        F64_CEIL => [:f64, :f64],
+        F64_FLOOR => [:f64, :f64],
+        F64_TRUNC => [:f64, :f64],
+        F64_NEAREST => [:f64, :f64],
+        F64_SQRT => [:f64, :f64],
+        F64_ADD => [:f64, :f64, :f64],
+        F64_SUB => [:f64, :f64, :f64],
+        F64_MUL => [:f64, :f64, :f64],
+        F64_DIV => [:f64, :f64, :f64],
+        F64_MIN => [:f64, :f64, :f64],
+        F64_MAX => [:f64, :f64, :f64],
+        F64_COPYSIGN => [:f64, :f64, :f64],
+      }.freeze #: Hash[Integer, Array[Symbol]]
+
+      # @rbs opcode: Integer
+      # @rbs return: Array[Symbol]?
+      def self.extended_alu_types(opcode)
+        opcode >= F32_EQ ? FLOAT_ALU_TYPES[opcode] : I64_ALU_TYPES[opcode]
+      end
+
       I64_LOADS = [I64_LOAD, I64_LOAD8_S, I64_LOAD8_U, I64_LOAD16_S, I64_LOAD16_U, I64_LOAD32_S, I64_LOAD32_U].freeze
       I64_STORES = [I64_STORE, I64_STORE8, I64_STORE16, I64_STORE32].freeze
 
@@ -216,7 +311,7 @@ module Wardite
         when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
           []
         else
-          types = I64_ALU_TYPES[opcode]
+          types = extended_alu_types(opcode)
           return types.size == 2 ? [2] : [2, 3] if types
           return [2] if I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_SET
           return [1, 2] if I64_STORES.include?(opcode)
@@ -235,7 +330,7 @@ module Wardite
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
             (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) || opcode == MEMORY_SIZE || opcode == MEMORY_GROW ||
-            (opcode > CALL_INDIRECT && (I64_ALU_TYPES.key?(opcode) || I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_GET))
+            (opcode > CALL_INDIRECT && (extended_alu_types(opcode) || I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_GET))
           instruction[1]
         else
           -1
