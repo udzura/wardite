@@ -204,28 +204,36 @@ module Wardite
 
         # @rbs reader: Reader
         # @rbs instance: Wardite::Instance
-        # @rbs linked: IR
-        def initialize(reader, instance, linked)
+        # @rbs entries: Array[FunctionEntry]
+        def initialize(reader, instance, entries)
           @reader = reader
           @instance = instance
-          @linked = linked
-          @defined_count = linked.entries.size - linked.hosts.size
-          @data_count = instance.store.data_segments.size
-          @has_memory = !instance.store.memories.empty?
-          @table = instance.store.tables[0] #: Wardite::Table?
-          @signatures = instance.types.to_h { |type| [[type.callsig, type.retsig], true] } #: Hash[[Array[Symbol], Array[Symbol]], bool]
+          @entries = entries
+          @import_count = instance.import_section.imports.size
+          @defined_count = entries.size - @import_count
+          @data_count = instance.data_section&.segments&.size || 0
+          @global_count = instance.global_section&.globals&.size || 0
+          @has_memory = (instance.memory_section&.limits&.size || 0) > 0
+          @table_type = instance.table_section&.table_types&.[](0) #: Symbol?
+          @signatures = {} #: Hash[[Array[Symbol], Array[Symbol]], bool]
+          types = instance.type_section
+          if types
+            types.defined_types.each_with_index do |params, index|
+              @signatures[[params, types.defined_results.fetch(index)]] = true
+            end
+          end
         end
 
-        # @rbs return: IR
+        # @rbs return: Array[Function]
         def decode
           raise Invalid unless @reader.count(4) == @defined_count
 
           functions = [] #: Array[Function]
           call_records = [] #: Array[Array[[Integer, Array[Integer]]]]
-          @instance.store.funcs.each_with_index do |wasm, index|
-            next unless wasm.is_a?(Wardite::WasmFunction)
-
-            function = read_function(wasm, index, functions.size)
+          bodies = @instance.code_section&.func_codes || []
+          bodies.each_with_index do |body, pool_index|
+            index = @import_count + pool_index
+            function = read_function(body, @entries.fetch(index), index)
             functions << function
             call_records << read_sites(function)
           end
@@ -240,31 +248,32 @@ module Wardite
             end
             check_code(function)
           end
-          IR.new(functions, entries: @linked.entries, hosts: @linked.hosts)
+          functions
         end
 
         private
 
-        # @rbs wasm: Wardite::WasmFunction
+        # @rbs body: Wardite::CodeSection::CodeBody
+        # @rbs entry: FunctionEntry
         # @rbs index: Integer
-        # @rbs pool_index: Integer
         # @rbs return: Function
-        def read_function(wasm, index, pool_index)
+        def read_function(body, entry, index)
           flags = @reader.integer
           raise Invalid unless flags.between?(0, FUNCTION_FLAGS)
 
           types = @reader.types
-          first_local = wasm.callsig.size
-          first_temporary = first_local + wasm.locals_count.sum
-          raise Invalid unless first_temporary <= types.size && types.take(first_local) == wasm.callsig
+          params = entry.parameter_types
+          first_local = params.size
+          first_temporary = first_local + body.locals_count.sum
+          raise Invalid unless first_temporary <= types.size && types.take(first_local) == params
 
           local_index = first_local
-          wasm.locals_type.zip(wasm.locals_count).each do |type, count|
+          body.locals_type.zip(body.locals_count).each do |type, count|
             raise Invalid unless count && types.slice(local_index, count)&.all? { |actual| actual == type }
             local_index += count
           end
           locals = types.slice(first_local, first_temporary - first_local) || raise(Invalid)
-          function = Function.new(index, wasm.callsig, wasm.retsig, locals.size, local_types: locals, pool_index: pool_index)
+          function = Function.new(index, params, entry.result_types, locals.size, local_types: locals, pool_index: entry.defined_index)
           function.uses_i64 = (flags & USES_I64) != 0
           function.uses_float = (flags & USES_FLOAT) != 0
           function.uses_eh = (flags & USES_EH) != 0
@@ -334,12 +343,13 @@ module Wardite
           results = @reader.types
           arguments = @reader.vector("l<", 4)
           if host_index == -1
-            raise Invalid unless table_index == 0 && @table&.type == :funcref &&
+            raise Invalid unless table_index == 0 && @table_type == :funcref &&
               @signatures.key?([params, results]) && results.size <= 1 &&
               (params + results).all? { |type| FunctionEntry.numeric_type?(type) }
           else
-            host = at(@linked.hosts, host_index)
-            raise Invalid unless table_index == -1 && params == host.entry.parameter_types && results == host.entry.result_types
+            raise Invalid unless table_index == -1 && host_index.between?(0, @import_count - 1)
+            host = @entries.fetch(host_index)
+            raise Invalid unless params == host.parameter_types && results == host.result_types
           end
           check_arguments(function, arguments, params)
           DynamicCallSite.new(host_index, arguments, params, results, table_index: table_index)
@@ -407,8 +417,8 @@ module Wardite
             when :bulk
               site = at(function.memory_sites, a)
               raise Invalid unless opcode == MEMORY_INIT ? site.data_index >= 0 : site.data_index == -1
-            when :global_get then at(@instance.store.globals, b)
-            when :global_set then at(@instance.store.globals, a)
+            when :global_get then raise Invalid unless b.between?(0, @global_count - 1)
+            when :global_set then raise Invalid unless a.between?(0, @global_count - 1)
             when :address then raise Invalid unless @has_memory && c.between?(0, 0xffffffff)
             when :memory then raise Invalid unless @has_memory
             when :immediate then raise Invalid unless c.between?(0, 0xffffffff)
@@ -471,10 +481,11 @@ module Wardite
         @path = File.join(@directory, "#{key.unpack1("H*")}.mir2")
       end
 
+      # Restore against module declarations so a miss can decode and check the
+      # Wasm bodies before Store initialization or any host lookup.
       # @rbs instance: Wardite::Instance
-      # @rbs linked: IR
-      # @rbs return: IR?
-      def read(instance, linked)
+      # @rbs return: Array[Function]?
+      def read(instance)
         contents = File.open(@path, File::RDONLY | File::NONBLOCK) do |file|
           stat = file.stat
           raise Invalid unless stat.file? && stat.size <= MAX_BYTES
@@ -490,10 +501,11 @@ module Wardite
         raise Invalid unless contents.byteslice(@header.bytesize, DIGEST_SIZE) == Digest::SHA256.digest(payload)
 
         reader = Reader.new(payload)
-        raise Invalid unless reader.bytes(reader.count(1)) == encode_layout(instance, linked.entries)
-        ir = Decoder.new(reader, instance, linked).decode
+        entries = module_entries(instance)
+        raise Invalid unless reader.bytes(reader.count(1)) == encode_layout(instance, entries)
+        functions = Decoder.new(reader, instance, entries).decode
         $stderr.puts "MIR2 cache hit: #{@path}" if ENV["WARITE_TRACE"]
-        ir
+        functions
       rescue SystemCallError, IOError, Invalid
         $stderr.puts "MIR2 cache miss: #{@path}" if ENV["WARITE_TRACE"]
         nil
@@ -520,6 +532,27 @@ module Wardite
       end
 
       private
+
+      # @rbs instance: Wardite::Instance
+      # @rbs return: Array[FunctionEntry]
+      def module_entries(instance)
+        imports = instance.import_section.imports
+        types = instance.type_section
+        entries = [] #: Array[FunctionEntry]
+        imports.each_with_index do |import, index|
+          params = types&.defined_types&.[](import.sig_index)
+          results = types&.defined_results&.[](import.sig_index)
+          raise Invalid unless params && results
+          entries << FunctionEntry.new(:host, params, results, -1, index)
+        end
+        instance.each_defined_function do |params, results, _body|
+          entries << FunctionEntry.new(:defined, params, results, entries.size - imports.size, -1)
+        end
+        entries
+      rescue Wardite::LoadError
+        # Keep the usual Wasm validation path and its errors on a miss.
+        raise Invalid
+      end
 
       # Exclusive creation protects a concurrent writer's temporary file.
       # Close the file before publishing it under the cache key.

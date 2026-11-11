@@ -19,7 +19,9 @@ module Wardite
       # @rbs disabled_optimizations: Array[Symbol]
       # @rbs profile: bool
       # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
-      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?) -> untyped
+      # @rbs cached_functions: Array[Function]?
+      # @rbs cache_checked: bool
+      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?, ?cached_functions: Array[Function]?, ?cache_checked: bool) -> untyped
 
       # A caller explicitly inspecting a cache hit can still request the
       # intermediate forms. Execution continues to use the restored MIR2.

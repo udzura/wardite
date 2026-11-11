@@ -142,14 +142,72 @@ module Wardite
 
       attr_accessor :locals_type #: Array[Symbol]
 
-      attr_accessor :body #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      attr_writer :instruction_bytes #: String?
+
+      attr_writer :type_section #: TypeSection?
 
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
       def initialize(&blk)
         @locals_count = []
         @locals_type = []
+        @body = [] #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+        @instruction_bytes = nil
+        @type_section = nil
         blk.call(self)
+      end
+
+      # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      def body
+        check_features(@type_section, false) if @instruction_bytes
+        @body
+      end
+
+      # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      # @rbs return: void
+      def body=(instructions)
+        @body = instructions
+        @instruction_bytes = nil
+      end
+
+      # @rbs types: TypeSection?
+      # @rbs stack: bool
+      # @rbs return: void
+      def check_features(types, stack)
+        if stack && locals_type.include?(:exnref)
+          raise LoadError, "stack engine does not support exnref"
+        end
+        bytes = @instruction_bytes
+        instructions = bytes ? BinaryLoader.code_body(StringIO.new(bytes)) : @body
+        check_instructions(instructions, types, stack)
+        self.body = instructions if bytes
+      end
+
+      private
+
+      # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      # @rbs types: TypeSection?
+      # @rbs stack: bool
+      # @rbs return: void
+      def check_instructions(instructions, types, stack)
+        instructions.each do |instruction|
+          if stack && [:try_table, :throw, :throw_ref].include?(instruction[1])
+            raise LoadError, "stack engine does not support EH"
+          end
+          instruction[2].each do |operand|
+            next unless operand.is_a?(Block)
+            index = operand.type_index
+            if index >= 0
+              params = types&.defined_types&.[](index)
+              results = types&.defined_results&.[](index)
+              raise LoadError, "invalid block type index #{index}" unless params && results
+              operand.resolve(params, results)
+            end
+            if stack && (index >= 0 || operand.result_types.include?(:exnref))
+              raise LoadError, "stack engine does not support indexed/reference block signatures"
+            end
+          end
+        end
       end
     end
 
@@ -291,7 +349,7 @@ module Wardite
       end
 
       version = preamble
-      sections_ = sections
+      sections_ = sections(!cache.nil?)
       @buf = buf if cache
 
       wasi_env = nil
@@ -341,8 +399,9 @@ module Wardite
       version
     end
 
+    # @rbs defer_code: bool
     # @rbs return: Array[Section]
-    def self.sections
+    def self.sections(defer_code = false)
       sections = [] #: Array[Section]
 
       loop do
@@ -374,7 +433,7 @@ module Wardite
           when Wardite::SectionElement
             elem_section
           when Wardite::SectionCode
-            code_section
+            code_section(defer_code)
           when Wardite::SectionData
             data_section
           when Wardite::Const::SectionDataCount
@@ -645,21 +704,23 @@ module Wardite
       dest
     end
 
+    # @rbs defer_code: bool
     # @rbs return: CodeSection
-    def self.code_section
+    def self.code_section(defer_code = false)
       dest = CodeSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
       sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
-      len.times { dest.func_codes << read_function_body(sbuf) }
+      len.times { dest.func_codes << read_function_body(sbuf, defer_code) }
       dest
     end
 
     # @rbs sbuf: StringIO
+    # @rbs defer_code: bool
     # @rbs return: CodeSection::CodeBody
-    def self.read_function_body(sbuf)
+    def self.read_function_body(sbuf, defer_code = false)
       ilen = fetch_uleb128(sbuf)
       code = assert_read(sbuf, ilen)
       last_code = code[-1]
@@ -677,7 +738,11 @@ module Wardite
           body.locals_type << Op.i2type(assert_read(cbuf, 1).ord)
           locals_len -= 1
         end
-        body.body = code_body(cbuf)
+        if defer_code
+          body.instruction_bytes = (cbuf.read || "".b).freeze
+        else
+          body.body = code_body(cbuf)
+        end
       end
     end
 

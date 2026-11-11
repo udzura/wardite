@@ -105,19 +105,19 @@ module Wardite
 
         # @rbs reader: Reader
         # @rbs instance: Wardite::Instance
-        # @rbs linked: IR
-        def initialize: (Reader reader, Wardite::Instance instance, IR linked) -> untyped
+        # @rbs entries: Array[FunctionEntry]
+        def initialize: (Reader reader, Wardite::Instance instance, Array[FunctionEntry] entries) -> untyped
 
-        # @rbs return: IR
-        def decode: () -> IR
+        # @rbs return: Array[Function]
+        def decode: () -> Array[Function]
 
         private
 
-        # @rbs wasm: Wardite::WasmFunction
+        # @rbs body: Wardite::CodeSection::CodeBody
+        # @rbs entry: FunctionEntry
         # @rbs index: Integer
-        # @rbs pool_index: Integer
         # @rbs return: Function
-        def read_function: (Wardite::WasmFunction wasm, Integer index, Integer pool_index) -> Function
+        def read_function: (Wardite::CodeSection::CodeBody body, FunctionEntry entry, Integer index) -> Function
 
         # @rbs function: Function
         # @rbs return: Array[[Integer, Array[Integer]]]
@@ -170,10 +170,11 @@ module Wardite
       # @rbs configuration: Configuration
       def initialize: (String directory, String wasm, Configuration configuration) -> untyped
 
+      # Restore against module declarations so a miss can decode and check the
+      # Wasm bodies before Store initialization or any host lookup.
       # @rbs instance: Wardite::Instance
-      # @rbs linked: IR
-      # @rbs return: IR?
-      def read: (Wardite::Instance instance, IR linked) -> IR?
+      # @rbs return: Array[Function]?
+      def read: (Wardite::Instance instance) -> Array[Function]?
 
       # @rbs instance: Wardite::Instance
       # @rbs ir: IR
@@ -181,6 +182,10 @@ module Wardite
       def write: (Wardite::Instance instance, IR ir) -> void
 
       private
+
+      # @rbs instance: Wardite::Instance
+      # @rbs return: Array[FunctionEntry]
+      def module_entries: (Wardite::Instance instance) -> Array[FunctionEntry]
 
       # Exclusive creation protects a concurrent writer's temporary file.
       # Close the file before publishing it under the cache key.
