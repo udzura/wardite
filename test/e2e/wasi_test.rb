@@ -111,14 +111,14 @@ class WarditeE2EWasiTest < Test::Unit::TestCase
   end
 
   test "native WASI signatures are checked at link time and user modules keep the boxed ABI" do
-    ["fd_write", "proc_exit"].each do |name|
+    ["fd_write", "proc_exit", "clock_res_get", "fd_seek"].each do |name|
       with_wasm(<<~WAT) do |file|
         (module
           (import "wasi_snapshot_preview1" "#{name}" (func $host (result i32)))
           (export "run" (func $host)))
       WAT
-        assert_raise_message(/invalid WASI signature for #{name}/) do
-          Wardite.new(path: file, engine: :efflorescence)
+        [:stack, :efflorescence].each do |engine|
+          assert_raise_message(/invalid WASI signature for #{name}/) { Wardite.new(path: file, engine: engine) }
         end
         host = ->(_store, args) { assert_equal [], args; Wardite::I32.new(37) }
         instance = Wardite.new(path: file, engine: :efflorescence, enable_wasi: false,
@@ -128,7 +128,115 @@ class WarditeE2EWasiTest < Test::Unit::TestCase
       end
     end
     with_wasm('(module (import "wasi_snapshot_preview1" "fd_write_from_registers" (func)))') do |file|
-      assert_raise(NameError) { Wardite.new(path: file, engine: :efflorescence) }
+      [:stack, :efflorescence].each do |engine|
+        assert_raise_message(/unknown WASI import fd_write_from_registers/) { Wardite.new(path: file, engine: engine) }
+      end
+    end
+  end
+
+  test "known unimplemented WASI calls return ENOSYS without touching memory" do
+    with_wasm(<<~WAT) do |file|
+      (module
+        (import "wasi_snapshot_preview1" "fd_seek" (func $seek (param i32 i64 i32 i32) (result i32)))
+        (import "wasi_snapshot_preview1" "poll_oneoff" (func $poll (param i32 i32 i32 i32) (result i32)))
+        (memory 1)
+        (func (export "seek") (result i32)
+          i32.const 1 i64.const -1 i32.const 0 i32.const 0 call $seek)
+        (func (export "poll") (result i32)
+          i32.const 0 i32.const 0 i32.const 0 i32.const 0 call $poll))
+    WAT
+      [:stack, :efflorescence].each do |engine|
+        instance = Wardite.new(path: file, engine: engine)
+        data = instance.store.memories.fetch(0).data
+        data[0, 8] = "sentinel"
+        assert_equal Wardite::Wasi::ENOSYS, instance.runtime.call(:seek, []).value
+        assert_equal Wardite::Wasi::ENOSYS, instance.runtime.call(:poll, []).value
+        assert_equal "sentinel", data.byteslice(0, 8)
+      end
+    end
+  end
+
+  test "WASI clock results are nanoseconds and invalid outputs leave memory alone" do
+    with_wasm(<<~WAT) do |file|
+      (module
+        (import "wasi_snapshot_preview1" "clock_res_get" (func $res (param i32 i32) (result i32)))
+        (import "wasi_snapshot_preview1" "clock_time_get" (func $time (param i32 i64 i32) (result i32)))
+        (memory 1)
+        (func (export "res") (param i32 i32) (result i32) local.get 0 local.get 1 call $res)
+        (func (export "time") (param i32 i32) (result i32)
+          local.get 0 i64.const 0 local.get 1 call $time))
+    WAT
+      instance = Wardite.new(path: file, engine: :efflorescence)
+      vm = instance.runtime
+      data = instance.store.memories.fetch(0).data
+      [Process::CLOCK_REALTIME, Process::CLOCK_MONOTONIC].each_with_index do |clock, id|
+        data[0, 10] = "x" * 10
+        assert_equal 0, vm.call_unboxed(:res, [id, 1])
+        assert_equal Process.clock_getres(clock, :nanosecond), data.unpack1("Q<", offset: 1)
+        before = Process.clock_gettime(clock, :nanosecond)
+        assert_equal 0, vm.call_unboxed(:time, [id, 1])
+        after = Process.clock_gettime(clock, :nanosecond)
+        assert_includes before..after, data.unpack1("Q<", offset: 1)
+        assert_equal ["x", "x"], [data[0], data[9]]
+      end
+      before = data.dup
+      assert_equal Wardite::Wasi::EINVAL, vm.call_unboxed(:time, [99, 1])
+      assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:res, [0, 65529])
+      assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:time, [1, -1])
+      assert_equal before, data
+    end
+  end
+
+  test "WASI environment and fdstat use the Preview 1 byte layouts" do
+    with_wasm(<<~WAT) do |file|
+      (module
+        (import "wasi_snapshot_preview1" "environ_sizes_get" (func $sizes (param i32 i32) (result i32)))
+        (import "wasi_snapshot_preview1" "environ_get" (func $env (param i32 i32) (result i32)))
+        (import "wasi_snapshot_preview1" "fd_fdstat_get" (func $fdstat (param i32 i32) (result i32)))
+        (export "sizes" (func $sizes))
+        (export "env" (func $env))
+        (export "fdstat" (func $fdstat))
+        (memory 1))
+    WAT
+      instance = Wardite.new(path: file, engine: :efflorescence)
+      vm = instance.runtime
+      data = instance.store.memories.fetch(0).data
+      original_env = ENV.to_h
+      begin
+        ENV.replace("A" => "日本語", "B" => "")
+        payload = "A=日本語\0B=\0".b
+        data[40, payload.bytesize + 1] = "x" * (payload.bytesize + 1)
+        assert_equal 0, vm.call_unboxed(:sizes, [1, 5])
+        assert_equal [2, payload.bytesize], data.byteslice(1, 8).unpack("V2")
+        assert_equal 0, vm.call_unboxed(:env, [16, 40])
+        assert_equal [40, 40 + "A=日本語\0".bytesize], data.byteslice(16, 8).unpack("V2")
+        assert_equal payload + "x", data.byteslice(40, payload.bytesize + 1)
+        before = data.dup
+        assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:env, [16, 65535])
+        assert_equal before, data
+
+        ENV.clear
+        assert_equal 0, vm.call_unboxed(:sizes, [1, 5])
+        assert_equal [0, 0], data.byteslice(1, 8).unpack("V2")
+        before = data.dup
+        assert_equal 0, vm.call_unboxed(:env, [65536, 65536])
+        assert_equal before, data
+      ensure
+        ENV.replace(original_env)
+      end
+
+      Dir.mktmpdir do |dir|
+        instance.wasi.set_preopened_dir("/app", dir)
+        data[99, 26] = "x" * 26
+        assert_equal 0, vm.call_unboxed(:fdstat, [3, 100])
+        rights = Wardite::Wasi::RIGHT_DIR_RIGHT_BASE
+        assert_equal [Wardite::Wasi::FILETYPE_DIRECTORY, 0, rights, rights | Wardite::Wasi::RIGHT_FILE_RIGHT_BASE],
+          data.byteslice(100, 24).unpack("CxS<x4Q<2")
+        assert_equal ["x", "x"], [data[99], data[124]]
+        before = data.dup
+        assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:fdstat, [3, 65513])
+        assert_equal before, data
+      end
     end
   end
 

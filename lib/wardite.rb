@@ -1035,7 +1035,12 @@ module Wardite
         target_module = self.modules.fetch(module_name) { self.modules.default(module_name) }
         raise ::NameError, "module #{desc.module_name} not found" unless target_module
 
-        self.funcs << ExternalFunction.new(target_module, desc.name.to_sym, callsig, retsig)
+        name = desc.name.to_sym
+        if RUBY_ENGINE != "spinel"
+          wasi = inst.wasi
+          wasi.validate_import(name, callsig, retsig) if wasi && wasi.equal?(target_module)
+        end
+        self.funcs << ExternalFunction.new(target_module, name, callsig, retsig)
       end
 
       if (func_section&.func_indices&.size || 0) != (code_section&.func_codes&.size || 0)

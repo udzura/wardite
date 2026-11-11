@@ -12,6 +12,59 @@ module Wardite
     include ValueHelper
     include WasmModule
 
+    # Preview 1 imports return errno (i32), except for proc_exit.
+    IMPORT_PARAMETERS = {
+      args_get: %i[i32 i32],
+      args_sizes_get: %i[i32 i32],
+      environ_get: %i[i32 i32],
+      environ_sizes_get: %i[i32 i32],
+      clock_res_get: %i[i32 i32],
+      clock_time_get: %i[i32 i64 i32],
+      fd_advise: %i[i32 i64 i64 i32],
+      fd_close: %i[i32],
+      fd_datasync: %i[i32],
+      fd_fdstat_get: %i[i32 i32],
+      fd_fdstat_set_flags: %i[i32 i32],
+      fd_filestat_get: %i[i32 i32],
+      fd_filestat_set_size: %i[i32 i64],
+      fd_pread: %i[i32 i32 i32 i64 i32],
+      fd_prestat_get: %i[i32 i32],
+      fd_prestat_dir_name: %i[i32 i32 i32],
+      fd_pwrite: %i[i32 i32 i32 i64 i32],
+      fd_read: %i[i32 i32 i32 i32],
+      fd_readdir: %i[i32 i32 i32 i64 i32],
+      fd_renumber: %i[i32 i32],
+      fd_seek: %i[i32 i64 i32 i32],
+      fd_sync: %i[i32],
+      fd_tell: %i[i32 i32],
+      fd_write: %i[i32 i32 i32 i32],
+      path_create_directory: %i[i32 i32 i32],
+      path_filestat_get: %i[i32 i32 i32 i32 i32],
+      path_filestat_set_times: %i[i32 i32 i32 i32 i64 i64 i32],
+      path_link: %i[i32 i32 i32 i32 i32 i32 i32],
+      path_open: %i[i32 i32 i32 i32 i32 i64 i64 i32 i32],
+      path_readlink: %i[i32 i32 i32 i32 i32 i32],
+      path_remove_directory: %i[i32 i32 i32],
+      path_rename: %i[i32 i32 i32 i32 i32 i32],
+      path_symlink: %i[i32 i32 i32 i32 i32],
+      path_unlink_file: %i[i32 i32 i32],
+      poll_oneoff: %i[i32 i32 i32 i32],
+      proc_exit: %i[i32],
+      random_get: %i[i32 i32],
+    }.transform_values(&:freeze).freeze #: Hash[Symbol, Array[Symbol]]
+
+    # @rbs name: Symbol
+    # @rbs parameters: Array[Symbol]
+    # @rbs results: Array[Symbol]
+    # @rbs return: void
+    def validate_import(name, parameters, results)
+      expected = IMPORT_PARAMETERS[name]
+      raise Wardite::LoadError, "unknown WASI import #{name}" unless expected
+      unless parameters == expected && results == (name == :proc_exit ? [] : [:i32])
+        raise Wardite::LoadError, "invalid WASI signature for #{name}"
+      end
+    end
+
     attr_accessor :fd_table #: Hash[Integer, (IO|File|::Wardite::Wasi::PreopenedDir)]
     attr_accessor :fd_count #: Integer
     attr_accessor :argv #: Array[String]
@@ -194,14 +247,14 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def environ_sizes_get(store, args)
-      envc_p = args[0].value
-      envlen_p = args[1].value
-      envc = ENV.length
-      envlen = ENV.map{|k,v| k.size + v.size + 1}.sum
+      count_at = args.fetch(0).value.to_i
+      size_at = args.fetch(1).value.to_i
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, count_at, 4) && guest_range?(data, size_at, 4)
 
-      memory = store.memories[0]
-      memory.data[envc_p...(envc_p+4)] = [envc].pack("I!")
-      memory.data[envlen_p...(envlen_p+4)] = [envlen].pack("I!")
+      entries = environment_entries
+      data[count_at, 4] = [entries.size].pack("V")
+      data[size_at, 4] = [entries.sum(&:bytesize)].pack("V")
       0
     end
 
@@ -209,53 +262,52 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def environ_get(store, args)
-      environ_offsets_p = args[0].value
-      environ_data_buf_p = args[1].value
-      if !environ_data_buf_p.is_a?(Integer)
-        raise ArgumentError, "invalid type of args: #{args.inspect}"
+      pointers_at = args.fetch(0).value.to_i
+      entries_at = args.fetch(1).value.to_i
+      entries = environment_entries
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, pointers_at, entries.size * 4) &&
+        guest_range?(data, entries_at, entries.sum(&:bytesize))
+
+      entries.each do |entry|
+        data[pointers_at, 4] = [entries_at].pack("V")
+        data[entries_at, entry.bytesize] = entry
+        pointers_at += 4
+        entries_at += entry.bytesize
       end
-
-      environ_offsets = [] #: Array[Integer]
-      environ_data_slice = [] #: Array[String]
-      current_offset = environ_data_buf_p
-      ENV.each do |k, v|
-        environ_offsets << current_offset
-        environ_data_slice << "#{k}=#{v}"
-        current_offset += "#{k}=#{v}".size + 1
-      end
-      environ_data = environ_data_slice.join("\0") + "\0"
-
-      memory = store.memories[0]
-      memory.data[environ_data_buf_p...(environ_data_buf_p + environ_data.size)] = environ_data
-
-      environ_offsets.each_with_index do |offset, i|
-        data_begin = environ_offsets_p + i * 4
-        memory.data[data_begin...(data_begin + 4)] = [offset].pack("I!")
-      end
-
       0
     end
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
-    # @rbs return: Object
-    def clock_time_get(store, args)
-      clock_id = args[0].value
-      # we dont use precision...
-      _precision = args[1].value
-      timebuf64 = args[2].value
-      if clock_id != 0 # - CLOCKID_REALTIME
-        # raise NotImplementedError, "CLOCKID_REALTIME is an only supported id"
-        return Wasi::EINVAL
-      end
-      # timestamp in nanoseconds
-      now = Time.now.to_i * 1_000_000
-
-      memory = store.memories[0]
-      now_packed = [now].pack("Q!")
-      memory.data[timebuf64...(timebuf64+8)] = now_packed
-      0
+    # @rbs return: Integer
+    def clock_res_get(store, args)
+      write_clock(store, args.fetch(0).value.to_i, args.fetch(1).value.to_i, resolution: true)
     end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Integer
+    def clock_time_get(store, args)
+      write_clock(store, args.fetch(0).value.to_i, args.fetch(2).value.to_i, resolution: false)
+    end
+
+    # These imports can be linked, but their operations are not implemented.
+    # @rbs _store: Store
+    # @rbs _args: Array[wasmValue]
+    # @rbs return: Integer
+    def fd_advise(_store, _args)
+      Wasi::ENOSYS
+    end
+    alias fd_datasync fd_advise
+    alias fd_fdstat_set_flags fd_advise
+    alias fd_filestat_set_size fd_advise
+    alias fd_pread fd_advise
+    alias fd_pwrite fd_advise
+    alias fd_renumber fd_advise
+    alias fd_seek fd_advise
+    alias fd_sync fd_advise
+    alias poll_oneoff fd_advise
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
@@ -576,31 +628,21 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_fdstat_get(store, args)
-      fd = args[0].value.to_i
-      fdstat_offset = args[1].value.to_i
-      if fd >= fd_count
-        return Wasi::EBADF
-      end
-      file = @fd_table[fd]
+      file = @fd_table[args.fetch(0).value.to_i]
+      return Wasi::EBADF unless file
+      offset = args.fetch(1).value.to_i
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, offset, 24)
+
       fdflags = 0
-      if !file
-        return Wasi::EBADF
-      elsif file.is_a?(Wasi::PreopenedDir)
-        file = File.open(file.guest_path) # reopen directory
-      elsif file.is_a?(IO) && !file.is_a?(File)
-        fdflags |= Wasi::FD_APPEND
+      if file.is_a?(Wasi::PreopenedDir)
+        ftype = Wasi.to_ftype(File.stat(file.guest_path).ftype)
       else
-        if (Fcntl::O_APPEND & file.fcntl(Fcntl::F_GETFL, 0)) != 0
-          fdflags |= Wasi::FD_APPEND
-        end
+        flags = file.fcntl(Fcntl::F_GETFL, 0)
+        fdflags |= Wasi::FD_APPEND if (flags & Fcntl::O_APPEND) != 0
+        fdflags |= Wasi::FD_NONBLOCK if (flags & Fcntl::O_NONBLOCK) != 0
+        ftype = Wasi.to_ftype(file.stat.ftype)
       end
-
-      if (Fcntl::O_NONBLOCK & file.fcntl(Fcntl::F_GETFL, 0)) != 0
-        fdflags |= Wasi::FD_NONBLOCK
-      end
-
-      stat = file.stat #: File::Stat
-      ftype = Wasi.to_ftype(stat.ftype)
 
       fs_right_base = 0
       fs_right_inheriting = 0
@@ -616,12 +658,12 @@ module Wardite
         fs_right_base = Wasi::RIGHT_FILE_RIGHT_BASE
       end
 
-      memory = store.memories[0]
-
-      binformat = [fdflags, ftype, 0, 0, 0, 0, fs_right_base, fs_right_inheriting]
-        .pack("SSC4QQ")
-      memory.data[fdstat_offset...(fdstat_offset+binformat.size)] = binformat
+      data[offset, 24] = [ftype, fdflags, fs_right_base, fs_right_inheriting].pack("CxS<x4Q<2")
       0
+    rescue Errno::EBADF, IOError
+      Wasi::EBADF
+    rescue Errno::ENOENT
+      Wasi::ENOENT
     end
 
     # @rbs store: Store
@@ -754,6 +796,38 @@ module Wardite
     end
 
     private
+
+    # @rbs return: Array[String]
+    def environment_entries
+      ENV.map { |key, value| "#{key}=#{value}\0".b }
+    end
+
+    # @rbs data: String
+    # @rbs offset: Integer
+    # @rbs length: Integer
+    # @rbs return: bool
+    def guest_range?(data, offset, length)
+      offset >= 0 && length >= 0 && offset + length <= data.bytesize
+    end
+
+    # @rbs store: Store
+    # @rbs clock_id: Integer
+    # @rbs offset: Integer
+    # @rbs resolution: bool
+    # @rbs return: Integer
+    def write_clock(store, clock_id, offset, resolution:)
+      clock = case clock_id
+      when 0 then Process::CLOCK_REALTIME
+      when 1 then Process::CLOCK_MONOTONIC
+      else return Wasi::EINVAL
+      end
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, offset, 8)
+
+      ns = resolution ? Process.clock_getres(clock, :nanosecond) : Process.clock_gettime(clock, :nanosecond)
+      data[offset, 8] = [ns].pack("Q<")
+      0
+    end
     # @rbs buf: String|nil
     # @rbs return: Integer
     def unpack_le_int(buf)

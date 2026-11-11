@@ -21,14 +21,8 @@ module Wardite
       def self.unboxed_callable(environment, function)
         case function.name
         when :fd_write
-          unless function.callsig == [:i32, :i32, :i32, :i32] && function.retsig == [:i32]
-            raise Wardite::LoadError, "invalid WASI signature for fd_write"
-          end
           environment.method(:fd_write_from_registers)
         when :proc_exit
-          unless function.callsig == [:i32] && function.retsig.empty?
-            raise Wardite::LoadError, "invalid WASI signature for proc_exit"
-          end
           environment.method(:proc_exit_from_registers)
         end
       end
