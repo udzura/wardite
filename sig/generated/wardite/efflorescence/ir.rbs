@@ -667,6 +667,13 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::CallSite
       def call_site: (Integer index) -> Wardite::Efflorescence::CallSite
 
+      # @rbs return: Integer
+      def call_site_count: () -> Integer
+
+      # @rbs site: Wardite::Efflorescence::CallSite
+      # @rbs return: void
+      def add_call_site: (Wardite::Efflorescence::CallSite site) -> void
+
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::MemorySite
       def memory_site: (Integer index) -> Wardite::Efflorescence::MemorySite

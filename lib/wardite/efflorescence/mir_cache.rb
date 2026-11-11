@@ -3,7 +3,7 @@
 
 require "digest"
 require "fileutils"
-require "tempfile"
+require "securerandom"
 
 module Wardite
   module Efflorescence
@@ -18,7 +18,12 @@ module Wardite
       MAX_BYTES = 256 * 1024 * 1024
       TYPES = %i[i32 i64 f32 f64 exnref].freeze
       TYPE_IDS = TYPES.each_with_index.to_h.freeze
-      FLAGS = %i[uses_i64 uses_float uses_eh uses_store uses_dynamic_calls].freeze
+      USES_I64 = 1
+      USES_FLOAT = 2
+      USES_EH = 4
+      USES_STORE = 8
+      USES_DYNAMIC_CALLS = 16
+      FUNCTION_FLAGS = USES_I64 | USES_FLOAT | USES_EH | USES_STORE | USES_DYNAMIC_CALLS
 
       class Invalid < StandardError; end
 
@@ -117,14 +122,20 @@ module Wardite
         # @rbs return: void
         def function(function)
           flags = 0
-          FLAGS.each_with_index { |flag, i| flags |= 1 << i if function.public_send(flag) }
+          flags |= USES_I64 if function.uses_i64
+          flags |= USES_FLOAT if function.uses_float
+          flags |= USES_EH if function.uses_eh
+          flags |= USES_STORE if function.uses_store
+          flags |= USES_DYNAMIC_CALLS if function.uses_dynamic_calls
           integers(flags)
           types(function.register_types)
           vector(function.initial_registers, "q<")
           vector(function.constant_registers)
           vector(function.bytecode, "q<")
-          integers(function.calls.size)
-          function.calls.each do |site|
+          call_count = function.call_site_count
+          integers(call_count)
+          call_count.times do |index|
+            site = function.call_site(index)
             integers(site.pool_index)
             vector(site.arguments)
           end
@@ -225,7 +236,7 @@ module Wardite
             records.each do |index, arguments|
               callee = functions.fetch(index)
               check_arguments(function, arguments, callee.parameter_types)
-              function.calls << CallSite.new(callee, arguments)
+              function.add_call_site(CallSite.new(callee, arguments))
             end
             check_code(function)
           end
@@ -240,7 +251,7 @@ module Wardite
         # @rbs return: Function
         def read_function(wasm, index, pool_index)
           flags = @reader.integer
-          raise Invalid unless flags.between?(0, (1 << FLAGS.size) - 1)
+          raise Invalid unless flags.between?(0, FUNCTION_FLAGS)
 
           types = @reader.types
           first_local = wasm.callsig.size
@@ -254,7 +265,11 @@ module Wardite
           end
           locals = types.slice(first_local, first_temporary - first_local) || raise(Invalid)
           function = Function.new(index, wasm.callsig, wasm.retsig, locals.size, local_types: locals, pool_index: pool_index)
-          FLAGS.each_with_index { |flag, i| function.public_send("#{flag}=", flags[i] == 1) }
+          function.uses_i64 = (flags & USES_I64) != 0
+          function.uses_float = (flags & USES_FLOAT) != 0
+          function.uses_eh = (flags & USES_EH) != 0
+          function.uses_store = (flags & USES_STORE) != 0
+          function.uses_dynamic_calls = (flags & USES_DYNAMIC_CALLS) != 0
           raise Invalid if !function.uses_eh && types.include?(:exnref)
 
           initial = @reader.vector("q<", 8)
@@ -281,7 +296,8 @@ module Wardite
 
           code = @reader.vector("q<", 8)
           raise Invalid if code.empty? || code.size % Lowerer::WIDTH != 0
-          function.install_code(code, [])
+          # Keep the lowerer's integer array representation in Spinel.
+          function.bytecode.replace(code)
           function
         end
 
@@ -375,7 +391,8 @@ module Wardite
             when :branch then check_target(a, code.size)
             when :conditional then check_target(b, code.size)
             when :call
-              site = at(function.calls, b)
+              raise Invalid unless b.between?(0, function.call_site_count - 1)
+              site = function.call_site(b)
               expected = site.arguments.size == 1 ? site.arguments.fetch(0) : -1
               raise Invalid unless c == expected
               check_result(function, a, site.callee.result_types)
@@ -446,7 +463,9 @@ module Wardite
       def initialize(directory, wasm, configuration)
         versions = [FORMAT_VERSION, CODE_VERSION].pack("L<2")
         disabled = configuration.disabled.uniq.sort.join(",")
-        key = Digest::SHA256.digest(versions + Digest::SHA256.digest(wasm) + disabled)
+        key_data = versions + Digest::SHA256.digest(wasm) + disabled
+        key_data = "spinel\0".b + key_data if RUBY_ENGINE == "spinel"
+        key = Digest::SHA256.digest(key_data)
         @header = MAGIC + versions + key
         @directory = File.expand_path(directory)
         @path = File.join(@directory, "#{key.unpack1("H*")}.mir2")
@@ -485,26 +504,42 @@ module Wardite
       # @rbs return: void
       def write(instance, ir)
         FileUtils.mkdir_p(@directory)
-        Tempfile.create([".wardite-", ".tmp"], @directory, binmode: true) do |file|
-          writer = Writer.new
-          layout = encode_layout(instance, ir.entries)
-          writer.integers(layout.bytesize)
-          writer.bytes << layout
-          writer.integers(ir.functions.size)
-          ir.functions.each do |function|
-            writer.function(function)
-            return if @header.bytesize + DIGEST_SIZE + writer.bytes.bytesize > MAX_BYTES
-          end
-          file.write(@header, Digest::SHA256.digest(writer.bytes), writer.bytes)
-          file.close
-          File.rename(file.path, @path)
+        writer = Writer.new
+        layout = encode_layout(instance, ir.entries)
+        writer.integers(layout.bytesize)
+        writer.bytes << layout
+        writer.integers(ir.functions.size)
+        ir.functions.each do |function|
+          writer.function(function)
+          return if @header.bytesize + DIGEST_SIZE + writer.bytes.bytesize > MAX_BYTES
         end
+        publish(writer.bytes)
       rescue SystemCallError, IOError
         # Cache I/O is optional once the normal build has succeeded.
         nil
       end
 
       private
+
+      # Exclusive creation protects a concurrent writer's temporary file.
+      # Close the file before publishing it under the cache key.
+      # @rbs payload: String
+      # @rbs return: void
+      def publish(payload)
+        path = File.join(@directory, ".wardite-#{SecureRandom.hex(16)}.tmp")
+        file = File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600)
+        begin
+          file.binmode
+          file.write(@header)
+          file.write(Digest::SHA256.digest(payload))
+          file.write(payload)
+          file.close
+          File.rename(path, @path)
+        ensure
+          file.close unless file.closed?
+          File.unlink(path) if File.exist?(path)
+        end
+      end
 
       # Include the module's import identities, and every function's signature
       # and index mapping. The live entries and hosts are always linked afresh.

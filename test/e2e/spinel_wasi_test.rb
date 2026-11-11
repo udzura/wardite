@@ -40,6 +40,13 @@ class WarditeSpinelWasiTest < Test::Unit::TestCase
         assert_equal 7, status.exitstatus, stderr
         assert_equal "42\n", stdout
       end
+      %w[miss hit].each do |cache_state|
+        stdout, stderr, status = Open3.capture3({"WARITE_TRACE" => "1"}, @binary,
+          "--new-engine", "--mir-cache", File.join(dir, "cache"), "--", file)
+        assert_equal 7, status.exitstatus, stderr
+        assert_equal "42\n", stdout
+        assert_include stderr, "MIR2 cache #{cache_state}:"
+      end
       stdout, stderr, status = Open3.capture3(@binary, "--new-engine", "--no-wasi", "--invoke", "_start", "--", file)
       assert_false status.success?
       assert_empty stdout

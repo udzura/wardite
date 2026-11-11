@@ -80,11 +80,12 @@ Use `--mir-disable NAME` to compare
 individual features, `--mir-dump` to inspect MIR and `--mir-profile` for counters.
 See [Phase 2](docs/efflorescence-phase2.md) ([日本語](docs/efflorescence-phase2-ja.md)).
 
-On CRuby, pass `--mir-cache DIR` with `--new-engine` to reuse lowered MIR
-across processes. Use a local directory you control. Each run still decodes
+On CRuby and Spinel, pass `--mir-cache DIR` with `--new-engine` to reuse lowered
+MIR across processes. Use a local directory you control. Each run still decodes
 the Wasm, links imports, and initializes a fresh instance. `--mir-dump` and
 `--mir-profile` build MIR normally. Ruby callers can pass `mir_cache: dir` with
-`engine: :efflorescence`. [MIR2 cache measurements](docs/efflorescence-mir2-cache.md)
+`engine: :efflorescence`. CRuby and Spinel use different cache keys.
+[MIR2 cache measurements](docs/efflorescence-mir2-cache.md)
 
 [M1](docs/efflorescence-m1.md) adds the remaining basic i32 operations,
 if/else/select/br_table, and new exception handling (try_table/throw/throw_ref).

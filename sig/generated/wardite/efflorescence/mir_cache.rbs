@@ -20,7 +20,17 @@ module Wardite
 
       TYPE_IDS: untyped
 
-      FLAGS: untyped
+      USES_I64: ::Integer
+
+      USES_FLOAT: ::Integer
+
+      USES_EH: ::Integer
+
+      USES_STORE: ::Integer
+
+      USES_DYNAMIC_CALLS: ::Integer
+
+      FUNCTION_FLAGS: untyped
 
       class Invalid < StandardError
       end
@@ -171,6 +181,12 @@ module Wardite
       def write: (Wardite::Instance instance, IR ir) -> void
 
       private
+
+      # Exclusive creation protects a concurrent writer's temporary file.
+      # Close the file before publishing it under the cache key.
+      # @rbs payload: String
+      # @rbs return: void
+      def publish: (String payload) -> void
 
       # Include the module's import identities, and every function's signature
       # and index mapping. The live entries and hosts are always linked afresh.

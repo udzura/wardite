@@ -278,9 +278,9 @@ module Wardite
       @buf = buf
       cache = nil #: Efflorescence::MIRCache?
       if mir_cache
-        raise ArgumentError, "MIR cache requires Efflorescence on CRuby" unless engine == :efflorescence && RUBY_ENGINE == "ruby"
-        if RUBY_ENGINE == "ruby" && !mir_profile
-          require "wardite/efflorescence/mir_cache"
+        raise ArgumentError, "MIR cache requires Efflorescence" unless engine == :efflorescence
+        unless mir_profile
+          require "wardite/efflorescence/mir_cache" unless RUBY_ENGINE == "spinel"
           # Hash the same bytes that the decoder will see, even if the file changes.
           bytes = buf.read || "".b
           configuration = Efflorescence::Configuration.new(disabled_optimizations)

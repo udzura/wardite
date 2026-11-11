@@ -3,6 +3,16 @@ require "optparse"
 
 module Wardite
   module Cli
+    # Keep the summary accumulator's type consistent in native builds.
+    class SpinelOptions < OptionParser
+      # @rbs return: String
+      def help
+        lines = [] #: Array[String]
+        summarize(lines)
+        "#{banner}".sub(/\n?\z/, "\n") + lines.join
+      end
+    end
+
     class Cli
       # @rbs @args: Array[String]
 
@@ -32,7 +42,8 @@ module Wardite
         @mir_profile = false
         @mir_cache = nil
         @memsize = 1
-        options = OptionParser.new do |opts|
+        parser = RUBY_ENGINE == "spinel" ? SpinelOptions : OptionParser
+        options = parser.new do |opts|
           opts.version = Wardite::VERSION
           opts.on("--invoke [fnname]", "Invoke the function") { |v|
             @invoke = v
@@ -54,7 +65,7 @@ module Wardite
           }
           opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }
           opts.on("--mir-profile", "Instrument MIR execution (do not use for timing)") { @mir_profile = true }
-          opts.on("--mir-cache DIR", "Reuse MIR2 in a local directory (CRuby only)") { |dir| @mir_cache = dir }
+          opts.on("--mir-cache DIR", "Reuse MIR2 in a local directory") { |dir| @mir_cache = dir }
           opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
             @yjit = true
           }
@@ -66,9 +77,6 @@ module Wardite
         options.parse!(args)
         if !new_engine && (!disabled_optimizations.empty? || mir_dump || mir_profile || mir_cache)
           raise "MIR options require --new-engine"
-        end
-        if RUBY_ENGINE != "ruby" && mir_cache
-          raise "--mir-cache requires CRuby"
         end
         @file = args[0] || raise("require file argument")
         @args = (args[1..-1] || [])

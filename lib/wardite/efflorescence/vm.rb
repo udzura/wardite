@@ -35,12 +35,12 @@ module Wardite
         translator = Translator.new(instance)
         linked = translator.link
         cached = nil #: Wardite::Efflorescence::IR?
-        if RUBY_ENGINE == "ruby" && mir_cache && !profile
+        if mir_cache && !profile
           cached = mir_cache.read(instance, linked)
         end
         @mir_cache_hit = !cached.nil?
         @ir = cached || build_mir(translator, linked, profile)
-        if RUBY_ENGINE == "ruby" && mir_cache && !profile && !@mir_cache_hit
+        if mir_cache && !profile && !@mir_cache_hit
           mir_cache.write(instance, @ir)
         end
         start = instance.start_section

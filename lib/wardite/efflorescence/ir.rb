@@ -780,6 +780,18 @@ module Wardite
         @calls[index] || raise(Wardite::EvalError, "invalid MIR call site")
       end
 
+      # @rbs return: Integer
+      def call_site_count
+        @calls.length
+      end
+
+      # @rbs site: Wardite::Efflorescence::CallSite
+      # @rbs return: void
+      def add_call_site(site)
+        @calls.push(site)
+        nil
+      end
+
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::MemorySite
       def memory_site(index)
@@ -926,7 +938,8 @@ module Wardite
       def initialize(host_index, arguments, parameter_types, result_types, table_index: -1)
         @host_index = host_index
         @table_index = table_index
-        @arguments = arguments.dup
+        @arguments = [] #: Array[Integer]
+        @arguments.replace(arguments)
         @parameter_types = parameter_types.dup
         @result_types = result_types.dup
       end

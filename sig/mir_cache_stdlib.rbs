@@ -3,7 +3,3 @@ module Digest
     def self.digest: (String) -> String
   end
 end
-
-class Tempfile
-  def self.create: [T] (Array[String], String, binmode: bool) { (File) -> T } -> T
-end
