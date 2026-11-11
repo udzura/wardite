@@ -1,0 +1,699 @@
+From 255955a06a0311df92f6b422c69d65ff2f39fe6e Mon Sep 17 00:00:00 2001
+From: Uchio Kondo <udzura@udzura.jp>
+Date: Thu, 12 Nov 2026 00:48:39 +0900
+Subject: [PATCH] Borrow String bytes in IO::Buffer.for blocks
+
+Lock mutable String storage during the yield and release it on unwind.
+Compare write-through, readonly views, and cleanup with CRuby.
+
+Co-authored-by: Codex <codex@openai.com>
+---
+ lib/sp_alloc.h                       |  9 ++++-
+ lib/sp_cext_bridge.c                 |  2 +-
+ lib/sp_iobuffer.c                    | 48 +++++++++++++++++++++-
+ lib/sp_iobuffer.h                    |  6 ++-
+ lib/sp_poly_cold.c                   |  2 +-
+ lib/sp_str.c                         |  5 ++-
+ lib/sp_string.c                      |  6 +--
+ lib/sp_string.h                      | 17 ++++----
+ lib/sp_types.h                       |  2 +-
+ lib/spinel_rt.h                      | 19 +++++----
+ packages/io/io/buffer.rb             | 21 ++++++----
+ src/codegen_call_io.c                |  2 +-
+ src/codegen_call_recv.c              | 24 +++++------
+ src/codegen_stmt.c                   | 10 ++---
+ test/io_buffer_for_block.rb          | 59 ++++++++++++++++++++++++++++
+ test/io_buffer_for_block.rb.expected | 15 +++++++
+ 16 files changed, 196 insertions(+), 51 deletions(-)
+ create mode 100644 test/io_buffer_for_block.rb
+ create mode 100644 test/io_buffer_for_block.rb.expected
+
+diff --git a/lib/sp_alloc.h b/lib/sp_alloc.h
+index fec103dbf..5e065e86a 100644
+--- a/lib/sp_alloc.h
++++ b/lib/sp_alloc.h
+@@ -295,7 +295,7 @@ static SP_ALWAYS_INLINE inline char *sp_str_alloc_born(size_t len, int nogc) {
+   char *body = (char *)(h + 1);
+   body[0] = (char)0xfe;
+   body[1 + len] = 0;
+-  r->data = body + 1; r->len = (int64_t)len; r->cap = (int64_t)len; r->binary = 0;
++  r->data = body + 1; r->len = (int64_t)len; r->cap = (int64_t)len; r->binary = 0; r->temporarily_locked = 0;
+   if (sp_alloc_report_on) sp_alloc_report_str(len);
+   return body + 1;
+ }
+@@ -1116,7 +1116,14 @@ static inline sp_bool sp_str_is_frozen_val(const char *s) {
+   if (SP_UNLIKELY(m == 0xfd)) return sp_str_fd_owner_frozen(s);
+   return TRUE;
+ }
++static inline sp_bool sp_str_is_locked(const char *s) {
++  if (!s || ((const unsigned char *)s)[-1] != 0xfd) return FALSE;
++  const struct sp_String_s *owner = (const void *)(((const sp_str_hdr *)(s - 1)) - 1)->next;
++  return owner && owner->temporarily_locked;
++}
++SP_NORETURN void sp_raise_locked_str(void);
+ static inline void sp_str_check_mutable(const char *s) {
++  if (sp_str_is_locked(s)) sp_raise_locked_str();
+   if (sp_str_is_frozen_val(s)) sp_raise_frozen_str(s);
+ }
+ /* A String a runtime object keeps past the call (a File's path, a
+diff --git a/lib/sp_cext_bridge.c b/lib/sp_cext_bridge.c
+index fd991c91b..b7221836a 100644
+--- a/lib/sp_cext_bridge.c
++++ b/lib/sp_cext_bridge.c
+@@ -564,7 +564,7 @@ VALUE rb_str_export_to_enc(VALUE value,rb_encoding *to) { return string_in_encod
+ static sp_String *string(VALUE value) {
+     sp_RbVal r=sp_cext_rbval(value);
+     if(r.tag==SP_TAG_OBJ && r.cls_id==SP_BUILTIN_STRBUF)return r.v.p;
+-    if(r.tag==SP_TAG_STR && sp_str_is_frozen_val(r.v.s))sp_raise_frozen_str(r.v.s);
++    if(r.tag==SP_TAG_STR)sp_str_check_mutable(r.v.s);
+     rb_raise(rb_eTypeError,"expected a shared String");
+ }
+ VALUE rb_str_freeze(VALUE v) {
+diff --git a/lib/sp_iobuffer.c b/lib/sp_iobuffer.c
+index 347030354..3cdf111aa 100644
+--- a/lib/sp_iobuffer.c
++++ b/lib/sp_iobuffer.c
+@@ -9,6 +9,7 @@
+    range plus Bignums up to the unsigned bound. Messages mirror CRuby's,
+    including the "integer ... to" (fixnum) / "bignum ... into" wording. */
+ #include "sp_iobuffer.h"
++#include "sp_string.h"
+ #include "sp_io.h"       /* the IO integration: sp_File, the readiness parks */
+ #include <stdlib.h>
+ #include <string.h>
+@@ -53,8 +54,13 @@ static int iob_slice_invalid(sp_IOBuffer *b);
+ static void iob_readonly(sp_IOBuffer *b) {
+   if (b->flags & SP_IOB_READONLY) sp_raise_cls("IO::Buffer::AccessError", "Buffer is not writable!");
+ }
++static void iob_string_changed(sp_IOBuffer *b) {
++  if (b->source && b->source->borrowed_string)
++    sp_fd_publish(b->source->borrowed_string);
++}
+ static void iob_writable_slice(sp_IOBuffer *b) {
+   if (iob_slice_invalid(b)) sp_raise_cls("IO::Buffer::InvalidatedError", "Buffer is invalid!");
++  iob_string_changed(b);
+ }
+ static void iob_writable(sp_IOBuffer *b) {
+   iob_readonly(b);
+@@ -327,6 +333,7 @@ static sp_int iob_set_core(sp_IOBuffer *b, int ty, int64_t off, sp_RbVal val) {
+ static void iob_scan(void *p) {
+   sp_IOBuffer *b = (sp_IOBuffer *)p;
+   if (b->source) sp_gc_mark(b->source);
++  if (b->borrowed_string) sp_gc_mark(b->borrowed_string);
+ }
+ /* The bytes this buffer's own malloc holds: a slice's data is NULL, a
+    mapping is the file's pages, not the heap's. They are counted to the
+@@ -334,13 +341,13 @@ static void iob_scan(void *p) {
+    a buffer weighed its header alone, so a program churning large buffers
+    grew by gigabytes without a collection. */
+ static size_t iob_owned(sp_IOBuffer *b) {
+-  return b->data && !b->map_base ? (size_t)b->size : 0;
++  return b->data && !b->map_base && !b->borrowed_string ? (size_t)b->size : 0;
+ }
+ /* Give the allocation back: munmap for a mapped file, free otherwise. */
+ static void iob_release(sp_IOBuffer *b) {
+   sp_gc_payload_resize(b, iob_owned(b), 0);
+   if (b->map_base) { munmap(b->map_base, b->map_len); b->map_base = NULL; b->map_len = 0; }
+-  else free(b->data);
++  else if (!b->borrowed_string) free(b->data);
+   b->data = NULL;
+ }
+ void sp_IOBuffer_fin(void *p) {
+@@ -406,6 +413,42 @@ sp_IOBuffer *sp_IOBuffer_become_for(sp_IOBuffer *b, const char *s) {
+   return b;
+ }
+
++/* The private owner lives through the entire block, even if the yielded
++   buffer is freed or transferred. Derived views resolve through it and
++   become invalid when the block ends. */
++sp_IOBuffer *sp_IOBuffer_borrow_string(sp_IOBuffer *owner, const char *s) {
++  SP_GC_ROOT(owner);
++  SP_GC_ROOT_STR(s);
++  if (owner->data || owner->source) iob_arg("Borrow owner is already in use");
++  sp_String *string = sp_String_new_shared(s);
++  SP_GC_ROOT(string);
++  if (string->temporarily_locked) sp_raise_locked_str();
++  sp_IOBuffer *view = iob_alloc_obj(owner->cls_id);
++  const int readonly = sp_String_is_frozen(string);
++  if (!readonly) string->temporarily_locked = 1;
++  sp_gc_wb(owner);
++  owner->borrowed_string = string;
++  owner->data = (uint8_t *)string->data;
++  owner->size = string->len;
++  view->source = owner;
++  view->size = owner->size;
++  view->flags = SP_IOB_EXTERNAL | (readonly ? SP_IOB_READONLY : 0);
++  return view;
++}
++
++sp_IOBuffer *sp_IOBuffer_end_borrow(sp_IOBuffer *owner) {
++  sp_String *string = owner->borrowed_string;
++  if (!string) return owner;
++  if (string->temporarily_locked) {
++    sp_fd_publish(string);
++    string->temporarily_locked = 0;
++  }
++  owner->borrowed_string = NULL;
++  owner->data = NULL;
++  owner->size = 0;
++  return owner;
++}
++
+ /* ---- generic + typed accessors ---- */
+
+ sp_RbVal sp_IOBuffer_get_value(sp_IOBuffer *b, sp_RbVal type, sp_int off) {
+@@ -991,6 +1034,7 @@ static uint8_t *iob_io_span(sp_IOBuffer *b, sp_int *length, sp_int offset, int w
+   *length = b->size - offset;
+   if (writing && (b->flags & SP_IOB_READONLY)) sp_raise_cls("IO::Buffer::AccessError", "Buffer is not writable!");
+   if (!base) sp_raise_cls("IO::Buffer::AccessError", "Buffer is not allocated!");
++  if (writing) iob_string_changed(b);
+   return base + offset;
+ }
+ sp_int sp_IOBuffer_read_io(sp_IOBuffer *b, sp_RbVal io, sp_int length, sp_int offset) {
+diff --git a/lib/sp_iobuffer.h b/lib/sp_iobuffer.h
+index ff795f261..120bc96a8 100644
+--- a/lib/sp_iobuffer.h
++++ b/lib/sp_iobuffer.h
+@@ -40,6 +40,7 @@ struct sp_IOBuffer_s {
+   uint32_t flags;
+   void *map_base;            /* IO::Buffer.map: the mmap'd region `data` points into
+                                 (page-aligned), NULL for a malloc'd allocation */
++  struct sp_String_s *borrowed_string; /* kept and unlocked by the block owner */
+   size_t map_len;            /* ...and its length, for munmap */
+ };
+
+@@ -204,7 +205,8 @@ static inline sp_int sp_iob_put_f(uint8_t *d, sp_int wl, sp_int ty, sp_int off,
+ /* how many of a view's len bytes a write may store into: none of a
+    read-only buffer's (a slice carries its root's READONLY) */
+ static inline sp_int sp_iob_view_wlen(sp_IOBuffer *b, sp_int len) {
+-  return b && !(b->flags & SP_IOB_READONLY) ? len : 0;
++  return b && !(b->flags & SP_IOB_READONLY) &&
++         !(b->source && b->source->borrowed_string) ? len : 0;
+ }
+ /* an owned buffer's bytes: a slice's data is NULL (see the struct), so a
+    slice takes the out-of-line write */
+@@ -244,6 +246,8 @@ sp_IOBuffer *sp_IOBuffer_transfer(sp_IOBuffer *b);
+ sp_IOBuffer *sp_IOBuffer_free_m(sp_IOBuffer *b);
+ sp_IOBuffer *sp_IOBuffer_dup_m(sp_IOBuffer *b);
+ sp_IOBuffer *sp_IOBuffer_become_for(sp_IOBuffer *b, const char *s);
++sp_IOBuffer *sp_IOBuffer_borrow_string(sp_IOBuffer *owner, const char *s);
++sp_IOBuffer *sp_IOBuffer_end_borrow(sp_IOBuffer *owner);
+
+ /* comparison */
+ sp_int sp_IOBuffer_cmp(sp_IOBuffer *b, sp_RbVal other);
+diff --git a/lib/sp_poly_cold.c b/lib/sp_poly_cold.c
+index 7126be57c..f0764c6c2 100644
+--- a/lib/sp_poly_cold.c
++++ b/lib/sp_poly_cold.c
+@@ -833,7 +833,7 @@ sp_RbVal sp_poly_clear(sp_RbVal v)
+     case SP_BUILTIN_PTR_ARRAY:      ((sp_PtrArray *)v.v.p)->len = 0; break;
+     case SP_BUILTIN_STRBUF: {
+       sp_String *_m = (sp_String *)v.v.p;
+-      if (sp_String_is_frozen(_m)) { sp_raise_frozen_str(_m->data); break; }
++      if (sp_String_is_immutable(_m)) { sp_raise_frozen_str(_m->data); break; }
+       _m->len = 0; _m->data[0] = 0; sp_fd_publish(_m);
+       break;
+     }
+diff --git a/lib/sp_str.c b/lib/sp_str.c
+index 735ca9982..fbaf2df7e 100644
+--- a/lib/sp_str.c
++++ b/lib/sp_str.c
+@@ -228,7 +228,10 @@ const char *sp_str_plus_lit(const char *a, const char *lit, size_t ll) {
+ /* FrozenError naming the receiver, matching CRuby's
+    "can't modify frozen String: \"abc\"" message shape. */
+ void sp_exc_stage_recv(sp_RbVal v);   /* generated TU: stages FrozenError#receiver */
+-void sp_raise_frozen_str(const char*s){SP_GC_ROOT_STR(s);const char*ins=sp_str_inspect(s);SP_GC_ROOT_STR(ins);const char*msg=sp_str_concat(&("\xff" "can't modify frozen String: ")[1],ins);SP_GC_ROOT_STR(msg);sp_exc_stage_recv(sp_box_str(s));sp_raise_cls("FrozenError",msg);}
++void sp_raise_locked_str(void) {
++  sp_raise_cls("RuntimeError", "can't modify string; temporarily locked");
++}
++void sp_raise_frozen_str(const char*s){if(sp_str_is_locked(s))sp_raise_locked_str();SP_GC_ROOT_STR(s);const char*ins=sp_str_inspect(s);SP_GC_ROOT_STR(ins);const char*msg=sp_str_concat(&("\xff" "can't modify frozen String: ")[1],ins);SP_GC_ROOT_STR(msg);sp_exc_stage_recv(sp_box_str(s));sp_raise_cls("FrozenError",msg);}
+ /* Simple Unicode case mapping for ASCII + Latin-1 Supplement (U+00C0-00FF)
+    + Latin Extended-A (U+0100-017F), the ranges the ruby/spec string case
+    specs exercise. Full Unicode is out of scope (one internal UTF-8 rep). */
+diff --git a/lib/sp_string.c b/lib/sp_string.c
+index f9c2c74a1..8547a4696 100644
+--- a/lib/sp_string.c
++++ b/lib/sp_string.c
+@@ -40,11 +40,11 @@ void sp_String_mark_literals(void) {
+   for (sp_StringLiteral *p = sp_string_literals; p; p = p->next) sp_gc_mark(p->value);
+ }
+
+-void sp_String_prepend(sp_String*s,const char*t){SP_GC_ROOT(s);SP_GC_ROOT_STR(t);if (SP_UNLIKELY(!s)) sp_nil_recv("prepend"); if (!t)return;if(sp_String_is_frozen(s)){sp_raise_frozen_str(s->data);return;}int64_t tl=(int64_t)strlen(t);if(!sp_fd_grow(s,s->len+tl))return;memmove(s->data+tl,s->data,s->len+1);memcpy(s->data,t,tl);s->len+=tl;sp_fd_publish(s);}
++void sp_String_prepend(sp_String*s,const char*t){SP_GC_ROOT(s);SP_GC_ROOT_STR(t);if (SP_UNLIKELY(!s)) sp_nil_recv("prepend"); if (!t)return;if(sp_String_is_immutable(s)){sp_raise_frozen_str(s->data);return;}int64_t tl=(int64_t)strlen(t);if(!sp_fd_grow(s,s->len+tl))return;memmove(s->data+tl,s->data,s->len+1);memcpy(s->data,t,tl);s->len+=tl;sp_fd_publish(s);}
+ /* String#insert(idx, str): insert at idx; negative idx is relative to len+1. */
+-void sp_String_insert(sp_String*s,int64_t idx,const char*t){SP_GC_ROOT(s);SP_GC_ROOT_STR(t);if (SP_UNLIKELY(!s)) sp_nil_recv("insert"); if (!t)return;if(sp_String_is_frozen(s)){sp_raise_frozen_str(s->data);return;}int64_t tl=(int64_t)strlen(t);if(tl==0)return;if(idx<0)idx+=s->len+1;if(idx<0)idx=0;if(idx>s->len)idx=s->len;if(!sp_fd_grow(s,s->len+tl))return;memmove(s->data+idx+tl,s->data+idx,s->len-idx+1);memcpy(s->data+idx,t,tl);s->len+=tl;sp_fd_publish(s);}
++void sp_String_insert(sp_String*s,int64_t idx,const char*t){SP_GC_ROOT(s);SP_GC_ROOT_STR(t);if (SP_UNLIKELY(!s)) sp_nil_recv("insert"); if (!t)return;if(sp_String_is_immutable(s)){sp_raise_frozen_str(s->data);return;}int64_t tl=(int64_t)strlen(t);if(tl==0)return;if(idx<0)idx+=s->len+1;if(idx<0)idx=0;if(idx>s->len)idx=s->len;if(!sp_fd_grow(s,s->len+tl))return;memmove(s->data+idx+tl,s->data+idx,s->len-idx+1);memcpy(s->data+idx,t,tl);s->len+=tl;sp_fd_publish(s);}
+ /* String#replace(s): replace entire content. */
+-void sp_String_replace(sp_String*s,const char*t){SP_GC_ROOT(s);SP_GC_ROOT_STR(t);if (SP_UNLIKELY(!s)) sp_nil_recv("replace"); if (!t)return;if(sp_String_is_frozen(s)){sp_raise_frozen_str(s->data);return;}int64_t tl=(int64_t)strlen(t);if(!sp_fd_grow(s,tl))return;memcpy(s->data,t,tl);s->data[tl]='\0';s->len=tl;sp_fd_publish(s);}
++void sp_String_replace(sp_String*s,const char*t){SP_GC_ROOT(s);SP_GC_ROOT_STR(t);if (SP_UNLIKELY(!s)) sp_nil_recv("replace"); if (!t)return;if(sp_String_is_immutable(s)){sp_raise_frozen_str(s->data);return;}int64_t tl=(int64_t)strlen(t);if(!sp_fd_grow(s,tl))return;memcpy(s->data,t,tl);s->data[tl]='\0';s->len=tl;sp_fd_publish(s);}
+ sp_String*sp_String_dup(sp_String*s){SP_GC_ROOT(s);return sp_String_new(s->data);}
+ /* The first growth past an inline payload (sp_String_new_inline_len) moves
+    it to a malloc'd block, which the object now owns: its bytes are counted
+diff --git a/lib/sp_string.h b/lib/sp_string.h
+index 62a794d82..5f8682d1f 100644
+--- a/lib/sp_string.h
++++ b/lib/sp_string.h
+@@ -51,7 +51,10 @@ static inline const void *sp_String_identity(sp_String *h) {
+
+ /* Per-mutable-string freeze flag rides in the GC header alongside `marked`. */
+ static inline sp_bool sp_String_is_frozen(sp_String*s){if(!s)return TRUE;sp_gc_hdr*h=(sp_gc_hdr*)((char*)s-sizeof(sp_gc_hdr));return h->frozen;}
+-static inline sp_String*sp_String_freeze(sp_String*s){if(s){sp_gc_hdr*h=(sp_gc_hdr*)((char*)s-sizeof(sp_gc_hdr));h->frozen=1;}return s;}
++static inline sp_bool sp_String_is_immutable(sp_String *s) {
++  return sp_String_is_frozen(s) || (s && s->temporarily_locked);
++}
++static inline sp_String*sp_String_freeze(sp_String*s){if(s){if(s->temporarily_locked)sp_raise_locked_str();sp_gc_hdr*h=(sp_gc_hdr*)((char*)s-sizeof(sp_gc_hdr));h->frozen=1;}return s;}
+
+ /* A mutable String's payload carries the same length-bearing sp_str_hdr that
+    0xfe/0xfc heap strings use, so an escaped const char* is binary-safe (the
+@@ -177,12 +180,12 @@ static inline void sp_fd_append_len(sp_String*s,const char*t,int64_t tl){
+ #else
+ static inline void sp_fd_append_len(sp_String*s,const char*t,int64_t tl){if(!sp_fd_grow(s,s->len+tl))return;memcpy(s->data+s->len,t,tl);s->len+=tl;s->data[s->len]=0;sp_fd_publish(s);}
+ #endif
+-static inline void sp_String_append(sp_String*s,const char*t){if (SP_UNLIKELY(!s)) sp_nil_recv("<<"); if (!t)return;if(sp_String_is_frozen(s)){sp_raise_frozen_str(s->data);return;}sp_fd_append_len(s,t,(int64_t)strlen(t));}
++static inline void sp_String_append(sp_String*s,const char*t){if (SP_UNLIKELY(!s)) sp_nil_recv("<<"); if (!t)return;if(sp_String_is_immutable(s)){sp_raise_frozen_str(s->data);return;}sp_fd_append_len(s,t,(int64_t)strlen(t));}
+ /* Binary-safe append: sizes the operand with the header length so an embedded
+    NUL is preserved (Ruby String#<< / concat on a marked spinel string). */
+ /* Replace the buffer contents in place (the handle stays stable, so every
+    alias and container holding it observes the new value; #3227). */
+-static inline void sp_String_set_bin(sp_String*s,const char*t){if(!s||!t)return;if(sp_String_is_frozen(s)){sp_raise_frozen_str(s->data);return;}s->len=0;sp_fd_append_len(s,t,(int64_t)sp_str_byte_len(t));}
++static inline void sp_String_set_bin(sp_String*s,const char*t){if(!s||!t)return;if(sp_String_is_immutable(s)){sp_raise_frozen_str(s->data);return;}s->len=0;sp_fd_append_len(s,t,(int64_t)sp_str_byte_len(t));}
+ /* The bytes a read put into its (len, outbuf) buffer: binary-safe, and the
+    buffer becomes ASCII-8BIT, as CRuby's readpartial/sysread/read_nonblock
+    leave it. */
+@@ -212,12 +215,12 @@ static inline void sp_String_append_enc(sp_String*s,const char*t,size_t tl){
+     }
+ }
+ /* the first tl bytes of t: the append form of an interpolation (emit_interp_append) */
+-static inline void sp_String_append_n(sp_String*s,const char*t,size_t tl){if (SP_UNLIKELY(!s)) sp_nil_recv("<<"); if (!t)return;if(sp_String_is_frozen(s)){sp_raise_frozen_str(s->data);return;}sp_String_append_enc(s,t,tl);sp_fd_append_len(s,t,(int64_t)tl);}
++static inline void sp_String_append_n(sp_String*s,const char*t,size_t tl){if (SP_UNLIKELY(!s)) sp_nil_recv("<<"); if (!t)return;if(sp_String_is_immutable(s)){sp_raise_frozen_str(s->data);return;}sp_String_append_enc(s,t,tl);sp_fd_append_len(s,t,(int64_t)tl);}
+ /* append_as_bytes preserves the handle's encoding as well as embedded NULs. */
+-static inline void sp_String_append_bytes(sp_String*s,const char*t){if (SP_UNLIKELY(!s)) sp_nil_recv("<<"); if (!t)return;if(sp_String_is_frozen(s)){sp_raise_frozen_str(s->data);return;}sp_fd_append_len(s,t,(int64_t)sp_str_byte_len(t));}
++static inline void sp_String_append_bytes(sp_String*s,const char*t){if (SP_UNLIKELY(!s)) sp_nil_recv("<<"); if (!t)return;if(sp_String_is_immutable(s)){sp_raise_frozen_str(s->data);return;}sp_fd_append_len(s,t,(int64_t)sp_str_byte_len(t));}
+ static inline void sp_String_append_bin(sp_String*s,const char*t){
+   if (SP_UNLIKELY(!s)) sp_nil_recv("<<"); if (!t)return;
+-  if(sp_String_is_frozen(s)){sp_raise_frozen_str(s->data);return;}
++  if(sp_String_is_immutable(s)){sp_raise_frozen_str(s->data);return;}
+   size_t tl=sp_str_byte_len(t);
+   sp_String_append_enc(s,t,tl);
+   sp_fd_append_len(s,t,(int64_t)tl);
+@@ -405,7 +408,7 @@ static inline sp_String*sp_String_new_unfrozen(const char*s){
+    into the bytes now; mode 1 sets it, 0 clears it, -1 (another encoding)
+    leaves it. A frozen String refuses either way, as CRuby does (#3334). */
+ static inline sp_String*sp_String_force_encoding(sp_String*s,int mode){
+-  if(sp_String_is_frozen(s)){sp_raise_frozen_str(s->data);return s;}
++  if(sp_String_is_immutable(s)){sp_raise_frozen_str(s->data);return s;}
+   if(mode<0)return s;
+   s->binary=(unsigned)mode;
+   sp_str_hdr*h=(sp_str_hdr*)sp_fd_base(s->data);
+diff --git a/lib/sp_types.h b/lib/sp_types.h
+index d09318115..b8ac7fc2e 100644
+--- a/lib/sp_types.h
++++ b/lib/sp_types.h
+@@ -328,7 +328,7 @@ typedef struct{void**data;sp_int len;sp_int cap;void(*scan_elem)(void*);int32_t
+ /* the element of a String Array (and a String Hash's value): the handle
+    under SP_ONE_STRING, the bytes otherwise (sp_string.h's SP_SEB / SP_SEF) */
+ /* the shared String handle (sp_string.h) */
+-struct sp_String_s { char *data; int64_t len; int64_t cap; unsigned binary; };
++struct sp_String_s { char *data; int64_t len; int64_t cap; unsigned binary; unsigned temporarily_locked; };
+ #ifdef SP_ONE_STRING
+ typedef struct sp_String_s *sp_strelem;
+ #else
+diff --git a/lib/spinel_rt.h b/lib/spinel_rt.h
+index 1f02f86a6..e866c28d4 100644
+--- a/lib/spinel_rt.h
++++ b/lib/spinel_rt.h
+@@ -1080,6 +1080,7 @@ static const char *sp_str_frozen_name(const char *s) {
+ }
+ static inline const char *sp_str_freeze_val(const char *s) {
+   if (!s) return s;
++  if (sp_str_is_locked(s)) sp_raise_locked_str();
+   unsigned char m = ((const unsigned char *)s)[-1];
+   if (m == 0xfe || m == 0xfc) {
+     /* a frozen heap string is immortal, as a literal is: the sweep is told */
+@@ -7966,7 +7967,7 @@ static sp_RbVal sp_poly_shl(sp_RbVal a, sp_RbVal b) {
+   }
+   /* a frozen String refuses, as the typed paths do: a literal is frozen
+      (frozen_string_literal is always on) and so is a `.freeze`d one (#6328) */
+-  if (a.tag == SP_TAG_STR && a.v.s && sp_str_is_frozen_val(a.v.s)) sp_raise_frozen_str(a.v.s);
++  if (a.tag == SP_TAG_STR && a.v.s && (sp_str_is_frozen_val(a.v.s) || sp_str_is_locked(a.v.s))) sp_raise_frozen_str(a.v.s);
+   /* String#<< appends (sp_str_concat treats NULL as the empty string) */
+   if (a.tag == SP_TAG_STR && b.tag == SP_TAG_STR)
+     return sp_box_str_new(sp_str_concat(a.v.s, b.v.s));
+@@ -8791,7 +8792,7 @@ static sp_RbVal sp_poly_splice(sp_RbVal recv, sp_int start, sp_int len, sp_RbVal
+      store back, while a shared handle absorbs it in place -- which is the only
+      form an element receiver can use, and the write was silently dropped
+      before (#3940). */
+-  if (recv.tag == SP_TAG_STR && recv.v.s && sp_str_is_frozen_val(recv.v.s)) sp_raise_frozen_str(recv.v.s);   /* #6328 */
++  if (recv.tag == SP_TAG_STR && recv.v.s && (sp_str_is_frozen_val(recv.v.s) || sp_str_is_locked(recv.v.s))) sp_raise_frozen_str(recv.v.s);   /* #6328 */
+   if (recv.tag == SP_TAG_STR || sp_poly_is_strbuf(recv)) {
+     const char *cur = (recv.tag == SP_TAG_STR) ? (recv.v.s ? recv.v.s : sp_str_empty)
+                                                : sp_String_cstr((sp_String *)recv.v.p);
+@@ -11675,7 +11676,7 @@ static SP_NOINLINE const char *sp_io_read_splat(sp_File *f, sp_PolyArray *a) {
+   sp_int ln = sp_poly_nil_p(len) ? 0 : sp_poly_arg_int_chk(len);
+   if (!sp_poly_nil_p(buf)) {
+     if (sp_poly_is_strbuf(buf)) {
+-      if (sp_String_is_frozen((sp_String *)buf.v.p)) sp_raise_frozen_str(sp_String_cstr((sp_String *)buf.v.p));
++      if (sp_String_is_immutable((sp_String *)buf.v.p)) sp_raise_frozen_str(sp_String_cstr((sp_String *)buf.v.p));
+     }
+     else {
+       sp_str_check_mutable(sp_poly_arg_str_chk(buf));
+@@ -11697,7 +11698,7 @@ static const char *sp_io_read_nonblock_buffer(sp_File *f, sp_int n, sp_RbVal *bu
+   SP_GC_ROOT_RBVAL(v);
+   if (n < 0) sp_raise_cls("ArgumentError", sp_sprintf("negative length %lld given", (long long)n));
+   const char *s = sp_poly_nil_p(v) ? NULL : sp_poly_arg_str_chk(v);
+-  if (s && sp_poly_is_strbuf(v) && sp_String_is_frozen((sp_String *)v.v.p)) sp_raise_frozen_str(s);
++  if (s && sp_poly_is_strbuf(v) && sp_String_is_immutable((sp_String *)v.v.p)) sp_raise_frozen_str(s);
+   if (s) sp_str_check_mutable(s);
+   if (exception && exception->tag != SP_TAG_BOOL)
+     sp_raise_cls("ArgumentError", sp_sprintf("expected true or false as exception: %s", sp_poly_inspect(*exception)));
+@@ -13259,6 +13260,10 @@ static inline sp_RbVal sp_poly_clone_freeze(sp_RbVal v, int fz) {
+    (sp_gc_is_frozen reports it back), heap strings flip the string marker,
+    every immutable tag (int/float/sym/nil/bool/...) is already frozen. */
+ static inline sp_RbVal sp_poly_freeze(sp_RbVal v) {
++  if (sp_poly_is_strbuf(v)) {
++    sp_String_freeze((sp_String *)v.v.p);
++    return v;
++  }
+   if (v.tag == SP_TAG_OBJ) {
+     sp_gc_freeze(v.v.p);
+     /* the array mutators test the array's own field, not the header bit, so
+@@ -14139,7 +14144,7 @@ static sp_RbVal sp_poly_arr_widen_and_set(sp_RbVal v, sp_int idx, sp_RbVal val)
+      caller to reassign to the poly slot (sp_poly_arr_set is a no-op on a
+      string, silently dropping the mutation) (#3172). */
+   if (v.tag == SP_TAG_STR) {
+-    if (v.v.s && sp_str_is_frozen_val(v.v.s)) sp_raise_frozen_str(v.v.s);   /* #6328 */
++    if (v.v.s && (sp_str_is_frozen_val(v.v.s) || sp_str_is_locked(v.v.s))) sp_raise_frozen_str(v.v.s);   /* #6328 */
+     const char *rep = sp_str_aset_rep(val);
+     return sp_box_str_new(sp_str_splice_at(v.v.s ? v.v.s : sp_str_empty, idx, 1, rep, 0));
+   }
+@@ -14181,7 +14186,7 @@ static sp_RbVal sp_poly_str_aset_key(sp_RbVal v, sp_RbVal key, sp_RbVal val) {
+     else sp_poly_set_poly(v, key, val);
+     return v;
+   }
+-  if (v.tag == SP_TAG_STR && v.v.s && sp_str_is_frozen_val(v.v.s)) sp_raise_frozen_str(v.v.s);
++  if (v.tag == SP_TAG_STR && v.v.s && (sp_str_is_frozen_val(v.v.s) || sp_str_is_locked(v.v.s))) sp_raise_frozen_str(v.v.s);
+   /* refused before anything is rooted: a raise past a root would leave it
+      dangling under an inline rescue */
+   sp_str_aset_refuse(val);
+@@ -22338,7 +22343,7 @@ static sp_RbVal sp_poly_pack_buffer(sp_RbVal recv, sp_RbVal format, sp_RbVal buf
+     if (buffer.tag != SP_TAG_STR && !sp_poly_is_strbuf(buffer))
+       sp_raise_cls("TypeError", sp_sprintf("buffer must be String, not %s", sp_poly_class_name(buffer)));
+     initial = sp_poly_to_s(buffer);
+-    if (sp_poly_is_strbuf(buffer) && sp_String_is_frozen((sp_String *)buffer.v.p)) sp_raise_frozen_str(initial);
++    if (sp_poly_is_strbuf(buffer) && sp_String_is_immutable((sp_String *)buffer.v.p)) sp_raise_frozen_str(initial);
+     sp_str_check_mutable(initial);
+   }
+   SP_GC_ROOT_STR(initial);
+diff --git a/packages/io/io/buffer.rb b/packages/io/io/buffer.rb
+index 661d3a936..fc50eaa9e 100644
+--- a/packages/io/io/buffer.rb
++++ b/packages/io/io/buffer.rb
+@@ -81,6 +81,8 @@ module IOBufferPackage
+   native_method :__lock,    [], :self, "sp_IOBuffer_lock"
+   native_method :__unlock,  [], :self, "sp_IOBuffer_unlock"
+   native_method :__become_for, [:string], :self, "sp_IOBuffer_become_for"
++  native_method :__borrow_string, [:string], :self, "sp_IOBuffer_borrow_string"
++  native_method :__end_borrow, [], :self, "sp_IOBuffer_end_borrow"
+   # The IO integration: the Ruby-side read/write/pread/pwrite below hold the
+   # lock around these; a negative length or size stands for nil.
+   native_method :__read_io,   [:any, :int, :int], :int, "sp_IOBuffer_read_io"
+@@ -109,16 +111,19 @@ class IO::Buffer
+   DEFAULT_SIZE = 65536
+   PAGE_SIZE = IOBufferPackage.__page_size
+
+-  # IO::Buffer.for(string) answers a READONLY copy of the string's bytes.
+-  # CRuby's is a zero-copy view; Spinel strings are immutable, so a copy is
+-  # observably the same -- except the BLOCK form, whose whole point is
+-  # writing through into the String. That cannot be represented here, so it
+-  # refuses loudly rather than silently dropping the writes.
++  # With a block, lend the String's current bytes for the duration of
++  # the yield. The non-block form keeps its read-only snapshot.
+   def self.for(string)
+-    if block_given?
+-      raise NotImplementedError, "IO::Buffer.for with a block (writing through into the String) is not supported"
++    return new(0).__become_for(string) unless block_given?
++
++    owner = new(0)
++    buffer = owner.__borrow_string(string)
++    begin
++      yield buffer
++    ensure
++      owner.__end_borrow
++      buffer.free
+     end
+-    new(0).__become_for(string)
+   end
+
+   # IO::Buffer.map(file, size = nil, offset = 0, flags = 0): a view of the
+diff --git a/src/codegen_call_io.c b/src/codegen_call_io.c
+index 4e668a61e..b124ec5c2 100644
+--- a/src/codegen_call_io.c
++++ b/src/codegen_call_io.c
+@@ -399,7 +399,7 @@ static void emit_io_read_nonblock_buffer(Compiler *c, int id, int handle, Buf *b
+   if (shared) buf_printf(b, "_t%d = sp_poly_strbuf_lift(_t%d); ", held[1], held[1]);
+   buf_printf(b, "const char *_t%d = sp_poly_nil_p(_t%d) ? NULL : sp_poly_arg_str_chk(_t%d); "
+                 "SP_GC_ROOT_STR(_t%d); if (_t%d && sp_poly_is_strbuf(_t%d) && "
+-                "sp_String_is_frozen((sp_String *)_t%d.v.p)) sp_raise_frozen_str(_t%d); "
++                "sp_String_is_immutable((sp_String *)_t%d.v.p)) sp_raise_frozen_str(_t%d); "
+                 "if (_t%d) sp_str_check_mutable(_t%d); ",
+              ts, held[1], held[1], ts, ts, held[1], held[1], ts, ts, ts);
+   if (argc == 3) {
+diff --git a/src/codegen_call_recv.c b/src/codegen_call_recv.c
+index a5edfa2e8..ae9c5bbf1 100644
+--- a/src/codegen_call_recv.c
++++ b/src/codegen_call_recv.c
+@@ -773,7 +773,7 @@ static int sb_iv_expr_shim(Compiler *c, int id, int recvS, Buf *b,
+   if (!handled) { free(armb.p); free(pre.p); free(srefI.p); return 0; }
+   TyKind resty = repr_of(c, id).as_ty;
+   buf_printf(b, "({ sp_String *_t%d = SP_STR_HDL(%s);%s"
+-                " if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++                " if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                 " const char *lv__sb%d = sp_str_concat(sp_String_cstr(_t%d), (&(\"\\xff\")[1]));"
+                 " SP_GC_ROOT(lv__sb%d); ",
+              tH, srefI.p, pre.p ? pre.p : "", tH, tH, tH, tH, tH);
+@@ -802,7 +802,7 @@ static int sb_reader_expr_shim(Compiler *c, int id, int recvS, Buf *b,
+   if (!handled) { free(armb.p); free(pre.p); free(srefR.p); return 0; }
+   TyKind resty = repr_of(c, id).as_ty;
+   buf_printf(b, "({ sp_String *_t%d = SP_STR_HDL(%s);%s"
+-                " if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++                " if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                 " const char *lv__sb%d = sp_str_concat(sp_String_cstr(_t%d), (&(\"\\xff\")[1]));"
+                 " SP_GC_ROOT(lv__sb%d); ",
+              tH, srefR.p, pre.p ? pre.p : "", tH, tH, tH, tH, tH);
+@@ -854,7 +854,7 @@ static int sb_route_expr_shim(Compiler *c, int id, int recvS, Buf *b,
+      allocate */
+   /* (one representation: the receiver's text may be a view of the handle; sp_String_new_fresh finds it) */
+   buf_printf(b, "({ sp_String *_t%d = %s%s%s; SP_GC_ROOT(_t%d);%s"
+-                " if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++                " if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                 " const char *lv__sb%d = sp_str_concat(sp_String_cstr(_t%d), (&(\"\\xff\")[1]));"
+                 " SP_GC_ROOT(lv__sb%d); ",
+              tH, "SP_STR_HDL(", hb.p, ")", tH, pre.p ? pre.p : "", tH, tH, tH, tH, tH);
+@@ -4881,7 +4881,7 @@ static int emit_str_mutator_call(Compiler *c, int id, Buf *b, const NodeTable *n
+          mutability check reads a NULL as */
+       if (!lvw) buf_printf(b, "if (!_t%d) sp_nil_recv(\"%s\"); ", to, sb_bang);
+       /* an in-place mutator on a frozen string raises FrozenError (#3003) */
+-      buf_printf(b, "if (sp_str_is_frozen_val(_t%d)) sp_raise_frozen_str(_t%d); ", to, to);
++      buf_printf(b, "sp_str_check_mutable(_t%d); ", to);
+       int subm2 = sb_sub;   /* gsub!/sub!: nil means no substitution, see above */
+       if (subm2) buf_puts(g_pre ? g_pre : b, "sp_re_sub_matched = 0; ");
+       char *sv_nm = nt_node_swap_str((NodeTable *)nt, id, "name", sb_plain);
+@@ -5094,7 +5094,7 @@ static int emit_str_mutator_call(Compiler *c, int id, Buf *b, const NodeTable *n
+     Buf lb0; memset(&lb0, 0, sizeof lb0);
+     if (!strbuf_recv_handle_any(c, id, recv, &sref0, &lb0)) return 0;
+     int t0 = ++g_tmp;
+-    buf_printf(b, "({ sp_String *_t%d = SP_STR_HDL(%s); if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++    buf_printf(b, "({ sp_String *_t%d = SP_STR_HDL(%s); if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                   " sp_strbuf_read_pub(_t%d); })", t0, lb0.p ? lb0.p : sref0.p, t0, t0, t0);
+     free(lb0.p); free(sref0.p);
+     { *out = 1; return 1; }
+@@ -5419,7 +5419,7 @@ int emit_array_call(Compiler *c, int id, Buf *b) {
+         else {
+           TyKind resty = repr_of(c, id).as_ty;
+           buf_printf(b, "({ sp_String *_t%d = SP_STR_HDL(%s);%s"
+-                        " if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++                        " if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                         " const char *lv__sb%d = sp_str_concat(sp_String_cstr(_t%d), (&(\"\\xff\")[1]));"
+                         " SP_GC_ROOT(lv__sb%d); ",
+                      tH, srefL.p, pre.p ? pre.p : "", tH, tH, tH, tH, tH);
+@@ -10975,7 +10975,7 @@ static int emit_scalar_call_arms(Compiler *c, int id, Buf *b) {
+         emit_int_expr(c, avS[1], b);
+         /* (one representation: the handle's own payload is written in
+            place, sp_String_setbyte) */
+-        buf_printf(b, "; if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++        buf_printf(b, "; if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                       " sp_String_setbyte(_t%d, _i%d, _v%d); })", tH, tH, tH, tH, tH);
+         return 1;
+       }
+@@ -10989,14 +10989,14 @@ static int emit_scalar_call_arms(Compiler *c, int id, Buf *b) {
+         emit_int_expr(c, avS[0], b);
+         buf_printf(b, "; sp_int _v%d = ", tH);
+         emit_int_expr(c, avS[1], b);
+-        buf_printf(b, "; if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++        buf_printf(b, "; if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                       " sp_String_setbyte(_t%d, _i%d, _v%d); })", tH, tH, tH, tH, tH);
+         return 1;
+       }
+       if (haveB) {
+         int tH = ++g_tmp;
+         buf_printf(b, "({ sp_String *_t%d = SP_STR_HDL(%s);"
+-                      " if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++                      " if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                       " const char *_p%d = sp_String_cstr(_t%d); sp_int _v%d = ",
+                    tH, srefB.p, tH, tH, tH, tH, tH);
+         free(srefB.p);
+@@ -11036,7 +11036,7 @@ static int emit_scalar_call_arms(Compiler *c, int id, Buf *b) {
+         if (!handled) { free(armb.p); free(srefL.p); }
+         else {
+           buf_printf(b, "({ sp_String *_t%d = SP_STR_HDL(%s);"
+-                        " if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++                        " if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                         " const char *lv__sb%d = sp_str_concat(sp_String_cstr(_t%d), (&(\"\\xff\")[1]));"
+                         " SP_GC_ROOT(lv__sb%d);"
+                         " sp_int _res%d = %s;"
+@@ -13594,7 +13594,7 @@ static void emit_strbuf_encode_bang(Compiler *c, const char *ref, int hr, const
+   emit_route_recv_root(c, hr, th, 0, NULL, TY_STRING, b);
+   int ta = encode_args_hold(c, argv, argc, &npos, b);
+   buf_printf(b, " if (!_t%d) sp_nil_recv(\"encode!\");"
+-                " if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);"
++                " if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);"
+                 " sp_String_encode_into(_t%d, sp_str_encode(sp_String_cstr(_t%d), ", th, th, th, th, th);
+   emit_encode_args(ta, npos, b);
+   buf_printf(b, ")); sp_strbuf_read_pub(_t%d); })", th);
+@@ -18369,7 +18369,7 @@ static void emit_poly_encoding_mutator(Compiler *c, const char *name, int recv,
+     int ta = encode_hold(c, "sp_RbVal", "SP_GC_ROOT_RBVAL", rv.p ? rv.p : "", recv, argv, argc, tv, &npos, b);
+     free(rv.p);
+     buf_printf(b, " if (sp_poly_is_strbuf(_t%d)) { sp_String *_h%d = (sp_String *)_t%d.v.p;"
+-                  " if (sp_String_is_frozen(_h%d)) sp_raise_frozen_str(_h%d->data);"
++                  " if (sp_String_is_immutable(_h%d)) sp_raise_frozen_str(_h%d->data);"
+                   " sp_String_encode_into(_h%d, sp_str_encode(sp_String_cstr(_h%d), ",
+                tv, tv, tv, tv, tv, tv, tv);
+     emit_encode_args(ta, npos, b);
+diff --git a/src/codegen_stmt.c b/src/codegen_stmt.c
+index d628830ed..c8812f613 100644
+--- a/src/codegen_stmt.c
++++ b/src/codegen_stmt.c
+@@ -19751,8 +19751,8 @@ static int emit_call_stmt(Compiler *c, int id, Buf *b, int indent, const NodeTab
+             if (repr_of_slot(c, llv).kind == RK_STRBUF) {
+               emit_indent(b, indent);
+               /* (a local a block captures lives in its cell) */
+-              if (llv->is_cell) buf_printf(b, "sp_gc_freeze((void *)(*_cell_%s));\n", rename_local(lnm));
+-              else buf_printf(b, "sp_gc_freeze((void *)lv_%s);\n", rename_local(lnm));
++              if (llv->is_cell) buf_printf(b, "sp_String_freeze(*_cell_%s);\n", rename_local(lnm));
++              else buf_printf(b, "sp_String_freeze(lv_%s);\n", rename_local(lnm));
+               return 1;
+             }
+           }
+@@ -23435,7 +23435,7 @@ static void emit_sb_shim_swap(Buf *b, int indent, int tH, Buf *pre, char *arm) {
+   buf_puts(b, pre->p ? pre->p : "");
+   free(pre->p);
+   emit_indent(b, indent + 1);
+-  buf_printf(b, "if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);\n", tH, tH);
++  buf_printf(b, "if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);\n", tH, tH);
+   emit_indent(b, indent + 1);
+   buf_printf(b, "const char *lv__sb%d = sp_str_concat(sp_String_cstr(_t%d), (&(\"\\xff\")[1]));\n", tH, tH);
+   emit_indent(b, indent + 1);
+@@ -23931,7 +23931,7 @@ static int str_mutate_reassign_arms(Compiler *c, Buf *b, int indent, const NodeT
+       buf_printf(b, " sp_int _t%d = ", ts); emit_int_expr(c, argv[0], b);
+       buf_printf(b, "; sp_int _t%d = ", tl); emit_int_expr(c, argv[1], b); buf_puts(b, ";");
+       char *v = emit_str_splice_value(c, recv, argv[2], 0, ts, b);
+-      buf_printf(b, " if (sp_String_is_frozen(_t%d)) sp_raise_frozen_str(_t%d->data);", th, th);
++      buf_printf(b, " if (sp_String_is_immutable(_t%d)) sp_raise_frozen_str(_t%d->data);", th, th);
+       buf_printf(b, " sp_String_set_bin(_t%d, sp_str_splice_at(sp_String_cstr(_t%d), _t%d, _t%d, %s, 0)); }\n",
+                  th, th, ts, tl, v ? v : "NULL");
+       free(v);
+@@ -24096,7 +24096,7 @@ void emit_str_concat_handle(Compiler *c, const char *sref, int argc, const int *
+   }
+   g_one_held = held0;
+   free(rt.p);
+-  buf_printf(b, " if (sp_String_is_frozen(%s)) sp_raise_frozen_str((%s)->data);\n", sref, sref);
++  buf_printf(b, " if (sp_String_is_immutable(%s)) sp_raise_frozen_str((%s)->data);\n", sref, sref);
+   for (int a = 0; a < argc; a++) {
+     emit_indent(b, indent + 1);
+     buf_printf(b, "sp_String_append_bin(%s, _t%d);\n", sref, base + a);
+diff --git a/test/io_buffer_for_block.rb b/test/io_buffer_for_block.rb
+new file mode 100644
+index 000000000..aaa5197dc
+--- /dev/null
++++ b/test/io_buffer_for_block.rb
+@@ -0,0 +1,59 @@
++s = +"abcdef"
++alias_of_s = s
++before = s.hash
++escaped = nil
++result = IO::Buffer.for(s) do |buffer|
++  escaped = buffer
++  p [buffer.external?, buffer.readonly?, buffer.size]
++  buffer.clear(90, 1, 2)
++  p alias_of_s
++  p before != s.hash
++  buffer.slice(3, 2).set_string("XY")
++  p s
++  begin
++    buffer.clear(1, 5, 2)
++  rescue ArgumentError => error
++    puts error.message
++  end
++  begin
++    alias_of_s << "extra"
++  rescue RuntimeError => error
++    puts error.message
++  end
++  begin
++    s.setbyte(0, 0)
++  rescue RuntimeError => error
++    puts error.message
++  end
++  begin
++    s.freeze
++  rescue RuntimeError => error
++    puts error.message
++  end
++  :answer
++end
++p [result, escaped.null?, escaped.size, s.frozen?]
++s << "!"
++p s
++
++begin
++  IO::Buffer.for(s) do |buffer|
++    buffer.set_value(:U8, 0, 65)
++    raise "from block"
++  end
++rescue RuntimeError => error
++  puts error.message
++end
++s.setbyte(1, 66)
++p s
++
++frozen = "xyz".freeze
++p IO::Buffer.for(frozen) { |buffer| [buffer.readonly?, buffer.get_string] }
++begin
++  IO::Buffer.for(frozen) { |buffer| buffer.clear(0) }
++rescue IO::Buffer::AccessError => error
++  puts error.message
++end
++
++empty = +""
++IO::Buffer.for(empty) { |buffer| p [buffer.null?, buffer.size, buffer.get_string] }
+diff --git a/test/io_buffer_for_block.rb.expected b/test/io_buffer_for_block.rb.expected
+new file mode 100644
+index 000000000..439856c6e
+--- /dev/null
++++ b/test/io_buffer_for_block.rb.expected
+@@ -0,0 +1,15 @@
++[true, false, 6]
++"aZZdef"
++true
++"aZZXYf"
++Specified offset+length is bigger than the buffer size!
++can't modify string; temporarily locked
++can't modify string; temporarily locked
++can't modify string; temporarily locked
++[:answer, true, 0, false]
++"aZZXYf!"
++from block
++"ABZXYf!"
++[true, "xyz"]
++Buffer is not writable!
++[false, 0, ""]

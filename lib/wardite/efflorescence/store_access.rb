@@ -224,19 +224,21 @@ module Wardite
         return if length == 0
 
         byte = value & 255
-        if RUBY_ENGINE != "spinel"
-          if data.encoding == Encoding::BINARY
-            chunk_size = length < PAGE_SIZE ? length : PAGE_SIZE
-            byte_string = byte.chr(Encoding::BINARY)
-            chunk = byte_string * chunk_size
-            while length >= chunk_size
-              data[destination, chunk_size] = chunk
-              destination += chunk_size
-              length -= chunk_size
-            end
-            data[destination, length] = byte_string * length if length > 0
-            return
+        if RUBY_ENGINE == "spinel"
+          IO::Buffer.for(data) { |buffer| buffer.clear(byte, destination, length) }
+          return
+        end
+        if data.encoding == Encoding::BINARY
+          chunk_size = length < PAGE_SIZE ? length : PAGE_SIZE
+          byte_string = byte.chr(Encoding::BINARY)
+          chunk = byte_string * chunk_size
+          while length >= chunk_size
+            data[destination, chunk_size] = chunk
+            destination += chunk_size
+            length -= chunk_size
           end
+          data[destination, length] = byte_string * length if length > 0
+          return
         end
 
         index = 0

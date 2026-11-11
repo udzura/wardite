@@ -35,6 +35,8 @@ Wasmのデコード、モジュール構成とimportの確認、Store・メモ�
 
 ## 6. Spinel版の線形メモリをIO::Bufferに移行
 
+[実装・計測記録](../efflorescence-spinel-linear-memory.md)
+
 Ruby 4.0.9の起動では256 MiBの `memory.fill` が1回あり、Spinel版Warditeの1バイトずつの書き込みに約0.54秒かかった。Spinelの `IO::Buffer#clear(value, offset, length)` は範囲検査後に `memset` を呼ぶ。確保・初期化済みの256 MiBのバッファを埋める単体計測では約5 msだった。ゲストの起動時間とは別に計測する。
 
 ### 6a. Spinelに書き込み可能なStringビューを実装
