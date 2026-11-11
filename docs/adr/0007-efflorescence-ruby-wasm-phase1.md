@@ -1,6 +1,6 @@
 # ADR 0007: Efflorescenceのruby.wasm対応フェーズ1
 
-- **状態** 提案
+- **状態** 実装・検証済み。[実装記録](../efflorescence-ruby-wasm-phase1.md)
 - **日付** 2026-11-11
 - **基準** main `9e75f91`、[M6 ADR](0006-efflorescence-m6-coverage-parity.md)
 - **後続** [ruby.wasm対応フェーズ2](0008-efflorescence-ruby-wasm-phase2.md)
