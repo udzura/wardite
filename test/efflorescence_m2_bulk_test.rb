@@ -90,6 +90,32 @@ class EfflorescenceM2BulkTest < Test::Unit::TestCase
     end
   end
 
+  test 'fill writes across multiple chunks and preserves both ends' do
+    bytes = compile_efflorescence_wat(<<~WAT)
+      (module (memory 3)
+        (func (export "fill") (param i32 i32 i32)
+          local.get 0 local.get 1 local.get 2 memory.fill))
+    WAT
+    MODES.each do |mode|
+      fresh = instance(bytes, **mode)
+      memory = fresh.store.memories.fetch(0)
+      length = 2 * 65536 + 7
+      memory.data.setbyte(2, 42)
+      memory.data.setbyte(3 + length, 43)
+      fresh.runtime.call_unboxed('fill', [3, 0x180, length])
+      assert_equal "\x80".b * length, memory.data.byteslice(3, length)
+      assert_equal [42, 43], [memory.data.getbyte(2), memory.data.getbyte(3 + length)]
+      assert_equal 3 * 65536, memory.data.bytesize
+      unchanged_trap(fresh, 'fill', [65535, 1, length])
+
+      # A caller can replace the backing String through the Store API.
+      memory.data = +"日本語"
+      fresh.runtime.call_unboxed('fill', [2, 0xff, 1])
+      assert_equal [0xe6, 0x97, 0xff, 0xe6], memory.data.bytes.first(4)
+      assert_equal Encoding::UTF_8, memory.data.encoding
+    end
+  end
+
   test 'ordinary bulk operations agree with the stack VM in independent Stores' do
     bytes = compile_efflorescence_wat(BULK_WAT)
     MODES.each do |mode|
