@@ -251,7 +251,13 @@ module Wardite
   end
 
   class Memory
-    attr_accessor data: String
+    PAGE_SIZE: Integer
+
+    MAX_PAGES: Integer
+
+    @buffer: IO::Buffer?
+
+    @data: String?
 
     attr_accessor current: Integer
 
@@ -261,6 +267,41 @@ module Wardite
     # @rbs max: Integer|nil
     # @rbs return: void
     def initialize: (Integer min, Integer | nil max) -> void
+
+    # The CRuby host API retains the mutable backing String.
+    # @rbs return: String
+    def data: () -> String
+
+    # @rbs value: String
+    # @rbs return: String
+    def data=: (String value) -> String
+
+    # The Spinel host API exposes the current owned buffer. Reacquire it
+    # after any guest call that can grow memory.
+    # @rbs return: IO::Buffer
+    def buffer: () -> IO::Buffer
+
+    # @rbs return: Integer
+    def bytesize: () -> Integer
+
+    # @rbs offset: Integer
+    # @rbs length: Integer
+    # @rbs return: bool
+    def range?: (Integer offset, Integer length) -> bool
+
+    # @rbs offset: Integer
+    # @rbs length: Integer
+    # @rbs return: String
+    def read_bytes: (Integer offset, Integer length) -> String
+
+    # @rbs offset: Integer
+    # @rbs return: Integer
+    def read_u32: (Integer offset) -> Integer
+
+    # @rbs offset: Integer
+    # @rbs bytes: String
+    # @rbs return: void
+    def write_bytes: (Integer offset, String bytes) -> void
 
     # @rbs delta: Integer
     # @rbs return: Integer

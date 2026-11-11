@@ -90,10 +90,20 @@ module Wardite
       # @rbs signed: bool
       # @rbs return: Integer
       def load(address, offset, width, signed)
-        data = memory.data
         start = address + offset
-        StoreAccess.check_range(start, width, data.bytesize)
-        value = read_word(data, start, width)
+        if RUBY_ENGINE == "spinel"
+          source = memory.buffer
+          StoreAccess.check_range(start, width, source.size)
+          value = case width
+          when 1 then Integer(source.get_value(:U8, start))
+          when 2 then Integer(source.get_value(:u16, start))
+          else Integer(source.get_value(:u32, start))
+          end
+        else
+          data = memory.data
+          StoreAccess.check_range(start, width, data.bytesize)
+          value = read_word(data, start, width)
+        end
         if signed && value >= (1 << (width * 8 - 1))
           value -= 1 << (width * 8)
         end
@@ -106,8 +116,20 @@ module Wardite
       # @rbs signed: bool
       # @rbs return: Integer
       def load_i64(address, offset, width, signed)
-        data = memory.data
         start = address + offset
+        if RUBY_ENGINE == "spinel"
+          source = memory.buffer
+          StoreAccess.check_range(start, width, source.size)
+          return Integer(source.get_value(:s64, start)) if width == 8
+
+          value = case width
+          when 1 then Integer(source.get_value(:U8, start))
+          when 2 then Integer(source.get_value(:u16, start))
+          else Integer(source.get_value(:u32, start))
+          end
+          return signed ? I64Arithmetic.extend(value, width * 8) : value
+        end
+        data = memory.data
         StoreAccess.check_range(start, width, data.bytesize)
         if width == 8
           I64Arithmetic.join(read_word(data, start, 4), read_word(data, start + 4, 4))
@@ -125,8 +147,19 @@ module Wardite
       # @rbs value: Integer
       # @rbs return: void
       def store(address, offset, width, value)
-        data = memory.data
         start = address + offset
+        if RUBY_ENGINE == "spinel"
+          target = memory.buffer
+          StoreAccess.check_range(start, width, target.size)
+          case width
+          when 1 then target.set_value(:U8, start, value & 255)
+          when 2 then target.set_value(:u16, start, value & 0xffff)
+          when 4 then target.set_value(:u32, start, value & 0xffffffff)
+          when 8 then target.set_value(:s64, start, value)
+          end
+          return
+        end
+        data = memory.data
         StoreAccess.check_range(start, width, data.bytesize)
         byte = 0
         while byte < width
@@ -147,6 +180,8 @@ module Wardite
       # @rbs return: Integer
       def grow(delta)
         target = memory
+        return target.grow(delta) & 0xffffffff if RUBY_ENGINE == "spinel"
+
         previous = target.current
         declared = target.max
         limit = declared && declared < MAX_PAGES ? declared : MAX_PAGES
@@ -194,6 +229,13 @@ module Wardite
       # @rbs length: Integer
       # @rbs return: void
       def copy(destination, source, length)
+        if RUBY_ENGINE == "spinel"
+          target = memory.buffer
+          StoreAccess.check_range(destination, length, target.size)
+          StoreAccess.check_range(source, length, target.size)
+          target.copy(target, destination, length, source) if length > 0
+          return
+        end
         data = memory.data
         StoreAccess.check_range(destination, length, data.bytesize)
         StoreAccess.check_range(source, length, data.bytesize)
@@ -219,15 +261,17 @@ module Wardite
       # @rbs length: Integer
       # @rbs return: void
       def fill(destination, value, length)
+        if RUBY_ENGINE == "spinel"
+          target = memory.buffer
+          StoreAccess.check_range(destination, length, target.size)
+          target.clear(value & 255, destination, length) if length > 0
+          return
+        end
         data = memory.data
         StoreAccess.check_range(destination, length, data.bytesize)
         return if length == 0
 
         byte = value & 255
-        if RUBY_ENGINE == "spinel"
-          IO::Buffer.for(data) { |buffer| buffer.clear(byte, destination, length) }
-          return
-        end
         if data.encoding == Encoding::BINARY
           chunk_size = length < PAGE_SIZE ? length : PAGE_SIZE
           byte_string = byte.chr(Encoding::BINARY)
@@ -254,8 +298,15 @@ module Wardite
       # @rbs length: Integer
       # @rbs return: void
       def init(index, destination, source, length)
-        data = memory.data
         segment = @store.data_segments[index] || raise(Wardite::EvalError, "invalid data segment")
+        if RUBY_ENGINE == "spinel"
+          target = memory.buffer
+          StoreAccess.check_range(destination, length, target.size)
+          StoreAccess.check_range(source, length, segment.bytesize)
+          target.set_string(segment, destination, length, source) if length > 0
+          return
+        end
+        data = memory.data
         StoreAccess.check_range(destination, length, data.bytesize)
         StoreAccess.check_range(source, length, segment.bytesize)
         index = 0

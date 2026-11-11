@@ -149,8 +149,9 @@ CRuby build. Ruby's dynamic export helpers (`instance.add(...)` and
 The build leaves inline RBS and Spinel's default integer overflow checks enabled.
 Wasm integer operations bound their intermediate values, so
 `--int-overflow=promote` is not required.
-Tested with Spinel `2026.10.25+1967` (`6e7fc1355`) on macOS
-arm64. Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
+The pinned Spinel build applies the IO::Buffer patches under `spinel/patches`.
+See the [build instructions and host memory API](docs/efflorescence-spinel-linear-memory.md).
+Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
 
 ## Contributing
 

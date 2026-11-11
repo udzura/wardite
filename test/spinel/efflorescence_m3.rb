@@ -15,7 +15,16 @@ class M3Host
     left.value + right.value
   end
 
-  def sum(_store, args)
+  # @rbs store: Wardite::Store
+  # @rbs return: void
+  def self.write_guest_memory(store)
+    memory = store.memories[0] || raise("missing guest memory")
+    memory.buffer.set_value(:U8, 0, 90)
+    raise "host read did not observe the write" unless memory.read_bytes(0, 1) == "Z".b
+  end
+
+  def sum(store, args)
+    M3Host.write_guest_memory(store)
     M3Host.sum(args)
   end
 
@@ -26,7 +35,10 @@ end
 
 host = M3Host.new
 hash = Wardite::HashModule.new({
-  sum: ->(_store, args) { Wardite::I32.new(M3Host.sum(args)) },
+  sum: ->(store, args) do
+    M3Host.write_guest_memory(store)
+    Wardite::I32.new(M3Host.sum(args))
+  end,
   wrong: ->(_store, _args) { raise "mismatched hash host called" }
 })
 [host, hash].each do |env|
@@ -40,6 +52,7 @@ hash = Wardite::HashModule.new({
       raise "wrong engine" unless vm.is_a?(Wardite::Efflorescence::VM)
       raise "host reexport" unless M2Probe.call(vm, "sum", [15, 6]) == 21
       raise "direct host" unless M2Probe.call(vm, "direct", [15, 6]) == 21
+      raise "guest did not observe host write" unless M2Probe.call(vm, "read_host_byte", []) == 90
       raise "indirect defined" unless M2Probe.call(vm, "run", [5, 15, 6]) == 9
       raise "indirect host" unless M2Probe.call(vm, "run", [1, 15, 6]) == 21
       begin

@@ -113,12 +113,19 @@ class ParityWorker
       next if window == "-"
       parts = window.split(":")
       start, length = parts.fetch(0).to_i, parts.fetch(1).to_i
-      slice = memory.data.byteslice(start, length) || ""
+      size = memory.bytesize
+      start += size if start < 0
+      available = size - start
+      slice = if start >= 0 && available >= 0 && length >= 0
+        memory.read_bytes(start, length < available ? length : available)
+      else
+        ""
+      end
       encoded = slice.unpack1("H*")
       raise "cannot encode memory" unless encoded.is_a?(String)
       bytes << encoded
     end
-    "#{memory.current}:#{memory.data.bytesize}:#{bytes.join(',')}"
+    "#{memory.current}:#{memory.bytesize}:#{bytes.join(',')}"
   end
 
   # @rbs vm: Wardite::Efflorescence::VM

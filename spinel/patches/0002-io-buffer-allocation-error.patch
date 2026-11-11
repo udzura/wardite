@@ -1,0 +1,47 @@
+From a9a35b85d75ca273558f7e25a875cc240fc0f5a3 Mon Sep 17 00:00:00 2001
+From: Uchio Kondo <udzura@udzura.jp>
+Date: Thu, 12 Nov 2026 00:57:15 +0900
+Subject: [PATCH] Raise ENOMEM when IO::Buffer allocation fails
+
+Let callers preserve the previous buffer when a replacement cannot be allocated.
+
+Co-authored-by: Codex <codex@openai.com>
+---
+ lib/sp_iobuffer.c                           | 2 +-
+ test/io_buffer_allocation_error.rb          | 5 +++++
+ test/io_buffer_allocation_error.rb.expected | 1 +
+ 3 files changed, 7 insertions(+), 1 deletion(-)
+ create mode 100644 test/io_buffer_allocation_error.rb
+ create mode 100644 test/io_buffer_allocation_error.rb.expected
+
+diff --git a/lib/sp_iobuffer.c b/lib/sp_iobuffer.c
+index 3cdf111aa..922ea783b 100644
+--- a/lib/sp_iobuffer.c
++++ b/lib/sp_iobuffer.c
+@@ -377,7 +377,7 @@ static void iob_allocate(sp_IOBuffer *b, int64_t size, uint32_t flags, int flags
+   b->size = size;
+   if (size > 0) {
+     b->data = (uint8_t *)calloc(1, (size_t)size);
+-    if (!b->data) sp_oom_die();
++    if (!b->data) sp_raise_cls("Errno::ENOMEM", "Cannot allocate memory");
+     sp_gc_payload_resize(b, 0, (size_t)size);
+   }
+ }
+diff --git a/test/io_buffer_allocation_error.rb b/test/io_buffer_allocation_error.rb
+new file mode 100644
+index 000000000..e9ce7a488
+--- /dev/null
++++ b/test/io_buffer_allocation_error.rb
+@@ -0,0 +1,5 @@
++begin
++  IO::Buffer.new((1 << 62) - 1)
++rescue Errno::ENOMEM => error
++  puts error.class
++end
+diff --git a/test/io_buffer_allocation_error.rb.expected b/test/io_buffer_allocation_error.rb.expected
+new file mode 100644
+index 000000000..cb4d39d44
+--- /dev/null
++++ b/test/io_buffer_allocation_error.rb.expected
+@@ -0,0 +1 @@
++Errno::ENOMEM

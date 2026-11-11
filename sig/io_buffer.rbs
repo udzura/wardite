@@ -1,6 +1,0 @@
-class IO
-  class Buffer
-    def self.for: [T] (String) { (Buffer) -> T } -> T
-                | ...
-  end
-end

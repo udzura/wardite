@@ -274,10 +274,8 @@ module Wardite
       fd = args[0].value.to_i
       path = args[1].value.to_i
       path_len = args[2].value.to_i
-      path_str = store.memories[0].data[path...(path+path_len)]
-      if !path_str
-        return Wasi::ENOENT
-      end
+      path_str = guest_path(store, path, path_len)
+      return Wasi::EFAULT unless path_str
 
       target = get_path_at(fd, path_str)
       Dir.mkdir(target, 0700)
@@ -296,13 +294,13 @@ module Wardite
       result = args[4].value.to_i
       return Wasi::EINVAL unless (flags & ~Wasi::LOOKUP_SYMLINK_FOLLOW) == 0
 
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, path, path_len) && guest_range?(data, result, 64)
-      target = directory_path(fd, data.byteslice(path, path_len).to_s)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(path, path_len) && memory.range?(result, 64)
+      target = directory_path(fd, memory.read_bytes(path, path_len).to_s)
       return target if target.is_a?(Integer)
 
       stat = (flags & Wasi::LOOKUP_SYMLINK_FOLLOW) != 0 ? File.stat(target) : File.lstat(target)
-      write_guest_bytes(data, result, filestat_bytes(stat))
+      memory.write_bytes(result, filestat_bytes(stat))
       0
     rescue SystemCallError => error
       filesystem_errno(error)
@@ -321,7 +319,9 @@ module Wardite
       path_len = args[3].value.to_i
       atim = args[4].value.to_i # nanoseconds
       mtim = args[5].value.to_i # nanoseconds
-      target = get_path_at(fd, store.memories[0].data[path...(path+path_len)].to_s)
+      guest_name = guest_path(store, path, path_len)
+      return Wasi::EFAULT unless guest_name
+      target = get_path_at(fd, guest_name)
 
       atime = Time.at(atim.to_f / 1_000_000_000)
       mtime = Time.at(mtim.to_f / 1_000_000_000)
@@ -336,12 +336,16 @@ module Wardite
       old_fd = args[0].value.to_i
       old_path = args[1].value.to_i
       old_path_len = args[2].value.to_i
-      old_name = get_path_at(old_fd, store.memories[0].data[old_path...(old_path+old_path_len)].to_s)
+      old_guest_name = guest_path(store, old_path, old_path_len)
+      return Wasi::EFAULT unless old_guest_name
+      old_name = get_path_at(old_fd, old_guest_name)
 
       new_fd = args[3].value.to_i
       new_path = args[4].value.to_i
       new_path_len = args[5].value.to_i
-      new_name = get_path_at(new_fd, store.memories[0].data[new_path...(new_path+new_path_len)].to_s)
+      guest_name = guest_path(store, new_path, new_path_len)
+      return Wasi::EFAULT unless guest_name
+      new_name = get_path_at(new_fd, guest_name)
 
       File.link(old_name, new_name)
       0
@@ -361,9 +365,9 @@ module Wardite
       fs_flags = args[7].value.to_i
       fd_off = args[8].value.to_i
 
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, path, path_len) && guest_range?(data, fd_off, 4)
-      path_name = directory_path(dirfd, data.byteslice(path, path_len).to_s)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(path, path_len) && memory.range?(fd_off, 4)
+      path_name = directory_path(dirfd, memory.read_bytes(path, path_len).to_s)
       return path_name if path_name.is_a?(Integer)
       open_flags = interpret_open_flags(dirflags, oflags, fs_flags, fs_rights_base)
       is_dir = (oflags & Wasi::O_DIRECTORY) != 0
@@ -374,7 +378,7 @@ module Wardite
       file = File.open(path_name, open_flags, 0600)
       fd = set_fd file
 
-      write_guest_bytes(data, fd_off, [fd].pack("V"))
+      memory.write_bytes(fd_off, [fd].pack("V"))
       0
     rescue SystemCallError => error
       filesystem_errno(error)
@@ -392,17 +396,17 @@ module Wardite
       result_buf = args[5].value.to_i
 
       return Wasi::EINVAL if buf_len <= 0 || path_len <= 0
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, path, path_len) &&
-        guest_range?(data, buf, buf_len) && guest_range?(data, result_buf, 4)
-      target = directory_path(fd, data.byteslice(path, path_len).to_s)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(path, path_len) &&
+        memory.range?(buf, buf_len) && memory.range?(result_buf, 4)
+      target = directory_path(fd, memory.read_bytes(path, path_len).to_s)
       return target if target.is_a?(Integer)
 
       link_target = File.readlink(target).b
       return Wasi::ENAMETOOLONG if link_target.bytesize > buf_len
 
-      write_guest_bytes(data, buf, link_target)
-      write_guest_bytes(data, result_buf, [link_target.bytesize].pack("V"))
+      memory.write_bytes(buf, link_target)
+      memory.write_bytes(result_buf, [link_target.bytesize].pack("V"))
       0
     rescue SystemCallError => error
       filesystem_errno(error)
@@ -417,7 +421,8 @@ module Wardite
       fd = args[0].value.to_i
       path = args[1].value.to_i
       path_len = args[2].value.to_i
-      path_str = store.memories[0].data[path...(path+path_len)].to_s
+      path_str = guest_path(store, path, path_len)
+      return Wasi::EFAULT unless path_str
       target = get_path_at(fd, path_str)
 
       Dir.rmdir(target)
@@ -436,8 +441,12 @@ module Wardite
       new_path = args[4].value.to_i
       new_path_len = args[5].value.to_i
 
-      old_target = get_path_at(fd, store.memories[0].data[old_path...(old_path+old_path_len)].to_s)
-      new_target = get_path_at(new_fd, store.memories[0].data[new_path...(new_path+new_path_len)].to_s)
+      guest_name = guest_path(store, old_path, old_path_len)
+      return Wasi::EFAULT unless guest_name
+      old_target = get_path_at(fd, guest_name)
+      guest_name = guest_path(store, new_path, new_path_len)
+      return Wasi::EFAULT unless guest_name
+      new_target = get_path_at(new_fd, guest_name)
 
       File.rename(old_target, new_target)
       0
@@ -449,12 +458,15 @@ module Wardite
     def path_symlink(store, args)
       old_path = args[0].value.to_i
       old_path_len = args[1].value.to_i
-      old_name = store.memories[0].data[old_path...(old_path+old_path_len)].to_s
+      old_name = guest_path(store, old_path, old_path_len)
+      return Wasi::EFAULT unless old_name
 
       fd = args[2].value.to_i
       new_path = args[3].value.to_i
       new_path_len = args[4].value.to_i
-      new_name = get_path_at(fd, store.memories[0].data[new_path...(new_path+new_path_len)].to_s)
+      guest_name = guest_path(store, new_path, new_path_len)
+      return Wasi::EFAULT unless guest_name
+      new_name = get_path_at(fd, guest_name)
 
       File.symlink(old_name, new_name)
       0
@@ -467,7 +479,8 @@ module Wardite
       fd = args[0].value.to_i
       path = args[1].value.to_i
       path_len = args[2].value.to_i
-      path_str = store.memories[0].data[path...(path+path_len)].to_s
+      path_str = guest_path(store, path, path_len)
+      return Wasi::EFAULT unless path_str
       target = get_path_at(fd, path_str)
 
       File.unlink(target)
@@ -487,10 +500,10 @@ module Wardite
       if !file.is_a?(Wasi::PreopenedDir)
         return Wasi::EBADF
       end
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, prestat_offset, 8)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(prestat_offset, 8)
       # Zero-value 8-bit tag, and 3-byte zero-value padding.
-      write_guest_bytes(data, prestat_offset, [0, file.path.bytesize].pack("V2"))
+      memory.write_bytes(prestat_offset, [0, file.path.bytesize].pack("V2"))
       0
     end
 
@@ -511,9 +524,9 @@ module Wardite
       name = file.path.b
       return Wasi::ENAMETOOLONG if name.bytesize > path_len
 
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, path, path_len)
-      write_guest_bytes(data, path, name + "\0" * (path_len - name.bytesize))
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(path, path_len)
+      memory.write_bytes(path, name + "\0" * (path_len - name.bytesize))
       0
     end
 
@@ -534,16 +547,16 @@ module Wardite
       iovs = args.fetch(1).value.to_i
       count = args.fetch(2).value.to_i
       result = args.fetch(3).value.to_i
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, result, 4) && guest_range?(data, iovs, count * 8)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(result, 4) && memory.range?(iovs, count * 8)
 
       ranges = [] #: Array[Array[Integer]]
       total = 0
       count.times do |index|
         offset = iovs + index * 8
-        start = unpack_le_int(data.byteslice(offset, 4))
-        length = unpack_le_int(data.byteslice(offset + 4, 4))
-        return Wasi::EFAULT unless guest_range?(data, start, length)
+        start = memory.read_u32(offset)
+        length = memory.read_u32(offset + 4)
+        return Wasi::EFAULT unless memory.range?(start, length)
         total += length
         return Wasi::EOVERFLOW if total > 0xffffffff
         ranges << [start, length]
@@ -555,11 +568,11 @@ module Wardite
         length = range.fetch(1)
         buf = file.read(length)
         break unless buf
-        write_guest_bytes(data, start, buf)
+        memory.write_bytes(start, buf)
         nread += buf.bytesize
         break if buf.bytesize < length
       end
-      write_guest_bytes(data, result, [nread].pack("V"))
+      memory.write_bytes(result, [nread].pack("V"))
       0
     rescue SystemCallError => error
       filesystem_errno(error)
@@ -574,8 +587,8 @@ module Wardite
       file = @fd_table[args.fetch(0).value.to_i]
       return Wasi::EBADF unless file
       offset = args.fetch(1).value.to_i
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, offset, 24)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(offset, 24)
 
       fdflags = 0
       if file.is_a?(Wasi::PreopenedDir)
@@ -606,7 +619,7 @@ module Wardite
         fs_right_base = Wasi::RIGHT_FILE_RIGHT_BASE
       end
 
-      write_guest_bytes(data, offset, [ftype, fdflags, fs_right_base, fs_right_inheriting].pack("CxS<x4Q<2"))
+      memory.write_bytes(offset, [ftype, fdflags, fs_right_base, fs_right_inheriting].pack("CxS<x4Q<2"))
       0
     rescue SystemCallError => error
       filesystem_errno(error)
@@ -621,10 +634,10 @@ module Wardite
       file = @fd_table[args[0].value.to_i]
       return Wasi::EBADF unless file && !file.is_a?(Wasi::PreopenedDir)
       offset = args[1].value.to_i
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, offset, 64)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(offset, 64)
 
-      write_guest_bytes(data, offset, filestat_bytes(file.stat))
+      memory.write_bytes(offset, filestat_bytes(file.stat))
       0
     rescue SystemCallError => error
       filesystem_errno(error)
@@ -646,8 +659,8 @@ module Wardite
         return Wasi::EINVAL
       end
 
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, buf, buf_len) && guest_range?(data, result_buf_used, 4)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(buf, buf_len) && memory.range?(result_buf_used, 4)
 
       if dirent_cache[fd]&.eof
         dirent_cache.delete(fd)
@@ -671,8 +684,8 @@ module Wardite
         dirent.eof = true
       end
 
-      write_guest_bytes(data, buf, bindata)
-      write_guest_bytes(data, result_buf_used, [bufused].pack("V"))
+      memory.write_bytes(buf, bindata)
+      memory.write_bytes(result_buf_used, [bufused].pack("V"))
       0
     end
 
@@ -689,9 +702,9 @@ module Wardite
         return Wasi::EBADF
       end
 
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, result_buf, 8)
-      write_guest_bytes(data, result_buf, [file.tell].pack("Q<"))
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(result_buf, 8)
+      memory.write_bytes(result_buf, [file.tell].pack("Q<"))
       0
     rescue SystemCallError => error
       filesystem_errno(error)
@@ -736,9 +749,9 @@ module Wardite
     def random_get(store, args)
       buf = args[0].value.to_i
       buflen = args[1].value.to_i
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, buf, buflen)
-      write_guest_bytes(data, buf, SecureRandom.random_bytes(buflen))
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(buf, buflen)
+      memory.write_bytes(buf, SecureRandom.random_bytes(buflen))
       0
     end
 
@@ -754,11 +767,11 @@ module Wardite
       file = fd_table[fd]
       return Wasi::EBADF if !file || file.is_a?(Wasi::PreopenedDir)
 
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, written_at, 4) && guest_range?(data, iovs, count * 8)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(written_at, 4) && memory.range?(iovs, count * 8)
 
       if count == 1
-        payload = iovec_payload(data, iovs)
+        payload = iovec_payload(memory, iovs)
         return Wasi::EFAULT unless payload
         written = file.write(payload)
       else
@@ -766,7 +779,7 @@ module Wardite
         payloads = [] #: Array[String]
         total = 0
         count.times do |index|
-          payload = iovec_payload(data, iovs + index * 8)
+          payload = iovec_payload(memory, iovs + index * 8)
           return Wasi::EFAULT unless payload
           total += payload.bytesize
           return Wasi::EOVERFLOW if total > 0xffffffff
@@ -779,7 +792,7 @@ module Wardite
           break if bytes < payload.bytesize
         end
       end
-      write_guest_bytes(data, written_at, [written].pack("V"))
+      memory.write_bytes(written_at, [written].pack("V"))
       0
     rescue SystemCallError => error
       filesystem_errno(error)
@@ -787,19 +800,14 @@ module Wardite
       Wasi::EBADF
     end
 
-    # @rbs data: String
+    # @rbs memory: Wardite::Memory
     # @rbs iov: Integer
     # @rbs return: String?
-    def iovec_payload(data, iov)
-      if RUBY_ENGINE == "spinel"
-        offset = unpack_le_int(data.byteslice(iov, 4))
-        length = unpack_le_int(data.byteslice(iov + 4, 4))
-      else
-        offset = Integer(data.unpack1("V", offset: iov))
-        length = Integer(data.unpack1("V", offset: iov + 4))
-      end
-      return nil if offset + length > data.bytesize
-      data.byteslice(offset, length)
+    def iovec_payload(memory, iov)
+      offset = memory.read_u32(iov)
+      length = memory.read_u32(iov + 4)
+      return nil unless memory.range?(offset, length)
+      memory.read_bytes(offset, length)
     end
 
     # Bind the boxed host call to known methods when compiling with Spinel.
@@ -892,11 +900,11 @@ module Wardite
     def write_guest_sizes(store, args, count, length)
       count_at = args.fetch(0).value.to_i
       size_at = args.fetch(1).value.to_i
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, count_at, 4) && guest_range?(data, size_at, 4)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(count_at, 4) && memory.range?(size_at, 4)
 
-      write_guest_bytes(data, count_at, [count].pack("V"))
-      write_guest_bytes(data, size_at, [length].pack("V"))
+      memory.write_bytes(count_at, [count].pack("V"))
+      memory.write_bytes(size_at, [length].pack("V"))
       0
     end
 
@@ -907,43 +915,27 @@ module Wardite
     def write_guest_strings(store, args, entries)
       pointers_at = args.fetch(0).value.to_i
       entries_at = args.fetch(1).value.to_i
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, pointers_at, entries.size * 4) &&
-        guest_range?(data, entries_at, entries.sum(&:bytesize))
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(pointers_at, entries.size * 4) &&
+        memory.range?(entries_at, entries.sum(&:bytesize))
 
       entries.each do |entry|
-        write_guest_bytes(data, pointers_at, [entries_at].pack("V"))
-        write_guest_bytes(data, entries_at, entry)
+        memory.write_bytes(pointers_at, [entries_at].pack("V"))
+        memory.write_bytes(entries_at, entry)
         pointers_at += 4
         entries_at += entry.bytesize
       end
       0
     end
 
-    # Callers validate the whole destination before performing any write.
-    # Spinel String splices can copy all of linear memory for a small result.
-    # @rbs data: String
-    # @rbs offset: Integer
-    # @rbs bytes: String
-    # @rbs return: void
-    def write_guest_bytes(data, offset, bytes)
-      if RUBY_ENGINE == "spinel"
-        index = 0
-        while index < bytes.bytesize
-          data.setbyte(offset + index, bytes.getbyte(index) || raise(Wardite::EvalError, "missing WASI result byte"))
-          index += 1
-        end
-      else
-        data[offset, bytes.bytesize] = bytes
-      end
-    end
-
-    # @rbs data: String
+    # @rbs store: Store
     # @rbs offset: Integer
     # @rbs length: Integer
-    # @rbs return: bool
-    def guest_range?(data, offset, length)
-      offset >= 0 && length >= 0 && offset + length <= data.bytesize
+    # @rbs return: String?
+    def guest_path(store, offset, length)
+      memory = store.memories[0]
+      return nil unless memory && memory.range?(offset, length)
+      memory.read_bytes(offset, length)
     end
 
     # @rbs store: Store
@@ -957,24 +949,12 @@ module Wardite
       when 1 then Process::CLOCK_MONOTONIC
       else return Wasi::EINVAL
       end
-      data = store.memories[0]&.data
-      return Wasi::EFAULT unless data && guest_range?(data, offset, 8)
+      memory = store.memories[0]
+      return Wasi::EFAULT unless memory && memory.range?(offset, 8)
 
       ns = resolution ? Process.clock_getres(clock, :nanosecond) : Process.clock_gettime(clock, :nanosecond)
-      write_guest_bytes(data, offset, [ns].pack("Q<"))
+      memory.write_bytes(offset, [ns].pack("Q<"))
       0
-    end
-    # @rbs buf: String|nil
-    # @rbs return: Integer
-    def unpack_le_int(buf)
-      if !buf
-        raise "empty buffer"
-      end
-      ret = buf.unpack1("V")
-      if !ret.is_a?(Integer)
-        raise "[BUG] invalid pack format"
-      end
-      ret
     end
   end
 end

@@ -18,7 +18,7 @@ require_relative 'efflorescence_m2_probe'
     2.times do
       raise 'catch rolled back Store' unless M2Probe.call(vm, 'caught', []) == 51
       raise 'global write lost' unless M2Probe.call(vm, 'get', []) == 2
-      before = memory.data.byteslice(65532,4)
+      before = memory.read_bytes(65532,4)
       trapped = false
       begin
         M2Probe.call(vm, 'trap', [])
@@ -26,7 +26,7 @@ require_relative 'efflorescence_m2_probe'
         trapped = true
       end
       raise 'catch_all caught a memory trap' unless trapped
-      raise 'partial failing store' unless memory.data.byteslice(65532,4) == before && memory.data.bytesize == 65536
+      raise 'partial failing store' unless memory.read_bytes(65532,4) == before && memory.bytesize == 65536
       raise 'completed global update rolled back' unless M2Probe.call(vm, 'get', []) == 31
       raise 'completed store rolled back' unless M2Probe.call(vm, 'load', [8]) == 73
       caught = false

@@ -13,7 +13,12 @@ class WarditeSpinelM3Test < Test::Unit::TestCase
     Dir.mktmpdir("wardite-spinel-m3") do |dir|
       file = File.join(dir, "indirect.wasm")
       worker = File.join(dir, "m3")
-      File.binwrite(file, compile_efflorescence_wat(EfflorescenceM3Cases::INDIRECT_WAT))
+      wat = EfflorescenceM3Cases::INDIRECT_WAT.sub("(table", <<~WAT.strip)
+        (memory 1)
+        (func (export "read_host_byte") (result i32) i32.const 0 i32.load8_u)
+        (table
+      WAT
+      File.binwrite(file, compile_efflorescence_wat(wat))
       output, status = Open3.capture2e(ENV.fetch("SPINEL", "spinel"), "--strict-require", "-O2",
         "-I#{root}/lib", File.join(root, "test/spinel/efflorescence_m3.rb"), "-o", worker)
       assert status.success?, output
