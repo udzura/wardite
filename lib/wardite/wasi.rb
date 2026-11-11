@@ -5,12 +5,80 @@ require "wardite/wasi/consts"
 require "wardite/wasi/preopens"
 require "wardite/wasi/dirent_cache"
 require "securerandom"
-require "fcntl"
+if RUBY_ENGINE == "spinel"
+  require "wardite/wasi/spinel"
+else
+  require "fcntl"
+end
 
 module Wardite
   class WasiSnapshotPreview1
     include ValueHelper
     include WasmModule
+
+    # Preview 1 imports return errno (i32), except for proc_exit.
+    IMPORT_PARAMETERS = {
+      args_get: %i[i32 i32],
+      args_sizes_get: %i[i32 i32],
+      environ_get: %i[i32 i32],
+      environ_sizes_get: %i[i32 i32],
+      clock_res_get: %i[i32 i32],
+      clock_time_get: %i[i32 i64 i32],
+      fd_advise: %i[i32 i64 i64 i32],
+      fd_close: %i[i32],
+      fd_datasync: %i[i32],
+      fd_fdstat_get: %i[i32 i32],
+      fd_fdstat_set_flags: %i[i32 i32],
+      fd_filestat_get: %i[i32 i32],
+      fd_filestat_set_size: %i[i32 i64],
+      fd_pread: %i[i32 i32 i32 i64 i32],
+      fd_prestat_get: %i[i32 i32],
+      fd_prestat_dir_name: %i[i32 i32 i32],
+      fd_pwrite: %i[i32 i32 i32 i64 i32],
+      fd_read: %i[i32 i32 i32 i32],
+      fd_readdir: %i[i32 i32 i32 i64 i32],
+      fd_renumber: %i[i32 i32],
+      fd_seek: %i[i32 i64 i32 i32],
+      fd_sync: %i[i32],
+      fd_tell: %i[i32 i32],
+      fd_write: %i[i32 i32 i32 i32],
+      path_create_directory: %i[i32 i32 i32],
+      path_filestat_get: %i[i32 i32 i32 i32 i32],
+      path_filestat_set_times: %i[i32 i32 i32 i32 i64 i64 i32],
+      path_link: %i[i32 i32 i32 i32 i32 i32 i32],
+      path_open: %i[i32 i32 i32 i32 i32 i64 i64 i32 i32],
+      path_readlink: %i[i32 i32 i32 i32 i32 i32],
+      path_remove_directory: %i[i32 i32 i32],
+      path_rename: %i[i32 i32 i32 i32 i32 i32],
+      path_symlink: %i[i32 i32 i32 i32 i32],
+      path_unlink_file: %i[i32 i32 i32],
+      poll_oneoff: %i[i32 i32 i32 i32],
+      proc_exit: %i[i32],
+      random_get: %i[i32 i32],
+    }.transform_values(&:freeze).freeze #: Hash[Symbol, Array[Symbol]]
+
+    # @rbs name: Symbol
+    # @rbs parameters: Array[Symbol]
+    # @rbs results: Array[Symbol]
+    # @rbs return: void
+    def validate_import(name, parameters, results)
+      expected = IMPORT_PARAMETERS[name]
+      raise Wardite::LoadError, "unknown WASI import #{name}" unless expected
+      unless parameters == expected && results == (name == :proc_exit ? [] : [:i32])
+        raise Wardite::LoadError, "invalid WASI signature for #{name}"
+      end
+    end
+
+    # @rbs name: Symbol
+    # @rbs return: _WasmCallable
+    def callable(name)
+      if RUBY_ENGINE == "spinel"
+        raise Wardite::LoadError, "unknown WASI import #{name}" unless IMPORT_PARAMETERS[name]
+        ->(store, args) { dispatch_native_import(name, store, args) }
+      else
+        public_method(name)
+      end
+    end
 
     attr_accessor :fd_table #: Hash[Integer, (IO|File|::Wardite::Wasi::PreopenedDir)]
     attr_accessor :fd_count #: Integer
@@ -92,39 +160,36 @@ module Wardite
     def interpret_open_flags(dirflags, oflags, fdflags, rights)
       open_flags = 0
       if dirflags & Wasi::LOOKUP_SYMLINK_FOLLOW == 0
-        open_flags |= File::Constants::NOFOLLOW
+        open_flags |= File::NOFOLLOW
       end
       if oflags & Wasi::O_DIRECTORY != 0
-        # open_flags |= File::Constants::DIRECTORY
+        # open_flags |= File::DIRECTORY
         $stderr.puts "O_DIRECTORY is not supported, ignore" if ENV["WARDITE_TRACE"]
       elsif oflags & Wasi::O_EXCL != 0
-        open_flags |= File::Constants::EXCL
+        open_flags |= File::EXCL
       end
 
-      default_mode = File::Constants::RDONLY
+      default_mode = File::RDONLY
       if oflags & Wasi::O_TRUNC != 0
-        open_flags |= File::Constants::TRUNC
-        default_mode = File::Constants::RDWR
+        open_flags |= File::TRUNC
+        default_mode = File::RDWR
       end
       if oflags & Wasi::O_CREAT != 0
-        open_flags |= File::Constants::CREAT
-        default_mode = File::Constants::RDWR
+        open_flags |= File::CREAT
+        default_mode = File::RDWR
       end
       if fdflags & Wasi::FD_NONBLOCK != 0
-        open_flags |= File::Constants::NONBLOCK
+        open_flags |= File::NONBLOCK
       end
       if fdflags & Wasi::FD_APPEND != 0
-        open_flags |= File::Constants::APPEND
-        default_mode = File::Constants::RDWR
+        open_flags |= File::APPEND
+        default_mode = File::RDWR
       end
       if fdflags & Wasi::FD_DSYNC != 0
-        open_flags |= File::Constants::DSYNC
+        open_flags |= File::DSYNC
       end
-      if fdflags & Wasi::FD_RSYNC != 0
-        open_flags |= File::Constants::RSYNC
-      end
-      if fdflags & Wasi::FD_SYNC != 0
-        open_flags |= File::Constants::SYNC
+      if fdflags & (Wasi::FD_SYNC | Wasi::FD_RSYNC) != 0
+        open_flags |= File::SYNC
       end
 
       r = Wasi::RIGHT_FD_READ
@@ -132,11 +197,11 @@ module Wardite
       rw = r | w
       case
       when (rights & rw) == rw
-        open_flags |= File::Constants::RDWR
+        open_flags |= File::RDWR
       when (rights & w) == w
-        open_flags |= File::Constants::WRONLY
+        open_flags |= File::WRONLY
       when (rights & r) == r
-        open_flags |= File::Constants::RDONLY
+        open_flags |= File::RDONLY
       else
         open_flags |= default_mode
       end
@@ -148,114 +213,59 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def args_get(store, args)
-      arg_offsets_p = args[0].value
-      arg_data_buf_p = args[1].value
-      if !arg_data_buf_p.is_a?(Integer)
-        raise ArgumentError, "invalid type of args: #{args.inspect}"
-      end
-
-      arg_offsets = [] #: Array[Integer]
-      arg_data_slice = [] #: Array[String]
-      current_offset = arg_data_buf_p
-      @argv.each do |arg|
-        arg_offsets << current_offset
-        arg_data_slice << arg
-        current_offset += arg.size + 1
-      end
-      arg_data = arg_data_slice.join("\0") + "\0"
-
-      memory = store.memories[0]
-      memory.data[arg_data_buf_p...(arg_data_buf_p + arg_data.size)] = arg_data
-
-      arg_offsets.each_with_index do |offset, i|
-        data_begin = arg_offsets_p + i * 4
-        memory.data[data_begin...(data_begin + 4)] = [offset].pack("I!")
-      end
-
-      0
+      write_guest_strings(store, args, @argv.map { |arg| (arg + "\0").b })
     end
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def args_sizes_get(store, args)
-      argc_p = args[0].value
-      arglen_p = args[1].value
-      argc = @argv.length
-      arglen = @argv.map{|arg| arg.size + 1}.sum
-
-      memory = store.memories[0]
-      memory.data[argc_p...(argc_p+4)] = [argc].pack("I!")
-      memory.data[arglen_p...(arglen_p+4)] = [arglen].pack("I!")
-      0
+      write_guest_sizes(store, args, @argv.size, @argv.sum { |arg| arg.bytesize + 1 })
     end
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def environ_sizes_get(store, args)
-      envc_p = args[0].value
-      envlen_p = args[1].value
-      envc = ENV.length
-      envlen = ENV.map{|k,v| k.size + v.size + 1}.sum
-
-      memory = store.memories[0]
-      memory.data[envc_p...(envc_p+4)] = [envc].pack("I!")
-      memory.data[envlen_p...(envlen_p+4)] = [envlen].pack("I!")
-      0
+      entries = environment_entries
+      write_guest_sizes(store, args, entries.size, entries.sum(&:bytesize))
     end
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def environ_get(store, args)
-      environ_offsets_p = args[0].value
-      environ_data_buf_p = args[1].value
-      if !environ_data_buf_p.is_a?(Integer)
-        raise ArgumentError, "invalid type of args: #{args.inspect}"
-      end
-
-      environ_offsets = [] #: Array[Integer]
-      environ_data_slice = [] #: Array[String]
-      current_offset = environ_data_buf_p
-      ENV.each do |k, v|
-        environ_offsets << current_offset
-        environ_data_slice << "#{k}=#{v}"
-        current_offset += "#{k}=#{v}".size + 1
-      end
-      environ_data = environ_data_slice.join("\0") + "\0"
-
-      memory = store.memories[0]
-      memory.data[environ_data_buf_p...(environ_data_buf_p + environ_data.size)] = environ_data
-
-      environ_offsets.each_with_index do |offset, i|
-        data_begin = environ_offsets_p + i * 4
-        memory.data[data_begin...(data_begin + 4)] = [offset].pack("I!")
-      end
-
-      0
+      write_guest_strings(store, args, environment_entries)
     end
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
-    # @rbs return: Object
-    def clock_time_get(store, args)
-      clock_id = args[0].value
-      # we dont use precision...
-      _precision = args[1].value
-      timebuf64 = args[2].value
-      if clock_id != 0 # - CLOCKID_REALTIME
-        # raise NotImplementedError, "CLOCKID_REALTIME is an only supported id"
-        return Wasi::EINVAL
-      end
-      # timestamp in nanoseconds
-      now = Time.now.to_i * 1_000_000
-
-      memory = store.memories[0]
-      now_packed = [now].pack("Q!")
-      memory.data[timebuf64...(timebuf64+8)] = now_packed
-      0
+    # @rbs return: Integer
+    def clock_res_get(store, args)
+      write_clock(store, args.fetch(0).value.to_i, args.fetch(1).value.to_i, resolution: true)
     end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Integer
+    def clock_time_get(store, args)
+      write_clock(store, args.fetch(0).value.to_i, args.fetch(2).value.to_i, resolution: false)
+    end
+
+    # These imports can be linked, but their operations are not implemented.
+    # @rbs (Store, Array[wasmValue]) -> Integer
+    def fd_advise(_store, _args)
+      Wasi::ENOSYS
+    end
+    alias fd_datasync fd_advise
+    alias fd_fdstat_set_flags fd_advise
+    alias fd_filestat_set_size fd_advise
+    alias fd_pread fd_advise
+    alias fd_pwrite fd_advise
+    alias fd_renumber fd_advise
+    alias fd_seek fd_advise
+    alias fd_sync fd_advise
+    alias poll_oneoff fd_advise
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
@@ -283,18 +293,21 @@ module Wardite
       flags = args[1].value.to_i
       path = args[2].value.to_i
       path_len = args[3].value.to_i
-      target = get_path_at(fd, store.memories[0].data[path...(path+path_len)].to_s)
+      result = args[4].value.to_i
+      return Wasi::EINVAL unless (flags & ~Wasi::LOOKUP_SYMLINK_FOLLOW) == 0
 
-      stat = File.stat(target)
-      memory = store.memories[0]
-      binformat = [
-        stat.dev, stat.ino, Wasi.to_ftype(stat.ftype), stat.nlink,
-        stat.size, stat.atime.to_i, stat.mtime.to_i, stat.ctime.to_i
-      ].pack("Q8")
-      memory.data[flags...(flags+binformat.size)] = binformat
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, path, path_len) && guest_range?(data, result, 64)
+      target = directory_path(fd, data.byteslice(path, path_len).to_s)
+      return target if target.is_a?(Integer)
+
+      stat = (flags & Wasi::LOOKUP_SYMLINK_FOLLOW) != 0 ? File.stat(target) : File.lstat(target)
+      write_guest_bytes(data, result, filestat_bytes(stat))
       0
-    rescue Errno::ENOENT
-      return Wasi::ENOENT
+    rescue SystemCallError => error
+      filesystem_errno(error)
+    rescue IOError
+      Wasi::EBADF
     end
 
     # @rbs store: Store
@@ -348,7 +361,10 @@ module Wardite
       fs_flags = args[7].value.to_i
       fd_off = args[8].value.to_i
 
-      path_name = get_path_at(dirfd, store.memories[0].data[path...(path+path_len)].to_s)
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, path, path_len) && guest_range?(data, fd_off, 4)
+      path_name = directory_path(dirfd, data.byteslice(path, path_len).to_s)
+      return path_name if path_name.is_a?(Integer)
       open_flags = interpret_open_flags(dirflags, oflags, fs_flags, fs_rights_base)
       is_dir = (oflags & Wasi::O_DIRECTORY) != 0
       if is_dir && (oflags & Wasi::O_CREAT) != 0
@@ -358,11 +374,10 @@ module Wardite
       file = File.open(path_name, open_flags, 0600)
       fd = set_fd file
 
-      memory = store.memories[0]
-      memory.data[fd_off...(fd_off+4)] = [fd].pack("I!")
+      write_guest_bytes(data, fd_off, [fd].pack("V"))
       0
-    rescue Errno::ENOENT
-      return Wasi::ENOENT
+    rescue SystemCallError => error
+      filesystem_errno(error)
     end
 
     # @rbs store: Store
@@ -376,20 +391,23 @@ module Wardite
       buf_len = args[4].value.to_i
       result_buf = args[5].value.to_i
 
-      if buf_len <= 0 || path_len <= 0
-        return Wasi::EINVAL
-      end
-      target = get_path_at(fd, store.memories[0].data[path...(path+path_len)].to_s)
+      return Wasi::EINVAL if buf_len <= 0 || path_len <= 0
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, path, path_len) &&
+        guest_range?(data, buf, buf_len) && guest_range?(data, result_buf, 4)
+      target = directory_path(fd, data.byteslice(path, path_len).to_s)
+      return target if target.is_a?(Integer)
 
-      link_target = File.readlink(target)
-      if link_target.size > buf_len
-        return Wasi::ENAMETOOLONG
-      end
+      link_target = File.readlink(target).b
+      return Wasi::ENAMETOOLONG if link_target.bytesize > buf_len
 
-      memory = store.memories[0]
-      memory.data[buf...(buf+link_target.size)] = link_target
-      memory.data[result_buf...(result_buf+4)] = [link_target.size].pack("I!")
+      write_guest_bytes(data, buf, link_target)
+      write_guest_bytes(data, result_buf, [link_target.bytesize].pack("V"))
       0
+    rescue SystemCallError => error
+      filesystem_errno(error)
+    rescue IOError
+      Wasi::EBADF
     end
 
     # @rbs store: Store
@@ -469,11 +487,10 @@ module Wardite
       if !file.is_a?(Wasi::PreopenedDir)
         return Wasi::EBADF
       end
-      name = file.path
-      memory = store.memories[0]
-      # Zero-value 8-bit tag, and 3-byte zero-value padding
-      memory.data[prestat_offset...(prestat_offset+4)] = [0].pack("I!")
-      memory.data[(prestat_offset+4)...(prestat_offset+8)] = [name.size].pack("I!")
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, prestat_offset, 8)
+      # Zero-value 8-bit tag, and 3-byte zero-value padding.
+      write_guest_bytes(data, prestat_offset, [0, file.path.bytesize].pack("V2"))
       0
     end
 
@@ -491,14 +508,12 @@ module Wardite
       if !file.is_a?(Wasi::PreopenedDir)
         return Wasi::EBADF
       end
-      name = file.path
-      if name.size > path_len
-        return Wasi::ENAMETOOLONG
-      end
-      name += ("\0" * (path_len - name.size))
+      name = file.path.b
+      return Wasi::ENAMETOOLONG if name.bytesize > path_len
 
-      memory = store.memories[0]
-      memory.data[path...(path+name.size)] = name
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, path, path_len)
+      write_guest_bytes(data, path, name + "\0" * (path_len - name.bytesize))
       0
     end
 
@@ -506,101 +521,76 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_write(store, args)
-      iargs = args.map do |elm|
-        if elm.is_a?(I32)
-          elm.value
-        else
-          raise Wardite::ArgumentError, "invalid type of args: #{args.inspect}"
-        end
-      end #: Array[Integer]
-      fd, iovs, iovs_len, rp = *iargs
-      if !fd || !iovs || !iovs_len || !rp
-        raise Wardite::ArgumentError, "args too short"
-      end
-      file = self.fd_table[fd]
-      return Wasi::EBADF if !file || file.is_a?(Wasi::PreopenedDir)
-      memory = store.memories[0]
-      nwritten = 0
-      iovs_len.times do
-        start = unpack_le_int(memory.data[iovs...(iovs+4)])
-        iovs += 4
-        slen = unpack_le_int(memory.data[iovs...(iovs+4)])
-        iovs += 4
-        # TODO: parallel write?
-        nwritten += file.write(memory.data[start...(start+slen)])
-      end
-
-      memory.data[rp...(rp+4)] = [nwritten].pack("I!")
-
-      0
+      fd_write_i32(store, args.fetch(0).value.to_i, args.fetch(1).value.to_i,
+        args.fetch(2).value.to_i, args.fetch(3).value.to_i)
     end
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_read(store, args)
-      iargs = args.map do |elm|
-        if elm.is_a?(I32)
-          elm.value
-        else
-          raise Wardite::ArgumentError, "invalid type of args: #{args.inspect}"
-        end
-      end #: Array[Integer]
-      fd, iovs, iovs_len, rp = *iargs
-      if !fd || !iovs || !iovs_len || !rp
-        raise Wardite::ArgumentError, "args too short"
-      end
-      file = self.fd_table[fd]
+      file = @fd_table[args.fetch(0).value.to_i]
       return Wasi::EBADF if !file || file.is_a?(Wasi::PreopenedDir)
-      memory = store.memories[0]
-      nread = 0
-      
-      iovs_len.times do
-        start = unpack_le_int(memory.data[iovs...(iovs+4)])
-        iovs += 4
-        slen = unpack_le_int(memory.data[iovs...(iovs+4)])
-        iovs += 4
-        buf = file.read(slen)
-        if !buf
-          break 0
-        end
-        memory.data[start...(start+buf.size)] = buf
-        nread += buf.size
+      iovs = args.fetch(1).value.to_i
+      count = args.fetch(2).value.to_i
+      result = args.fetch(3).value.to_i
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, result, 4) && guest_range?(data, iovs, count * 8)
+
+      ranges = [] #: Array[Array[Integer]]
+      total = 0
+      count.times do |index|
+        offset = iovs + index * 8
+        start = unpack_le_int(data.byteslice(offset, 4))
+        length = unpack_le_int(data.byteslice(offset + 4, 4))
+        return Wasi::EFAULT unless guest_range?(data, start, length)
+        total += length
+        return Wasi::EOVERFLOW if total > 0xffffffff
+        ranges << [start, length]
       end
 
-      memory.data[rp...(rp+4)] = [nread].pack("I!")
+      nread = 0
+      ranges.each do |range|
+        start = range.fetch(0)
+        length = range.fetch(1)
+        buf = file.read(length)
+        break unless buf
+        write_guest_bytes(data, start, buf)
+        nread += buf.bytesize
+        break if buf.bytesize < length
+      end
+      write_guest_bytes(data, result, [nread].pack("V"))
       0
+    rescue SystemCallError => error
+      filesystem_errno(error)
+    rescue IOError
+      Wasi::EBADF
     end
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_fdstat_get(store, args)
-      fd = args[0].value.to_i
-      fdstat_offset = args[1].value.to_i
-      if fd >= fd_count
-        return Wasi::EBADF
-      end
-      file = @fd_table[fd]
+      file = @fd_table[args.fetch(0).value.to_i]
+      return Wasi::EBADF unless file
+      offset = args.fetch(1).value.to_i
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, offset, 24)
+
       fdflags = 0
-      if !file
-        return Wasi::EBADF
-      elsif file.is_a?(Wasi::PreopenedDir)
-        file = File.open(file.guest_path) # reopen directory
-      elsif file.is_a?(IO) && !file.is_a?(File)
-        fdflags |= Wasi::FD_APPEND
+      if file.is_a?(Wasi::PreopenedDir)
+        ftype = Wasi.to_ftype(File.stat(file.guest_path).ftype)
       else
-        if (Fcntl::O_APPEND & file.fcntl(Fcntl::F_GETFL, 0)) != 0
-          fdflags |= Wasi::FD_APPEND
+        flags = if RUBY_ENGINE == "spinel"
+          Wasi::Native.wardite_wasi_getfl(file.fileno)
+        else
+          file.fcntl(Fcntl::F_GETFL, 0)
         end
+        return Wasi::EBADF if flags < 0
+        fdflags |= Wasi::FD_APPEND if (flags & File::APPEND) != 0
+        fdflags |= Wasi::FD_NONBLOCK if (flags & File::NONBLOCK) != 0
+        ftype = Wasi.to_ftype(file.stat.ftype)
       end
-
-      if (Fcntl::O_NONBLOCK & file.fcntl(Fcntl::F_GETFL, 0)) != 0
-        fdflags |= Wasi::FD_NONBLOCK
-      end
-
-      stat = file.stat #: File::Stat
-      ftype = Wasi.to_ftype(stat.ftype)
 
       fs_right_base = 0
       fs_right_inheriting = 0
@@ -616,33 +606,30 @@ module Wardite
         fs_right_base = Wasi::RIGHT_FILE_RIGHT_BASE
       end
 
-      memory = store.memories[0]
-
-      binformat = [fdflags, ftype, 0, 0, 0, 0, fs_right_base, fs_right_inheriting]
-        .pack("SSC4QQ")
-      memory.data[fdstat_offset...(fdstat_offset+binformat.size)] = binformat
+      write_guest_bytes(data, offset, [ftype, fdflags, fs_right_base, fs_right_inheriting].pack("CxS<x4Q<2"))
       0
+    rescue SystemCallError => error
+      filesystem_errno(error)
+    rescue IOError
+      Wasi::EBADF
     end
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_filestat_get(store, args)
-      fd = args[0].value.to_i
-      filestat_offset = args[1].value.to_i
-      if fd >= fd_count
-        return Wasi::EBADF
-      end
-      file = @fd_table[fd]
-      if !file || file.is_a?(Wasi::PreopenedDir)
-        return Wasi::EBADF
-      end
+      file = @fd_table[args[0].value.to_i]
+      return Wasi::EBADF unless file && !file.is_a?(Wasi::PreopenedDir)
+      offset = args[1].value.to_i
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, offset, 64)
 
-      stat = file.stat #: File::Stat
-      memory = store.memories[0]
-      binformat = [stat.dev, stat.ino, Wasi.to_ftype(stat.ftype), stat.nlink, stat.size, stat.atime.to_i, stat.mtime.to_i, stat.ctime.to_i].pack("Q8")
-      memory.data[filestat_offset...(filestat_offset+binformat.size)] = binformat
+      write_guest_bytes(data, offset, filestat_bytes(file.stat))
       0
+    rescue SystemCallError => error
+      filesystem_errno(error)
+    rescue IOError
+      Wasi::EBADF
     end
 
     # @rbs store: Store
@@ -659,8 +646,9 @@ module Wardite
         return Wasi::EINVAL
       end
 
-      memory = store.memories[0]
-      
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, buf, buf_len) && guest_range?(data, result_buf_used, 4)
+
       if dirent_cache[fd]&.eof
         dirent_cache.delete(fd)
       end
@@ -671,20 +659,20 @@ module Wardite
         return Wasi::EBADF
       end
 
-      dirent = dirent_cache[fd]
+      dirent = dirent_cache.fetch(fd)
       bindata, is_truncated = dirent.fetch_entries_binary(buf_len, cookie)
 
-      bufused = bindata.size
+      bufused = bindata.bytesize
       # bufused == buf_len means more dirents exist
       if is_truncated
         bufused = buf_len
-        memory.data[buf...(buf+buf_len)] = bindata + "\0" * (buf_len - bindata.size)
+        bindata += "\0" * (buf_len - bindata.bytesize)
       else
         dirent.eof = true
-        memory.data[buf...(buf+bindata.size)] = bindata
       end
 
-      memory.data[result_buf_used...(result_buf_used+4)] = [bufused].pack("I!")
+      write_guest_bytes(data, buf, bindata)
+      write_guest_bytes(data, result_buf_used, [bufused].pack("V"))
       0
     end
 
@@ -701,11 +689,12 @@ module Wardite
         return Wasi::EBADF
       end
 
-      memory = store.memories[0]
-      memory.data[result_buf...(result_buf+4)] = [file.tell].pack("I!")
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, result_buf, 8)
+      write_guest_bytes(data, result_buf, [file.tell].pack("Q<"))
       0
-    rescue Errno::EBADF
-      return Wasi::EBADF
+    rescue SystemCallError => error
+      filesystem_errno(error)
     end
 
     # @rbs store: Store
@@ -729,8 +718,8 @@ module Wardite
       file.close
       @fd_table.delete(fd)
       0
-    rescue Errno::EBADF
-      return Wasi::EBADF      
+    rescue SystemCallError => error
+      filesystem_errno(error)
     end
 
     # @rbs store: Store
@@ -747,20 +736,241 @@ module Wardite
     def random_get(store, args)
       buf = args[0].value.to_i
       buflen = args[1].value.to_i
-      randoms = SecureRandom.random_bytes(buflen) #: String
-      memory = store.memories[0]
-      memory.data[buf...(buf+buflen)] = randoms
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, buf, buflen)
+      write_guest_bytes(data, buf, SecureRandom.random_bytes(buflen))
       0
     end
 
     private
+
+    # @rbs store: Wardite::Store
+    # @rbs fd: Integer
+    # @rbs iovs: Integer
+    # @rbs count: Integer
+    # @rbs written_at: Integer
+    # @rbs return: Integer
+    def fd_write_i32(store, fd, iovs, count, written_at)
+      file = fd_table[fd]
+      return Wasi::EBADF if !file || file.is_a?(Wasi::PreopenedDir)
+
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, written_at, 4) && guest_range?(data, iovs, count * 8)
+
+      if count == 1
+        payload = iovec_payload(data, iovs)
+        return Wasi::EFAULT unless payload
+        written = file.write(payload)
+      else
+        # Validate every guest buffer before any write to the descriptor.
+        payloads = [] #: Array[String]
+        total = 0
+        count.times do |index|
+          payload = iovec_payload(data, iovs + index * 8)
+          return Wasi::EFAULT unless payload
+          total += payload.bytesize
+          return Wasi::EOVERFLOW if total > 0xffffffff
+          payloads << payload
+        end
+        written = 0
+        payloads.each do |payload|
+          bytes = file.write(payload)
+          written += bytes
+          break if bytes < payload.bytesize
+        end
+      end
+      write_guest_bytes(data, written_at, [written].pack("V"))
+      0
+    rescue SystemCallError => error
+      filesystem_errno(error)
+    rescue IOError
+      Wasi::EBADF
+    end
+
+    # @rbs data: String
+    # @rbs iov: Integer
+    # @rbs return: String?
+    def iovec_payload(data, iov)
+      if RUBY_ENGINE == "spinel"
+        offset = unpack_le_int(data.byteslice(iov, 4))
+        length = unpack_le_int(data.byteslice(iov + 4, 4))
+      else
+        offset = Integer(data.unpack1("V", offset: iov))
+        length = Integer(data.unpack1("V", offset: iov + 4))
+      end
+      return nil if offset + length > data.bytesize
+      data.byteslice(offset, length)
+    end
+
+    # Bind the boxed host call to known methods when compiling with Spinel.
+    # @rbs name: Symbol
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: wasmFuncReturn
+    def dispatch_native_import(name, store, args)
+      case name
+      when :args_get then args_get(store, args)
+      when :args_sizes_get then args_sizes_get(store, args)
+      when :environ_get then environ_get(store, args)
+      when :environ_sizes_get then environ_sizes_get(store, args)
+      when :clock_res_get then clock_res_get(store, args)
+      when :clock_time_get then clock_time_get(store, args)
+      when :fd_close then fd_close(store, args)
+      when :fd_fdstat_get then fd_fdstat_get(store, args)
+      when :fd_filestat_get then fd_filestat_get(store, args)
+      when :fd_prestat_get then fd_prestat_get(store, args)
+      when :fd_prestat_dir_name then fd_prestat_dir_name(store, args)
+      when :fd_read then fd_read(store, args)
+      when :fd_readdir then fd_readdir(store, args)
+      when :fd_tell then fd_tell(store, args)
+      when :fd_write then fd_write(store, args)
+      when :path_create_directory then path_create_directory(store, args)
+      when :path_filestat_get then path_filestat_get(store, args)
+      when :path_filestat_set_times then path_filestat_set_times(store, args)
+      when :path_link then path_link(store, args)
+      when :path_open then path_open(store, args)
+      when :path_readlink then path_readlink(store, args)
+      when :path_remove_directory then path_remove_directory(store, args)
+      when :path_rename then path_rename(store, args)
+      when :path_symlink then path_symlink(store, args)
+      when :path_unlink_file then path_unlink_file(store, args)
+      when :proc_exit then proc_exit(store, args)
+      when :random_get then random_get(store, args)
+      else fd_advise(store, args)
+      end
+    end
+
+    # @rbs fd: Integer
+    # @rbs path: String
+    # @rbs return: String | Integer
+    def directory_path(fd, path)
+      file = @fd_table[fd]
+      return Wasi::EBADF unless file
+      return Wasi::ENOTDIR unless file.is_a?(Wasi::PreopenedDir) || (file.is_a?(File) && file.stat.directory?)
+      return Wasi::EINVAL if path.include?("\0")
+
+      get_path_at(fd, path)
+    end
+
+    # @rbs error: SystemCallError
+    # @rbs return: Integer
+    def filesystem_errno(error)
+      if RUBY_ENGINE == "spinel"
+        Wasi::Native.wardite_wasi_errno(error.errno || 0)
+      else
+        case error
+        when Errno::EACCES then Wasi::EACCES
+        when Errno::EBADF then Wasi::EBADF
+        when Errno::EINVAL then Wasi::EINVAL
+        when Errno::ELOOP then Wasi::ELOOP
+        when Errno::ENAMETOOLONG then Wasi::ENAMETOOLONG
+        when Errno::ENOENT then Wasi::ENOENT
+        when Errno::ENOTDIR then Wasi::ENOTDIR
+        when Errno::EPERM then Wasi::EPERM
+        else Wasi::EIO
+        end
+      end
+    end
+
+    # @rbs stat: File::Stat
+    # @rbs return: String
+    def filestat_bytes(stat)
+      timestamps = [stat.atime, stat.mtime, stat.ctime].map { |time| time.to_i * 1_000_000_000 + time.nsec }
+      [stat.dev, stat.ino, Wasi.to_ftype(stat.ftype), stat.nlink, stat.size, *timestamps].pack("Q<2Cx7Q<5")
+    end
+
+    # @rbs return: Array[String]
+    def environment_entries
+      ENV.map { |key, value| "#{key}=#{value}\0".b }
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs count: Integer
+    # @rbs length: Integer
+    # @rbs return: Integer
+    def write_guest_sizes(store, args, count, length)
+      count_at = args.fetch(0).value.to_i
+      size_at = args.fetch(1).value.to_i
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, count_at, 4) && guest_range?(data, size_at, 4)
+
+      write_guest_bytes(data, count_at, [count].pack("V"))
+      write_guest_bytes(data, size_at, [length].pack("V"))
+      0
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs entries: Array[String]
+    # @rbs return: Integer
+    def write_guest_strings(store, args, entries)
+      pointers_at = args.fetch(0).value.to_i
+      entries_at = args.fetch(1).value.to_i
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, pointers_at, entries.size * 4) &&
+        guest_range?(data, entries_at, entries.sum(&:bytesize))
+
+      entries.each do |entry|
+        write_guest_bytes(data, pointers_at, [entries_at].pack("V"))
+        write_guest_bytes(data, entries_at, entry)
+        pointers_at += 4
+        entries_at += entry.bytesize
+      end
+      0
+    end
+
+    # Callers validate the whole destination before performing any write.
+    # Spinel String splices can copy all of linear memory for a small result.
+    # @rbs data: String
+    # @rbs offset: Integer
+    # @rbs bytes: String
+    # @rbs return: void
+    def write_guest_bytes(data, offset, bytes)
+      if RUBY_ENGINE == "spinel"
+        index = 0
+        while index < bytes.bytesize
+          data.setbyte(offset + index, bytes.getbyte(index) || raise(Wardite::EvalError, "missing WASI result byte"))
+          index += 1
+        end
+      else
+        data[offset, bytes.bytesize] = bytes
+      end
+    end
+
+    # @rbs data: String
+    # @rbs offset: Integer
+    # @rbs length: Integer
+    # @rbs return: bool
+    def guest_range?(data, offset, length)
+      offset >= 0 && length >= 0 && offset + length <= data.bytesize
+    end
+
+    # @rbs store: Store
+    # @rbs clock_id: Integer
+    # @rbs offset: Integer
+    # @rbs resolution: bool
+    # @rbs return: Integer
+    def write_clock(store, clock_id, offset, resolution:)
+      clock = case clock_id
+      when 0 then Process::CLOCK_REALTIME
+      when 1 then Process::CLOCK_MONOTONIC
+      else return Wasi::EINVAL
+      end
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, offset, 8)
+
+      ns = resolution ? Process.clock_getres(clock, :nanosecond) : Process.clock_gettime(clock, :nanosecond)
+      write_guest_bytes(data, offset, [ns].pack("Q<"))
+      0
+    end
     # @rbs buf: String|nil
     # @rbs return: Integer
     def unpack_le_int(buf)
       if !buf
         raise "empty buffer"
       end
-      ret = buf.unpack1("I")
+      ret = buf.unpack1("V")
       if !ret.is_a?(Integer)
         raise "[BUG] invalid pack format"
       end

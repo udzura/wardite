@@ -103,6 +103,24 @@ class WarditeSpinelM1Test < Test::Unit::TestCase
     end
   end
 
+  test 'native register validation handles large joins and a backedge' do
+    diamonds = Array.new(96, <<~WAT).join
+      local.get 0 if (result i32) i32.const 42 else i32.const 42 end local.set 1
+    WAT
+    wat = <<~WAT
+      (module
+        (func (export "run") (param i32) (result i32) (local i32)
+          loop
+            #{diamonds}
+            local.get 0 i32.const 1 i32.sub local.tee 0 br_if 0
+          end
+          local.get 1))
+    WAT
+    with_wasm(wat) do |file|
+      assert_native(file, 'run', [2], 42, ['--mir-disable', 'all'])
+    end
+  end
+
   test 'M1 traps bypass catch_all and uncaught exceptions report their own error' do
     wat = <<~WAT
       (module (tag $e (param i32))

@@ -238,6 +238,39 @@ class EfflorescenceM1Test < Test::Unit::TestCase
     assert_raise(E::TranslationError) { E::RegisterValidation.new.validate(fn) }
   end
 
+  test 'large register sets intersect branch definitions and converge across backedges' do
+    fn = E::Function.new(0, [:i32], [:i32], 31)
+    instructions = []
+    source = 31
+    128.times do
+      destination = fn.allocate_register(0)
+      pc = instructions.size
+      instructions.concat([
+        [OP::BR_IF, 0, pc + 3],
+        [OP::COPY, destination, source],
+        [OP::BR, pc + 4],
+        [OP::COPY, destination, source],
+      ])
+      source = destination
+    end
+    loop_header = instructions.size
+    result = fn.allocate_register(0)
+    instructions.concat([[OP::COPY, result, source], [OP::BR_IF, 0, loop_header], [OP::RETURN, result]])
+    fn.replace_instructions(instructions.map { |operands| E::Instruction.new(operands) })
+    assert_nothing_raised { E::RegisterValidation.new.validate(fn) }
+
+    fn.instructions[3] = E::Instruction.new([OP::BR, 4])
+    error = assert_raise(E::TranslationError) { E::RegisterValidation.new.validate(fn) }
+    assert_include error.message, 'r32 read before definition'
+
+    # A backedge that writes the value cannot define it on the entry edge.
+    fn.replace_instructions([
+      [OP::BR, 1], [OP::COPY, result, source], [OP::COPY, source, 31], [OP::BR_IF, 0, 1], [OP::RETURN, result]
+    ].map { |operands| E::Instruction.new(operands) })
+    error = assert_raise(E::TranslationError) { E::RegisterValidation.new.validate(fn) }
+    assert_include error.message, "r#{source} read before definition"
+  end
+
   test 'parallel multi-value transfers preserve aliases and reference types' do
     fn = E::Function.new(0, [:i32, :i32], [], 0)
     translator = E::Translator.new(load_efflorescence('(module)').runtime.instance)

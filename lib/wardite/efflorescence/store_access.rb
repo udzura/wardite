@@ -221,7 +221,24 @@ module Wardite
       def fill(destination, value, length)
         data = memory.data
         StoreAccess.check_range(destination, length, data.bytesize)
+        return if length == 0
+
         byte = value & 255
+        if RUBY_ENGINE != "spinel"
+          if data.encoding == Encoding::BINARY
+            chunk_size = length < PAGE_SIZE ? length : PAGE_SIZE
+            byte_string = byte.chr(Encoding::BINARY)
+            chunk = byte_string * chunk_size
+            while length >= chunk_size
+              data[destination, chunk_size] = chunk
+              destination += chunk_size
+              length -= chunk_size
+            end
+            data[destination, length] = byte_string * length if length > 0
+            return
+          end
+        end
+
         index = 0
         while index < length
           data.setbyte(destination + index, byte)

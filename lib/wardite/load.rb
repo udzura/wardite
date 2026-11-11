@@ -280,20 +280,19 @@ module Wardite
       sections_ = sections
 
       wasi_env = nil
-      if enable_wasi
-        if RUBY_ENGINE == "spinel"
-          raise LoadError, "WASI is not supported in Spinel builds; pass enable_wasi: false"
-        elsif sections_.any? { |section| section.is_a?(ImportSection) &&
-            section.imports.any? { |import| import.module_name == "wasi_snapshot_preview1" } }
-          wasi_env = if engine == :efflorescence
-            require "wardite/efflorescence/wasi"
-            Wardite::Efflorescence::WasiSnapshotPreview1.new
-          else
-            require "wardite/wasi"
-            Wardite::WasiSnapshotPreview1.new
-          end
-          import_object[:wasi_snapshot_preview1] = wasi_env
+      if enable_wasi && sections_.any? { |section| section.is_a?(ImportSection) &&
+          section.imports.any? { |import| import.module_name == "wasi_snapshot_preview1" } }
+        wasi_env = if RUBY_ENGINE == "spinel"
+          require "wardite/wasi"
+          Wardite::WasiSnapshotPreview1.new
+        elsif engine == :efflorescence
+          require "wardite/efflorescence/wasi"
+          Wardite::Efflorescence::WasiSnapshotPreview1.new
+        else
+          require "wardite/wasi"
+          Wardite::WasiSnapshotPreview1.new
         end
+        import_object[:wasi_snapshot_preview1] = wasi_env
       end
 
       return Instance.new(import_object, engine: engine, disabled_optimizations: disabled_optimizations, mir_profile: mir_profile) do |i|

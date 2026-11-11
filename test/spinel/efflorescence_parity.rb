@@ -180,26 +180,12 @@ class ParityWorker
   end
 end
 
-if ARGV.fetch(0) == "wasi-rejection"
-  [:stack, :efflorescence].each do |engine|
-    begin
-      File.open(ARGV.fetch(1), "rb") do |file|
-        Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: true, engine: engine)
-      end
-      raise "Spinel accepted WASI"
-    rescue Wardite::LoadError => error
-      raise error unless error.message.include?("WASI is not supported in Spinel builds")
-    end
-  end
-  puts "Spinel WASI rejection passed"
-else
-  engine = ARGV.fetch(0).to_sym
-  disabled = ARGV.fetch(3).split(",").map { |value| value.to_sym }
-  File.open(ARGV.fetch(2), "w") do |output|
-    File.open(ARGV.fetch(1), "r") do |input|
-      while row = input.gets
-        ParityWorker.observe(output, row.chomp.split("\t"), engine, disabled)
-      end
+engine = ARGV.fetch(0).to_sym
+disabled = ARGV.fetch(3).split(",").map { |value| value.to_sym }
+File.open(ARGV.fetch(2), "w") do |output|
+  File.open(ARGV.fetch(1), "r") do |input|
+    while row = input.gets
+      ParityWorker.observe(output, row.chomp.split("\t"), engine, disabled)
     end
   end
 end

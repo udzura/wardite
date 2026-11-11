@@ -1,13 +1,13 @@
 # ADR 0007: Efflorescenceのruby.wasm対応フェーズ1
 
-- **状態** 提案
+- **状態** 実装・検証済み。[実装記録](../efflorescence-ruby-wasm-phase1.md)
 - **日付** 2026-11-11
 - **基準** main `9e75f91`、[M6 ADR](0006-efflorescence-m6-coverage-parity.md)
 - **後続** [ruby.wasm対応フェーズ2](0008-efflorescence-ruby-wasm-phase2.md)
 
 ## 決定
 
-CRubyホスト上のEfflorescenceで、Ruby 4.0.9のWASI Preview 1コマンドを動かす。`--disable-gems -e` と、`--mapdir` で公開したディレクトリ内のスクリプトからの `require_relative` を受け入れ条件とする。M6で対応した命令と共有WASI実装を使う。既定エンジンはStack VMとし、RubyGemsを有効にした配布構成、Preview 1全API、Spinel上のWASI、MIR2キャッシュは対象外とする。
+CRuby版とSpinel版のEfflorescenceで、Ruby 4.0.9のWASI Preview 1コマンドを動かす。`--disable-gems -e` と、`--mapdir` で公開したディレクトリ内のスクリプトからの `require_relative` を受け入れ条件とする。M6で対応した命令と共有WASI実装を使う。既定エンジンはStack VMとし、RubyGemsを有効にした配布構成、Preview 1全API、MIR2キャッシュは対象外とする。
 
 調査ではRubyの `3e93b23afc` をWASI SDK 25.0、Binaryen 133でビルドした。6,049定義関数と37個のWASI importを含む。同じWasmはWasmtime 49.0.0で実行でき、現行Efflorescenceでは最初の欠落import `clock_res_get` でリンクに失敗する。一時的なWASIの補完、レジスタ検証の変更、ファイルAPIの修正で両方の受け入れケースが通った。今回のバイナリで新規Wasm命令は必要なかった。ビルド手順は [RubyのWASIポート](https://github.com/ruby/ruby/blob/master/wasm/README.md) を参照する。
 
@@ -37,6 +37,12 @@ CRubyホスト上のEfflorescenceで、Ruby 4.0.9のWASI Preview 1コマンド�
 - `path_filestat_get` はlookup flagsに従って `stat` / `lstat` を選び、第5引数の結果ポインタにPreview 1の `filestat` を書く。`fd_filestat_get` と同じバイナリ表現を使い、時刻をu64のナノ秒で返す。
 - `--mapdir HOST:/app` を使い、`/app/main.rb` が同じディレクトリの `answer.rb` を `require_relative` して `42` を出すケースを追加する。既存の `path_open`、`fd_read`、`fd_close` を含めてCLIから確認する。
 
+## Spinel版のWASIホスト
+
+Spinelでも共有のPreview 1実装を使い、既知のimportを検証してboxed ABIで呼び出す。OS固有のディスクリプタフラグとerrnoの変換はSpinelのFFIで扱う。小さなWASI結果を返すときは、線形メモリの全体コピーを避けて検査済みの範囲に書き込む。Spinel版CLIでもWASIを既定で有効にし、`--no-wasi` で無効化できる。
+
+native回帰試験で時計の結果、標準出力、preopen経由の読み込み、errnoと終了コードを確認する。Ruby 4.0.9の受け入れケースもCRuby版・Spinel版の両方でWasmtimeと照合する。
+
 ## 実装順とコミット
 
 各行を独立したコミットにし、対応する回帰試験と必要なRBSを含める。コミットメッセージには `Co-authored-by: Codex <codex@openai.com>` を付ける。
@@ -47,18 +53,21 @@ CRubyホスト上のEfflorescenceで、Ruby 4.0.9のWASI Preview 1コマンド�
 | 2 | レジスタ検証 | MIRの拒否条件と例外辺の回帰、Ruby 4.0.9の `-e`、検証時間とピークRSS |
 | 3 | `memory.fill` | 大きな範囲とtrap時の不変性、Ruby 4.0.9のゲスト実行時間 |
 | 4 | ファイルAPIと `--mapdir` | Wasmtimeと同じ標準出力・終了コードで `require_relative` |
+| 追加 | Spinel版のWASIホスト | 小さなWASI fixtureと、同じRuby 4.0.9バイナリで3ランタイムの結果が一致 |
 
 ## 受け入れ条件
 
 Ruby 4.0.9のビルド条件とWasmのSHA-256を記録する。基準は `--host=wasm32-unknown-wasi --with-static-linked-ext --with-ext=`、`LDFLAGS="-Xlinker -zstack-size=16777216"`、`make -j8 ruby` で、BinaryenのAsyncify後の実行ファイルを使う。Wasmはビルド手順と外部fixtureの指定で再現できるようにする。
 
-同じWasmとfixtureを両ランタイムに渡す。`ruby_wasm` はビルド済みWasmのパス、`app_dir` は `main.rb` と `answer.rb` があるディレクトリとする。
+同じWasmとfixtureを各ランタイムに渡す。`ruby_wasm` はビルド済みWasmのパス、`app_dir` は `main.rb` と `answer.rb` があるディレクトリとする。
 
 ```sh
 wasmtime run "$ruby_wasm" --disable-gems -e 'puts RUBY_VERSION; puts 6*7'
 bundle exec ruby -Ilib exe/wardite --new-engine -- "$ruby_wasm" --disable-gems -e 'puts RUBY_VERSION; puts 6*7'
 wasmtime run --dir "${app_dir}::/app" "$ruby_wasm" --disable-gems /app/main.rb
 bundle exec ruby -Ilib exe/wardite --new-engine --mapdir "${app_dir}:/app" -- "$ruby_wasm" --disable-gems /app/main.rb
+make spinel
+WARDITE_SPINEL_BIN="$PWD/build/wardite" bundle exec ruby scripts/verify_ruby_wasm.rb "$ruby_wasm"
 ```
 
 `-e` の標準出力 `4.0.9` と `42`、`require_relative` の `42`、両ケースの終了コード0を照合する。`exit 7` でも終了コードを確認する。既存の `bundle exec rake test`、`bundle exec rake check`、`bundle exec rake parity`、`make spinel-test RUBY="bundle exec ruby"` を実行する。

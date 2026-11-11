@@ -1,0 +1,15 @@
+# Generated from lib/wardite/wasi/spinel.rb with RBS::Inline
+
+module Wardite
+  module Wasi
+    module Native
+      def self.ffi_source: (String) -> void
+
+      def self.ffi_func: (Symbol, Array[Symbol], Symbol) -> void
+
+      def self.wardite_wasi_getfl: (Integer) -> Integer
+
+      def self.wardite_wasi_errno: (Integer) -> Integer
+    end
+  end
+end

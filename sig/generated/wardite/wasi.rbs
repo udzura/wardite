@@ -6,6 +6,19 @@ module Wardite
 
     include WasmModule
 
+    # Preview 1 imports return errno (i32), except for proc_exit.
+    IMPORT_PARAMETERS: Hash[Symbol, Array[Symbol]]
+
+    # @rbs name: Symbol
+    # @rbs parameters: Array[Symbol]
+    # @rbs results: Array[Symbol]
+    # @rbs return: void
+    def validate_import: (Symbol name, Array[Symbol] parameters, Array[Symbol] results) -> void
+
+    # @rbs name: Symbol
+    # @rbs return: _WasmCallable
+    def callable: (Symbol name) -> _WasmCallable
+
     attr_accessor fd_table: Hash[Integer, IO | File | ::Wardite::Wasi::PreopenedDir]
 
     attr_accessor fd_count: Integer
@@ -67,8 +80,35 @@ module Wardite
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
-    # @rbs return: Object
-    def clock_time_get: (Store store, Array[wasmValue] args) -> Object
+    # @rbs return: Integer
+    def clock_res_get: (Store store, Array[wasmValue] args) -> Integer
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: Integer
+    def clock_time_get: (Store store, Array[wasmValue] args) -> Integer
+
+    # These imports can be linked, but their operations are not implemented.
+    # @rbs (Store, Array[wasmValue]) -> Integer
+    def fd_advise: (Store, Array[wasmValue]) -> Integer
+
+    alias fd_datasync fd_advise
+
+    alias fd_fdstat_set_flags fd_advise
+
+    alias fd_filestat_set_size fd_advise
+
+    alias fd_pread fd_advise
+
+    alias fd_pwrite fd_advise
+
+    alias fd_renumber fd_advise
+
+    alias fd_seek fd_advise
+
+    alias fd_sync fd_advise
+
+    alias poll_oneoff fd_advise
 
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
@@ -175,6 +215,75 @@ module Wardite
     def random_get: (Store store, Array[wasmValue] args) -> Object
 
     private
+
+    # @rbs store: Wardite::Store
+    # @rbs fd: Integer
+    # @rbs iovs: Integer
+    # @rbs count: Integer
+    # @rbs written_at: Integer
+    # @rbs return: Integer
+    def fd_write_i32: (Wardite::Store store, Integer fd, Integer iovs, Integer count, Integer written_at) -> Integer
+
+    # @rbs data: String
+    # @rbs iov: Integer
+    # @rbs return: String?
+    def iovec_payload: (String data, Integer iov) -> String?
+
+    # @rbs name: Symbol
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: wasmFuncReturn
+    def dispatch_native_import: (Symbol name, Store store, Array[wasmValue] args) -> wasmFuncReturn
+
+    # @rbs fd: Integer
+    # @rbs path: String
+    # @rbs return: String | Integer
+    def directory_path: (Integer fd, String path) -> (String | Integer)
+
+    # @rbs error: SystemCallError
+    # @rbs return: Integer
+    def filesystem_errno: (SystemCallError error) -> Integer
+
+    # @rbs stat: File::Stat
+    # @rbs return: String
+    def filestat_bytes: (File::Stat stat) -> String
+
+    # @rbs return: Array[String]
+    def environment_entries: () -> Array[String]
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs count: Integer
+    # @rbs length: Integer
+    # @rbs return: Integer
+    def write_guest_sizes: (Store store, Array[wasmValue] args, Integer count, Integer length) -> Integer
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs entries: Array[String]
+    # @rbs return: Integer
+    def write_guest_strings: (Store store, Array[wasmValue] args, Array[String] entries) -> Integer
+
+    # Callers validate the whole destination before performing any write.
+    # Spinel String splices can copy all of linear memory for a small result.
+    # @rbs data: String
+    # @rbs offset: Integer
+    # @rbs bytes: String
+    # @rbs return: void
+    def write_guest_bytes: (String data, Integer offset, String bytes) -> void
+
+    # @rbs data: String
+    # @rbs offset: Integer
+    # @rbs length: Integer
+    # @rbs return: bool
+    def guest_range?: (String data, Integer offset, Integer length) -> bool
+
+    # @rbs store: Store
+    # @rbs clock_id: Integer
+    # @rbs offset: Integer
+    # @rbs resolution: bool
+    # @rbs return: Integer
+    def write_clock: (Store store, Integer clock_id, Integer offset, resolution: bool) -> Integer
 
     # @rbs buf: String|nil
     # @rbs return: Integer

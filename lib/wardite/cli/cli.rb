@@ -23,7 +23,7 @@ module Wardite
       # @rbs return: void
       def initialize(args)
         @invoke = @mapdir = nil
-        @wasi = RUBY_ENGINE != "spinel"
+        @wasi = true
         @yjit = false
         @new_engine = false
         @disabled_optimizations = []

@@ -130,10 +130,12 @@ return value: I32(300)
 $ make spinel-test
 ```
 
-The executable defaults to WASI disabled. This initial integration tests small
-Wasm modules with `i32.const`, `i32.add`, internal calls, and `if`/`else`, comparing
-the native CLI's results with CRuby. WASI and Vernier profiling are excluded from
-the native build. Ruby's dynamic export helpers (`instance.add(...)` and
+The executable enables the shared WASI Preview 1 host by default. Use
+`--no-wasi` to disable it. To boot a Ruby 4.0.9 WASI binary, run
+`build/wardite --new-engine -- "$ruby_wasm" --disable-gems -e 'puts 6*7'`.
+See the [ruby.wasm verification record](docs/efflorescence-ruby-wasm-phase1.md)
+for the build and file-loading commands. Vernier profiling is available in the
+CRuby build. Ruby's dynamic export helpers (`instance.add(...)` and
 `runtime.add(...)`) rely on `method_missing`; use `instance.runtime.call("add",
 [100, 200])` when compiling an application with Spinel.
 

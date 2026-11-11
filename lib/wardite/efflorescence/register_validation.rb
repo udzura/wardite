@@ -7,41 +7,55 @@ module Wardite
     # This makes stale temporary slots harmless when a frame is reused. Keep
     # states per basic block, rather than per instruction, to bound their size.
     class RegisterValidation
+      # Keep each word within Spinel's fixed-width Integer.
+      WORD_SHIFT = 5
+      WORD_BITS = 1 << WORD_SHIFT
+      WORD_MASK = WORD_BITS - 1
+
       class Block
         attr_reader :first #: Integer
         attr_reader :limit #: Integer
         attr_reader :defined #: Array[Integer]
+        attr_reader :successors #: Array[Integer]
+        attr_accessor :pending #: bool
 
         # @rbs first: Integer
         # @rbs limit: Integer
-        # @rbs register_count: Integer
-        def initialize(first, limit, register_count)
+        def initialize(first, limit)
           @first = first
           @limit = limit
-          @defined = Array.new(register_count, 0)
+          @defined = [] #: Array[Integer]
+          @successors = [] #: Array[Integer]
           @reached = false
+          @pending = false
         end
 
         # Incoming facts only lose definitions after the first reachable edge.
-        # A backedge cannot establish a definition missing on initial entry.
+        # Return true when a changed block needs to enter the worklist.
         # @rbs incoming: Array[Integer]
         # @rbs return: bool
         def merge(incoming)
+          changed = false
           unless @reached
             @defined = incoming.dup
             @reached = true
-            return true
-          end
-          changed = false
-          index = 0
-          while index < @defined.size
-            if @defined[index] == 1 && incoming[index] == 0
-              @defined[index] = 0
-              changed = true
+            changed = true
+          else
+            index = 0
+            while index < @defined.size
+              previous = @defined.fetch(index)
+              intersection = previous & incoming.fetch(index)
+              if intersection != previous
+                @defined[index] = intersection
+                changed = true
+              end
+              index += 1
             end
-            index += 1
           end
-          changed
+          return false unless changed && !@pending
+
+          @pending = true
+          true
         end
       end
 
@@ -54,68 +68,126 @@ module Wardite
         raise TranslationError, "Efflorescence: empty MIR function" if instructions.empty?
         validate_types(function, ir, tags)
         analysis = Analysis.new(function)
+        flow = analysis.flow
+        register_count = function.register_count
         blocks = [] #: Array[Wardite::Efflorescence::RegisterValidation::Block]
         block_for_pc = [] #: Array[Integer]
         first = 0
         instructions.size.times do |pc|
           if pc > 0 && analysis.leaders[pc] == 1
-            blocks << Block.new(first, pc, function.register_count)
+            blocks << Block.new(first, pc)
             first = pc
           end
           block_for_pc << blocks.size
         end
-        blocks << Block.new(first, instructions.size, function.register_count)
+        blocks << Block.new(first, instructions.size)
+        order = reverse_postorder(blocks, block_for_pc, flow)
 
-        constants = Array.new(function.register_count, 0)
-        defined = Array.new(function.register_count, 0)
-        index = 0
-        while index < function.parameter_count + function.local_count
-          defined[index] = 1
-          index += 1
-        end
+        word_count = (register_count + WORD_MASK) >> WORD_SHIFT
+        constants = Array.new(word_count, 0)
+        defined = Array.new(word_count, 0)
+        (function.parameter_count + function.local_count).times { |register| mark(defined, register) }
         function.constant_registers.each do |register|
-          constants[register] = 1
-          defined[register] = 1
+          mark(constants, register)
+          mark(defined, register)
         end
         blocks.fetch(0).merge(defined)
-        pending = [] #: Array[Integer]
-        pending << 0
-        until pending.empty?
-          block_index = pending.pop || raise(TranslationError, "missing MIR block")
-          block = blocks.fetch(block_index)
-          defined = block.defined.dup
-          pc = block.first
-          while pc < block.limit
-            instruction = instructions.fetch(pc)
-            function.reads(instruction).each do |register|
-              unless register >= 0 && register < defined.size && defined[register] == 1
-                raise TranslationError, "Efflorescence: function #{function.index}, MIR PC #{pc}: r#{register} read before definition"
+        pending = 1
+        while pending > 0
+          order.each do |block_index|
+            break if pending == 0
+            block = blocks.fetch(block_index)
+            next unless block.pending
+
+            block.pending = false
+            pending -= 1
+            defined = block.defined.dup
+            pc = block.first
+            while pc < block.limit
+              instruction = instructions.fetch(pc)
+              function.reads(instruction).each do |register|
+                unless register >= 0 && register < register_count && marked?(defined, register)
+                  raise TranslationError, "Efflorescence: function #{function.index}, MIR PC #{pc}: r#{register} read before definition"
+                end
               end
-            end
-            # Exceptional writes are edge-local. In particular a CALL result
-            # is absent here, even though its normal successor defines it.
-            analysis.flow.exceptional.fetch(pc).each do |clause|
-              edge_defined = defined.dup
-              clause.destinations.each { |register| edge_defined[register] = 1 }
-              target = block_for_pc.fetch(clause.target_pc)
-              pending << target if blocks.fetch(target).merge(edge_defined)
-            end
-            destination = Opcode.destination(instruction)
-            if destination >= 0
-              if destination >= defined.size || constants[destination] == 1
-                raise TranslationError, "Efflorescence: function #{function.index}, MIR PC #{pc}: invalid register destination r#{destination}"
+              # A CALL result exists only on its normal successor.
+              flow.exceptional.fetch(pc).each do |clause|
+                edge_defined = defined.dup
+                clause.destinations.each { |register| mark(edge_defined, register) }
+                target = block_for_pc.fetch(clause.target_pc)
+                pending += 1 if blocks.fetch(target).merge(edge_defined)
               end
-              defined[destination] = 1
+              destination = Opcode.destination(instruction)
+              if destination >= 0
+                if destination >= register_count || marked?(constants, destination)
+                  raise TranslationError, "Efflorescence: function #{function.index}, MIR PC #{pc}: invalid register destination r#{destination}"
+                end
+                mark(defined, destination)
+              end
+              pc += 1
             end
-            pc += 1
-          end
-          analysis.flow.normal.fetch(block.limit - 1).each do |pc|
-            target = block_for_pc.fetch(pc)
-            pending << target if blocks.fetch(target).merge(defined)
+            flow.normal.fetch(block.limit - 1).each do |target_pc|
+              target = block_for_pc.fetch(target_pc)
+              pending += 1 if blocks.fetch(target).merge(defined)
+            end
           end
         end
       end
       private
+
+      # Visit predecessors before joins where possible, then revisit changed
+      # states across backedges until the worklist is empty.
+      # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
+      # @rbs block_for_pc: Array[Integer]
+      # @rbs flow: Wardite::Efflorescence::FlowGraph
+      # @rbs return: Array[Integer]
+      def reverse_postorder(blocks, block_for_pc, flow)
+        blocks.each do |block|
+          flow.normal.fetch(block.limit - 1).each { |pc| block.successors << block_for_pc.fetch(pc) }
+          (block.first...block.limit).each do |pc|
+            flow.exceptional.fetch(pc).each { |clause| block.successors << block_for_pc.fetch(clause.target_pc) }
+          end
+        end
+
+        seen = Array.new(blocks.size, false)
+        next_edge = Array.new(blocks.size, 0)
+        seen[0] = true
+        stack = [0]
+        postorder = [] #: Array[Integer]
+        until stack.empty?
+          index = stack.fetch(stack.size - 1)
+          successors = blocks.fetch(index).successors
+          edge = next_edge.fetch(index)
+          if edge == successors.size
+            postorder << index
+            stack.pop
+          else
+            target = successors.fetch(edge)
+            next_edge[index] = edge + 1
+            unless seen.fetch(target)
+              seen[target] = true
+              stack << target
+            end
+          end
+        end
+        postorder.reverse
+      end
+
+      # @rbs words: Array[Integer]
+      # @rbs register: Integer
+      # @rbs return: void
+      def mark(words, register)
+        index = register >> WORD_SHIFT
+        words[index] = words.fetch(index) | (1 << (register & WORD_MASK))
+      end
+
+      # @rbs words: Array[Integer]
+      # @rbs register: Integer
+      # @rbs return: bool
+      def marked?(words, register)
+        word = words.fetch(register >> WORD_SHIFT)
+        (word & (1 << (register & WORD_MASK))) != 0
+      end
 
       # Validate all registers, including unreachable instructions and table-only
       # operands. Numeric registers are checked before flat execution.

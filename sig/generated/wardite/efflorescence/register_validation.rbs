@@ -6,6 +6,13 @@ module Wardite
     # This makes stale temporary slots harmless when a frame is reused. Keep
     # states per basic block, rather than per instruction, to bound their size.
     class RegisterValidation
+      # Keep each word within Spinel's fixed-width Integer.
+      WORD_SHIFT: ::Integer
+
+      WORD_BITS: untyped
+
+      WORD_MASK: untyped
+
       class Block
         attr_reader first: Integer
 
@@ -13,13 +20,16 @@ module Wardite
 
         attr_reader defined: Array[Integer]
 
+        attr_reader successors: Array[Integer]
+
+        attr_accessor pending: bool
+
         # @rbs first: Integer
         # @rbs limit: Integer
-        # @rbs register_count: Integer
-        def initialize: (Integer first, Integer limit, Integer register_count) -> untyped
+        def initialize: (Integer first, Integer limit) -> untyped
 
         # Incoming facts only lose definitions after the first reachable edge.
-        # A backedge cannot establish a definition missing on initial entry.
+        # Return true when a changed block needs to enter the worklist.
         # @rbs incoming: Array[Integer]
         # @rbs return: bool
         def merge: (Array[Integer] incoming) -> bool
@@ -32,6 +42,24 @@ module Wardite
       def validate: (Wardite::Efflorescence::Function function, ?Wardite::Efflorescence::IR? ir, ?tags: Array[Wardite::Efflorescence::Tag]?) -> void
 
       private
+
+      # Visit predecessors before joins where possible, then revisit changed
+      # states across backedges until the worklist is empty.
+      # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
+      # @rbs block_for_pc: Array[Integer]
+      # @rbs flow: Wardite::Efflorescence::FlowGraph
+      # @rbs return: Array[Integer]
+      def reverse_postorder: (Array[Wardite::Efflorescence::RegisterValidation::Block] blocks, Array[Integer] block_for_pc, Wardite::Efflorescence::FlowGraph flow) -> Array[Integer]
+
+      # @rbs words: Array[Integer]
+      # @rbs register: Integer
+      # @rbs return: void
+      def mark: (Array[Integer] words, Integer register) -> void
+
+      # @rbs words: Array[Integer]
+      # @rbs register: Integer
+      # @rbs return: bool
+      def marked?: (Array[Integer] words, Integer register) -> bool
 
       # Validate all registers, including unreachable instructions and table-only
       # operands. Numeric registers are checked before flat execution.

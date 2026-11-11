@@ -92,6 +92,22 @@ class WarditeSpinelM2Test < Test::Unit::TestCase
     end
   end
 
+  test 'active binary data segments overwrite earlier bytes across a memory page boundary' do
+    with_wasm(<<~WAT) do |file|
+      (module (memory 2)
+        (data (i32.const 65534) "\\ff\\00\\80\\12")
+        (data (i32.const 65535) "\\01\\fe")
+        (data (i32.const 131072) "")
+        (func (export "load") (result i32) i32.const 65534 i32.load))
+    WAT
+      [[], ['--new-engine']].each do |options|
+        _, stderr, status = Open3.capture3(@binary, *options, '--invoke', 'load', '--', file)
+        assert status.success?, stderr
+        assert_include stderr, "return value: I32(#{0x12fe01ff})\n"
+      end
+    end
+  end
+
   test 'M2 start Store exports EH trap recovery and frame reuse on native API' do
     with_wasm(EfflorescenceM2Cases::INTEGRATION_WAT) do |file|
       Dir.mktmpdir do |dir|

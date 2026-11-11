@@ -29,19 +29,6 @@ module Wardite
       # @rbs sources: Array[Integer]?
       # @rbs return: bot
       def proc_exit_from_registers: (untyped _store, Array[Integer] values, Array[Integer]? sources) -> bot
-
-      # @rbs store: Wardite::Store
-      # @rbs fd: Integer
-      # @rbs iovs: Integer
-      # @rbs count: Integer
-      # @rbs written_at: Integer
-      # @rbs return: Integer
-      def fd_write_i32: (Wardite::Store store, Integer fd, Integer iovs, Integer count, Integer written_at) -> Integer
-
-      # @rbs data: String
-      # @rbs iov: Integer
-      # @rbs return: String?
-      def iovec_payload: (String data, Integer iov) -> String?
     end
   end
 end
