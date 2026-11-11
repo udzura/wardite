@@ -87,7 +87,11 @@ module Wardite
       def initialize: (Wardite::Instance instance) -> untyped
 
       # @rbs return: Wardite::Efflorescence::IR
-      def translate: () -> Wardite::Efflorescence::IR
+      def link: () -> Wardite::Efflorescence::IR
+
+      # @rbs linked: Wardite::Efflorescence::IR
+      # @rbs return: Wardite::Efflorescence::IR
+      def translate: (?Wardite::Efflorescence::IR linked) -> Wardite::Efflorescence::IR
 
       # @rbs wasm: Wardite::WasmFunction
       # @rbs index: Integer

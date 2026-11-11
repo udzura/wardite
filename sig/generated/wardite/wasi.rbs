@@ -224,11 +224,12 @@ module Wardite
     # @rbs return: Integer
     def fd_write_i32: (Wardite::Store store, Integer fd, Integer iovs, Integer count, Integer written_at) -> Integer
 
-    # @rbs data: String
+    # @rbs memory: Wardite::Memory
     # @rbs iov: Integer
     # @rbs return: String?
-    def iovec_payload: (String data, Integer iov) -> String?
+    def iovec_payload: (Wardite::Memory memory, Integer iov) -> String?
 
+    # Bind the boxed host call to known methods when compiling with Spinel.
     # @rbs name: Symbol
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
@@ -264,19 +265,11 @@ module Wardite
     # @rbs return: Integer
     def write_guest_strings: (Store store, Array[wasmValue] args, Array[String] entries) -> Integer
 
-    # Callers validate the whole destination before performing any write.
-    # Spinel String splices can copy all of linear memory for a small result.
-    # @rbs data: String
-    # @rbs offset: Integer
-    # @rbs bytes: String
-    # @rbs return: void
-    def write_guest_bytes: (String data, Integer offset, String bytes) -> void
-
-    # @rbs data: String
+    # @rbs store: Store
     # @rbs offset: Integer
     # @rbs length: Integer
-    # @rbs return: bool
-    def guest_range?: (String data, Integer offset, Integer length) -> bool
+    # @rbs return: String?
+    def guest_path: (Store store, Integer offset, Integer length) -> String?
 
     # @rbs store: Store
     # @rbs clock_id: Integer
@@ -284,9 +277,5 @@ module Wardite
     # @rbs resolution: bool
     # @rbs return: Integer
     def write_clock: (Store store, Integer clock_id, Integer offset, resolution: bool) -> Integer
-
-    # @rbs buf: String|nil
-    # @rbs return: Integer
-    def unpack_le_int: (String | nil buf) -> Integer
   end
 end

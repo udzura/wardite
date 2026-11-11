@@ -48,8 +48,9 @@ module Wardite
     # @rbs engine: Symbol
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
+    # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
-    def initialize(import_object, engine: :stack, disabled_optimizations: [], mir_profile: false, &blk)
+    def initialize(import_object, engine: :stack, disabled_optimizations: [], mir_profile: false, mir_cache: nil, &blk)
       @wasi = nil
 
       blk.call(self)
@@ -78,7 +79,7 @@ module Wardite
 
       @runtime = case engine
       when :stack then Runtime.new(self)
-      when :efflorescence then Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile)
+      when :efflorescence then Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile, mir_cache: mir_cache)
       else raise LoadError, "unknown engine: #{engine}"
       end
     end
@@ -805,9 +806,13 @@ module Wardite
         if !length.is_a?(I32) || !src_offset.is_a?(I32) || !dest_offset.is_a?(I32)
           raise EvalError, "invalid stack values"
         end
-        source = data_seg.data[src_offset.value...(src_offset.value+length.value)]
-        raise EvalError, "invalid source range" if !source
-        memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
+        if RUBY_ENGINE == "spinel"
+          Efflorescence::StoreAccess.new(instance.store).init(idx, dest_offset.value, src_offset.value, length.value)
+        else
+          source = data_seg.data[src_offset.value...(src_offset.value+length.value)]
+          raise EvalError, "invalid source range" if !source
+          memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
+        end
 
       when :memory_copy
         if operand[0] != 0x0 || operand[1] != 0x0
@@ -818,9 +823,13 @@ module Wardite
           raise EvalError, "invalid stack values"
         end
         memory = instance.store.memories[0] || raise("[BUG] no memory")
-        source = memory.data[src_offset.value...(src_offset.value+length.value)]
-        raise EvalError, "invalid source range" if !source
-        memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
+        if RUBY_ENGINE == "spinel"
+          Efflorescence::StoreAccess.new(instance.store).copy(dest_offset.value, src_offset.value, length.value)
+        else
+          source = memory.data[src_offset.value...(src_offset.value+length.value)]
+          raise EvalError, "invalid source range" if !source
+          memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
+        end
 
       when :memory_fill
         if operand[0] != 0x0
@@ -831,8 +840,12 @@ module Wardite
           raise EvalError, "invalid stack values"
         end
         memory = instance.store.memories[0] || raise("[BUG] no memory")
-        source = byte.value.chr * length.value
-        memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
+        if RUBY_ENGINE == "spinel"
+          Efflorescence::StoreAccess.new(instance.store).fill(dest_offset.value, byte.value, length.value)
+        else
+          source = byte.value.chr * length.value
+          memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
+        end
 
       else
         raise "TODO! unsupported #{insn.inspect}"
@@ -1075,26 +1088,11 @@ module Wardite
               raise GenericError, "invalid memory index: #{segment.mem_index}"
             end
 
-            data = memory.data
             payload = segment.data
-            data_start = segment.offset
-            length = payload.bytesize
-            data_end = data_start + length
-            if data_start < 0 || data_end > data.bytesize
+            unless memory.range?(segment.offset, payload.bytesize)
               raise GenericError, "data too large for memory"
             end
-
-            if RUBY_ENGINE == "spinel"
-              # A String splice in Spinel rebuilds the entire memory buffer.
-              index = 0
-              while index < length
-                byte = payload.getbyte(index) || raise(GenericError, "missing data segment byte")
-                data.setbyte(data_start + index, byte)
-                index += 1
-              end
-            else
-              data[data_start...data_end] = payload
-            end
+            memory.write_bytes(segment.offset, payload)
           end
         end
       end
@@ -1163,37 +1161,131 @@ module Wardite
   end
 
   class Memory
-    attr_accessor :data #: String
+    PAGE_SIZE = 65536 #: Integer
+    MAX_PAGES = 65536 #: Integer
+
+    # @rbs @data: String?
+    # @rbs @buffer: IO::Buffer?
 
     attr_accessor :current #: Integer
-
     attr_accessor :max #: Integer|nil
 
     # @rbs min: Integer
     # @rbs max: Integer|nil
     # @rbs return: void
     def initialize(min, max)
-      @data = String.new("\0" * (min * 64 * 1024)).b
+      if RUBY_ENGINE == "spinel"
+        @buffer = IO::Buffer.new(min * PAGE_SIZE)
+      else
+        @data = String.new("\0" * (min * PAGE_SIZE)).b
+      end
       @current = min
       @max = max
+    end
+
+    # The CRuby host API retains the mutable backing String.
+    # @rbs return: String
+    def data
+      @data || raise(NotImplementedError, "Spinel linear memory uses Memory#buffer")
+    end
+
+    # @rbs value: String
+    # @rbs return: String
+    def data=(value)
+      raise NotImplementedError, "Spinel linear memory uses Memory#buffer" if RUBY_ENGINE == "spinel"
+      @data = value
+    end
+
+    # The Spinel host API exposes the current owned buffer. Reacquire it
+    # after any guest call that can grow memory.
+    # @rbs return: IO::Buffer
+    def buffer
+      @buffer || raise(NotImplementedError, "CRuby linear memory uses Memory#data")
+    end
+
+    # @rbs return: Integer
+    def bytesize
+      RUBY_ENGINE == "spinel" ? buffer.size : data.bytesize
+    end
+
+    # @rbs offset: Integer
+    # @rbs length: Integer
+    # @rbs return: bool
+    def range?(offset, length)
+      size = bytesize
+      offset >= 0 && length >= 0 && offset <= size && length <= size - offset
+    end
+
+    # @rbs offset: Integer
+    # @rbs length: Integer
+    # @rbs return: String
+    def read_bytes(offset, length)
+      raise EvalError, "invalid memory range" unless range?(offset, length)
+      return "".b if length == 0
+      if RUBY_ENGINE == "spinel"
+        buffer.get_string(offset, length)
+      else
+        data.byteslice(offset, length) || raise(EvalError, "invalid memory range")
+      end
+    end
+
+    # @rbs offset: Integer
+    # @rbs return: Integer
+    def read_u32(offset)
+      raise EvalError, "invalid memory range" unless range?(offset, 4)
+      if RUBY_ENGINE == "spinel"
+        Integer(buffer.get_value(:u32, offset))
+      else
+        Integer(data.unpack1("V", offset: offset))
+      end
+    end
+
+    # @rbs offset: Integer
+    # @rbs bytes: String
+    # @rbs return: void
+    def write_bytes(offset, bytes)
+      length = bytes.bytesize
+      raise EvalError, "invalid memory range" unless range?(offset, length)
+      return if length == 0
+      if RUBY_ENGINE == "spinel"
+        buffer.set_string(bytes, offset)
+      else
+        data[offset, length] = bytes
+      end
     end
 
     # @rbs delta: Integer
     # @rbs return: Integer
     def grow(delta)
-      prev = current
-      newsize = current + delta
-      if max && (newsize > max)
-        return -1
+      previous = current
+      if RUBY_ENGINE == "spinel"
+        declared = max
+        limit = declared && declared < MAX_PAGES ? declared : MAX_PAGES
+        return -1 if delta < 0 || previous > limit || delta > limit - previous
+        return previous if delta == 0
+
+        old = buffer
+        return -1 if old.locked?
+        begin
+          replacement = IO::Buffer.new((previous + delta) * PAGE_SIZE)
+        rescue NoMemoryError, Errno::ENOMEM, IO::Buffer::AllocationError
+          return -1
+        end
+        replacement.copy(old, 0, old.size) if old.size > 0
+        old.free
+        @buffer = replacement
+      else
+        declared = max
+        return -1 if declared && previous + delta > declared
+        self.data = data + String.new("\0" * (delta * PAGE_SIZE))
       end
-      
-      @data += String.new("\0" * (delta * 64 * 1024))
-      self.current = newsize
-      prev
+      self.current = previous + delta
+      previous
     end
 
     def inspect
-      "#<Wardite::Memory initial=#{@data.size.inspect} max=#{@max.inspect} @data=#{@data[0...64].inspect}...>"
+      preview = read_bytes(0, [bytesize, 64].min)
+      "#<Wardite::Memory initial=#{bytesize.inspect} max=#{@max.inspect} preview=#{preview.inspect}...>"
     end
   end
 

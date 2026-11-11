@@ -219,10 +219,10 @@ module Wardite
       end
 
       # @rbs return: Wardite::Efflorescence::IR
-      def translate
+      def link
         hosts = [] #: Array[Wardite::Efflorescence::HostFunction]
         defined_count = 0
-        @entries = @instance.store.funcs.map do |function|
+        entries = @instance.store.funcs.map do |function|
           if function.is_a?(Wardite::ExternalFunction)
             entry = FunctionEntry.new(:host, function.callsig, function.retsig, -1, hosts.size)
             callable = function.callable #: Wardite::_WasmCallable & Object
@@ -244,13 +244,20 @@ module Wardite
             entry
           end
         end
+        IR.new([], entries: entries, hosts: hosts)
+      end
+
+      # @rbs linked: Wardite::Efflorescence::IR
+      # @rbs return: Wardite::Efflorescence::IR
+      def translate(linked = link)
+        @entries = linked.entries
         functions = [] #: Array[Wardite::Efflorescence::Function]
         @instance.store.funcs.each_with_index do |function, index|
           if function.is_a?(Wardite::WasmFunction)
             functions << translate_function(function, index, functions.size)
           end
         end
-        IR.new(functions, entries: @entries, hosts: hosts)
+        IR.new(functions, entries: @entries, hosts: linked.hosts)
       end
 
       # @rbs wasm: Wardite::WasmFunction

@@ -24,7 +24,11 @@ module Wardite
         at = addr.value + offset
         data_end = at + F32.new.memsize / 8
         memory = runtime.instance.store.memories[0] || raise("[BUG] no memory")
-        buf = memory.data[at...data_end]
+        buf = if RUBY_ENGINE == "spinel"
+          memory.read_bytes(at, data_end - at)
+        else
+          memory.data[at...data_end]
+        end
         if !buf
           raise EvalError, "invalid memory range"
         end
@@ -45,7 +49,11 @@ module Wardite
         at = addr.value + offset
         data_end = at + value.packed.size
         memory = runtime.instance.store.memories[0] || raise("[BUG] no memory")
-        memory.data[at...data_end] = value.packed
+        if RUBY_ENGINE == "spinel"
+          memory.write_bytes(at, value.packed)
+        else
+          memory.data[at...data_end] = value.packed
+        end
 
 
       when :f32_const

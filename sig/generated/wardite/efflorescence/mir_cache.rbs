@@ -1,0 +1,199 @@
+# Generated from lib/wardite/efflorescence/mir_cache.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    # Local, opt-in cache of the verified output of Lowerer. Bump CODE_VERSION
+    # when the generated code or its interpretation changes, including opcodes,
+    # optimizer/validator fixes, and changes to the metadata used by the VM.
+    class MIRCache
+      MAGIC: untyped
+
+      FORMAT_VERSION: ::Integer
+
+      CODE_VERSION: ::Integer
+
+      DIGEST_SIZE: ::Integer
+
+      MAX_BYTES: untyped
+
+      TYPES: untyped
+
+      TYPE_IDS: untyped
+
+      USES_I64: ::Integer
+
+      USES_FLOAT: ::Integer
+
+      USES_EH: ::Integer
+
+      USES_STORE: ::Integer
+
+      USES_DYNAMIC_CALLS: ::Integer
+
+      FUNCTION_FLAGS: untyped
+
+      class Invalid < StandardError
+      end
+
+      # All records are little-endian. Vectors carry a nonnegative 32-bit element count.
+      # A record count is bounded by the bytes still available to decode it.
+      class Reader
+        # @rbs bytes: String
+        def initialize: (String bytes) -> untyped
+
+        # @rbs length: Integer
+        # @rbs return: String
+        def bytes: (Integer length) -> String
+
+        # @rbs return: Integer
+        def integer: () -> Integer
+
+        # @rbs width: Integer
+        # @rbs return: Integer
+        def count: (Integer width) -> Integer
+
+        # @rbs format: String
+        # @rbs width: Integer
+        # @rbs return: Array[Integer]
+        def vector: (String format, Integer width) -> Array[Integer]
+
+        # @rbs return: Array[Symbol]
+        def types: () -> Array[Symbol]
+
+        # @rbs return: void
+        def finish: () -> void
+
+        private
+
+        # @rbs length: Integer
+        # @rbs return: void
+        def ensure_bytes: (Integer length) -> void
+      end
+
+      class Writer
+        attr_reader bytes: String
+
+        def initialize: () -> untyped
+
+        # @rbs *values: Integer
+        # @rbs return: void
+        def integers: (*Integer values) -> void
+
+        # @rbs values: Array[Integer]
+        # @rbs format: String
+        # @rbs return: void
+        def vector: (Array[Integer] values, ?String format) -> void
+
+        # @rbs types: Array[Symbol]
+        # @rbs return: void
+        def types: (Array[Symbol] types) -> void
+
+        # @rbs function: Function
+        # @rbs return: void
+        def function: (Function function) -> void
+      end
+
+      class Decoder
+        include Opcode
+
+        # Reuse the semantic register roles for fixed operands. Lowering
+        # moves direct call arguments into a side table and leaves optional
+        # destinations and return operands to be checked against signatures.
+        REGISTER_MASKS: Array[Integer]
+
+        EXTRA_OPERANDS: Array[Symbol?]
+
+        # @rbs reader: Reader
+        # @rbs instance: Wardite::Instance
+        # @rbs linked: IR
+        def initialize: (Reader reader, Wardite::Instance instance, IR linked) -> untyped
+
+        # @rbs return: IR
+        def decode: () -> IR
+
+        private
+
+        # @rbs wasm: Wardite::WasmFunction
+        # @rbs index: Integer
+        # @rbs pool_index: Integer
+        # @rbs return: Function
+        def read_function: (Wardite::WasmFunction wasm, Integer index, Integer pool_index) -> Function
+
+        # @rbs function: Function
+        # @rbs return: Array[[Integer, Array[Integer]]]
+        def read_sites: (Function function) -> Array[[ Integer, Array[Integer] ]]
+
+        # @rbs function: Function
+        # @rbs return: DynamicCallSite
+        def read_dynamic_site: (Function function) -> DynamicCallSite
+
+        # @rbs function: Function
+        # @rbs return: MemorySite
+        def read_memory_site: (Function function) -> MemorySite
+
+        # @rbs function: Function
+        # @rbs handler_count: Integer
+        # @rbs return: CatchTarget
+        def read_catch: (Function function, Integer handler_count) -> CatchTarget
+
+        # @rbs function: Function
+        # @rbs return: void
+        def check_code: (Function function) -> void
+
+        # @rbs tag: Integer
+        # @rbs return: Array[Symbol]
+        def tag_types: (Integer tag) -> Array[Symbol]
+
+        # @rbs function: Function
+        # @rbs registers: Array[Integer]
+        # @rbs types: Array[Symbol]
+        # @rbs return: void
+        def check_arguments: (Function function, Array[Integer] registers, Array[Symbol] types) -> void
+
+        # @rbs function: Function
+        # @rbs slot: Integer
+        # @rbs types: Array[Symbol]
+        # @rbs return: void
+        def check_result: (Function function, Integer slot, Array[Symbol] types) -> void
+
+        # @rbs target: Integer
+        # @rbs limit: Integer
+        # @rbs return: void
+        def check_target: (Integer target, Integer limit) -> void
+
+        # @rbs [T] (Array[T] values, Integer index) -> T
+        def at: [T] (Array[T] values, Integer index) -> T
+      end
+
+      # @rbs directory: String
+      # @rbs wasm: String
+      # @rbs configuration: Configuration
+      def initialize: (String directory, String wasm, Configuration configuration) -> untyped
+
+      # @rbs instance: Wardite::Instance
+      # @rbs linked: IR
+      # @rbs return: IR?
+      def read: (Wardite::Instance instance, IR linked) -> IR?
+
+      # @rbs instance: Wardite::Instance
+      # @rbs ir: IR
+      # @rbs return: void
+      def write: (Wardite::Instance instance, IR ir) -> void
+
+      private
+
+      # Exclusive creation protects a concurrent writer's temporary file.
+      # Close the file before publishing it under the cache key.
+      # @rbs payload: String
+      # @rbs return: void
+      def publish: (String payload) -> void
+
+      # Include the module's import identities, and every function's signature
+      # and index mapping. The live entries and hosts are always linked afresh.
+      # @rbs instance: Wardite::Instance
+      # @rbs entries: Array[FunctionEntry]
+      # @rbs return: String
+      def encode_layout: (Wardite::Instance instance, Array[FunctionEntry] entries) -> String
+    end
+  end
+end

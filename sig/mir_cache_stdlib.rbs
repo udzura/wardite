@@ -1,0 +1,5 @@
+module Digest
+  class SHA256
+    def self.digest: (String) -> String
+  end
+end

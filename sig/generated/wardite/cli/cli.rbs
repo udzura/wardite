@@ -2,6 +2,12 @@
 
 module Wardite
   module Cli
+    # Keep the summary accumulator's type consistent in native builds.
+    class SpinelOptions < OptionParser
+      # @rbs return: String
+      def help: () -> String
+    end
+
     class Cli
       @args: Array[String]
 
@@ -24,6 +30,8 @@ module Wardite
       attr_reader mir_dump: bool
 
       attr_reader mir_profile: bool
+
+      attr_reader mir_cache: String?
 
       attr_reader profile_file_path: String?
 

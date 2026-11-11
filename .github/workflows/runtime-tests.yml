@@ -90,7 +90,7 @@ jobs:
           # Include the runtime, headers, and packages, not just the executable.
           path: ${{ runner.temp }}/spinel
           # Bump v1 if the build recipe changes. Only exact matches are reused.
-          key: spinel-install-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.SPINEL_REF }}-${{ steps.spinel-environment.outputs.hash }}
+          key: spinel-install-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.SPINEL_REF }}-${{ steps.spinel-environment.outputs.hash }}-${{ hashFiles('spinel/patches/*.patch') }}
       - name: Check out Spinel
         if: steps.spinel-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
@@ -103,6 +103,7 @@ jobs:
         if: steps.spinel-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
+          git -C .ci/spinel apply "$GITHUB_WORKSPACE"/spinel/patches/*.patch
           make -C .ci/spinel deps
           make -C .ci/spinel -j2 install PREFIX="$RUNNER_TEMP/spinel"
       - name: Add Spinel to PATH

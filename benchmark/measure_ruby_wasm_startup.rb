@@ -21,7 +21,7 @@ module StartupMeasurement
   end
 end
 
-wasm = ARGV.fetch(0) { abort "Usage: ruby -Ilib #{$PROGRAM_NAME} RUBY.wasm" }
+wasm = ARGV.shift || abort("Usage: ruby -Ilib #{$PROGRAM_NAME} RUBY.wasm [--mir-cache DIR]")
 efflorescence = Wardite::Efflorescence
 StartupMeasurement.measure(Wardite::BinaryLoader.singleton_class, :sections, :decode)
 StartupMeasurement.measure(Wardite::Store, :initialize, :store)
@@ -30,8 +30,14 @@ StartupMeasurement.measure(efflorescence::Optimizer, :optimize, :optimize)
 StartupMeasurement.measure(efflorescence::RegisterValidation, :validate, :validate)
 StartupMeasurement.measure(efflorescence::Lowerer, :compile, :lower)
 StartupMeasurement.measure(efflorescence::VM, :call, :execute)
+StartupMeasurement.measure(Wardite::Cli::Cli, :new_instance, :load)
+if ARGV.include?("--mir-cache")
+  require "wardite/efflorescence/mir_cache"
+  StartupMeasurement.measure(efflorescence::MIRCache, :read, :cache_read)
+  StartupMeasurement.measure(efflorescence::MIRCache, :write, :cache_write)
+end
 
 started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-Wardite::Cli::Cli.new(["--new-engine", "--", wasm, "--disable-gems", "-e", "puts RUBY_VERSION; puts 6*7"]).run
+Wardite::Cli::Cli.new(["--new-engine", *ARGV, "--", wasm, "--disable-gems", "-e", "puts RUBY_VERSION; puts 6*7"]).run
 StartupMeasurement::SECONDS[:total] = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
 warn JSON.generate(ruby: RUBY_DESCRIPTION, yjit: RubyVM::YJIT.enabled?, seconds: StartupMeasurement::SECONDS)

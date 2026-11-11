@@ -80,6 +80,13 @@ Use `--mir-disable NAME` to compare
 individual features, `--mir-dump` to inspect MIR and `--mir-profile` for counters.
 See [Phase 2](docs/efflorescence-phase2.md) ([日本語](docs/efflorescence-phase2-ja.md)).
 
+On CRuby and Spinel, pass `--mir-cache DIR` with `--new-engine` to reuse lowered
+MIR across processes. Use a local directory you control. Each run still decodes
+the Wasm, links imports, and initializes a fresh instance. `--mir-dump` and
+`--mir-profile` build MIR normally. Ruby callers can pass `mir_cache: dir` with
+`engine: :efflorescence`. CRuby and Spinel use different cache keys.
+[MIR2 cache measurements](docs/efflorescence-mir2-cache.md)
+
 [M1](docs/efflorescence-m1.md) adds the remaining basic i32 operations,
 if/else/select/br_table, and new exception handling (try_table/throw/throw_ref).
 Tags can carry numeric payloads. Nullable exnref locals and multi-result blocks carry
@@ -142,8 +149,9 @@ CRuby build. Ruby's dynamic export helpers (`instance.add(...)` and
 The build leaves inline RBS and Spinel's default integer overflow checks enabled.
 Wasm integer operations bound their intermediate values, so
 `--int-overflow=promote` is not required.
-Tested with Spinel `2026.10.25+1967` (`6e7fc1355`) on macOS
-arm64. Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
+The pinned Spinel build applies the IO::Buffer patches under `spinel/patches`.
+See the [build instructions and host memory API](docs/efflorescence-spinel-linear-memory.md).
+Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
 
 ## Contributing
 

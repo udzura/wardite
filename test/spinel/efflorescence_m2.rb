@@ -8,9 +8,9 @@ require 'wardite'
     Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: engine)
   end
   memory = instance.store.memories[0] || raise('missing memory')
-  raise 'not binary' unless memory.data.encoding == Encoding::BINARY
-  raise 'invalid byte length' unless memory.data.bytesize == 65536
-  raise 'constant-expression decoding failed' unless memory.data.getbyte(11) == 255
+  raise 'not binary' unless memory.buffer.is_a?(IO::Buffer)
+  raise 'invalid byte length' unless memory.bytesize == 65536
+  raise 'constant-expression decoding failed' unless Integer(memory.buffer.get_value(:U8, 11)) == 255
   global = instance.store.globals[0] || raise('missing global')
   value = global.value
   raise 'bad global initializer' unless value.is_a?(Wardite::I32) && value.value == 11
