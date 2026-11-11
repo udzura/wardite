@@ -8,6 +8,7 @@ require "tmpdir"
 wasm = File.expand_path(ARGV.fetch(0) { abort "Usage: ruby #{$PROGRAM_NAME} RUBY.wasm" })
 root = File.expand_path("..", __dir__)
 wardite = [RbConfig.ruby, "-I#{root}/lib", "#{root}/exe/wardite", "--new-engine"]
+spinel = ENV["WARDITE_SPINEL_BIN"]
 
 puts "Ruby WASM SHA-256 #{Digest::SHA256.file(wasm).hexdigest}"
 Dir.mktmpdir("wardite-ruby-wasm") do |app_dir|
@@ -24,8 +25,13 @@ Dir.mktmpdir("wardite-ruby-wasm") do |app_dir|
       "Wasmtime" => ["wasmtime", "run", *reference_options, *guest_args],
       "Efflorescence" => [*wardite, *wardite_options, "--", *guest_args],
     }
+    commands["Spinel Efflorescence"] = [File.expand_path(spinel), "--new-engine", *wardite_options, "--", *guest_args] if spinel
     commands.each do |runtime, command|
-      stdout, stderr, status = Open3.capture3(*command)
+      stdout, stderr, status = if defined?(Bundler)
+        Bundler.with_original_env { Open3.capture3(*command) }
+      else
+        Open3.capture3(*command)
+      end
       unless stdout == expected && status.exitstatus == expected_exit
         abort "#{runtime} #{name}: #{status.inspect}, stdout=#{stdout.inspect}\n#{stderr}"
       end

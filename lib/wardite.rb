@@ -1036,10 +1036,8 @@ module Wardite
         raise ::NameError, "module #{desc.module_name} not found" unless target_module
 
         name = desc.name.to_sym
-        if RUBY_ENGINE != "spinel"
-          wasi = inst.wasi
-          wasi.validate_import(name, callsig, retsig) if wasi && wasi.equal?(target_module)
-        end
+        wasi = inst.wasi
+        wasi.validate_import(name, callsig, retsig) if wasi && wasi.equal?(target_module)
         self.funcs << ExternalFunction.new(target_module, name, callsig, retsig)
       end
 

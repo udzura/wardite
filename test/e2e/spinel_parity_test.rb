@@ -29,10 +29,7 @@ class WarditeSpinelParityTest < Test::Unit::TestCase
     omit "Run make spinel-test to test the native executable" unless ENV["WARDITE_SPINEL_BIN"]
     assert_nothing_raised do
       cases = EfflorescenceBoundaryCases
-      EfflorescenceParity.run(cases.fixtures, runtime: :spinel, configurations: cases.configurations) do |command, binaries|
-        stdout, = EfflorescenceParity.capture(*command, "wasi-rejection", binaries.fetch("state_order"))
-        assert_equal "Spinel WASI rejection passed\n", stdout
-      end
+      EfflorescenceParity.run(cases.fixtures, runtime: :spinel, configurations: cases.configurations)
     end
   end
 

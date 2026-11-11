@@ -15,6 +15,10 @@ module Wardite
     # @rbs return: void
     def validate_import: (Symbol name, Array[Symbol] parameters, Array[Symbol] results) -> void
 
+    # @rbs name: Symbol
+    # @rbs return: _WasmCallable
+    def callable: (Symbol name) -> _WasmCallable
+
     attr_accessor fd_table: Hash[Integer, IO | File | ::Wardite::Wasi::PreopenedDir]
 
     attr_accessor fd_count: Integer
@@ -85,10 +89,8 @@ module Wardite
     def clock_time_get: (Store store, Array[wasmValue] args) -> Integer
 
     # These imports can be linked, but their operations are not implemented.
-    # @rbs _store: Store
-    # @rbs _args: Array[wasmValue]
-    # @rbs return: Integer
-    def fd_advise: (untyped _store, untyped _args) -> Integer
+    # @rbs (Store, Array[wasmValue]) -> Integer
+    def fd_advise: (Store, Array[wasmValue]) -> Integer
 
     alias fd_datasync fd_advise
 
@@ -214,6 +216,25 @@ module Wardite
 
     private
 
+    # @rbs store: Wardite::Store
+    # @rbs fd: Integer
+    # @rbs iovs: Integer
+    # @rbs count: Integer
+    # @rbs written_at: Integer
+    # @rbs return: Integer
+    def fd_write_i32: (Wardite::Store store, Integer fd, Integer iovs, Integer count, Integer written_at) -> Integer
+
+    # @rbs data: String
+    # @rbs iov: Integer
+    # @rbs return: String?
+    def iovec_payload: (String data, Integer iov) -> String?
+
+    # @rbs name: Symbol
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: wasmFuncReturn
+    def dispatch_native_import: (Symbol name, Store store, Array[wasmValue] args) -> wasmFuncReturn
+
     # @rbs fd: Integer
     # @rbs path: String
     # @rbs return: String | Integer
@@ -229,6 +250,27 @@ module Wardite
 
     # @rbs return: Array[String]
     def environment_entries: () -> Array[String]
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs count: Integer
+    # @rbs length: Integer
+    # @rbs return: Integer
+    def write_guest_sizes: (Store store, Array[wasmValue] args, Integer count, Integer length) -> Integer
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs entries: Array[String]
+    # @rbs return: Integer
+    def write_guest_strings: (Store store, Array[wasmValue] args, Array[String] entries) -> Integer
+
+    # Callers validate the whole destination before performing any write.
+    # Spinel String splices can copy all of linear memory for a small result.
+    # @rbs data: String
+    # @rbs offset: Integer
+    # @rbs bytes: String
+    # @rbs return: void
+    def write_guest_bytes: (String data, Integer offset, String bytes) -> void
 
     # @rbs data: String
     # @rbs offset: Integer
