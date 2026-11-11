@@ -1,0 +1,192 @@
+opcode	wasm	decoder	phase	translator	mir	normal	boundary	trap	cruby	spinel	reference	restrictions
+00	unreachable	unreachable	pre-M1	control	TRAP	-	-	unreachable/trap	pass	pass	wasmtime	-
+01	nop	nop	pre-M1	control	source	nop/normal	nop/boundary	n/a	pass	pass	wasmtime	-
+02	block	block	pre-M1	control	source	block/normal	block/boundary	n/a	pass	pass	wasmtime	no block parameters
+03	loop	loop	pre-M1	control	source	loop/normal	loop/boundary	n/a	pass	pass	wasmtime	no block parameters
+04	if	if	M1	control	BR_IF_ZERO	if/normal	if/boundary	n/a	pass	pass	wasmtime	no block parameters
+05	else	else	M1	control	source	else/normal	else/boundary	n/a	pass	pass	wasmtime	-
+0b	end	end	pre-M1	control	source	end/normal	end/boundary	n/a	pass	pass	wasmtime	-
+0c	br	br	pre-M1	control	BR	br/normal	br/boundary	n/a	pass	pass	wasmtime	-
+0d	br_if	br_if	pre-M1	control	BR_IF	br_if/normal	br_if/boundary	n/a	pass	pass	wasmtime	-
+0e	br_table	br_table	M1	control	BR_IF_ZERO	br_table/normal	br_table/boundary	n/a	pass	pass	wasmtime	-
+0f	return	return	pre-M1	control	RETURN	return/normal	return/boundary	n/a	pass	pass	wasmtime	numeric signature, at most one function result
+10	call	call	pre-M1	call	CALL	call/normal	call/boundary	n/a	pass	pass	wasmtime	numeric signature, at most one function result
+11	call_indirect	call_indirect	M3	call	CALL_INDIRECT	call_indirect/normal	call_indirect/boundary	call_indirect/trap	pass	pass	wasmtime	table 0, funcref, exact numeric signature, at most one result
+1a	drop	drop	pre-M1	control	source	drop/normal	drop/boundary	n/a	pass	pass	wasmtime	-
+1b	select	select	M1	control	BR_IF_ZERO	select/normal	select/boundary	n/a	pass	pass	wasmtime	untyped select of numeric values
+20	local.get	local_get	pre-M1	control	COPY	local.get/normal	local.get/boundary	n/a	pass	pass	wasmtime	-
+21	local.set	local_set	pre-M1	control	COPY	local.set/normal	local.set/boundary	n/a	pass	pass	wasmtime	-
+22	local.tee	local_tee	pre-M1	control	COPY	local.tee/normal	local.tee/boundary	n/a	pass	pass	wasmtime	-
+23	global.get	global_get	M2	store	GLOBAL_GET	global.get/normal	global.get/boundary	n/a	pass	pass	wasmtime	numeric global, global.set requires mutable
+24	global.set	global_set	M2	store	GLOBAL_SET	global.set/normal	global.set/boundary	n/a	pass	pass	wasmtime	numeric global, global.set requires mutable
+3f	memory.size	memory_size	M2	store	MEMORY_SIZE	memory.size/normal	memory.size/boundary	n/a	pass	pass	wasmtime	memory 0, memory32
+40	memory.grow	memory_grow	M2	store	MEMORY_GROW	memory.grow/normal	memory.grow/boundary	n/a	pass	pass	wasmtime	memory 0, memory32
+fc/08	memory.init	memory_init	M2	store	MEMORY_INIT	memory.init/normal	memory.init/boundary	memory.init/trap	pass	pass	wasmtime	memory 0, memory32
+fc/0a	memory.copy	memory_copy	M2	store	MEMORY_COPY	memory.copy/normal	memory.copy/boundary	memory.copy/trap	pass	pass	wasmtime	memory 0, memory32
+fc/0b	memory.fill	memory_fill	M2	store	MEMORY_FILL	memory.fill/normal	memory.fill/boundary	memory.fill/trap	pass	pass	wasmtime	memory 0, memory32
+28	i32.load	i32_load	M2	store	I32_LOAD	i32.load/normal	i32.load/boundary	i32.load/trap	pass	pass	wasmtime	memory 0, memory32
+2c	i32.load8_s	i32_load8_s	M2	store	I32_LOAD8_S	i32.load8_s/normal	i32.load8_s/boundary	i32.load8_s/trap	pass	pass	wasmtime	memory 0, memory32
+2d	i32.load8_u	i32_load8_u	M2	store	I32_LOAD8_U	i32.load8_u/normal	i32.load8_u/boundary	i32.load8_u/trap	pass	pass	wasmtime	memory 0, memory32
+2e	i32.load16_s	i32_load16_s	M2	store	I32_LOAD16_S	i32.load16_s/normal	i32.load16_s/boundary	i32.load16_s/trap	pass	pass	wasmtime	memory 0, memory32
+2f	i32.load16_u	i32_load16_u	M2	store	I32_LOAD16_U	i32.load16_u/normal	i32.load16_u/boundary	i32.load16_u/trap	pass	pass	wasmtime	memory 0, memory32
+36	i32.store	i32_store	M2	store	I32_STORE	i32.store/normal	i32.store/boundary	i32.store/trap	pass	pass	wasmtime	memory 0, memory32
+3a	i32.store8	i32_store8	M2	store	I32_STORE8	i32.store8/normal	i32.store8/boundary	i32.store8/trap	pass	pass	wasmtime	memory 0, memory32
+3b	i32.store16	i32_store16	M2	store	I32_STORE16	i32.store16/normal	i32.store16/boundary	i32.store16/trap	pass	pass	wasmtime	memory 0, memory32
+41	i32.const	i32_const	pre-M1	constant	frame	i32.const/normal	i32.const/boundary	n/a	pass	pass	wasmtime	-
+45	i32.eqz	i32_eqz	pre-M1	numeric	I32_EQZ	i32.eqz/normal	i32.eqz/boundary	n/a	pass	pass	wasmtime	-
+46	i32.eq	i32_eq	M1	numeric	I32_EQ	i32.eq/normal	i32.eq/boundary	n/a	pass	pass	wasmtime	-
+47	i32.ne	i32_ne	M1	numeric	I32_NE	i32.ne/normal	i32.ne/boundary	n/a	pass	pass	wasmtime	-
+48	i32.lt_s	i32_lts	M1	numeric	I32_LTS	i32.lt_s/normal	i32.lt_s/boundary	n/a	pass	pass	wasmtime	-
+49	i32.lt_u	i32_ltu	M1	numeric	I32_LTU	i32.lt_u/normal	i32.lt_u/boundary	n/a	pass	pass	wasmtime	-
+4a	i32.gt_s	i32_gts	M1	numeric	I32_GTS	i32.gt_s/normal	i32.gt_s/boundary	n/a	pass	pass	wasmtime	-
+4b	i32.gt_u	i32_gtu	M1	numeric	I32_GTU	i32.gt_u/normal	i32.gt_u/boundary	n/a	pass	pass	wasmtime	-
+4c	i32.le_s	i32_les	M1	numeric	I32_LES	i32.le_s/normal	i32.le_s/boundary	n/a	pass	pass	wasmtime	-
+4d	i32.le_u	i32_leu	M1	numeric	I32_LEU	i32.le_u/normal	i32.le_u/boundary	n/a	pass	pass	wasmtime	-
+4e	i32.ge_s	i32_ges	M1	numeric	I32_GES	i32.ge_s/normal	i32.ge_s/boundary	n/a	pass	pass	wasmtime	-
+4f	i32.ge_u	i32_geu	M1	numeric	I32_GEU	i32.ge_u/normal	i32.ge_u/boundary	n/a	pass	pass	wasmtime	-
+67	i32.clz	i32_clz	M1	numeric	I32_CLZ	i32.clz/normal	i32.clz/boundary	n/a	pass	pass	wasmtime	-
+68	i32.ctz	i32_ctz	M1	numeric	I32_CTZ	i32.ctz/normal	i32.ctz/boundary	n/a	pass	pass	wasmtime	-
+69	i32.popcnt	i32_popcnt	M1	numeric	I32_POPCNT	i32.popcnt/normal	i32.popcnt/boundary	n/a	pass	pass	wasmtime	-
+6a	i32.add	i32_add	pre-M1	numeric	I32_ADD	i32.add/normal	i32.add/boundary	n/a	pass	pass	wasmtime	-
+6b	i32.sub	i32_sub	pre-M1	numeric	I32_SUB	i32.sub/normal	i32.sub/boundary	n/a	pass	pass	wasmtime	-
+6c	i32.mul	i32_mul	pre-M1	numeric	I32_MUL	i32.mul/normal	i32.mul/boundary	n/a	pass	pass	wasmtime	-
+6d	i32.div_s	i32_div_s	M1	numeric	I32_DIV_S	i32.div_s/normal	i32.div_s/boundary	i32.div_s/trap	pass	pass	wasmtime	-
+6e	i32.div_u	i32_div_u	M1	numeric	I32_DIV_U	i32.div_u/normal	i32.div_u/boundary	i32.div_u/trap	pass	pass	wasmtime	-
+6f	i32.rem_s	i32_rem_s	M1	numeric	I32_REM_S	i32.rem_s/normal	i32.rem_s/boundary	i32.rem_s/trap	pass	pass	wasmtime	-
+70	i32.rem_u	i32_rem_u	M1	numeric	I32_REM_U	i32.rem_u/normal	i32.rem_u/boundary	i32.rem_u/trap	pass	pass	wasmtime	-
+71	i32.and	i32_and	M1	numeric	I32_AND	i32.and/normal	i32.and/boundary	n/a	pass	pass	wasmtime	-
+72	i32.or	i32_or	M1	numeric	I32_OR	i32.or/normal	i32.or/boundary	n/a	pass	pass	wasmtime	-
+73	i32.xor	i32_xor	pre-M1	numeric	I32_XOR	i32.xor/normal	i32.xor/boundary	n/a	pass	pass	wasmtime	-
+74	i32.shl	i32_shl	pre-M1	numeric	I32_SHL	i32.shl/normal	i32.shl/boundary	n/a	pass	pass	wasmtime	-
+75	i32.shr_s	i32_shr_s	M1	numeric	I32_SHR_S	i32.shr_s/normal	i32.shr_s/boundary	n/a	pass	pass	wasmtime	-
+76	i32.shr_u	i32_shr_u	pre-M1	numeric	I32_SHR_U	i32.shr_u/normal	i32.shr_u/boundary	n/a	pass	pass	wasmtime	-
+77	i32.rotl	i32_rotl	M1	numeric	I32_ROTL	i32.rotl/normal	i32.rotl/boundary	n/a	pass	pass	wasmtime	-
+78	i32.rotr	i32_rotr	M1	numeric	I32_ROTR	i32.rotr/normal	i32.rotr/boundary	n/a	pass	pass	wasmtime	-
+29	i64.load	i64_load	M4	store	I64_LOAD	i64.load/normal	i64.load/boundary	i64.load/trap	pass	pass	wasmtime	memory 0, memory32
+30	i64.load8_s	i64_load8_s	M4	store	I64_LOAD8_S	i64.load8_s/normal	i64.load8_s/boundary	i64.load8_s/trap	pass	pass	wasmtime	memory 0, memory32
+31	i64.load8_u	i64_load8_u	M4	store	I64_LOAD8_U	i64.load8_u/normal	i64.load8_u/boundary	i64.load8_u/trap	pass	pass	wasmtime	memory 0, memory32
+32	i64.load16_s	i64_load16_s	M4	store	I64_LOAD16_S	i64.load16_s/normal	i64.load16_s/boundary	i64.load16_s/trap	pass	pass	wasmtime	memory 0, memory32
+33	i64.load16_u	i64_load16_u	M4	store	I64_LOAD16_U	i64.load16_u/normal	i64.load16_u/boundary	i64.load16_u/trap	pass	pass	wasmtime	memory 0, memory32
+34	i64.load32_s	i64_load32_s	M4	store	I64_LOAD32_S	i64.load32_s/normal	i64.load32_s/boundary	i64.load32_s/trap	pass	pass	wasmtime	memory 0, memory32
+35	i64.load32_u	i64_load32_u	M4	store	I64_LOAD32_U	i64.load32_u/normal	i64.load32_u/boundary	i64.load32_u/trap	pass	pass	wasmtime	memory 0, memory32
+37	i64.store	i64_store	M4	store	I64_STORE	i64.store/normal	i64.store/boundary	i64.store/trap	pass	pass	wasmtime	memory 0, memory32
+3c	i64.store8	i64_store8	M4	store	I64_STORE8	i64.store8/normal	i64.store8/boundary	i64.store8/trap	pass	pass	wasmtime	memory 0, memory32
+3d	i64.store16	i64_store16	M4	store	I64_STORE16	i64.store16/normal	i64.store16/boundary	i64.store16/trap	pass	pass	wasmtime	memory 0, memory32
+3e	i64.store32	i64_store32	M4	store	I64_STORE32	i64.store32/normal	i64.store32/boundary	i64.store32/trap	pass	pass	wasmtime	memory 0, memory32
+42	i64.const	i64_const	M4	constant	frame	i64.const/normal	i64.const/boundary	n/a	pass	pass	wasmtime	-
+50	i64.eqz	i64_eqz	M4	numeric	I64_EQZ	i64.eqz/normal	i64.eqz/boundary	n/a	pass	pass	wasmtime	-
+51	i64.eq	i64_eq	M4	numeric	I64_EQ	i64.eq/normal	i64.eq/boundary	n/a	pass	pass	wasmtime	-
+52	i64.ne	i64_ne	M4	numeric	I64_NE	i64.ne/normal	i64.ne/boundary	n/a	pass	pass	wasmtime	-
+53	i64.lt_s	i64_lts	M4	numeric	I64_LTS	i64.lt_s/normal	i64.lt_s/boundary	n/a	pass	pass	wasmtime	-
+54	i64.lt_u	i64_ltu	M4	numeric	I64_LTU	i64.lt_u/normal	i64.lt_u/boundary	n/a	pass	pass	wasmtime	-
+55	i64.gt_s	i64_gts	M4	numeric	I64_GTS	i64.gt_s/normal	i64.gt_s/boundary	n/a	pass	pass	wasmtime	-
+56	i64.gt_u	i64_gtu	M4	numeric	I64_GTU	i64.gt_u/normal	i64.gt_u/boundary	n/a	pass	pass	wasmtime	-
+57	i64.le_s	i64_les	M4	numeric	I64_LES	i64.le_s/normal	i64.le_s/boundary	n/a	pass	pass	wasmtime	-
+58	i64.le_u	i64_leu	M4	numeric	I64_LEU	i64.le_u/normal	i64.le_u/boundary	n/a	pass	pass	wasmtime	-
+59	i64.ge_s	i64_ges	M4	numeric	I64_GES	i64.ge_s/normal	i64.ge_s/boundary	n/a	pass	pass	wasmtime	-
+5a	i64.ge_u	i64_geu	M4	numeric	I64_GEU	i64.ge_u/normal	i64.ge_u/boundary	n/a	pass	pass	wasmtime	-
+79	i64.clz	i64_clz	M4	numeric	I64_CLZ	i64.clz/normal	i64.clz/boundary	n/a	pass	pass	wasmtime	-
+7a	i64.ctz	i64_ctz	M4	numeric	I64_CTZ	i64.ctz/normal	i64.ctz/boundary	n/a	pass	pass	wasmtime	-
+7b	i64.popcnt	i64_popcnt	M4	numeric	I64_POPCNT	i64.popcnt/normal	i64.popcnt/boundary	n/a	pass	pass	wasmtime	-
+7c	i64.add	i64_add	M4	numeric	I64_ADD	i64.add/normal	i64.add/boundary	n/a	pass	pass	wasmtime	-
+7d	i64.sub	i64_sub	M4	numeric	I64_SUB	i64.sub/normal	i64.sub/boundary	n/a	pass	pass	wasmtime	-
+7e	i64.mul	i64_mul	M4	numeric	I64_MUL	i64.mul/normal	i64.mul/boundary	n/a	pass	pass	wasmtime	-
+7f	i64.div_s	i64_div_s	M4	numeric	I64_DIV_S	i64.div_s/normal	i64.div_s/boundary	i64.div_s/trap	pass	pass	wasmtime	-
+80	i64.div_u	i64_div_u	M4	numeric	I64_DIV_U	i64.div_u/normal	i64.div_u/boundary	i64.div_u/trap	pass	pass	wasmtime	-
+81	i64.rem_s	i64_rem_s	M4	numeric	I64_REM_S	i64.rem_s/normal	i64.rem_s/boundary	i64.rem_s/trap	pass	pass	wasmtime	-
+82	i64.rem_u	i64_rem_u	M4	numeric	I64_REM_U	i64.rem_u/normal	i64.rem_u/boundary	i64.rem_u/trap	pass	pass	wasmtime	-
+83	i64.and	i64_and	M4	numeric	I64_AND	i64.and/normal	i64.and/boundary	n/a	pass	pass	wasmtime	-
+84	i64.or	i64_or	M4	numeric	I64_OR	i64.or/normal	i64.or/boundary	n/a	pass	pass	wasmtime	-
+85	i64.xor	i64_xor	M4	numeric	I64_XOR	i64.xor/normal	i64.xor/boundary	n/a	pass	pass	wasmtime	-
+86	i64.shl	i64_shl	M4	numeric	I64_SHL	i64.shl/normal	i64.shl/boundary	n/a	pass	pass	wasmtime	-
+87	i64.shr_s	i64_shr_s	M4	numeric	I64_SHR_S	i64.shr_s/normal	i64.shr_s/boundary	n/a	pass	pass	wasmtime	-
+88	i64.shr_u	i64_shr_u	M4	numeric	I64_SHR_U	i64.shr_u/normal	i64.shr_u/boundary	n/a	pass	pass	wasmtime	-
+89	i64.rotl	i64_rotl	M4	numeric	I64_ROTL	i64.rotl/normal	i64.rotl/boundary	n/a	pass	pass	wasmtime	-
+8a	i64.rotr	i64_rotr	M4	numeric	I64_ROTR	i64.rotr/normal	i64.rotr/boundary	n/a	pass	pass	wasmtime	-
+2a	f32.load	f32_load	M5	store	F32_LOAD	f32.load/normal	f32.load/boundary	f32.load/trap	pass	pass	wasmtime	memory 0, memory32
+38	f32.store	f32_store	M5	store	F32_STORE	f32.store/normal	f32.store/boundary	f32.store/trap	pass	pass	wasmtime	memory 0, memory32
+43	f32.const	f32_const	M5	constant	frame	f32.const/normal	f32.const/boundary	n/a	pass	pass	wasmtime	-
+5b	f32.eq	f32_eq	M5	numeric	F32_EQ	f32.eq/normal	f32.eq/boundary	n/a	pass	pass	wasmtime	-
+5c	f32.ne	f32_ne	M5	numeric	F32_NE	f32.ne/normal	f32.ne/boundary	n/a	pass	pass	wasmtime	-
+5d	f32.lt	f32_lt	M5	numeric	F32_LT	f32.lt/normal	f32.lt/boundary	n/a	pass	pass	wasmtime	-
+5e	f32.gt	f32_gt	M5	numeric	F32_GT	f32.gt/normal	f32.gt/boundary	n/a	pass	pass	wasmtime	-
+5f	f32.le	f32_le	M5	numeric	F32_LE	f32.le/normal	f32.le/boundary	n/a	pass	pass	wasmtime	-
+60	f32.ge	f32_ge	M5	numeric	F32_GE	f32.ge/normal	f32.ge/boundary	n/a	pass	pass	wasmtime	-
+8b	f32.abs	f32_abs	M5	numeric	F32_ABS	f32.abs/normal	f32.abs/boundary	n/a	pass	pass	wasmtime	-
+8c	f32.neg	f32_neg	M5	numeric	F32_NEG	f32.neg/normal	f32.neg/boundary	n/a	pass	pass	wasmtime	-
+8d	f32.ceil	f32_ceil	M5	numeric	F32_CEIL	f32.ceil/normal	f32.ceil/boundary	n/a	pass	pass	wasmtime	-
+8e	f32.floor	f32_floor	M5	numeric	F32_FLOOR	f32.floor/normal	f32.floor/boundary	n/a	pass	pass	wasmtime	-
+8f	f32.trunc	f32_trunc	M5	numeric	F32_TRUNC	f32.trunc/normal	f32.trunc/boundary	n/a	pass	pass	wasmtime	-
+90	f32.nearest	f32_nearest	M5	numeric	F32_NEAREST	f32.nearest/normal	f32.nearest/boundary	n/a	pass	pass	wasmtime	-
+91	f32.sqrt	f32_sqrt	M5	numeric	F32_SQRT	f32.sqrt/normal	f32.sqrt/boundary	n/a	pass	pass	wasmtime	-
+92	f32.add	f32_add	M5	numeric	F32_ADD	f32.add/normal	f32.add/boundary	n/a	pass	pass	wasmtime	-
+93	f32.sub	f32_sub	M5	numeric	F32_SUB	f32.sub/normal	f32.sub/boundary	n/a	pass	pass	wasmtime	-
+94	f32.mul	f32_mul	M5	numeric	F32_MUL	f32.mul/normal	f32.mul/boundary	n/a	pass	pass	wasmtime	-
+95	f32.div	f32_div	M5	numeric	F32_DIV	f32.div/normal	f32.div/boundary	n/a	pass	pass	wasmtime	-
+96	f32.min	f32_min	M5	numeric	F32_MIN	f32.min/normal	f32.min/boundary	n/a	pass	pass	wasmtime	-
+97	f32.max	f32_max	M5	numeric	F32_MAX	f32.max/normal	f32.max/boundary	n/a	pass	pass	wasmtime	-
+98	f32.copysign	f32_copysign	M5	numeric	F32_COPYSIGN	f32.copysign/normal	f32.copysign/boundary	n/a	pass	pass	wasmtime	-
+2b	f64.load	f64_load	M5	store	F64_LOAD	f64.load/normal	f64.load/boundary	f64.load/trap	pass	pass	wasmtime	memory 0, memory32
+39	f64.store	f64_store	M5	store	F64_STORE	f64.store/normal	f64.store/boundary	f64.store/trap	pass	pass	wasmtime	memory 0, memory32
+44	f64.const	f64_const	M5	constant	frame	f64.const/normal	f64.const/boundary	n/a	pass	pass	wasmtime	-
+61	f64.eq	f64_eq	M5	numeric	F64_EQ	f64.eq/normal	f64.eq/boundary	n/a	pass	pass	wasmtime	-
+62	f64.ne	f64_ne	M5	numeric	F64_NE	f64.ne/normal	f64.ne/boundary	n/a	pass	pass	wasmtime	-
+63	f64.lt	f64_lt	M5	numeric	F64_LT	f64.lt/normal	f64.lt/boundary	n/a	pass	pass	wasmtime	-
+64	f64.gt	f64_gt	M5	numeric	F64_GT	f64.gt/normal	f64.gt/boundary	n/a	pass	pass	wasmtime	-
+65	f64.le	f64_le	M5	numeric	F64_LE	f64.le/normal	f64.le/boundary	n/a	pass	pass	wasmtime	-
+66	f64.ge	f64_ge	M5	numeric	F64_GE	f64.ge/normal	f64.ge/boundary	n/a	pass	pass	wasmtime	-
+99	f64.abs	f64_abs	M5	numeric	F64_ABS	f64.abs/normal	f64.abs/boundary	n/a	pass	pass	wasmtime	-
+9a	f64.neg	f64_neg	M5	numeric	F64_NEG	f64.neg/normal	f64.neg/boundary	n/a	pass	pass	wasmtime	-
+9b	f64.ceil	f64_ceil	M5	numeric	F64_CEIL	f64.ceil/normal	f64.ceil/boundary	n/a	pass	pass	wasmtime	-
+9c	f64.floor	f64_floor	M5	numeric	F64_FLOOR	f64.floor/normal	f64.floor/boundary	n/a	pass	pass	wasmtime	-
+9d	f64.trunc	f64_trunc	M5	numeric	F64_TRUNC	f64.trunc/normal	f64.trunc/boundary	n/a	pass	pass	wasmtime	-
+9e	f64.nearest	f64_nearest	M5	numeric	F64_NEAREST	f64.nearest/normal	f64.nearest/boundary	n/a	pass	pass	wasmtime	-
+9f	f64.sqrt	f64_sqrt	M5	numeric	F64_SQRT	f64.sqrt/normal	f64.sqrt/boundary	n/a	pass	pass	wasmtime	-
+a0	f64.add	f64_add	M5	numeric	F64_ADD	f64.add/normal	f64.add/boundary	n/a	pass	pass	wasmtime	-
+a1	f64.sub	f64_sub	M5	numeric	F64_SUB	f64.sub/normal	f64.sub/boundary	n/a	pass	pass	wasmtime	-
+a2	f64.mul	f64_mul	M5	numeric	F64_MUL	f64.mul/normal	f64.mul/boundary	n/a	pass	pass	wasmtime	-
+a3	f64.div	f64_div	M5	numeric	F64_DIV	f64.div/normal	f64.div/boundary	n/a	pass	pass	wasmtime	-
+a4	f64.min	f64_min	M5	numeric	F64_MIN	f64.min/normal	f64.min/boundary	n/a	pass	pass	wasmtime	-
+a5	f64.max	f64_max	M5	numeric	F64_MAX	f64.max/normal	f64.max/boundary	n/a	pass	pass	wasmtime	-
+a6	f64.copysign	f64_copysign	M5	numeric	F64_COPYSIGN	f64.copysign/normal	f64.copysign/boundary	n/a	pass	pass	wasmtime	-
+a7	i32.wrap_i64	i32_wrap_i64	M4	numeric	I32_WRAP_I64	i32.wrap_i64/normal	i32.wrap_i64/boundary	n/a	pass	pass	wasmtime	-
+a8	i32.trunc_f32_s	i32_trunc_f32_s	M5	numeric	I32_TRUNC_F32_S	i32.trunc_f32_s/normal	i32.trunc_f32_s/boundary	i32.trunc_f32_s/trap	pass	pass	wasmtime	-
+a9	i32.trunc_f32_u	i32_trunc_f32_u	M5	numeric	I32_TRUNC_F32_U	i32.trunc_f32_u/normal	i32.trunc_f32_u/boundary	i32.trunc_f32_u/trap	pass	pass	wasmtime	-
+aa	i32.trunc_f64_s	i32_trunc_f64_s	M5	numeric	I32_TRUNC_F64_S	i32.trunc_f64_s/normal	i32.trunc_f64_s/boundary	i32.trunc_f64_s/trap	pass	pass	wasmtime	-
+ab	i32.trunc_f64_u	i32_trunc_f64_u	M5	numeric	I32_TRUNC_F64_U	i32.trunc_f64_u/normal	i32.trunc_f64_u/boundary	i32.trunc_f64_u/trap	pass	pass	wasmtime	-
+ac	i64.extend_i32_s	i64_extend_i32_s	M4	numeric	I64_EXTEND_I32_S	i64.extend_i32_s/normal	i64.extend_i32_s/boundary	n/a	pass	pass	wasmtime	-
+ad	i64.extend_i32_u	i64_extend_i32_u	M4	numeric	I64_EXTEND_I32_U	i64.extend_i32_u/normal	i64.extend_i32_u/boundary	n/a	pass	pass	wasmtime	-
+ae	i64.trunc_f32_s	i64_trunc_f32_s	M5	numeric	I64_TRUNC_F32_S	i64.trunc_f32_s/normal	i64.trunc_f32_s/boundary	i64.trunc_f32_s/trap	pass	pass	wasmtime	-
+af	i64.trunc_f32_u	i64_trunc_f32_u	M5	numeric	I64_TRUNC_F32_U	i64.trunc_f32_u/normal	i64.trunc_f32_u/boundary	i64.trunc_f32_u/trap	pass	pass	wasmtime	-
+b0	i64.trunc_f64_s	i64_trunc_f64_s	M5	numeric	I64_TRUNC_F64_S	i64.trunc_f64_s/normal	i64.trunc_f64_s/boundary	i64.trunc_f64_s/trap	pass	pass	wasmtime	-
+b1	i64.trunc_f64_u	i64_trunc_f64_u	M5	numeric	I64_TRUNC_F64_U	i64.trunc_f64_u/normal	i64.trunc_f64_u/boundary	i64.trunc_f64_u/trap	pass	pass	wasmtime	-
+b2	f32.convert_i32_s	f32_convert_i32_s	M5	numeric	F32_CONVERT_I32_S	f32.convert_i32_s/normal	f32.convert_i32_s/boundary	n/a	pass	pass	wasmtime	-
+b3	f32.convert_i32_u	f32_convert_i32_u	M5	numeric	F32_CONVERT_I32_U	f32.convert_i32_u/normal	f32.convert_i32_u/boundary	n/a	pass	pass	wasmtime	-
+b4	f32.convert_i64_s	f32_convert_i64_s	M5	numeric	F32_CONVERT_I64_S	f32.convert_i64_s/normal	f32.convert_i64_s/boundary	n/a	pass	pass	wasmtime	-
+b5	f32.convert_i64_u	f32_convert_i64_u	M5	numeric	F32_CONVERT_I64_U	f32.convert_i64_u/normal	f32.convert_i64_u/boundary	n/a	pass	pass	wasmtime	-
+b6	f32.demote_f64	f32_demote_f64	M5	numeric	F32_DEMOTE_F64	f32.demote_f64/normal	f32.demote_f64/boundary	n/a	pass	pass	wasmtime	-
+b7	f64.convert_i32_s	f64_convert_i32_s	M5	numeric	F64_CONVERT_I32_S	f64.convert_i32_s/normal	f64.convert_i32_s/boundary	n/a	pass	pass	wasmtime	-
+b8	f64.convert_i32_u	f64_convert_i32_u	M5	numeric	F64_CONVERT_I32_U	f64.convert_i32_u/normal	f64.convert_i32_u/boundary	n/a	pass	pass	wasmtime	-
+b9	f64.convert_i64_s	f64_convert_i64_s	M5	numeric	F64_CONVERT_I64_S	f64.convert_i64_s/normal	f64.convert_i64_s/boundary	n/a	pass	pass	wasmtime	-
+ba	f64.convert_i64_u	f64_convert_i64_u	M5	numeric	F64_CONVERT_I64_U	f64.convert_i64_u/normal	f64.convert_i64_u/boundary	n/a	pass	pass	wasmtime	-
+bb	f64.promote_f32	f64_promote_f32	M5	numeric	F64_PROMOTE_F32	f64.promote_f32/normal	f64.promote_f32/boundary	n/a	pass	pass	wasmtime	-
+bc	i32.reinterpret_f32	i32_reinterpret_f32	M5	numeric	I32_REINTERPRET_F32	i32.reinterpret_f32/normal	i32.reinterpret_f32/boundary	n/a	pass	pass	wasmtime	-
+bd	i64.reinterpret_f64	i64_reinterpret_f64	M5	numeric	I64_REINTERPRET_F64	i64.reinterpret_f64/normal	i64.reinterpret_f64/boundary	n/a	pass	pass	wasmtime	-
+be	f32.reinterpret_i32	f32_reinterpret_i32	M5	numeric	F32_REINTERPRET_I32	f32.reinterpret_i32/normal	f32.reinterpret_i32/boundary	n/a	pass	pass	wasmtime	-
+bf	f64.reinterpret_i64	f64_reinterpret_i64	M5	numeric	F64_REINTERPRET_I64	f64.reinterpret_i64/normal	f64.reinterpret_i64/boundary	n/a	pass	pass	wasmtime	-
+c0	i32.extend8_s	i32_extend8_s	M1	numeric	I32_EXTEND8_S	i32.extend8_s/normal	i32.extend8_s/boundary	n/a	pass	pass	wasmtime	-
+c1	i32.extend16_s	i32_extend16_s	M1	numeric	I32_EXTEND16_S	i32.extend16_s/normal	i32.extend16_s/boundary	n/a	pass	pass	wasmtime	-
+c2	i64.extend8_s	i64_extend8_s	M4	numeric	I64_EXTEND8_S	i64.extend8_s/normal	i64.extend8_s/boundary	n/a	pass	pass	wasmtime	-
+c3	i64.extend16_s	i64_extend16_s	M4	numeric	I64_EXTEND16_S	i64.extend16_s/normal	i64.extend16_s/boundary	n/a	pass	pass	wasmtime	-
+c4	i64.extend32_s	i64_extend32_s	M4	numeric	I64_EXTEND32_S	i64.extend32_s/normal	i64.extend32_s/boundary	n/a	pass	pass	wasmtime	-
+fc/00	i32.trunc_sat_f32_s	i32_trunc_sat_f32_s	M5	numeric	I32_TRUNC_SAT_F32_S	i32.trunc_sat_f32_s/normal	i32.trunc_sat_f32_s/boundary	n/a	pass	pass	wasmtime	-
+fc/01	i32.trunc_sat_f32_u	i32_trunc_sat_f32_u	M5	numeric	I32_TRUNC_SAT_F32_U	i32.trunc_sat_f32_u/normal	i32.trunc_sat_f32_u/boundary	n/a	pass	pass	wasmtime	-
+fc/02	i32.trunc_sat_f64_s	i32_trunc_sat_f64_s	M5	numeric	I32_TRUNC_SAT_F64_S	i32.trunc_sat_f64_s/normal	i32.trunc_sat_f64_s/boundary	n/a	pass	pass	wasmtime	-
+fc/03	i32.trunc_sat_f64_u	i32_trunc_sat_f64_u	M5	numeric	I32_TRUNC_SAT_F64_U	i32.trunc_sat_f64_u/normal	i32.trunc_sat_f64_u/boundary	n/a	pass	pass	wasmtime	-
+fc/04	i64.trunc_sat_f32_s	i64_trunc_sat_f32_s	M5	numeric	I64_TRUNC_SAT_F32_S	i64.trunc_sat_f32_s/normal	i64.trunc_sat_f32_s/boundary	n/a	pass	pass	wasmtime	-
+fc/05	i64.trunc_sat_f32_u	i64_trunc_sat_f32_u	M5	numeric	I64_TRUNC_SAT_F32_U	i64.trunc_sat_f32_u/normal	i64.trunc_sat_f32_u/boundary	n/a	pass	pass	wasmtime	-
+fc/06	i64.trunc_sat_f64_s	i64_trunc_sat_f64_s	M5	numeric	I64_TRUNC_SAT_F64_S	i64.trunc_sat_f64_s/normal	i64.trunc_sat_f64_s/boundary	n/a	pass	pass	wasmtime	-
+fc/07	i64.trunc_sat_f64_u	i64_trunc_sat_f64_u	M5	numeric	I64_TRUNC_SAT_F64_U	i64.trunc_sat_f64_u/normal	i64.trunc_sat_f64_u/boundary	n/a	pass	pass	wasmtime	-
+08	throw	throw	M1-EH	exception	THROW	throw/normal	throw/boundary	throw/trap	pass	pass	wasmtime	defined numeric tags, no host exception conversion
+0a	throw_ref	throw_ref	M1-EH	exception	THROW_REF	throw_ref/normal	throw_ref/boundary	throw_ref/trap	pass	pass	wasmtime	defined numeric tags, no host exception conversion
+1f	try_table	try_table	M1-EH	exception	EH_ENTER	try_table/normal	try_table/boundary	n/a	pass	pass	wasmtime	no block parameters

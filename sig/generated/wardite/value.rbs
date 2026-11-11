@@ -238,7 +238,24 @@ module Wardite
   class F32
     include ValueHelper
 
-    attr_accessor value: Float
+    # A wrapper holds a Ruby-origin value or raw Wasm bits. Reassignment
+    # discards the raw representation so existing value= callers stay current.
+    # @rbs bits: Integer?
+    def initialize: (?bits: Integer?) -> untyped
+
+    # @rbs return: Float
+    def value: () -> Float
+
+    # @rbs value: Float
+    # @rbs return: Float
+    def value=: (Float value) -> Float
+
+    # @rbs return: Integer
+    def raw_bits: () -> Integer
+
+    # @rbs bits: Integer
+    # @rbs return: F32
+    def self.from_bits: (Integer bits) -> F32
 
     # @rbs str: String
     # @rbs return: F32
@@ -317,7 +334,24 @@ module Wardite
   class F64
     include ValueHelper
 
-    attr_accessor value: Float
+    # A wrapper holds a Ruby-origin value or raw Wasm bits. Reassignment
+    # discards the raw representation so existing value= callers stay current.
+    # @rbs bits: Integer?
+    def initialize: (?bits: Integer?) -> untyped
+
+    # @rbs return: Float
+    def value: () -> Float
+
+    # @rbs value: Float
+    # @rbs return: Float
+    def value=: (Float value) -> Float
+
+    # @rbs return: Integer
+    def raw_bits: () -> Integer
+
+    # @rbs bits: Integer
+    # @rbs return: F64
+    def self.from_bits: (Integer bits) -> F64
 
     # @rbs str: String
     # @rbs return: F64

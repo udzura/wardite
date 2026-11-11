@@ -50,6 +50,7 @@ module Wardite
 
       when :f32_const
         const = operand[0]
+        const = const.value if const.is_a?(FloatImmediate)
         if !const.is_a?(Float)
           raise EvalError, "invalid type of operand"
         end

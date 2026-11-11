@@ -9,6 +9,11 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList["test/**/*_test.rb"]
 end
 
+desc "Verify Efflorescence opcode parity with CRuby, Spinel and Wasmtime"
+task :parity do
+  sh "bundle exec ruby -Ilib test/support/run_efflorescence_manifest.rb"
+end
+
 desc "Run rbs-inline and steep"
 task :check do
   sh "bundle exec rbs-inline --output lib/"

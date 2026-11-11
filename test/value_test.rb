@@ -104,4 +104,12 @@ class WarditeValueTest < Test::Unit::TestCase
     assert_equal 0xffffffff, Wardite::I32(-1).value
     assert_same Wardite::I32(42), Wardite::I32((1 << 100) + 42)
   end
+
+  test "raw float wrappers enforce their register carrier range" do
+    assert_equal 0xffffffff, Wardite::F32.from_bits(0xffffffff).raw_bits
+    assert_equal(-2**63, Wardite::F64.from_bits(-2**63).raw_bits)
+    assert_raise(RangeError) { Wardite::F32.from_bits(-1) }
+    assert_raise(RangeError) { Wardite::F32.from_bits(2**32) }
+    assert_raise(RangeError) { Wardite::F64.from_bits(2**63) }
+  end
 end

@@ -1,0 +1,52 @@
+runtime	fixture	result	memory	reason
+both	f32.ceil/boundary	trap:float_domain	-	legacy rounding converts NaN to Integer
+both	f32.ceil/normal	f32:0	-	legacy operation loses the sign of zero
+both	f32.copysign/boundary	f32:0	-	legacy sign test does not read the operand sign
+both	f32.copysign/normal	f32:3212836864	-	legacy sign test does not read the operand sign
+both	f32.floor/boundary	trap:float_domain	-	legacy rounding converts NaN to Integer
+both	f32.nearest/boundary	f32:3225419776	-	legacy nearest rounds ties away from zero
+both	f32.nearest/normal	f32:0	-	legacy operation loses the sign of zero
+both	f32.sqrt/normal	f32:0	-	legacy operation loses the sign of zero
+both	f32.store/trap	void	1:65537:00818283	legacy range checks permit a partial memory mutation
+both	f32.trunc/boundary	trap:float_domain	-	legacy rounding converts NaN to Integer
+both	f32.trunc/normal	f32:0	-	legacy operation loses the sign of zero
+both	f64.ceil/boundary	trap:float_domain	-	legacy rounding converts NaN to Integer
+both	f64.ceil/normal	f64:0	-	legacy operation loses the sign of zero
+both	f64.copysign/boundary	f64:0	-	legacy sign test does not read the operand sign
+both	f64.copysign/normal	f64:-4616189618054758400	-	legacy sign test does not read the operand sign
+both	f64.floor/boundary	trap:float_domain	-	legacy rounding converts NaN to Integer
+both	f64.nearest/boundary	f64:-4609434218613702656	-	legacy nearest rounds ties away from zero
+both	f64.nearest/normal	f64:0	-	legacy operation loses the sign of zero
+both	f64.sqrt/normal	f64:0	-	legacy operation loses the sign of zero
+both	f64.store/trap	void	1:65537:0081828384858687	legacy range checks permit a partial memory mutation
+both	f64.trunc/boundary	trap:float_domain	-	legacy rounding converts NaN to Integer
+both	f64.trunc/normal	f64:0	-	legacy operation loses the sign of zero
+both	i32.extend8_s/boundary	i32:128	-	legacy sign extension uses the wrong width or operand class
+cruby	i32.reinterpret_f32/boundary	i32:2143289344	-	legacy conversion through Float quiets a signaling NaN
+spinel	i32.reinterpret_f32/boundary	i32:4290773283	-	legacy conversion through Float quiets a signaling NaN
+both	i32.reinterpret_f32/normal	i32:864026624	-	legacy f32 arithmetic keeps the intermediate at binary64 precision
+both	i32.store/trap	void	1:65537:00818283	legacy range checks permit a partial memory mutation
+both	i32.store16/trap	void	1:65537:0081	legacy range checks permit a partial memory mutation
+both	i32.store8/trap	void	1:65537:00	legacy range checks permit a partial memory mutation
+both	i64.extend16_s/boundary	legacy_error:maybe empty or invalid stack	-	legacy sign extension uses the wrong width or operand class
+both	i64.extend16_s/normal	legacy_error:maybe empty or invalid stack	-	legacy sign extension uses the wrong width or operand class
+both	i64.extend32_s/boundary	legacy_error:maybe empty or invalid stack	-	legacy sign extension uses the wrong width or operand class
+both	i64.extend32_s/normal	legacy_error:maybe empty or invalid stack	-	legacy sign extension uses the wrong width or operand class
+both	i64.extend8_s/boundary	legacy_error:maybe empty or invalid stack	-	legacy sign extension uses the wrong width or operand class
+both	i64.extend8_s/normal	legacy_error:maybe empty or invalid stack	-	legacy sign extension uses the wrong width or operand class
+both	i64.store/trap	void	1:65537:0081828384858687	legacy range checks permit a partial memory mutation
+both	i64.store16/trap	void	1:65537:0081	legacy range checks permit a partial memory mutation
+both	i64.store32/trap	void	1:65537:00818283	legacy range checks permit a partial memory mutation
+both	i64.store8/trap	void	1:65537:00	legacy range checks permit a partial memory mutation
+spinel	memory.copy/boundary	legacy_error:NoMethodError:undefined method '[]=' for an instance of String	1:65536:6162636465666768	Spinel legacy bulk memory uses unsupported String range assignment
+spinel	memory.copy/normal	legacy_error:NoMethodError:undefined method '[]=' for an instance of String	1:65536:6162636465666768	Spinel legacy bulk memory uses unsupported String range assignment
+spinel	memory.copy/trap	legacy_error:NoMethodError:undefined method '[]=' for an instance of String	1:65536:6162636465666768	Spinel legacy bulk memory uses unsupported String range assignment
+cruby	memory.copy/trap	void	1:65535:0063646566676800	legacy range checks permit a partial memory mutation
+both	memory.fill/boundary	legacy_error:RangeError:256 out of char range	1:65536:0000000000000000	legacy fill rejects a byte operand above 255
+spinel	memory.fill/normal	legacy_error:NoMethodError:undefined method '[]=' for an instance of String	1:65536:0000000000000000	Spinel legacy bulk memory uses unsupported String range assignment
+spinel	memory.fill/trap	legacy_error:NoMethodError:undefined method '[]=' for an instance of String	1:65536:0000000000000000	Spinel legacy bulk memory uses unsupported String range assignment
+cruby	memory.fill/trap	void	1:65537:0000000000000000	legacy range checks permit a partial memory mutation
+spinel	memory.init/boundary	legacy_error:NoMethodError:undefined method '[]=' for an instance of String	1:65536:0000000000000000	Spinel legacy bulk memory uses unsupported String range assignment
+spinel	memory.init/normal	legacy_error:NoMethodError:undefined method '[]=' for an instance of String	1:65536:0000000000000000	Spinel legacy bulk memory uses unsupported String range assignment
+spinel	memory.init/trap	legacy_error:NoMethodError:undefined method '[]=' for an instance of String	1:65536:0000000000000000	Spinel legacy bulk memory uses unsupported String range assignment
+cruby	memory.init/trap	void	1:65535:6800000000000000	legacy range checks permit a partial memory mutation

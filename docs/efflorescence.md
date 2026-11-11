@@ -4,7 +4,8 @@
 
 Current coverage includes [M1 i32, structured control and new EH](efflorescence-m1.md),
 [M2 memory and globals](efflorescence-m2.md), [M3 host and indirect calls](efflorescence-m3.md),
-and [M4 i64](efflorescence-m4.md).
+[M4 i64](efflorescence-m4.md), and [M5 floating point](efflorescence-m5.md).
+[M6](efflorescence-m6.md) verifies the M0 coverage baseline and the additional EH opcodes.
 The Phase 1 limitations below are historical.
 
 This document records Phase 1 (`67fbfae`). Current Efflorescence enables the

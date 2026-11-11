@@ -148,9 +148,9 @@ module Wardite
               raise TranslationError, "invalid MIR indirect call operands"
             end
             unless site.arguments.size == site.parameter_types.size &&
-                site.parameter_types.all? { |type| type == :i32 || type == :i64 } &&
+                site.parameter_types.all? { |type| FunctionEntry.numeric_type?(type) } &&
                 (site.result_types.empty? ? destination == -1 : site.result_types.size == 1 &&
-                  [:i32, :i64].include?(site.result_types.fetch(0)) && destination >= 0)
+                  FunctionEntry.numeric_type?(site.result_types.fetch(0)) && destination >= 0)
               raise TranslationError, "invalid MIR dynamic call signature"
             end
             if ir && opcode == Opcode::CALL_HOST
@@ -167,7 +167,7 @@ module Wardite
           reads = function.reads(instruction)
           destination = Opcode.destination(instruction)
           if opcode > Opcode::CALL_INDIRECT
-            validate_i64_instruction(function, instruction, reads, destination)
+            validate_extended_instruction(function, instruction, reads, destination)
             next
           end
           case opcode
@@ -177,7 +177,7 @@ module Wardite
             reads.each_with_index { |register, i| check_register(function, register, types.fetch(i)) }
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
-            unless type == :i32 || type == :i64
+            unless type && FunctionEntry.numeric_type?(type)
               raise TranslationError, "invalid MIR numeric copy destination r#{destination}"
             end
             check_register(function, instruction[2], type)
@@ -217,22 +217,24 @@ module Wardite
       # @rbs reads: Array[Integer]
       # @rbs destination: Integer
       # @rbs return: void
-      def validate_i64_instruction(function, instruction, reads, destination)
+      def validate_extended_instruction(function, instruction, reads, destination)
         opcode = instruction[0]
-        types = Opcode::I64_ALU_TYPES[opcode]
+        types = Opcode.extended_alu_types(opcode)
         if types
           check_register(function, destination, types.fetch(0))
           reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }
-        elsif Opcode::I64_LOADS.include?(opcode)
-          check_register(function, destination, :i64)
+        elsif (type = Opcode::EXTENDED_LOAD_TYPES[opcode])
+          check_register(function, destination, type)
           check_register(function, instruction[2], :i32)
-        elsif Opcode::I64_STORES.include?(opcode)
-          check_register(function, instruction[1], :i64)
+        elsif (type = Opcode::EXTENDED_STORE_TYPES[opcode])
+          check_register(function, instruction[1], type)
           check_register(function, instruction[2], :i32)
-        elsif opcode == Opcode::I64_GLOBAL_GET
-          check_register(function, destination, :i64)
-        elsif opcode == Opcode::I64_GLOBAL_SET
-          check_register(function, instruction[2], :i64)
+        elsif (type = Opcode::EXTENDED_GLOBAL_GET_TYPES[opcode])
+          check_register(function, destination, type)
+        elsif (type = Opcode::EXTENDED_GLOBAL_SET_TYPES[opcode])
+          check_register(function, instruction[2], type)
+        else
+          raise TranslationError, "unknown extended MIR opcode #{opcode}"
         end
       end
 

@@ -46,6 +46,28 @@ module Wardite
         value.value_s
       end
 
+      # @rbs index: Integer
+      # @rbs type: Symbol
+      # @rbs return: Integer
+      def global_get_float(index, type)
+        value = global_at(index).value
+        if type == :f32 && value.is_a?(Wardite::F32)
+          value.raw_bits
+        elsif type == :f64 && value.is_a?(Wardite::F64)
+          value.raw_bits
+        else
+          raise Wardite::EvalError, "invalid #{type} global value"
+        end
+      end
+
+      # @rbs index: Integer
+      # @rbs type: Symbol
+      # @rbs value: Integer
+      # @rbs return: void
+      def global_set_float(index, type, value)
+        global_at(index).value = type == :f32 ? Wardite::F32.from_bits(value) : Wardite::F64.from_bits(value)
+      end
+
       # Boxing is confined to the shared Store boundary. Existing register
       # snapshots contain independent integers, never a mutable Global object.
       # @rbs index: Integer

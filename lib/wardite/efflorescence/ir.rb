@@ -130,6 +130,87 @@ module Wardite
       I64_GLOBAL_GET = 115
       I64_GLOBAL_SET = 116
 
+      F32_EQ = 117
+      F32_NE = 118
+      F32_LT = 119
+      F32_GT = 120
+      F32_LE = 121
+      F32_GE = 122
+      F32_ABS = 123
+      F32_NEG = 124
+      F32_CEIL = 125
+      F32_FLOOR = 126
+      F32_TRUNC = 127
+      F32_NEAREST = 128
+      F32_SQRT = 129
+      F32_ADD = 130
+      F32_SUB = 131
+      F32_MUL = 132
+      F32_DIV = 133
+      F32_MIN = 134
+      F32_MAX = 135
+      F32_COPYSIGN = 136
+      F64_EQ = 137
+      F64_NE = 138
+      F64_LT = 139
+      F64_GT = 140
+      F64_LE = 141
+      F64_GE = 142
+      F64_ABS = 143
+      F64_NEG = 144
+      F64_CEIL = 145
+      F64_FLOOR = 146
+      F64_TRUNC = 147
+      F64_NEAREST = 148
+      F64_SQRT = 149
+      F64_ADD = 150
+      F64_SUB = 151
+      F64_MUL = 152
+      F64_DIV = 153
+      F64_MIN = 154
+      F64_MAX = 155
+      F64_COPYSIGN = 156
+
+      I32_TRUNC_F32_S = 157
+      I32_TRUNC_F32_U = 158
+      I32_TRUNC_F64_S = 159
+      I32_TRUNC_F64_U = 160
+      I64_TRUNC_F32_S = 161
+      I64_TRUNC_F32_U = 162
+      I64_TRUNC_F64_S = 163
+      I64_TRUNC_F64_U = 164
+      I32_TRUNC_SAT_F32_S = 165
+      I32_TRUNC_SAT_F32_U = 166
+      I32_TRUNC_SAT_F64_S = 167
+      I32_TRUNC_SAT_F64_U = 168
+      I64_TRUNC_SAT_F32_S = 169
+      I64_TRUNC_SAT_F32_U = 170
+      I64_TRUNC_SAT_F64_S = 171
+      I64_TRUNC_SAT_F64_U = 172
+      F32_CONVERT_I32_S = 173
+      F32_CONVERT_I32_U = 174
+      F32_CONVERT_I64_S = 175
+      F32_CONVERT_I64_U = 176
+      F64_CONVERT_I32_S = 177
+      F64_CONVERT_I32_U = 178
+      F64_CONVERT_I64_S = 179
+      F64_CONVERT_I64_U = 180
+      F32_DEMOTE_F64 = 181
+      F64_PROMOTE_F32 = 182
+      I32_REINTERPRET_F32 = 183
+      I64_REINTERPRET_F64 = 184
+      F32_REINTERPRET_I32 = 185
+      F64_REINTERPRET_I64 = 186
+
+      F32_LOAD = 187
+      F64_LOAD = 188
+      F32_STORE = 189
+      F64_STORE = 190
+      F32_GLOBAL_GET = 191
+      F64_GLOBAL_GET = 192
+      F32_GLOBAL_SET = 193
+      F64_GLOBAL_SET = 194
+
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
@@ -143,7 +224,22 @@ module Wardite
                  I64_AND I64_OR I64_XOR I64_SHL I64_SHR_S I64_SHR_U I64_ROTL I64_ROTR
                  I64_ADD I64_SUB I64_MUL I64_DIV_S I64_DIV_U I64_REM_S I64_REM_U
                  I64_LOAD I64_LOAD8_S I64_LOAD8_U I64_LOAD16_S I64_LOAD16_U I64_LOAD32_S I64_LOAD32_U
-                 I64_STORE I64_STORE8 I64_STORE16 I64_STORE32 I64_GLOBAL_GET I64_GLOBAL_SET].freeze
+                 I64_STORE I64_STORE8 I64_STORE16 I64_STORE32 I64_GLOBAL_GET I64_GLOBAL_SET
+                 F32_EQ F32_NE F32_LT F32_GT F32_LE F32_GE F32_ABS F32_NEG
+                 F32_CEIL F32_FLOOR F32_TRUNC F32_NEAREST F32_SQRT F32_ADD F32_SUB F32_MUL
+                 F32_DIV F32_MIN F32_MAX F32_COPYSIGN F64_EQ F64_NE F64_LT F64_GT
+                 F64_LE F64_GE F64_ABS F64_NEG F64_CEIL F64_FLOOR F64_TRUNC F64_NEAREST
+                 F64_SQRT F64_ADD F64_SUB F64_MUL F64_DIV F64_MIN F64_MAX F64_COPYSIGN
+                 I32_TRUNC_F32_S I32_TRUNC_F32_U I32_TRUNC_F64_S I32_TRUNC_F64_U
+                 I64_TRUNC_F32_S I64_TRUNC_F32_U I64_TRUNC_F64_S I64_TRUNC_F64_U
+                 I32_TRUNC_SAT_F32_S I32_TRUNC_SAT_F32_U I32_TRUNC_SAT_F64_S I32_TRUNC_SAT_F64_U
+                 I64_TRUNC_SAT_F32_S I64_TRUNC_SAT_F32_U I64_TRUNC_SAT_F64_S I64_TRUNC_SAT_F64_U
+                 F32_CONVERT_I32_S F32_CONVERT_I32_U F32_CONVERT_I64_S F32_CONVERT_I64_U
+                 F64_CONVERT_I32_S F64_CONVERT_I32_U F64_CONVERT_I64_S F64_CONVERT_I64_U
+                 F32_DEMOTE_F64 F64_PROMOTE_F32 I32_REINTERPRET_F32 I64_REINTERPRET_F64
+                 F32_REINTERPRET_I32 F64_REINTERPRET_I64
+                 F32_LOAD F64_LOAD F32_STORE F64_STORE
+                 F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -184,8 +280,117 @@ module Wardite
         I64_REM_U => [:i64, :i64, :i64],
       }.freeze #: Hash[Integer, Array[Symbol]]
 
-      I64_LOADS = [I64_LOAD, I64_LOAD8_S, I64_LOAD8_U, I64_LOAD16_S, I64_LOAD16_U, I64_LOAD32_S, I64_LOAD32_U].freeze
-      I64_STORES = [I64_STORE, I64_STORE8, I64_STORE16, I64_STORE32].freeze
+      FLOAT_ALU_TYPES = {
+        F32_EQ => [:i32, :f32, :f32],
+        F32_NE => [:i32, :f32, :f32],
+        F32_LT => [:i32, :f32, :f32],
+        F32_GT => [:i32, :f32, :f32],
+        F32_LE => [:i32, :f32, :f32],
+        F32_GE => [:i32, :f32, :f32],
+        F32_ABS => [:f32, :f32],
+        F32_NEG => [:f32, :f32],
+        F32_CEIL => [:f32, :f32],
+        F32_FLOOR => [:f32, :f32],
+        F32_TRUNC => [:f32, :f32],
+        F32_NEAREST => [:f32, :f32],
+        F32_SQRT => [:f32, :f32],
+        F32_ADD => [:f32, :f32, :f32],
+        F32_SUB => [:f32, :f32, :f32],
+        F32_MUL => [:f32, :f32, :f32],
+        F32_DIV => [:f32, :f32, :f32],
+        F32_MIN => [:f32, :f32, :f32],
+        F32_MAX => [:f32, :f32, :f32],
+        F32_COPYSIGN => [:f32, :f32, :f32],
+        F64_EQ => [:i32, :f64, :f64],
+        F64_NE => [:i32, :f64, :f64],
+        F64_LT => [:i32, :f64, :f64],
+        F64_GT => [:i32, :f64, :f64],
+        F64_LE => [:i32, :f64, :f64],
+        F64_GE => [:i32, :f64, :f64],
+        F64_ABS => [:f64, :f64],
+        F64_NEG => [:f64, :f64],
+        F64_CEIL => [:f64, :f64],
+        F64_FLOOR => [:f64, :f64],
+        F64_TRUNC => [:f64, :f64],
+        F64_NEAREST => [:f64, :f64],
+        F64_SQRT => [:f64, :f64],
+        F64_ADD => [:f64, :f64, :f64],
+        F64_SUB => [:f64, :f64, :f64],
+        F64_MUL => [:f64, :f64, :f64],
+        F64_DIV => [:f64, :f64, :f64],
+        F64_MIN => [:f64, :f64, :f64],
+        F64_MAX => [:f64, :f64, :f64],
+        F64_COPYSIGN => [:f64, :f64, :f64],
+        I32_TRUNC_F32_S => [:i32, :f32],
+        I32_TRUNC_F32_U => [:i32, :f32],
+        I32_TRUNC_F64_S => [:i32, :f64],
+        I32_TRUNC_F64_U => [:i32, :f64],
+        I64_TRUNC_F32_S => [:i64, :f32],
+        I64_TRUNC_F32_U => [:i64, :f32],
+        I64_TRUNC_F64_S => [:i64, :f64],
+        I64_TRUNC_F64_U => [:i64, :f64],
+        I32_TRUNC_SAT_F32_S => [:i32, :f32],
+        I32_TRUNC_SAT_F32_U => [:i32, :f32],
+        I32_TRUNC_SAT_F64_S => [:i32, :f64],
+        I32_TRUNC_SAT_F64_U => [:i32, :f64],
+        I64_TRUNC_SAT_F32_S => [:i64, :f32],
+        I64_TRUNC_SAT_F32_U => [:i64, :f32],
+        I64_TRUNC_SAT_F64_S => [:i64, :f64],
+        I64_TRUNC_SAT_F64_U => [:i64, :f64],
+        F32_CONVERT_I32_S => [:f32, :i32],
+        F32_CONVERT_I32_U => [:f32, :i32],
+        F32_CONVERT_I64_S => [:f32, :i64],
+        F32_CONVERT_I64_U => [:f32, :i64],
+        F64_CONVERT_I32_S => [:f64, :i32],
+        F64_CONVERT_I32_U => [:f64, :i32],
+        F64_CONVERT_I64_S => [:f64, :i64],
+        F64_CONVERT_I64_U => [:f64, :i64],
+        F32_DEMOTE_F64 => [:f32, :f64],
+        F64_PROMOTE_F32 => [:f64, :f32],
+        I32_REINTERPRET_F32 => [:i32, :f32],
+        I64_REINTERPRET_F64 => [:i64, :f64],
+        F32_REINTERPRET_I32 => [:f32, :i32],
+        F64_REINTERPRET_I64 => [:f64, :i64],
+      }.freeze #: Hash[Integer, Array[Symbol]]
+
+      # @rbs opcode: Integer
+      # @rbs return: Array[Symbol]?
+      def self.extended_alu_types(opcode)
+        opcode >= F32_EQ ? FLOAT_ALU_TYPES[opcode] : I64_ALU_TYPES[opcode]
+      end
+
+      EXTENDED_LOAD_TYPES = {
+        I64_LOAD => :i64,
+        I64_LOAD8_S => :i64,
+        I64_LOAD8_U => :i64,
+        I64_LOAD16_S => :i64,
+        I64_LOAD16_U => :i64,
+        I64_LOAD32_S => :i64,
+        I64_LOAD32_U => :i64,
+        F32_LOAD => :f32,
+        F64_LOAD => :f64,
+      }.freeze #: Hash[Integer, Symbol]
+
+      EXTENDED_STORE_TYPES = {
+        I64_STORE => :i64,
+        I64_STORE8 => :i64,
+        I64_STORE16 => :i64,
+        I64_STORE32 => :i64,
+        F32_STORE => :f32,
+        F64_STORE => :f64,
+      }.freeze #: Hash[Integer, Symbol]
+
+      EXTENDED_GLOBAL_GET_TYPES = {
+        I64_GLOBAL_GET => :i64,
+        F32_GLOBAL_GET => :f32,
+        F64_GLOBAL_GET => :f64,
+      }.freeze #: Hash[Integer, Symbol]
+
+      EXTENDED_GLOBAL_SET_TYPES = {
+        I64_GLOBAL_SET => :i64,
+        F32_GLOBAL_SET => :f32,
+        F64_GLOBAL_SET => :f64,
+      }.freeze #: Hash[Integer, Symbol]
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction
@@ -216,11 +421,11 @@ module Wardite
         when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
           []
         else
-          types = I64_ALU_TYPES[opcode]
+          types = extended_alu_types(opcode)
           return types.size == 2 ? [2] : [2, 3] if types
-          return [2] if I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_SET
-          return [1, 2] if I64_STORES.include?(opcode)
-          return [] if opcode == I64_GLOBAL_GET
+          return [2] if EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_GLOBAL_SET_TYPES.key?(opcode)
+          return [1, 2] if EXTENDED_STORE_TYPES.key?(opcode)
+          return [] if EXTENDED_GLOBAL_GET_TYPES.key?(opcode)
 
           raise UnsupportedFeature, "Efflorescence: unknown MIR opcode #{opcode}"
         end
@@ -235,7 +440,7 @@ module Wardite
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
             (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) || opcode == MEMORY_SIZE || opcode == MEMORY_GROW ||
-            (opcode > CALL_INDIRECT && (I64_ALU_TYPES.key?(opcode) || I64_LOADS.include?(opcode) || opcode == I64_GLOBAL_GET))
+            (opcode > CALL_INDIRECT && (extended_alu_types(opcode) || EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_GLOBAL_GET_TYPES.key?(opcode)))
           instruction[1]
         else
           -1
@@ -253,7 +458,8 @@ module Wardite
       def self.may_trap?(opcode)
         opcode == TRAP || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
-          (opcode > CALL_INDIRECT && (I64_LOADS.include?(opcode) || I64_STORES.include?(opcode) ||
+          (opcode >= I32_TRUNC_F32_S && opcode <= I64_TRUNC_F64_U) ||
+          (opcode > CALL_INDIRECT && (EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode) ||
             opcode == I64_DIV_S || opcode == I64_DIV_U || opcode == I64_REM_S || opcode == I64_REM_U))
       end
 
@@ -281,7 +487,7 @@ module Wardite
       def self.reads_store?(opcode)
         opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
           opcode == MEMORY_SIZE || opcode == MEMORY_GROW || opcode == MEMORY_INIT || opcode == MEMORY_COPY ||
-          (opcode > CALL_INDIRECT && (opcode == I64_GLOBAL_GET || I64_LOADS.include?(opcode)))
+          (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_GET_TYPES.key?(opcode) || EXTENDED_LOAD_TYPES.key?(opcode)))
       end
 
       # @rbs opcode: Integer
@@ -289,7 +495,7 @@ module Wardite
       def self.writes_store?(opcode)
         opcode == GLOBAL_SET || (opcode >= I32_STORE && opcode <= I32_STORE16) ||
           opcode == MEMORY_GROW || memory_site?(opcode) ||
-          (opcode > CALL_INDIRECT && (opcode == I64_GLOBAL_SET || I64_STORES.include?(opcode)))
+          (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_SET_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode)))
       end
 
       # @rbs opcode: Integer
@@ -320,13 +526,13 @@ module Wardite
 
     class ExceptionValue
       attr_reader :tag #: Wardite::Efflorescence::Tag
-      attr_reader :payload #: Array[Integer]
+      attr_reader :payload_bits #: Array[Integer]
 
       # @rbs tag: Wardite::Efflorescence::Tag
-      # @rbs payload: Array[Integer]
-      def initialize(tag, payload)
+      # @rbs payload_bits: Array[Integer]
+      def initialize(tag, payload_bits)
         @tag = tag
-        @payload = payload.dup.freeze
+        @payload_bits = payload_bits.dup.freeze
         freeze
       end
     end
@@ -477,6 +683,7 @@ module Wardite
       attr_reader :flat_handlers #: Array[Wardite::Efflorescence::HandlerDescriptor]
       attr_reader :throw_sites #: Array[Wardite::Efflorescence::ThrowSite]
       attr_accessor :uses_i64 #: bool
+      attr_accessor :uses_float #: bool
       attr_accessor :uses_eh #: bool
       attr_accessor :uses_store #: bool
       attr_accessor :uses_dynamic_calls #: bool
@@ -505,6 +712,7 @@ module Wardite
         @uses_dynamic_calls = false
         @dynamic_sites = []
         @uses_i64 = @register_types.include?(:i64) || result_types.include?(:i64)
+        @uses_float = @register_types.any? { |type| FloatBits.float_type?(type) } || result_types.any? { |type| FloatBits.float_type?(type) }
         @uses_eh = @register_types.include?(:exnref)
         @instructions = []
         @initial_registers = Array.new(parameter_types.size + local_count, 0)
@@ -536,6 +744,7 @@ module Wardite
         slot = @initial_registers.size
         @initial_registers << value
         @uses_i64 = true if type == :i64
+        @uses_float = true if FloatBits.float_type?(type)
         @register_types << type
         slot
       end
@@ -652,6 +861,7 @@ module Wardite
       def copy
         result = Function.new(@index, @parameter_types, @result_types, @local_count, local_types: @register_types[@parameter_types.size, @local_count], pool_index: @pool_index)
         result.uses_i64 = @uses_i64
+        result.uses_float = @uses_float
         result.uses_eh = @uses_eh
         result.uses_store = @uses_store
         result.uses_dynamic_calls = @uses_dynamic_calls
@@ -736,7 +946,7 @@ module Wardite
       attr_reader :external #: Wardite::ExternalFunction
       attr_reader :entry #: Wardite::Efflorescence::FunctionEntry
       attr_reader :callable #: Wardite::_WasmCallable
-      attr_reader :uses_i64 #: bool
+      attr_reader :typed_abi #: bool
       attr_reader :unboxed_wasi #: Wardite::Efflorescence::_WasiCallable?
 
       # @rbs external: Wardite::ExternalFunction
@@ -747,7 +957,7 @@ module Wardite
         @external = external
         @entry = entry
         @callable = callable
-        @uses_i64 = entry.parameter_types.include?(:i64) || entry.result_types.include?(:i64)
+        @typed_abi = entry.parameter_types.any? { |type| type != :i32 } || entry.result_types.any? { |type| type != :i32 }
         @unboxed_wasi = unboxed_wasi
       end
 
@@ -782,10 +992,16 @@ module Wardite
       # @rbs label: String
       # @rbs return: void
       def self.check_signature(params, results, label)
-        unless params.all? { |type| type == :i32 || type == :i64 } &&
-            (results.empty? || (results.size == 1 && (results[0] == :i32 || results[0] == :i64)))
-          raise UnsupportedFeature, "Efflorescence: #{label} requires an integer signature with at most one result (i32/i64)"
+        unless results.size <= 1 && params.all? { |type| numeric_type?(type) } &&
+            results.all? { |type| numeric_type?(type) }
+          raise UnsupportedFeature, "Efflorescence: #{label} requires a numeric signature with at most one result (i32/i64/f32/f64)"
         end
+      end
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.numeric_type?(type)
+        type == :i32 || type == :i64 || FloatBits.float_type?(type)
       end
 
       # @rbs return: Wardite::Efflorescence::FunctionEntry
@@ -841,7 +1057,7 @@ module Wardite
     class Frame
       attr_reader :function #: Wardite::Efflorescence::Function
       attr_reader :pool_index #: Integer
-      # Numeric registers hold unsigned i32 or signed i64, as recorded in Function.
+      # Numeric registers hold unsigned 32-bit or signed 64-bit carriers.
       attr_reader :registers #: Array[Integer]
       attr_reader :exception_registers #: Array[Wardite::Efflorescence::ExceptionValue?]
       attr_reader :handlers #: Array[Integer]

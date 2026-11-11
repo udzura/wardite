@@ -1,6 +1,6 @@
 # ADR 0005: Efflorescence M5のf32/f64と数値変換
 
-- 状態: 提案。実装・検証は未実施。
+- 状態: 実装・検証済み。[実装記録](../efflorescence-m5.md)
 - 日付: 2026-11-10
 - 基準: main `b50073d`（M4実装後）
 - 前提: [M4実装](../efflorescence-m4.md)、[M0一覧](../efflorescence-coverage-ja.md)

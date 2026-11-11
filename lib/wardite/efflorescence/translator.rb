@@ -94,12 +94,86 @@ module Wardite
       }.freeze
 
       # Natural alignment exponents; alignment is a hint, not an address rule.
+      FLOAT_ALU = {
+        f32_eq: Opcode::F32_EQ,
+        f32_ne: Opcode::F32_NE,
+        f32_lt: Opcode::F32_LT,
+        f32_gt: Opcode::F32_GT,
+        f32_le: Opcode::F32_LE,
+        f32_ge: Opcode::F32_GE,
+        f32_abs: Opcode::F32_ABS,
+        f32_neg: Opcode::F32_NEG,
+        f32_ceil: Opcode::F32_CEIL,
+        f32_floor: Opcode::F32_FLOOR,
+        f32_trunc: Opcode::F32_TRUNC,
+        f32_nearest: Opcode::F32_NEAREST,
+        f32_sqrt: Opcode::F32_SQRT,
+        f32_add: Opcode::F32_ADD,
+        f32_sub: Opcode::F32_SUB,
+        f32_mul: Opcode::F32_MUL,
+        f32_div: Opcode::F32_DIV,
+        f32_min: Opcode::F32_MIN,
+        f32_max: Opcode::F32_MAX,
+        f32_copysign: Opcode::F32_COPYSIGN,
+        f64_eq: Opcode::F64_EQ,
+        f64_ne: Opcode::F64_NE,
+        f64_lt: Opcode::F64_LT,
+        f64_gt: Opcode::F64_GT,
+        f64_le: Opcode::F64_LE,
+        f64_ge: Opcode::F64_GE,
+        f64_abs: Opcode::F64_ABS,
+        f64_neg: Opcode::F64_NEG,
+        f64_ceil: Opcode::F64_CEIL,
+        f64_floor: Opcode::F64_FLOOR,
+        f64_trunc: Opcode::F64_TRUNC,
+        f64_nearest: Opcode::F64_NEAREST,
+        f64_sqrt: Opcode::F64_SQRT,
+        f64_add: Opcode::F64_ADD,
+        f64_sub: Opcode::F64_SUB,
+        f64_mul: Opcode::F64_MUL,
+        f64_div: Opcode::F64_DIV,
+        f64_min: Opcode::F64_MIN,
+        f64_max: Opcode::F64_MAX,
+        f64_copysign: Opcode::F64_COPYSIGN,
+        i32_trunc_f32_s: Opcode::I32_TRUNC_F32_S,
+        i32_trunc_f32_u: Opcode::I32_TRUNC_F32_U,
+        i32_trunc_f64_s: Opcode::I32_TRUNC_F64_S,
+        i32_trunc_f64_u: Opcode::I32_TRUNC_F64_U,
+        i64_trunc_f32_s: Opcode::I64_TRUNC_F32_S,
+        i64_trunc_f32_u: Opcode::I64_TRUNC_F32_U,
+        i64_trunc_f64_s: Opcode::I64_TRUNC_F64_S,
+        i64_trunc_f64_u: Opcode::I64_TRUNC_F64_U,
+        i32_trunc_sat_f32_s: Opcode::I32_TRUNC_SAT_F32_S,
+        i32_trunc_sat_f32_u: Opcode::I32_TRUNC_SAT_F32_U,
+        i32_trunc_sat_f64_s: Opcode::I32_TRUNC_SAT_F64_S,
+        i32_trunc_sat_f64_u: Opcode::I32_TRUNC_SAT_F64_U,
+        i64_trunc_sat_f32_s: Opcode::I64_TRUNC_SAT_F32_S,
+        i64_trunc_sat_f32_u: Opcode::I64_TRUNC_SAT_F32_U,
+        i64_trunc_sat_f64_s: Opcode::I64_TRUNC_SAT_F64_S,
+        i64_trunc_sat_f64_u: Opcode::I64_TRUNC_SAT_F64_U,
+        f32_convert_i32_s: Opcode::F32_CONVERT_I32_S,
+        f32_convert_i32_u: Opcode::F32_CONVERT_I32_U,
+        f32_convert_i64_s: Opcode::F32_CONVERT_I64_S,
+        f32_convert_i64_u: Opcode::F32_CONVERT_I64_U,
+        f64_convert_i32_s: Opcode::F64_CONVERT_I32_S,
+        f64_convert_i32_u: Opcode::F64_CONVERT_I32_U,
+        f64_convert_i64_s: Opcode::F64_CONVERT_I64_S,
+        f64_convert_i64_u: Opcode::F64_CONVERT_I64_U,
+        f32_demote_f64: Opcode::F32_DEMOTE_F64,
+        f64_promote_f32: Opcode::F64_PROMOTE_F32,
+        i32_reinterpret_f32: Opcode::I32_REINTERPRET_F32,
+        i64_reinterpret_f64: Opcode::I64_REINTERPRET_F64,
+        f32_reinterpret_i32: Opcode::F32_REINTERPRET_I32,
+        f64_reinterpret_i64: Opcode::F64_REINTERPRET_I64,
+      }.freeze #: Hash[Symbol, Integer]
+
       MEMORY_WIDTHS = { i32_load: 2, i32_load8_s: 0, i32_load8_u: 0,
                         i32_load16_s: 1, i32_load16_u: 1,
                         i32_store: 2, i32_store8: 0, i32_store16: 1,
                         i64_load: 3, i64_load8_s: 0, i64_load8_u: 0,
                         i64_load16_s: 1, i64_load16_u: 1, i64_load32_s: 2, i64_load32_u: 2,
-                        i64_store: 3, i64_store8: 0, i64_store16: 1, i64_store32: 2 }.freeze
+                        i64_store: 3, i64_store8: 0, i64_store16: 1, i64_store32: 2,
+                        f32_load: 2, f32_store: 2, f64_load: 3, f64_store: 3 }.freeze
       MEMORY_OPCODES = { i32_load: Opcode::I32_LOAD, i32_load8_s: Opcode::I32_LOAD8_S,
                          i32_load8_u: Opcode::I32_LOAD8_U, i32_load16_s: Opcode::I32_LOAD16_S,
                          i32_load16_u: Opcode::I32_LOAD16_U, i32_store: Opcode::I32_STORE,
@@ -114,7 +188,9 @@ module Wardite
                          i64_store: Opcode::I64_STORE,
                          i64_store8: Opcode::I64_STORE8,
                          i64_store16: Opcode::I64_STORE16,
-                         i64_store32: Opcode::I64_STORE32 }.freeze
+                         i64_store32: Opcode::I64_STORE32,
+                         f32_load: Opcode::F32_LOAD, f32_store: Opcode::F32_STORE,
+                         f64_load: Opcode::F64_LOAD, f64_store: Opcode::F64_STORE }.freeze
       STORE_CODES = (MEMORY_WIDTHS.keys + %i[global_get global_set memory_size memory_grow memory_init memory_copy memory_fill]).freeze
 
       # @rbs @instance: Wardite::Instance
@@ -123,6 +199,8 @@ module Wardite
       # @rbs @controls: Array[Wardite::Efflorescence::Translator::Control]
       # @rbs @constants: Hash[Integer, Integer]
       # @rbs @i64_constants: Hash[Integer, Integer]?
+      # @rbs @f32_constants: Hash[Integer, Integer]?
+      # @rbs @f64_constants: Hash[Integer, Integer]?
       # @rbs @function: Wardite::Efflorescence::Function
       # @rbs @reachable: bool
       # @rbs @wasm_pc: Integer
@@ -134,6 +212,8 @@ module Wardite
         @entries = []
         @stack, @controls, @constants = [], [], {}
         @i64_constants = nil
+        @f32_constants = nil
+        @f64_constants = nil
         @reachable, @wasm_pc, @handler_depth = true, 0, 0
         @function = Function.new(0, [], [], 0)
       end
@@ -179,7 +259,7 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::Function
       def translate_function(wasm, index, pool_index)
         FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}")
-        unless wasm.locals_type.all? { |type| type == :i32 || type == :i64 || type == :exnref }
+        unless wasm.locals_type.all? { |type| FunctionEntry.numeric_type?(type) || type == :exnref }
           raise UnsupportedFeature, "Efflorescence: function #{index} has unsupported locals"
         end
         locals = [] #: Array[Symbol]
@@ -187,6 +267,8 @@ module Wardite
         @function = Function.new(index, wasm.callsig, wasm.retsig, locals.size, local_types: locals, pool_index: pool_index)
         @stack, @controls, @constants = [], [], {}
         @i64_constants = nil
+        @f32_constants = nil
+        @f64_constants = nil
         @reachable, @handler_depth = true, 0
         @controls << new_control(:function, wasm.retsig)
         wasm.body.each_with_index do |instruction, pc|
@@ -211,7 +293,7 @@ module Wardite
           when :block, :loop, :if, :try_table
             block = operands[0]
             fail_translation("expected block signature") unless block.is_a?(Wardite::Block)
-            unless block.parameter_types.empty? && block.result_types.all? { |type| type == :i32 || type == :i64 || type == :exnref }
+            unless block.parameter_types.empty? && block.result_types.all? { |type| FunctionEntry.numeric_type?(type) || type == :exnref }
               raise UnsupportedFeature, context("block parameters and unsupported block result types are not supported")
             end
             condition = code == :if ? pop_typed(:i32) : -1
@@ -238,13 +320,15 @@ module Wardite
           when :i32_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
                :i32_store, :i32_store8, :i32_store16,
                :i64_load, :i64_load8_s, :i64_load8_u, :i64_load16_s, :i64_load16_u, :i64_load32_s, :i64_load32_u,
-               :i64_store, :i64_store8, :i64_store16, :i64_store32
+               :i64_store, :i64_store8, :i64_store16, :i64_store32,
+               :f32_load, :f64_load, :f32_store, :f64_store
             opcode = MEMORY_OPCODES.fetch(code)
             offset = integer_operand(operands[1])
-            i64_store = Opcode::I64_STORES.include?(opcode)
-            type = i64_store || Opcode::I64_LOADS.include?(opcode) ? :i64 : :i32
+            store_type = Opcode::EXTENDED_STORE_TYPES[opcode]
+            type = store_type || Opcode::EXTENDED_LOAD_TYPES[opcode] || :i32
             @function.uses_i64 = true if type == :i64
-            if i64_store || code == :i32_store || code == :i32_store8 || code == :i32_store16
+            @function.uses_float = true if FloatBits.float_type?(type)
+            if store_type || code == :i32_store || code == :i32_store8 || code == :i32_store16
               value = pop_typed(type)
               address = pop_typed(:i32)
               emit([opcode, value, address, offset]) if @reachable
@@ -276,14 +360,25 @@ module Wardite
             index = integer_operand(operands[0])
             type = @instance.store.globals.fetch(index).type
             @function.uses_i64 = true if type == :i64
+            @function.uses_float = true if FloatBits.float_type?(type)
             if code == :global_get
               dst = register(type)
-              opcode = type == :i64 ? Opcode::I64_GLOBAL_GET : Opcode::GLOBAL_GET
+              opcode = case type
+                       when :i64 then Opcode::I64_GLOBAL_GET
+                       when :f32 then Opcode::F32_GLOBAL_GET
+                       when :f64 then Opcode::F64_GLOBAL_GET
+                       else Opcode::GLOBAL_GET
+                       end
               emit([opcode, dst, index]) if @reachable
               @stack << dst
             else
               source = pop_typed(type)
-              opcode = type == :i64 ? Opcode::I64_GLOBAL_SET : Opcode::GLOBAL_SET
+              opcode = case type
+                       when :i64 then Opcode::I64_GLOBAL_SET
+                       when :f32 then Opcode::F32_GLOBAL_SET
+                       when :f64 then Opcode::F64_GLOBAL_SET
+                       else Opcode::GLOBAL_SET
+                       end
               emit([opcode, index, source]) if @reachable
             end
           when :local_get, :local_set, :local_tee
@@ -307,6 +402,13 @@ module Wardite
             else
               @stack << constant(immediate & 0xffffffff)
             end
+          when :f32_const, :f64_const
+            operand = operands[0]
+            type = code == :f32_const ? :f32 : :f64
+            unless operand.is_a?(FloatImmediate) && operand.type == type
+              fail_translation("invalid float immediate")
+            end
+            @stack << constant(operand.bits, type)
           when :br, :br_if
             target = label(integer_operand(operands[0]))
             condition = code == :br_if ? pop_typed(:i32) : -1
@@ -354,7 +456,7 @@ module Wardite
           when :select
             condition, right, left = pop_typed(:i32), pop_value, pop_value
             type = right < 0 ? type_of(left) : type_of(right)
-            unless (type == :i32 || type == :i64 || type == :unknown) && (left < 0 || type_of(left) == type)
+            unless (FunctionEntry.numeric_type?(type) || type == :unknown) && (left < 0 || type_of(left) == type)
               fail_translation("select requires matching integer operands")
             end
             dst = type == :unknown ? -1 : register(type)
@@ -427,10 +529,14 @@ module Wardite
             pop_value
           when :nop
           else
-            opcode = I64_ALU[code]
+            opcode = I64_ALU[code] || FLOAT_ALU[code]
             raise UnsupportedFeature, context("unsupported instruction #{code}") unless opcode
-            types = Opcode::I64_ALU_TYPES.fetch(opcode)
-            @function.uses_i64 = true
+            types = Opcode.extended_alu_types(opcode) || raise(TranslationError, context("missing ALU signature"))
+            if opcode >= Opcode::F32_EQ
+              @function.uses_float = true
+            else
+              @function.uses_i64 = true
+            end
             sources = types.drop(1).reverse.map { |type| pop_typed(type) }.reverse
             dst = register(types.fetch(0))
             emit([opcode, dst] + sources) if @reachable
@@ -458,8 +564,12 @@ module Wardite
             fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::I32)
           when :i64
             fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::I64)
+          when :f32
+            fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::F32)
+          when :f64
+            fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::F64)
           else
-            raise UnsupportedFeature, context("only i32/i64 global access is supported")
+            raise UnsupportedFeature, context("only numeric global access is supported")
           end
           fail_translation("global.set on immutable global #{index}") if code == :global_set && !global.mutable
           return
@@ -508,10 +618,11 @@ module Wardite
       # @rbs return: Integer
       # @rbs type: Symbol
       def constant(value, type = :i32)
-        constants = if type == :i64
-                      @i64_constants ||= {} #: Hash[Integer, Integer]
-                    else
-                      @constants
+        constants = case type
+                    when :i64 then @i64_constants ||= {} #: Hash[Integer, Integer]
+                    when :f32 then @f32_constants ||= {} #: Hash[Integer, Integer]
+                    when :f64 then @f64_constants ||= {} #: Hash[Integer, Integer]
+                    else @constants
                     end
         constants[value] ||= @function.allocate_constant(value, type: type)
       end

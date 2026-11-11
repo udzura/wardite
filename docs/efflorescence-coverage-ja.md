@@ -4,17 +4,25 @@
 実行コードは変更せず、デコーダー、Runtime、生成済みEvaluator、Translatorを照合した。
 既存の `benchmark/compare.rb` の作業中の変更は対象外。
 
-現在は M1 の28命令・新形式 EH、M2 の15命令、M3 の `call_indirect` を実装済み。
-M0 の188命令のうち、既存21 + M1追加28 + M2追加15 + M3追加1 = **65命令**に対応する
-（新形式 EH 3命令は別枠）。詳細は [M1](efflorescence-m1.md)、[M2](efflorescence-m2.md)、[M3](efflorescence-m3.md) の実装記録を参照。
+## 現在の実装と検証
 
-| M2の追加分類 | 命令数 | 現在の状態 |
+| 段階 | 追加命令数 | 実装記録 |
 |---|---:|---|
-| i32 load / store | 8 | 全幅・符号・境界検査に対応 |
-| i32 global.get/set | 2 | snapshot・mutable検査・Storeとの共有に対応 |
-| size/grow/init/copy/fill | 5 | 上限・実行時segment・範囲事前検査に対応 |
+| M0 時点 | 21 | i32の基本演算・制御 |
+| M1 | 28 | [制御と新形式EH](efflorescence-m1.md) |
+| M2 | 15 | [メモリとglobal](efflorescence-m2.md) |
+| M3 | 1 | [ホストと間接呼び出し](efflorescence-m3.md) |
+| M4 | 47 | [i64と整数変換](efflorescence-m4.md) |
+| M5 | 76 | [浮動小数点と数値変換](efflorescence-m5.md) |
+| 計 | 188 | 新形式EHの3命令は別枠 |
 
-以下の188命令の集計・一覧はM0時点の記録である。
+M6開始時に共有デコーダーと旧VMの実行分岐を再照合した結果、基準 `5534486` から対象の増減はなかった。新形式EHの `try_table`、`throw`、`throw_ref` はEfflorescenceの拡張。到達不能な生成ハンドラと、旧VMに実行経路のない命令は下記の対象外一覧のとおり。
+
+[命令manifest](../test/support/efflorescence_opcodes.tsv)に、バイナリopcode、共有デコーダーの内部名、導入段階、Translatorの経路、MIR実行証拠の種別、fixture ID、制限を記録する。`source` は独立したMIR命令を持たない構文またはstack操作、`frame` は定数レジスタ初期化を表す。`n/a` は妥当な命令入力に動的trap条件がないことを示す。`unreachable` は常にtrapする。CRubyとSpinelの実行結果は静的な経路照合と分ける。M6の436 fixtureの実行結果と再現方法は [M6の検証記録](efflorescence-m6.md) を参照。
+
+## M0時点の調査記録
+
+以下の集計、一覧、制限と検証結果はM0時点の記録である。
 
 ## 後続の設計
 

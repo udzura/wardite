@@ -243,14 +243,180 @@ module Wardite
 
       I64_GLOBAL_SET: ::Integer
 
+      F32_EQ: ::Integer
+
+      F32_NE: ::Integer
+
+      F32_LT: ::Integer
+
+      F32_GT: ::Integer
+
+      F32_LE: ::Integer
+
+      F32_GE: ::Integer
+
+      F32_ABS: ::Integer
+
+      F32_NEG: ::Integer
+
+      F32_CEIL: ::Integer
+
+      F32_FLOOR: ::Integer
+
+      F32_TRUNC: ::Integer
+
+      F32_NEAREST: ::Integer
+
+      F32_SQRT: ::Integer
+
+      F32_ADD: ::Integer
+
+      F32_SUB: ::Integer
+
+      F32_MUL: ::Integer
+
+      F32_DIV: ::Integer
+
+      F32_MIN: ::Integer
+
+      F32_MAX: ::Integer
+
+      F32_COPYSIGN: ::Integer
+
+      F64_EQ: ::Integer
+
+      F64_NE: ::Integer
+
+      F64_LT: ::Integer
+
+      F64_GT: ::Integer
+
+      F64_LE: ::Integer
+
+      F64_GE: ::Integer
+
+      F64_ABS: ::Integer
+
+      F64_NEG: ::Integer
+
+      F64_CEIL: ::Integer
+
+      F64_FLOOR: ::Integer
+
+      F64_TRUNC: ::Integer
+
+      F64_NEAREST: ::Integer
+
+      F64_SQRT: ::Integer
+
+      F64_ADD: ::Integer
+
+      F64_SUB: ::Integer
+
+      F64_MUL: ::Integer
+
+      F64_DIV: ::Integer
+
+      F64_MIN: ::Integer
+
+      F64_MAX: ::Integer
+
+      F64_COPYSIGN: ::Integer
+
+      I32_TRUNC_F32_S: ::Integer
+
+      I32_TRUNC_F32_U: ::Integer
+
+      I32_TRUNC_F64_S: ::Integer
+
+      I32_TRUNC_F64_U: ::Integer
+
+      I64_TRUNC_F32_S: ::Integer
+
+      I64_TRUNC_F32_U: ::Integer
+
+      I64_TRUNC_F64_S: ::Integer
+
+      I64_TRUNC_F64_U: ::Integer
+
+      I32_TRUNC_SAT_F32_S: ::Integer
+
+      I32_TRUNC_SAT_F32_U: ::Integer
+
+      I32_TRUNC_SAT_F64_S: ::Integer
+
+      I32_TRUNC_SAT_F64_U: ::Integer
+
+      I64_TRUNC_SAT_F32_S: ::Integer
+
+      I64_TRUNC_SAT_F32_U: ::Integer
+
+      I64_TRUNC_SAT_F64_S: ::Integer
+
+      I64_TRUNC_SAT_F64_U: ::Integer
+
+      F32_CONVERT_I32_S: ::Integer
+
+      F32_CONVERT_I32_U: ::Integer
+
+      F32_CONVERT_I64_S: ::Integer
+
+      F32_CONVERT_I64_U: ::Integer
+
+      F64_CONVERT_I32_S: ::Integer
+
+      F64_CONVERT_I32_U: ::Integer
+
+      F64_CONVERT_I64_S: ::Integer
+
+      F64_CONVERT_I64_U: ::Integer
+
+      F32_DEMOTE_F64: ::Integer
+
+      F64_PROMOTE_F32: ::Integer
+
+      I32_REINTERPRET_F32: ::Integer
+
+      I64_REINTERPRET_F64: ::Integer
+
+      F32_REINTERPRET_I32: ::Integer
+
+      F64_REINTERPRET_I64: ::Integer
+
+      F32_LOAD: ::Integer
+
+      F64_LOAD: ::Integer
+
+      F32_STORE: ::Integer
+
+      F64_STORE: ::Integer
+
+      F32_GLOBAL_GET: ::Integer
+
+      F64_GLOBAL_GET: ::Integer
+
+      F32_GLOBAL_SET: ::Integer
+
+      F64_GLOBAL_SET: ::Integer
+
       NAMES: untyped
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES: Hash[Integer, Array[Symbol]]
 
-      I64_LOADS: untyped
+      FLOAT_ALU_TYPES: Hash[Integer, Array[Symbol]]
 
-      I64_STORES: untyped
+      # @rbs opcode: Integer
+      # @rbs return: Array[Symbol]?
+      def self.extended_alu_types: (Integer opcode) -> Array[Symbol]?
+
+      EXTENDED_LOAD_TYPES: Hash[Integer, Symbol]
+
+      EXTENDED_STORE_TYPES: Hash[Integer, Symbol]
+
+      EXTENDED_GLOBAL_GET_TYPES: Hash[Integer, Symbol]
+
+      EXTENDED_GLOBAL_SET_TYPES: Hash[Integer, Symbol]
 
       # These are semantic register accesses, excluding frame initialization.
       # @rbs instruction: Wardite::Efflorescence::Instruction
@@ -308,11 +474,11 @@ module Wardite
     class ExceptionValue
       attr_reader tag: Wardite::Efflorescence::Tag
 
-      attr_reader payload: Array[Integer]
+      attr_reader payload_bits: Array[Integer]
 
       # @rbs tag: Wardite::Efflorescence::Tag
-      # @rbs payload: Array[Integer]
-      def initialize: (Wardite::Efflorescence::Tag tag, Array[Integer] payload) -> untyped
+      # @rbs payload_bits: Array[Integer]
+      def initialize: (Wardite::Efflorescence::Tag tag, Array[Integer] payload_bits) -> untyped
     end
 
     class CatchTarget
@@ -443,6 +609,8 @@ module Wardite
       attr_reader throw_sites: Array[Wardite::Efflorescence::ThrowSite]
 
       attr_accessor uses_i64: bool
+
+      attr_accessor uses_float: bool
 
       attr_accessor uses_eh: bool
 
@@ -586,7 +754,7 @@ module Wardite
 
       attr_reader callable: Wardite::_WasmCallable
 
-      attr_reader uses_i64: bool
+      attr_reader typed_abi: bool
 
       attr_reader unboxed_wasi: Wardite::Efflorescence::_WasiCallable?
 
@@ -623,6 +791,10 @@ module Wardite
       # @rbs label: String
       # @rbs return: void
       def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label) -> void
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.numeric_type?: (Symbol type) -> bool
 
       # @rbs return: Wardite::Efflorescence::FunctionEntry
       def copy: () -> Wardite::Efflorescence::FunctionEntry
@@ -661,7 +833,7 @@ module Wardite
 
       attr_reader pool_index: Integer
 
-      # Numeric registers hold unsigned i32 or signed i64, as recorded in Function.
+      # Numeric registers hold unsigned 32-bit or signed 64-bit carriers.
       attr_reader registers: Array[Integer]
 
       attr_reader exception_registers: Array[Wardite::Efflorescence::ExceptionValue?]

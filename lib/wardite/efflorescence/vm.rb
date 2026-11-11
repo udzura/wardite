@@ -53,25 +53,28 @@ module Wardite
       # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: (Wardite::I32 | Wardite::I64)?
+      # @rbs return: Wardite::wasmValue?
       def call(name, arguments)
         entry = export_entry(name)
         result = execute_public(entry, arguments)
         return nil if result.nil?
-        entry.result_types[0] == :i64 ? Wardite::I64(result) : Wardite::I32.new(result)
+        box_result(entry.result_types.fetch(0), result)
       end
 
-      # i32 results are unsigned and i64 results are signed.
+      # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Integer?
+      # @rbs return: (Integer | Float)?
       def call_unboxed(name, arguments)
-        execute_public(export_entry(name), arguments)
+        entry = export_entry(name)
+        result = execute_public(entry, arguments)
+        return nil if result.nil?
+        unbox_result(entry.result_types.fetch(0), result)
       end
 
       # @rbs name: Symbol
       # @rbs *arguments: Object
-      # @rbs return: (Wardite::I32 | Wardite::I64)?
+      # @rbs return: Wardite::wasmValue?
       def method_missing(name, *arguments)
         callable?(name) ? call(name, arguments) : super
       end
@@ -111,7 +114,11 @@ module Wardite
         values = [] #: Array[Integer]
         arguments.each_with_index do |value, i|
           type = entry.parameter_types.fetch(i)
-          if type == :i64 && value.is_a?(Wardite::I64)
+          if FloatBits.float_type?(type)
+            bits = float_argument(type, value)
+            raise Wardite::ArgumentError, "type mismatch: #{type}(#{value})" if bits.nil?
+            values << bits
+          elsif type == :i64 && value.is_a?(Wardite::I64)
             values << value.value_s
           elsif value.is_a?(Integer)
             values << (type == :i64 ? I64Arithmetic.normalize(value) : value & 0xffffffff)
@@ -120,6 +127,37 @@ module Wardite
           end
         end
         execute(entry, values)
+      end
+
+      # @rbs type: Symbol
+      # @rbs value: Object?
+      # @rbs return: Integer?
+      def float_argument(type, value)
+        return FloatBits.from_float(type, value) if value.is_a?(Float)
+        if type == :f32 && value.is_a?(Wardite::F32)
+          value.raw_bits
+        elsif type == :f64 && value.is_a?(Wardite::F64)
+          value.raw_bits
+        end
+      end
+
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: Integer | Float
+      def unbox_result(type, bits)
+        FloatBits.float_type?(type) ? FloatBits.to_float(type, bits) : bits
+      end
+
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: Wardite::wasmValue
+      def box_result(type, bits)
+        case type
+        when :i64 then Wardite::I64(bits)
+        when :f32 then Wardite::F32.from_bits(bits)
+        when :f64 then Wardite::F64.from_bits(bits)
+        else Wardite::I32.new(bits)
+        end
       end
 
       # A concrete return type breaks the inference cycle between the current
@@ -220,7 +258,7 @@ module Wardite
               if clause.tag_index < 0 || @instance.tags.fetch(clause.tag_index).equal?(value.tag)
                 frame.trim_handlers(clause.handler_depth)
                 clause.payload_registers.each_with_index do |register, i|
-                  frame.registers[register] = value.payload.fetch(i)
+                  frame.registers[register] = value.payload_bits.fetch(i)
                 end
                 frame.exception_registers[clause.reference_register] = value if clause.reference_register >= 0
                 frame.pc = Integer(clause.target_pc)
@@ -262,7 +300,7 @@ module Wardite
           wasi = host.unboxed_wasi
           return wasi.call(@instance.store, arguments, sources) if wasi
         end
-        return invoke_i64_host(host, arguments, sources) if host.uses_i64
+        return invoke_typed_host(host, arguments, sources) if host.typed_abi
 
         boxed = [] #: Array[Wardite::wasmValue]
         if sources
@@ -285,20 +323,24 @@ module Wardite
       # @rbs arguments: Array[Integer]
       # @rbs sources: Array[Integer]?
       # @rbs return: Integer?
-      def invoke_i64_host(host, arguments, sources)
+      def invoke_typed_host(host, arguments, sources)
         boxed = [] #: Array[Wardite::wasmValue]
         host.entry.parameter_types.each_with_index do |type, i|
           index = sources ? sources.fetch(i) : i
           value = arguments.fetch(index)
-          boxed << (type == :i64 ? Wardite::I64(value) : Wardite::I32.new(value))
+          boxed << box_result(type, value)
         end
         result = host.callable.call(@instance.store, boxed)
-        case host.entry.result_types[0]
+        type = host.entry.result_types[0]
+        case type
         when nil
           return nil if result.nil?
         when :i64
           return result.value_s if result.is_a?(Wardite::I64)
           return I64Arithmetic.normalize(result) if result.is_a?(Integer)
+        when :f32, :f64
+          bits = float_argument(type, result)
+          return bits unless bits.nil?
         when :i32
           return result.value & 0xffffffff if result.is_a?(Wardite::I32)
           return result & 0xffffffff if result.is_a?(Integer)
@@ -400,6 +442,52 @@ module Wardite
           site.arguments.each_with_index { |register, i| target[i] = registers[register] }
           metrics.enter_indirect_defined(site.arguments.size) if @profiling
           next_frame
+        end
+      end
+
+      # Float instructions use the same flat words and integer registers.
+      # Their dispatch stays outside the main integer switch.
+      # @rbs opcode: Integer
+      # @rbs instructions: Array[Integer]
+      # @rbs pc: Integer
+      # @rbs a: Integer
+      # @rbs registers: Array[Integer]
+      # @rbs return: void
+      def execute_float(opcode, instructions, pc, a, registers)
+        b = instructions.fetch(pc + 2)
+        if opcode >= Opcode::F32_EQ && opcode <= Opcode::F64_COPYSIGN
+          types = Opcode::FLOAT_ALU_TYPES.fetch(opcode)
+          right = types.size == 3 ? registers[instructions.fetch(pc + 3)] : 0
+          registers[a] = FloatArithmetic.calculate(opcode, registers[b], right)
+        elsif opcode >= Opcode::I32_TRUNC_F32_S && opcode <= Opcode::F64_PROMOTE_F32
+          registers[a] = FloatArithmetic.convert(opcode, registers[b])
+        elsif opcode >= Opcode::I32_REINTERPRET_F32 && opcode <= Opcode::F64_REINTERPRET_I64
+          registers[a] = registers[b]
+        else
+          case opcode
+          when Opcode::F32_LOAD
+            offset = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load(registers[b], offset, 4, false)
+          when Opcode::F64_LOAD
+            offset = instructions.fetch(pc + 3)
+            registers[a] = @store_access.load_i64(registers[b], offset, 8, false)
+          when Opcode::F32_STORE
+            offset = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], offset, 4, registers[a])
+          when Opcode::F64_STORE
+            offset = instructions.fetch(pc + 3)
+            @store_access.store(registers[b], offset, 8, registers[a])
+          when Opcode::F32_GLOBAL_GET
+            registers[a] = @store_access.global_get_float(b, :f32)
+          when Opcode::F64_GLOBAL_GET
+            registers[a] = @store_access.global_get_float(b, :f64)
+          when Opcode::F32_GLOBAL_SET
+            @store_access.global_set_float(a, :f32, registers[b])
+          when Opcode::F64_GLOBAL_SET
+            @store_access.global_set_float(a, :f64, registers[b])
+          else
+            raise Wardite::EvalError, "Efflorescence: invalid MIR opcode #{opcode}"
+          end
         end
       end
 
@@ -906,7 +994,7 @@ module Wardite
             c = instructions.fetch(pc + 3)
             metrics.record(a, b, c)
           else
-            raise Wardite::EvalError, "Efflorescence: invalid MIR opcode #{opcode}"
+            execute_float(opcode, instructions, pc, a, registers)
           end
           pc += Lowerer::WIDTH
         end

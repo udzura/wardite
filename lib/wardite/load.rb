@@ -147,6 +147,8 @@ module Wardite
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
       def initialize(&blk)
+        @locals_count = []
+        @locals_type = []
         blk.call(self)
       end
     end
@@ -557,8 +559,7 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        typeb = fetch_uleb128(sbuf)
-        gtype = Op.i2type(typeb)
+        gtype = Op.i2type(assert_read(sbuf, 1).ord)
         mut = sbuf.read 1
         if !mut
           raise LoadError, "global section too short"
@@ -569,6 +570,14 @@ module Wardite
         
         code = fetch_insn_while_end(sbuf)
         ops = code_body(StringIO.new(code))
+        expected = case gtype
+                   when :i32 then :i32_const
+                   when :i64 then :i64_const
+                   when :f32 then :f32_const
+                   when :f64 then :f64_const
+                   else raise LoadError, "unsupported global type #{gtype}"
+                   end
+        raise LoadError, "global initializer type mismatch" unless ops.first&.[](1) == expected
         value = decode_global_expr(ops)
 
         global = GlobalSection::Global.new do |g|
@@ -626,38 +635,35 @@ module Wardite
       dest = CodeSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
-      len.times do |i|
-        ilen = fetch_uleb128(sbuf)
-        code = assert_read(sbuf, ilen)
-        last_code = code[-1]
-        if ! last_code
-          raise "[BUG] empty code fetched" # guard for steep check
-        end
-        if last_code.ord != 0x0b
-          $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{last_code.ord}" 
-        end
-        cbuf = StringIO.new(code)
-        locals_count = [] #: Array[Integer]
-        locals_type = [] #: Array[Symbol]
-        locals_len = fetch_uleb128(cbuf)
-        locals_len.times do
-          type_count = fetch_uleb128(cbuf)
-          locals_count << type_count
-          value_type = assert_read(cbuf, 1)&.ord
-          locals_type << Op.i2type(value_type || -1)
-        end
-        body = code_body(cbuf)
-        
-        dest.func_codes << CodeSection::CodeBody.new do |b|
-          b.locals_count = locals_count
-          b.locals_type = locals_type
-          b.body = body
-        end
-      end
+      len.times { dest.func_codes << read_function_body(sbuf) }
       dest
+    end
+
+    # @rbs sbuf: StringIO
+    # @rbs return: CodeSection::CodeBody
+    def self.read_function_body(sbuf)
+      ilen = fetch_uleb128(sbuf)
+      code = assert_read(sbuf, ilen)
+      last_code = code[-1]
+      if ! last_code
+        raise "[BUG] empty code fetched" # guard for steep check
+      end
+      if last_code.ord != 0x0b
+        $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{last_code.ord}"
+      end
+      cbuf = StringIO.new(code)
+      CodeSection::CodeBody.new do |body|
+        locals_len = fetch_uleb128(cbuf)
+        while locals_len > 0
+          body.locals_count << fetch_uleb128(cbuf)
+          body.locals_type << Op.i2type(assert_read(cbuf, 1).ord)
+          locals_len -= 1
+        end
+        body.body = code_body(cbuf)
+      end
     end
 
     # @rbs buf: StringIO
@@ -692,25 +698,12 @@ module Wardite
             end
             operand << OperandVector.new(vec)
           when :i32
-            operand << fetch_sleb128(buf)
+            operand << fetch_sleb128(buf, width: 32)
           when :i64
             operand << fetch_sleb128(buf, width: 64)
-          when :f32
-            data = buf.read 4
-            if !data || data.size != 4
-              raise LoadError, "buffer too short"
-            end
-            v = data.unpack("e")[0]
-            raise "String#unpack is broken" if !v.is_a?(Float)
-            operand << v
-          when :f64
-            data = buf.read 8
-            if !data || data.size != 8
-              raise LoadError, "buffer too short"
-            end
-            v = data.unpack("E")[0]
-            raise "String#unpack is broken" if !v.is_a?(Float)
-            operand << v
+          when :f32, :f64
+            data = assert_read(buf, typ == :f32 ? 4 : 8)
+            operand << FloatImmediate.new(typ, FloatBits.read(typ, data))
           when :u8_block, :blocktype
             value = read_blocktype(buf)
             operand << value
@@ -873,7 +866,7 @@ module Wardite
       first = sbuf.pos
       opcode = assert_read(sbuf, 1).ord
       case opcode
-      when 0x41 then fetch_sleb128(sbuf)
+      when 0x41 then fetch_sleb128(sbuf, width: 32)
       when 0x42 then fetch_sleb128(sbuf, width: 64)
       when 0x43 then assert_read(sbuf, 4)
       when 0x44 then assert_read(sbuf, 8)
@@ -928,16 +921,12 @@ module Wardite
         return I64(arg)
       when :f32_const
         arg = op[2][0]
-        if !arg.is_a?(Float)
-          raise "Invalid definition of operand"
-        end
-        return F32(arg)
+        raise "Invalid definition of operand" unless arg.is_a?(FloatImmediate)
+        return F32.from_bits(arg.bits)
       when :f64_const
         arg = op[2][0]
-        if !arg.is_a?(Float)
-          raise "Invalid definition of operand"
-        end
-        return F64(arg)
+        raise "Invalid definition of operand" unless arg.is_a?(FloatImmediate)
+        return F64.from_bits(arg.bits)
       else
         raise "Unimplemented offset op: #{op.inspect}"
       end
@@ -989,7 +978,7 @@ module Wardite
       if !ret
         raise LoadError, "too short section size"
       end
-      if ret.size != n
+      if ret.bytesize != n
         raise LoadError, "too short section size"
       end
       ret

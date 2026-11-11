@@ -35,13 +35,12 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
     [
       '(module (import "host" "e" (tag)))',
       '(module (tag (export "e")))',
-      '(module (tag (param f64)))',
       '(module (type (func (result i32))) (tag (type 0)))',
       '(module (func (param exnref)))',
       '(module (func (result exnref) unreachable))',
       '(module (func (local (ref exn))))',
       '(module (func unreachable block (param i32) end))',
-      '(module (func unreachable block (result f32) end))'
+      '(module (func unreachable block (result funcref) end))'
     ].each { |wat| assert_raise(Wardite::LoadError, E::UnsupportedFeature) { load_wat(wat) } }
   end
 

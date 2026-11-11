@@ -30,6 +30,17 @@ module Wardite
       # @rbs return: Integer
       def global_get_i64: (Integer index) -> Integer
 
+      # @rbs index: Integer
+      # @rbs type: Symbol
+      # @rbs return: Integer
+      def global_get_float: (Integer index, Symbol type) -> Integer
+
+      # @rbs index: Integer
+      # @rbs type: Symbol
+      # @rbs value: Integer
+      # @rbs return: void
+      def global_set_float: (Integer index, Symbol type, Integer value) -> void
+
       # Boxing is confined to the shared Store boundary. Existing register
       # snapshots contain independent integers, never a mutable Global object.
       # @rbs index: Integer

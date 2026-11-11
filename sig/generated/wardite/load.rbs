@@ -227,6 +227,10 @@ module Wardite
     # @rbs return: CodeSection
     def self.code_section: () -> CodeSection
 
+    # @rbs sbuf: StringIO
+    # @rbs return: CodeSection::CodeBody
+    def self.read_function_body: (StringIO sbuf) -> CodeSection::CodeBody
+
     # @rbs buf: StringIO
     # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     def self.code_body: (StringIO buf) -> Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]

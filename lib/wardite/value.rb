@@ -502,16 +502,45 @@ module Wardite
   class F32
     include ValueHelper
 
-    attr_accessor :value #: Float
+    # A wrapper holds a Ruby-origin value or raw Wasm bits. Reassignment
+    # discards the raw representation so existing value= callers stay current.
+    # @rbs bits: Integer?
+    def initialize(bits: nil)
+      if bits && (bits < 0 || bits > 0xffffffff)
+        raise RangeError, "f32 bits outside carrier range"
+      end
+      @bits = bits
+      @value = 0.0
+    end
+
+    # @rbs return: Float
+    def value
+      bits = @bits
+      bits.nil? ? @value : FloatBits.to_float(:f32, bits)
+    end
+
+    # @rbs value: Float
+    # @rbs return: Float
+    def value=(value)
+      @bits = nil
+      @value = value
+    end
+
+    # @rbs return: Integer
+    def raw_bits
+      @bits || FloatBits.from_float(:f32, @value)
+    end
+
+    # @rbs bits: Integer
+    # @rbs return: F32
+    def self.from_bits(bits)
+      new(bits: bits)
+    end
 
     # @rbs str: String
     # @rbs return: F32
     def self.from_bytes(str)
-      v = str.unpack("e")[0]
-      if !v.is_a?(Float)
-        raise "broken string or unsupported size: #{str.inspect} -> 4"
-      end
-      Wardite::F32(v)
+      from_bits(FloatBits.read(:f32, str))
     end
 
     # @rbs return: Integer
@@ -531,7 +560,7 @@ module Wardite
     # @rbs size: Integer|nil
     # @rbs return: String
     def packed(size: nil)
-      [self.value].pack("e")
+      FloatBits.write(:f32, raw_bits)
     end
 
     # @rbs to: Symbol
@@ -620,7 +649,7 @@ module Wardite
     end
 
     def inspect
-      "F32(#{@value})"
+      "F32(#{value})"
     end
 
     def ==(other)
@@ -631,16 +660,45 @@ module Wardite
   class F64
     include ValueHelper
 
-    attr_accessor :value #: Float
+    # A wrapper holds a Ruby-origin value or raw Wasm bits. Reassignment
+    # discards the raw representation so existing value= callers stay current.
+    # @rbs bits: Integer?
+    def initialize(bits: nil)
+      if bits && (bits < -9223372036854775807 - 1 || bits > 9223372036854775807)
+        raise RangeError, "f64 bits outside carrier range"
+      end
+      @bits = bits
+      @value = 0.0
+    end
+
+    # @rbs return: Float
+    def value
+      bits = @bits
+      bits.nil? ? @value : FloatBits.to_float(:f64, bits)
+    end
+
+    # @rbs value: Float
+    # @rbs return: Float
+    def value=(value)
+      @bits = nil
+      @value = value
+    end
+
+    # @rbs return: Integer
+    def raw_bits
+      @bits || FloatBits.from_float(:f64, @value)
+    end
+
+    # @rbs bits: Integer
+    # @rbs return: F64
+    def self.from_bits(bits)
+      new(bits: bits)
+    end
 
     # @rbs str: String
     # @rbs return: F64
     def self.from_bytes(str)
-      v = str.unpack("E")[0]
-      if !v.is_a?(Float)
-        raise "broken string or unsupported size: #{str.inspect} -> 8"
-      end
-      Wardite::F64(v)
+      from_bits(FloatBits.read(:f64, str))
     end
 
     # @rbs return: Integer
@@ -660,7 +718,7 @@ module Wardite
     # @rbs size: Integer|nil
     # @rbs return: String
     def packed(size: nil)
-      [self.value].pack("E")
+      FloatBits.write(:f64, raw_bits)
     end
 
     # @rbs to: Symbol
@@ -751,7 +809,7 @@ module Wardite
     end
 
     def inspect
-      "F64(#{@value})"
+      "F64(#{value})"
     end
 
     def ==(other)
