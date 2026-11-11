@@ -1,11 +1,12 @@
 # Efflorescenceのruby.wasm対応フェーズ1
 
-[ADR 0007](adr/0007-efflorescence-ruby-wasm-phase1.md) の実装記録。CRubyホスト上で `--new-engine` を指定し、Ruby 4.0.9のWASI Preview 1コマンドを実行する。
+[ADR 0007](adr/0007-efflorescence-ruby-wasm-phase1.md) の実装記録。CRuby版とSpinel版で `--new-engine` を指定し、Ruby 4.0.9のWASI Preview 1コマンドを実行する。
 
 - 共有WASIのimportはstart前に検証する。realtimeとmonotonicの時計、環境変数、`fdstat` のABIを修正した。ADRに列挙した10個の未実装APIは既知のシグネチャでリンクでき、呼び出すと `ENOSYS` を返す。
 - MIRレジスタ検証は固定幅のビット集合と逆ポストオーダーを使う。基本ブロックの合流では定義集合を交差させ、ループと例外辺を含めて収束まで再検証する。
 - CRubyの `memory.fill` は全範囲を検査してから、バイナリ文字列を最大64 KiBずつ書き込む。Spinelと、Store API経由で非バイナリ文字列が設定された場合はバイト単位で書く。
 - `path_readlink` はホストのファイルシステムエラーをWASI errnoに変換する。`path_filestat_get` はlookup flagsを使い、第5引数の結果ポインタに `fd_filestat_get` と共通の形式で出力する。
+- Spinel版も共有WASI実装を使う。POSIXのディスクリプタフラグとerrnoはFFIで取得・変換し、WASIの結果を既存の線形メモリへ書き戻す。WASIを無効にするには `--no-wasi` を指定する。
 
 ## ビルドと実行
 
@@ -33,7 +34,15 @@ wasm-tools validate "$ruby_wasm"
 bundle exec ruby scripts/verify_ruby_wasm.rb "$ruby_wasm"
 ```
 
-照合に使った参照エンジンはWasmtime 49.0.0（`17830bd3c`）。スクリプトは一時ディレクトリに `main.rb` と `answer.rb` を作り、両方のCLIを独立プロセスとして実行する。
+照合に使った参照エンジンはWasmtime 49.0.0（`17830bd3c`）。スクリプトは一時ディレクトリに `main.rb` と `answer.rb` を作り、各CLIを独立プロセスとして実行する。`bundle exec` で起動した場合はBundler適用前の環境を子プロセスへ渡す。Spinel版も照合に含めるには `WARDITE_SPINEL_BIN` を指定する。
+
+```sh
+make spinel
+build/wardite --new-engine -- "$ruby_wasm" --disable-gems -e 'puts RUBY_VERSION; puts 6*7'
+WARDITE_SPINEL_BIN="$PWD/build/wardite" bundle exec ruby scripts/verify_ruby_wasm.rb "$ruby_wasm"
+```
+
+Wasmtime、CRuby版Efflorescence、Spinel版Efflorescenceの3つで以下の結果が一致した。
 
 | ケース | 標準出力 | 終了コード |
 |---|---|---:|
@@ -50,11 +59,11 @@ bundle exec rake parity
 make spinel-test RUBY="bundle exec ruby"
 ```
 
-CRubyのsuiteは256件、26,511 assertionsで失敗0件。Spinel専用74件はnative suiteで別に実行し、2,538 assertions、失敗・省略0件。型チェックも通過した。`rake parity` はwasm-tools 1.218.0とWasmtime 49.0.0を使い、CRubyとSpinelで各436 fixtureを検証した。Spinelのローカル版は `6f1a2c259`（`-O2`、既定のoverflowチェック）。
+CRubyのsuiteは258件、26,511 assertionsで失敗0件。Spinel専用76件はnative suiteで別に実行し、2,547 assertions、失敗・省略0件。型チェックも通過した。`rake parity` はwasm-tools 1.218.0とWasmtime 49.0.0を使い、CRubyとSpinelで各436 fixtureを検証した。Spinelのローカル版は `6f1a2c259`（`-O2`、既定のoverflowチェック）。
 
 ## キャッシュなしの起動時間
 
-macOS 27.0.1 arm64、CRuby 4.0.9、YJIT有効で、同じWasmの `-e` を各構成2回、新規プロセスで実行した。比較元 `e9b922e` にはWASI起動時ABIとレジスタ検証の変更が入っている。この `-e` はファイル用のWASI APIを使わない。
+macOS 27.0.1 arm64、CRuby 4.0.9、YJIT有効で、同じWasmの `-e` を各構成2回、新規プロセスで実行した。比較元 `e9b922e` にはWASI起動時ABIとレジスタ検証の変更が入っている。計測対象の `e1a39ea` はSpinelホスト追加前のCRuby実装。この `-e` はファイル用のWASI APIを使わない。
 
 ```sh
 baseline_dir=$(mktemp -d)
