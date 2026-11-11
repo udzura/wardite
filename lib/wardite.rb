@@ -48,8 +48,9 @@ module Wardite
     # @rbs engine: Symbol
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
+    # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
-    def initialize(import_object, engine: :stack, disabled_optimizations: [], mir_profile: false, &blk)
+    def initialize(import_object, engine: :stack, disabled_optimizations: [], mir_profile: false, mir_cache: nil, &blk)
       @wasi = nil
 
       blk.call(self)
@@ -78,7 +79,7 @@ module Wardite
 
       @runtime = case engine
       when :stack then Runtime.new(self)
-      when :efflorescence then Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile)
+      when :efflorescence then Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile, mir_cache: mir_cache)
       else raise LoadError, "unknown engine: #{engine}"
       end
     end

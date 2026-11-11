@@ -1,0 +1,9 @@
+module Digest
+  class SHA256
+    def self.digest: (String) -> String
+  end
+end
+
+class Tempfile
+  def self.create: [T] (Array[String], String, binmode: bool) { (File) -> T } -> T
+end

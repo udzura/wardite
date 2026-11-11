@@ -25,6 +25,8 @@ module Wardite
 
       attr_reader mir_profile: bool
 
+      attr_reader mir_cache: String?
+
       attr_reader profile_file_path: String?
 
       # @rbs args: Array[String]

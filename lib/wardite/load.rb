@@ -271,13 +271,28 @@ module Wardite
     # @rbs engine: Symbol
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
+    # @rbs mir_cache: String?
     # @rbs return: Instance
-    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :stack, disabled_optimizations: [], mir_profile: false)
+    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :stack, disabled_optimizations: [], mir_profile: false, mir_cache: nil)
       start = Time.now.to_f #: Float
       @buf = buf
+      cache = nil #: Efflorescence::MIRCache?
+      if mir_cache
+        raise ArgumentError, "MIR cache requires Efflorescence on CRuby" unless engine == :efflorescence && RUBY_ENGINE == "ruby"
+        if RUBY_ENGINE == "ruby" && !mir_profile
+          require "wardite/efflorescence/mir_cache"
+          # Hash the same bytes that the decoder will see, even if the file changes.
+          bytes = buf.read || "".b
+          configuration = Efflorescence::Configuration.new(disabled_optimizations)
+          disabled_optimizations = configuration.disabled
+          cache = Efflorescence::MIRCache.new(mir_cache, bytes, configuration)
+          @buf = StringIO.new(bytes)
+        end
+      end
 
       version = preamble
       sections_ = sections
+      @buf = buf if cache
 
       wasi_env = nil
       if enable_wasi && sections_.any? { |section| section.is_a?(ImportSection) &&
@@ -295,7 +310,8 @@ module Wardite
         import_object[:wasi_snapshot_preview1] = wasi_env
       end
 
-      return Instance.new(import_object, engine: engine, disabled_optimizations: disabled_optimizations, mir_profile: mir_profile) do |i|
+      return Instance.new(import_object, engine: engine, disabled_optimizations: disabled_optimizations,
+        mir_profile: mir_profile, mir_cache: cache) do |i|
         i.version = version
         i.sections = sections_
         i.wasi = wasi_env

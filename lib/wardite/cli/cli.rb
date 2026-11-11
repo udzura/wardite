@@ -16,6 +16,7 @@ module Wardite
       attr_reader :disabled_optimizations #: Array[Symbol]
       attr_reader :mir_dump #: bool
       attr_reader :mir_profile #: bool
+      attr_reader :mir_cache #: String?
 
       attr_reader :profile_file_path #: String?
 
@@ -29,6 +30,7 @@ module Wardite
         @disabled_optimizations = []
         @mir_dump = false
         @mir_profile = false
+        @mir_cache = nil
         @memsize = 1
         options = OptionParser.new do |opts|
           opts.version = Wardite::VERSION
@@ -52,6 +54,7 @@ module Wardite
           }
           opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }
           opts.on("--mir-profile", "Instrument MIR execution (do not use for timing)") { @mir_profile = true }
+          opts.on("--mir-cache DIR", "Reuse MIR2 in a local directory (CRuby only)") { |dir| @mir_cache = dir }
           opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
             @yjit = true
           }
@@ -61,8 +64,11 @@ module Wardite
           opts.on("FILE.wasm") { }
         end
         options.parse!(args)
-        if !new_engine && (!disabled_optimizations.empty? || mir_dump || mir_profile)
+        if !new_engine && (!disabled_optimizations.empty? || mir_dump || mir_profile || mir_cache)
           raise "MIR options require --new-engine"
+        end
+        if RUBY_ENGINE != "ruby" && mir_cache
+          raise "--mir-cache requires CRuby"
         end
         @file = args[0] || raise("require file argument")
         @args = (args[1..-1] || [])
@@ -96,7 +102,8 @@ module Wardite
       def new_instance
         ins = File.open(file, "rb") do |f|
           Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi, engine: new_engine ? :efflorescence : :stack,
-            disabled_optimizations: disabled_optimizations, mir_profile: mir_profile)
+            disabled_optimizations: disabled_optimizations, mir_profile: mir_profile,
+            mir_cache: mir_dump ? nil : mir_cache)
         end
         if memsize > 1
           ins.store.memories[0].grow(memsize)

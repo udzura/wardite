@@ -7,16 +7,27 @@ module Wardite
 
       attr_reader ir: Wardite::Efflorescence::IR
 
-      attr_reader semantic_ir: Wardite::Efflorescence::IR
-
-      attr_reader optimized_ir: Wardite::Efflorescence::IR
-
       attr_reader metrics: Wardite::Efflorescence::Metrics
+
+      attr_reader mir_cache_hit: bool
+
+      @optimized_ir: Wardite::Efflorescence::IR?
+
+      @semantic_ir: Wardite::Efflorescence::IR?
 
       # @rbs instance: Wardite::Instance
       # @rbs disabled_optimizations: Array[Symbol]
       # @rbs profile: bool
-      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool) -> untyped
+      # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
+      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?) -> untyped
+
+      # A caller explicitly inspecting a cache hit can still request the
+      # intermediate forms. Execution continues to use the restored MIR2.
+      # @rbs return: Wardite::Efflorescence::IR
+      def semantic_ir: () -> Wardite::Efflorescence::IR
+
+      # @rbs return: Wardite::Efflorescence::IR
+      def optimized_ir: () -> Wardite::Efflorescence::IR
 
       # @rbs name: String|Symbol
       # @rbs return: bool
@@ -48,6 +59,15 @@ module Wardite
       def dump_mir: () -> String
 
       private
+
+      # @rbs translator: Wardite::Efflorescence::Translator
+      # @rbs linked: Wardite::Efflorescence::IR
+      # @rbs profile: bool
+      # @rbs return: Wardite::Efflorescence::IR
+      def build_mir: (Wardite::Efflorescence::Translator translator, Wardite::Efflorescence::IR linked, bool profile) -> Wardite::Efflorescence::IR
+
+      # @rbs return: void
+      def restore_inspection_ir: () -> void
 
       # @rbs name: String|Symbol
       # @rbs return: Wardite::Efflorescence::FunctionEntry

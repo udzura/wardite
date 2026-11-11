@@ -6,14 +6,17 @@ module Wardite
     class VM
       attr_reader :instance #: Wardite::Instance
       attr_reader :ir #: Wardite::Efflorescence::IR
-      attr_reader :semantic_ir #: Wardite::Efflorescence::IR
-      attr_reader :optimized_ir #: Wardite::Efflorescence::IR
       attr_reader :metrics #: Wardite::Efflorescence::Metrics
+      attr_reader :mir_cache_hit #: bool
+
+      # @rbs @semantic_ir: Wardite::Efflorescence::IR?
+      # @rbs @optimized_ir: Wardite::Efflorescence::IR?
 
       # @rbs instance: Wardite::Instance
       # @rbs disabled_optimizations: Array[Symbol]
       # @rbs profile: bool
-      def initialize(instance, disabled_optimizations: [], profile: false)
+      # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
+      def initialize(instance, disabled_optimizations: [], profile: false, mir_cache: nil)
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
         @function_indices = {} #: Hash[Integer, Integer]
@@ -24,15 +27,22 @@ module Wardite
           @indirect_functions = instance.store.funcs.dup
           @indirect_functions.each_with_index { |function, index| @function_indices[function.object_id] = index }
         end
-        configuration = Configuration.new(disabled_optimizations)
-        @reuse_frames = configuration.enabled?(:frames)
+        @configuration = Configuration.new(disabled_optimizations)
+        @reuse_frames = @configuration.enabled?(:frames)
         @profiling = profile
         @metrics = Metrics.new
-        @semantic_ir = Translator.new(instance).translate
-        @optimized_ir = Optimizer.new(configuration).optimize(@semantic_ir)
-        @optimized_ir.functions.each { |function| RegisterValidation.new.validate(function, @optimized_ir, tags: instance.tags) }
-        @ir = profile ? Instrumentation.new.instrument(@optimized_ir) : @optimized_ir
-        Lowerer.new.compile(@ir)
+        @semantic_ir = @optimized_ir = nil
+        translator = Translator.new(instance)
+        linked = translator.link
+        cached = nil #: Wardite::Efflorescence::IR?
+        if RUBY_ENGINE == "ruby" && mir_cache && !profile
+          cached = mir_cache.read(instance, linked)
+        end
+        @mir_cache_hit = !cached.nil?
+        @ir = cached || build_mir(translator, linked, profile)
+        if RUBY_ENGINE == "ruby" && mir_cache && !profile && !@mir_cache_hit
+          mir_cache.write(instance, @ir)
+        end
         start = instance.start_section
         if start
           entry = @ir.entry_at(start.func_index)
@@ -41,6 +51,20 @@ module Wardite
           end
           execute(entry, [])
         end
+      end
+
+      # A caller explicitly inspecting a cache hit can still request the
+      # intermediate forms. Execution continues to use the restored MIR2.
+      # @rbs return: Wardite::Efflorescence::IR
+      def semantic_ir
+        restore_inspection_ir unless @semantic_ir
+        @semantic_ir || raise(Wardite::EvalError, "missing semantic MIR")
+      end
+
+      # @rbs return: Wardite::Efflorescence::IR
+      def optimized_ir
+        restore_inspection_ir unless @optimized_ir
+        @optimized_ir || raise(Wardite::EvalError, "missing optimized MIR")
       end
 
       # @rbs name: String|Symbol
@@ -89,11 +113,32 @@ module Wardite
       # @rbs return: String
       def dump_mir
         inspection = Inspection.new
-        "Semantic MIR (#{inspection.statistics(@semantic_ir)})\n#{inspection.disassemble(@semantic_ir)}\n" \
-          "Optimized MIR (#{inspection.statistics(@optimized_ir)})\n#{inspection.disassemble(@optimized_ir)}"
+        "Semantic MIR (#{inspection.statistics(semantic_ir)})\n#{inspection.disassemble(semantic_ir)}\n" \
+          "Optimized MIR (#{inspection.statistics(optimized_ir)})\n#{inspection.disassemble(optimized_ir)}"
       end
 
       private
+
+      # @rbs translator: Wardite::Efflorescence::Translator
+      # @rbs linked: Wardite::Efflorescence::IR
+      # @rbs profile: bool
+      # @rbs return: Wardite::Efflorescence::IR
+      def build_mir(translator, linked, profile)
+        semantic = translator.translate(linked)
+        optimized = Optimizer.new(@configuration).optimize(semantic)
+        optimized.functions.each { |function| RegisterValidation.new.validate(function, optimized, tags: @instance.tags) }
+        ir = profile ? Instrumentation.new.instrument(optimized) : optimized
+        Lowerer.new.compile(ir)
+        @semantic_ir = semantic
+        @optimized_ir = optimized
+        ir
+      end
+
+      # @rbs return: void
+      def restore_inspection_ir
+        linked = IR.new([], entries: @ir.entries, hosts: @ir.hosts)
+        build_mir(Translator.new(@instance), linked, false)
+      end
 
       # @rbs name: String|Symbol
       # @rbs return: Wardite::Efflorescence::FunctionEntry

@@ -30,8 +30,9 @@ module Wardite
     # @rbs engine: Symbol
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
+    # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
-    def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?mir_profile: bool) { (Instance) -> void } -> untyped
+    def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?mir_profile: bool, ?mir_cache: Efflorescence::MIRCache?) { (Instance) -> void } -> untyped
 
     # Run before allocating Store/Exports or executing a start function.
     # @rbs engine: Symbol
