@@ -1075,13 +1075,26 @@ module Wardite
               raise GenericError, "invalid memory index: #{segment.mem_index}"
             end
 
+            data = memory.data
+            payload = segment.data
             data_start = segment.offset
-            data_end = segment.offset + segment.data.bytesize
-            if data_start < 0 || data_end > memory.data.bytesize
+            length = payload.bytesize
+            data_end = data_start + length
+            if data_start < 0 || data_end > data.bytesize
               raise GenericError, "data too large for memory"
             end
 
-            memory.data[data_start...data_end] = segment.data
+            if RUBY_ENGINE == "spinel"
+              # A String splice in Spinel rebuilds the entire memory buffer.
+              index = 0
+              while index < length
+                byte = payload.getbyte(index) || raise(GenericError, "missing data segment byte")
+                data.setbyte(data_start + index, byte)
+                index += 1
+              end
+            else
+              data[data_start...data_end] = payload
+            end
           end
         end
       end
