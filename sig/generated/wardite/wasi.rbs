@@ -214,6 +214,19 @@ module Wardite
 
     private
 
+    # @rbs fd: Integer
+    # @rbs path: String
+    # @rbs return: String | Integer
+    def directory_path: (Integer fd, String path) -> (String | Integer)
+
+    # @rbs error: SystemCallError
+    # @rbs return: Integer
+    def filesystem_errno: (SystemCallError error) -> Integer
+
+    # @rbs stat: File::Stat
+    # @rbs return: String
+    def filestat_bytes: (File::Stat stat) -> String
+
     # @rbs return: Array[String]
     def environment_entries: () -> Array[String]
 

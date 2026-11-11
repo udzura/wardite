@@ -240,6 +240,59 @@ class WarditeE2EWasiTest < Test::Unit::TestCase
     end
   end
 
+  test "WASI file metadata and readlink use the preopened directory and checked output pointers" do
+    with_wasm(<<~WAT) do |file|
+      (module
+        (import "wasi_snapshot_preview1" "path_filestat_get" (func $stat (param i32 i32 i32 i32 i32) (result i32)))
+        (import "wasi_snapshot_preview1" "fd_filestat_get" (func $fstat (param i32 i32) (result i32)))
+        (import "wasi_snapshot_preview1" "path_readlink" (func $link (param i32 i32 i32 i32 i32 i32) (result i32)))
+        (export "stat" (func $stat))
+        (export "fstat" (func $fstat))
+        (export "readlink" (func $link))
+        (memory 1))
+    WAT
+      instance = Wardite.new(path: file, engine: :efflorescence)
+      vm = instance.runtime
+      data = instance.store.memories.fetch(0).data
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, "target")
+        File.binwrite(path, "content")
+        File.utime(Time.at(1_700_000_000), Time.at(1_700_000_001, 123_456_789, :nanosecond), path)
+        File.symlink("target", File.join(dir, "alias"))
+        instance.wasi.set_preopened_dir("/app", dir)
+        data[0, 256] = "x" * 256
+        data[8, 21] = "alias target missing."
+
+        assert_equal 0, vm.call_unboxed(:stat, [3, 0, 8, 5, 100])
+        assert_equal Wardite::Wasi::FILETYPE_SYMBOLIC_LINK, data.getbyte(116)
+        assert_equal 0, vm.call_unboxed(:stat, [3, 1, 8, 5, 100])
+        assert_equal Wardite::Wasi::FILETYPE_REGULAR_FILE, data.getbyte(116)
+        assert_equal "x" * 8, data.byteslice(0, 8)
+        assert_equal ["x", "x"], [data[99], data[164]]
+        assert_equal 7, data.unpack1("Q<", offset: 132)
+        assert_equal 1_700_000_001_123_456_789, data.unpack1("Q<", offset: 148)
+
+        File.open(path, "rb") do |host_file|
+          fd = instance.wasi.set_fd(host_file)
+          assert_equal 0, vm.call_unboxed(:fstat, [fd, 180])
+          assert_equal data.byteslice(100, 64), data.byteslice(180, 64)
+          assert_equal ["x", "x"], [data[179], data[244]]
+        end
+
+        assert_equal 0, vm.call_unboxed(:readlink, [3, 8, 5, 40, 16, 60])
+        assert_equal "targetx", data.byteslice(40, 7)
+        assert_equal 6, data.unpack1("V", offset: 60)
+        before = data.dup
+        assert_equal Wardite::Wasi::EINVAL, vm.call_unboxed(:readlink, [3, 14, 6, 40, 16, 60])
+        assert_equal Wardite::Wasi::EINVAL, vm.call_unboxed(:readlink, [3, 28, 1, 40, 16, 60])
+        assert_equal Wardite::Wasi::ENOENT, vm.call_unboxed(:readlink, [3, 21, 7, 40, 16, 60])
+        assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:readlink, [3, 8, 5, 40, 16, 65533])
+        assert_equal Wardite::Wasi::EFAULT, vm.call_unboxed(:stat, [3, 1, 8, 5, 65535])
+        assert_equal before, data
+      end
+    end
+  end
+
   test "Efflorescence uses the same WASI state for existing boxed calls" do
     with_wasm(<<~WAT) do |file|
       (module

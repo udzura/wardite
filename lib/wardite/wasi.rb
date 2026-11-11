@@ -335,18 +335,21 @@ module Wardite
       flags = args[1].value.to_i
       path = args[2].value.to_i
       path_len = args[3].value.to_i
-      target = get_path_at(fd, store.memories[0].data[path...(path+path_len)].to_s)
+      result = args[4].value.to_i
+      return Wasi::EINVAL unless (flags & ~Wasi::LOOKUP_SYMLINK_FOLLOW) == 0
 
-      stat = File.stat(target)
-      memory = store.memories[0]
-      binformat = [
-        stat.dev, stat.ino, Wasi.to_ftype(stat.ftype), stat.nlink,
-        stat.size, stat.atime.to_i, stat.mtime.to_i, stat.ctime.to_i
-      ].pack("Q8")
-      memory.data[flags...(flags+binformat.size)] = binformat
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, path, path_len) && guest_range?(data, result, 64)
+      target = directory_path(fd, data.byteslice(path, path_len).to_s)
+      return target if target.is_a?(Integer)
+
+      stat = (flags & Wasi::LOOKUP_SYMLINK_FOLLOW) != 0 ? File.stat(target) : File.lstat(target)
+      data[result, 64] = filestat_bytes(stat)
       0
-    rescue Errno::ENOENT
-      return Wasi::ENOENT
+    rescue SystemCallError => error
+      filesystem_errno(error)
+    rescue IOError
+      Wasi::EBADF
     end
 
     # @rbs store: Store
@@ -428,20 +431,23 @@ module Wardite
       buf_len = args[4].value.to_i
       result_buf = args[5].value.to_i
 
-      if buf_len <= 0 || path_len <= 0
-        return Wasi::EINVAL
-      end
-      target = get_path_at(fd, store.memories[0].data[path...(path+path_len)].to_s)
+      return Wasi::EINVAL if buf_len <= 0 || path_len <= 0
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, path, path_len) &&
+        guest_range?(data, buf, buf_len) && guest_range?(data, result_buf, 4)
+      target = directory_path(fd, data.byteslice(path, path_len).to_s)
+      return target if target.is_a?(Integer)
 
-      link_target = File.readlink(target)
-      if link_target.size > buf_len
-        return Wasi::ENAMETOOLONG
-      end
+      link_target = File.readlink(target).b
+      return Wasi::ENAMETOOLONG if link_target.bytesize > buf_len
 
-      memory = store.memories[0]
-      memory.data[buf...(buf+link_target.size)] = link_target
-      memory.data[result_buf...(result_buf+4)] = [link_target.size].pack("I!")
+      data[buf, link_target.bytesize] = link_target
+      data[result_buf, 4] = [link_target.bytesize].pack("V")
       0
+    rescue SystemCallError => error
+      filesystem_errno(error)
+    rescue IOError
+      Wasi::EBADF
     end
 
     # @rbs store: Store
@@ -670,21 +676,18 @@ module Wardite
     # @rbs args: Array[wasmValue]
     # @rbs return: Object
     def fd_filestat_get(store, args)
-      fd = args[0].value.to_i
-      filestat_offset = args[1].value.to_i
-      if fd >= fd_count
-        return Wasi::EBADF
-      end
-      file = @fd_table[fd]
-      if !file || file.is_a?(Wasi::PreopenedDir)
-        return Wasi::EBADF
-      end
+      file = @fd_table[args[0].value.to_i]
+      return Wasi::EBADF unless file && !file.is_a?(Wasi::PreopenedDir)
+      offset = args[1].value.to_i
+      data = store.memories[0]&.data
+      return Wasi::EFAULT unless data && guest_range?(data, offset, 64)
 
-      stat = file.stat #: File::Stat
-      memory = store.memories[0]
-      binformat = [stat.dev, stat.ino, Wasi.to_ftype(stat.ftype), stat.nlink, stat.size, stat.atime.to_i, stat.mtime.to_i, stat.ctime.to_i].pack("Q8")
-      memory.data[filestat_offset...(filestat_offset+binformat.size)] = binformat
+      data[offset, 64] = filestat_bytes(file.stat)
       0
+    rescue SystemCallError => error
+      filesystem_errno(error)
+    rescue IOError
+      Wasi::EBADF
     end
 
     # @rbs store: Store
@@ -796,6 +799,41 @@ module Wardite
     end
 
     private
+
+    # @rbs fd: Integer
+    # @rbs path: String
+    # @rbs return: String | Integer
+    def directory_path(fd, path)
+      file = @fd_table[fd]
+      return Wasi::EBADF unless file
+      return Wasi::ENOTDIR unless file.is_a?(Wasi::PreopenedDir) || (file.is_a?(File) && file.stat.directory?)
+      return Wasi::EINVAL if path.include?("\0")
+
+      get_path_at(fd, path)
+    end
+
+    # @rbs error: SystemCallError
+    # @rbs return: Integer
+    def filesystem_errno(error)
+      case error
+      when Errno::EACCES then Wasi::EACCES
+      when Errno::EBADF then Wasi::EBADF
+      when Errno::EINVAL then Wasi::EINVAL
+      when Errno::ELOOP then Wasi::ELOOP
+      when Errno::ENAMETOOLONG then Wasi::ENAMETOOLONG
+      when Errno::ENOENT then Wasi::ENOENT
+      when Errno::ENOTDIR then Wasi::ENOTDIR
+      when Errno::EPERM then Wasi::EPERM
+      else Wasi::EIO
+      end
+    end
+
+    # @rbs stat: File::Stat
+    # @rbs return: String
+    def filestat_bytes(stat)
+      timestamps = [stat.atime, stat.mtime, stat.ctime].map { |time| time.to_i * 1_000_000_000 + time.nsec }
+      [stat.dev, stat.ino, Wasi.to_ftype(stat.ftype), stat.nlink, stat.size, *timestamps].pack("Q<2Cx7Q<5")
+    end
 
     # @rbs return: Array[String]
     def environment_entries
