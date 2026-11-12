@@ -33,9 +33,12 @@ Dir.mktmpdir("wardite-ruby-wasm") do |workdir|
       engines = [["Efflorescence", wardite, "cruby-cache"]]
       engines << ["Spinel Efflorescence", native, "spinel-cache"] if native
       engines.each do |name, engine, cache|
-        cached = [*engine, "--mir-cache", File.join(workdir, cache), *wardite_options, "--", *guest_args]
-        commands << ["#{name} (cache miss)", cached, "MIR2 cache miss:"] if index.zero?
-        commands << ["#{name} (cache hit)", cached, "MIR2 cache hit:"]
+        cached = [*engine, "--mir-cache", File.join(workdir, cache)]
+        invocation = [*wardite_options, "--", *guest_args]
+        commands << ["#{name} (cache miss)", [*cached, *invocation], "MIR2 cache miss:"] if index.zero?
+        %w[checksum sha256].each do |mode|
+          commands << ["#{name} (#{mode} cache hit)", [*cached, "--mir-cache-verify", mode, *invocation], "MIR2 cache hit:"]
+        end
       end
     end
     if ENV["WARDITE_VERIFY_SNAPSHOT"] == "1"

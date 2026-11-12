@@ -8,6 +8,8 @@ require_relative "support/efflorescence_helper"
 
 class EfflorescenceMIRCacheTest < Test::Unit::TestCase
   include EfflorescenceHelper
+  CACHE_HEADER_SIZE = 48
+  PAYLOAD_OFFSET = 120
 
   STATE_WAT = <<~WAT
     (module
@@ -207,8 +209,8 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     baseline = load_bytes(wasm)
     file = cache_files.fetch(0)
     original = File.binread(file)
-    header_size = 48
-    payload_offset = header_size + 32
+    header_size = CACHE_HEADER_SIZE
+    payload_offset = PAYLOAD_OFFSET
     layout_offset = payload_offset + 4
     function_count = layout_offset + original.unpack1("l<", offset: payload_offset)
     type_vector = function_count + 8 # function count and flags
@@ -222,9 +224,12 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
 
     mutations = [
       original.byteslice(0...-1),
+      patched(original, 0, "C", 0), # magic
       patched(original, 8, "l<", 999), # format version
       patched(original, 12, "l<", 999), # code version
-      patched(original, payload_offset, "C", original.getbyte(payload_offset) ^ 1), # checksum
+      patched(original, 16, "C", original.getbyte(16) ^ 1), # key
+      patched(original, header_size, "Q<", 1), # payload length
+      patched(original, payload_offset, "C", original.getbyte(payload_offset) ^ 1), # sampled byte
     ]
     [
       [layout_offset, "C", original.getbyte(layout_offset) ^ 1], # module layout
@@ -236,24 +241,81 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
       [branch_offset + 16, "q<", 0x7ffffffc], # out-of-range target
     ].each do |offset, format, value|
       corrupt = patched(original, offset, format, value)
-      corrupt[header_size, 32] = Digest::SHA256.digest(corrupt.byteslice(payload_offset..))
+      payload = corrupt.byteslice(payload_offset..)
+      corrupt[header_size + 8, 32] = Digest::SHA256.digest([payload.bytesize].pack("Q<") + payload)
+      corrupt[header_size + 40, 32] = Digest::SHA256.digest(payload)
       mutations << corrupt
     end
 
-    mutations.each do |corrupt|
+    %i[checksum sha256].product(mutations).each do |mode, corrupt|
       File.binwrite(file, corrupt)
       steps = []
       trace = TracePoint.new(:call) do |event|
         steps << :decode if event.self.equal?(Wardite::BinaryLoader) && event.method_id == :code_body
         steps << :store if event.defined_class == Wardite::Store && event.method_id == :initialize
       end
-      rebuilt = trace.enable { load_bytes(wasm) }
+      rebuilt = trace.enable { load_bytes(wasm, mir_cache_verify: mode) }
       assert_equal [:decode, :store], steps
       assert_false rebuilt.mir_cache_hit
       assert_equal 42, rebuilt.call_unboxed(:value, [42])
       assert_equal original, File.binread(file)
     end
     assert_true load_bytes(wasm).mir_cache_hit
+  end
+
+  test "both modes share a file and read only the selected digest" do
+    wasm = File.binread(add_wasm)
+    baseline = load_bytes(wasm, cache: nil).call_unboxed(:add, [20, 22])
+    miss = load_bytes(wasm, mir_cache_verify: :sha256)
+    assert_false miss.mir_cache_hit
+    assert_equal baseline, miss.call_unboxed(:add, [20, 22])
+    file = cache_files.fetch(0)
+    original = File.binread(file)
+    {checksum: CACHE_HEADER_SIZE + 8, sha256: CACHE_HEADER_SIZE + 40}.each do |mode, offset|
+      other = mode == :checksum ? :sha256 : :checksum
+      File.binwrite(file, patched(original, offset, "C", original.getbyte(offset) ^ 1))
+      hit = load_bytes(wasm, mir_cache_verify: other)
+      assert_true hit.mir_cache_hit
+      assert_equal baseline, hit.call_unboxed(:add, [20, 22])
+      rebuilt = load_bytes(wasm, mir_cache_verify: mode)
+      assert_false rebuilt.mir_cache_hit
+      assert_equal baseline, rebuilt.call_unboxed(:add, [20, 22])
+      assert_equal original, File.binread(file)
+    end
+    assert_equal [file], cache_files
+    assert_raise(Wardite::ArgumentError) { load_bytes(wasm, mir_cache_verify: :unknown) }
+  end
+
+  test "version 1 files are left aside and rebuilt in version 2" do
+    wasm = File.binread(add_wasm)
+    load_bytes(wasm)
+    current = cache_files.fetch(0)
+    payload = File.binread(current).byteslice(PAYLOAD_OFFSET..)
+    version = [1, 1].pack("L<2")
+    key = Digest::SHA256.digest(version + Digest::SHA256.digest(wasm))
+    legacy = File.join(@cache, "#{key.unpack1("H*")}.mir2")
+    File.binwrite(legacy, "WARDMIR\0".b + version + key + Digest::SHA256.digest(payload) + payload)
+    File.unlink(current)
+
+    assert_false load_bytes(wasm, mir_cache_verify: :sha256).mir_cache_hit
+    assert_true load_bytes(wasm).mir_cache_hit
+    assert_equal [current, legacy].sort, cache_files.sort
+  end
+
+  test "sample checksum hashes length, both edges, and aligned blocks in order" do
+    require "wardite/efflorescence/mir_cache"
+    cache = Wardite::Efflorescence::MIRCache
+    small = "s".b * (128 * 1024)
+    length = [small.bytesize].pack("Q<")
+    assert_equal Digest::SHA256.digest(length + small), cache.sample_checksum(small, length)
+
+    mib = 1024 * 1024
+    edge = 64 * 1024
+    block = 4 * 1024
+    payload = "a" * edge + "x" * (mib - edge) + "b" * block + "y" * (mib - block) + "c" * 17
+    length = [payload.bytesize].pack("Q<")
+    expected = length + "a" * edge + "b" * block + "c" * 17 + "y" * (edge - 17) + "c" * 17
+    assert_equal Digest::SHA256.digest(expected), cache.sample_checksum(payload, length)
   end
 
   test "cache I/O failure leaves a successful build executable" do
@@ -278,6 +340,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
   test "CLI reuses a cache across processes and bypasses it for dump and profile" do
     assert_cli("MIR2 cache miss")
     assert_cli("MIR2 cache hit")
+    assert_cli("MIR2 cache hit", "--mir-cache-verify", "sha256")
     assert_cli("Semantic MIR", "--mir-dump", bypass: true)
     assert_cli("dispatches=", "--mir-profile", bypass: true)
     assert_cli("MIR2 cache hit")

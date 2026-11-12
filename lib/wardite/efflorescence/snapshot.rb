@@ -115,7 +115,7 @@ module Wardite
           used.each { |page| payload << memory.read_bytes(page * PAGE_SIZE, PAGE_SIZE) }
         end
         FileUtils.mkdir_p(@directory)
-        MIRCache.publish(@directory, @path, @header, payload)
+        MIRCache.publish(@directory, @path, @header + Digest::SHA256.digest(payload), payload)
         trace("saved", started)
       rescue SystemCallError, IOError
         trace("skipped (write failed)")
@@ -129,7 +129,12 @@ module Wardite
         started = Time.now.to_f
         instance = vm.instance
         store = instance.store
-        reader = MIRCache::Reader.new(MIRCache.read_payload(@path, @header))
+        header_size = @header.bytesize
+        prefix_size = header_size + MIRCache::DIGEST_SIZE
+        contents = MIRCache.read_contents(@path, @header, prefix_size)
+        payload = contents.byteslice(prefix_size..) || raise(MIRCache::Invalid)
+        raise MIRCache::Invalid unless contents.byteslice(header_size, MIRCache::DIGEST_SIZE) == Digest::SHA256.digest(payload)
+        reader = MIRCache::Reader.new(payload)
         raise MIRCache::Invalid unless reader.integer == @wasi.fd_count && store.memories.size <= 1
         globals = reader.vector("q<", 8)
         raise MIRCache::Invalid unless globals.size == store.globals.size

@@ -12,9 +12,14 @@ module Wardite
     # optimizer/validator fixes, and changes to the metadata used by the VM.
     class MIRCache
       MAGIC = "WARDMIR\0".b
-      FORMAT_VERSION = 1
+      FORMAT_VERSION = 2
       CODE_VERSION = 1
       DIGEST_SIZE = 32
+      LENGTH_SIZE = 8
+      INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
+      SAMPLE_EDGE = 64 * 1024
+      SAMPLE_STEP = 1024 * 1024
+      SAMPLE_BLOCK = 4 * 1024
       MAX_BYTES = 256 * 1024 * 1024
       TYPES = %i[i32 i64 f32 f64 exnref].freeze
       TYPE_IDS = TYPES.each_with_index.to_h.freeze
@@ -473,7 +478,8 @@ module Wardite
       # @rbs directory: String
       # @rbs wasm: String
       # @rbs configuration: Configuration
-      def initialize(directory, wasm, configuration)
+      # @rbs verify: Symbol
+      def initialize(directory, wasm, configuration, verify: :checksum)
         versions = [FORMAT_VERSION, CODE_VERSION].pack("L<2")
         disabled = configuration.disabled.uniq.sort.join(",")
         key_data = versions + Digest::SHA256.digest(wasm) + disabled
@@ -483,6 +489,7 @@ module Wardite
         @header = MAGIC + versions + key
         @directory = File.expand_path(directory)
         @path = File.join(@directory, "#{key.unpack1("H*")}.mir2")
+        @verify = verify
       end
 
       # Restore against module declarations so a miss can decode and check the
@@ -490,7 +497,7 @@ module Wardite
       # @rbs instance: Wardite::Instance
       # @rbs return: Array[Function]?
       def read(instance)
-        reader = Reader.new(MIRCache.read_payload(@path, @header))
+        reader = Reader.new(read_verified_payload)
         entries = module_entries(instance)
         raise Invalid unless reader.bytes(reader.count(1)) == encode_layout(instance, entries)
         functions = Decoder.new(reader, instance, entries).decode
@@ -513,9 +520,12 @@ module Wardite
         writer.integers(ir.functions.size)
         ir.functions.each do |function|
           writer.function(function)
-          return if @header.bytesize + DIGEST_SIZE + writer.bytes.bytesize > MAX_BYTES
+          return if @header.bytesize + INTEGRITY_SIZE + writer.bytes.bytesize > MAX_BYTES
         end
-        MIRCache.publish(@directory, @path, @header, writer.bytes)
+        payload = writer.bytes
+        length = [payload.bytesize].pack("Q<")
+        prefix = @header + length + MIRCache.sample_checksum(payload, length) + Digest::SHA256.digest(payload)
+        MIRCache.publish(@directory, @path, prefix, payload)
       rescue SystemCallError, IOError
         # Cache I/O is optional once the normal build has succeeded.
         nil
@@ -544,12 +554,50 @@ module Wardite
         raise Invalid
       end
 
-      # Read a header, a SHA-256 of the payload, and the payload. Opening
-      # without blocking keeps a FIFO from stalling the start of a run.
+      # @rbs return: String
+      def read_verified_payload
+        header_size = @header.bytesize
+        prefix_size = header_size + INTEGRITY_SIZE
+        contents = MIRCache.read_contents(@path, @header, prefix_size)
+        length = [contents.bytesize - prefix_size].pack("Q<")
+        raise Invalid unless contents.byteslice(header_size, LENGTH_SIZE) == length
+
+        payload = contents.byteslice(prefix_size..) || raise(Invalid)
+        digest_offset = header_size + LENGTH_SIZE
+        if @verify == :sha256
+          digest_offset += DIGEST_SIZE
+          digest = Digest::SHA256.digest(payload)
+        else
+          digest = MIRCache.sample_checksum(payload, length)
+        end
+        raise Invalid unless contents.byteslice(digest_offset, DIGEST_SIZE) == digest
+        payload
+      end
+
+      # @rbs payload: String
+      # @rbs length: String
+      # @rbs return: String
+      def self.sample_checksum(payload, length)
+        size = payload.bytesize
+        return Digest::SHA256.digest(length + payload) if size <= 2 * SAMPLE_EDGE
+
+        sample = length.dup
+        sample << (payload.byteslice(0, SAMPLE_EDGE) || raise(Invalid))
+        offset = SAMPLE_STEP
+        while offset < size
+          sample << (payload.byteslice(offset, SAMPLE_BLOCK) || raise(Invalid))
+          offset += SAMPLE_STEP
+        end
+        sample << (payload.byteslice(size - SAMPLE_EDGE, SAMPLE_EDGE) || raise(Invalid))
+        Digest::SHA256.digest(sample)
+      end
+
+      # Opening without blocking keeps a FIFO from stalling the start of a run.
       # @rbs path: String
       # @rbs header: String
+      # @rbs prefix_size: Integer
       # @rbs return: String
-      def self.read_payload(path, header)
+      def self.read_contents(path, header, prefix_size)
         contents = File.open(path, File::RDONLY | File::NONBLOCK) do |file|
           stat = file.stat
           raise Invalid unless stat.file? && stat.size <= MAX_BYTES
@@ -558,28 +606,23 @@ module Wardite
           raise Invalid unless file.eof?
           contents
         end
-        prefix_size = header.bytesize + DIGEST_SIZE
         raise Invalid unless contents.bytesize.between?(prefix_size, MAX_BYTES) && contents.start_with?(header)
-
-        payload = contents.byteslice(prefix_size..) || raise(Invalid)
-        raise Invalid unless contents.byteslice(header.bytesize, DIGEST_SIZE) == Digest::SHA256.digest(payload)
-        payload
+        contents
       end
 
       # Exclusive creation protects a concurrent writer's temporary file.
       # Close the file before publishing it under the cache key.
       # @rbs directory: String
       # @rbs destination: String
-      # @rbs header: String
+      # @rbs prefix: String
       # @rbs payload: String
       # @rbs return: void
-      def self.publish(directory, destination, header, payload)
+      def self.publish(directory, destination, prefix, payload)
         path = File.join(directory, ".wardite-#{SecureRandom.hex(16)}.tmp")
         file = File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600)
         begin
           file.binmode
-          file.write(header)
-          file.write(Digest::SHA256.digest(payload))
+          file.write(prefix)
           file.write(payload)
           file.close
           File.rename(path, destination)

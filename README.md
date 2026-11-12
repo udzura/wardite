@@ -87,6 +87,12 @@ MIR across processes. Use a local directory you control. Each run still decodes
 the Wasm, links imports, and initializes a fresh instance. `--mir-dump` and
 `--mir-profile` build MIR normally. Ruby callers can pass `mir_cache: dir` with
 `engine: :efflorescence`. CRuby and Spinel use different cache keys.
+
+The default `--mir-cache-verify checksum` checks the payload size and samples
+blocks. Use `--mir-cache-verify sha256` or Ruby's `mir_cache_verify: :sha256`
+to check the whole payload. Both modes use the same cache file and check MIR
+structure. Corruption outside the sampled blocks can go undetected in checksum
+mode, including changes that leave the MIR structurally valid.
 [MIR2 cache measurements](docs/efflorescence-mir2-cache.md)
 
 For WASI commands, `--snapshot DIR` (with `--new-engine --mir-cache DIR`) saves
