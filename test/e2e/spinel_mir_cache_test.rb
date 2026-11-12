@@ -48,7 +48,7 @@ class WarditeSpinelMIRCacheTest < Test::Unit::TestCase
   private
 
   def assert_cached_call(cache, state, result, *args)
-    stdout, stderr, status = Open3.capture3({"WARITE_TRACE" => "1"}, @binary,
+    stdout, stderr, status = Open3.capture3({"WARDITE_TRACE" => "1"}, @binary,
       "--new-engine", "--no-wasi", "--mir-cache", cache, *args)
     assert status.success?, stderr
     assert_empty stdout
