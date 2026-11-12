@@ -1,6 +1,8 @@
 # Wardite
 
-[![workflow](https://github.com/udzura/wardite/actions/workflows/main.yml/badge.svg)](https://github.com/udzura/wardite/actions) [![gem version](https://badge.fury.io/rb/wardite.svg)](https://rubygems.org/gems/wardite)
+<img src="assets/wardite.svg" alt="Wardite logo" width="160">
+
+[![Test CRuby and Spinel](https://github.com/udzura/wardite/actions/workflows/runtime-tests.yml/badge.svg)](https://github.com/udzura/wardite/actions/workflows/runtime-tests.yml) [![Test Wardite](https://github.com/udzura/wardite/actions/workflows/spec.yml/badge.svg)](https://github.com/udzura/wardite/actions/workflows/spec.yml) [![gem version](https://badge.fury.io/rb/wardite.svg)](https://rubygems.org/gems/wardite)
 
 A pure-ruby webassembly runtime.
 

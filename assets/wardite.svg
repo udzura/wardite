@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title description">
+  <title id="title">Wardite icon</title>
+  <desc id="description">A white W carved into a faceted teal mineral, with a dark offset shadow.</desc>
+  <rect width="1024" height="1024" fill="#f8f5f0"/>
+  <path fill="#17141f" d="M418 230h324l136 136v324L742 826H324l-42-110V366Z"/>
+  <path fill="#287a78" d="M350 162h324l136 136v324L674 758H256l-42-110V298Z"/>
+  <path fill="#65aaa0" d="M350 162h324l-62 110H384l-170 26Z"/>
+  <path fill="#398f88" d="m214 298 170-26-70 328-58 158-42-110Z"/>
+  <path fill="#1d5b60" d="m674 162 136 136v324L674 758l-42-154 78-260Z"/>
+  <path fill="#226b6b" d="m314 600 318 4 42 154H256Z"/>
+  <path d="M326 350h66l38 172 60-130h48l34 130 68-172h66L600 602h-60l-34-128-60 128h-60Z" fill="#fff"/>
+</svg>
