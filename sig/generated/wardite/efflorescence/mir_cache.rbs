@@ -14,6 +14,16 @@ module Wardite
 
       DIGEST_SIZE: ::Integer
 
+      LENGTH_SIZE: ::Integer
+
+      INTEGRITY_SIZE: untyped
+
+      SAMPLE_EDGE: untyped
+
+      SAMPLE_STEP: untyped
+
+      SAMPLE_BLOCK: untyped
+
       MAX_BYTES: untyped
 
       TYPES: untyped
@@ -171,7 +181,8 @@ module Wardite
       # @rbs directory: String
       # @rbs wasm: String
       # @rbs configuration: Configuration
-      def initialize: (String directory, String wasm, Configuration configuration) -> untyped
+      # @rbs verify: Symbol
+      def initialize: (String directory, String wasm, Configuration configuration, ?verify: Symbol) -> untyped
 
       # Restore against module declarations so a miss can decode and check the
       # Wasm bodies before Store initialization or any host lookup.
@@ -190,21 +201,29 @@ module Wardite
       # @rbs return: Array[FunctionEntry]
       def module_entries: (Wardite::Instance instance) -> Array[FunctionEntry]
 
-      # Read a header, a SHA-256 of the payload, and the payload. Opening
-      # without blocking keeps a FIFO from stalling the start of a run.
+      # @rbs return: String
+      def read_verified_payload: () -> String
+
+      # @rbs payload: String
+      # @rbs length: String
+      # @rbs return: String
+      def self.sample_checksum: (String payload, String length) -> String
+
+      # Opening without blocking keeps a FIFO from stalling the start of a run.
       # @rbs path: String
       # @rbs header: String
+      # @rbs prefix_size: Integer
       # @rbs return: String
-      def self.read_payload: (String path, String header) -> String
+      def self.read_contents: (String path, String header, Integer prefix_size) -> String
 
       # Exclusive creation protects a concurrent writer's temporary file.
       # Close the file before publishing it under the cache key.
       # @rbs directory: String
       # @rbs destination: String
-      # @rbs header: String
+      # @rbs prefix: String
       # @rbs payload: String
       # @rbs return: void
-      def self.publish: (String directory, String destination, String header, String payload) -> void
+      def self.publish: (String directory, String destination, String prefix, String payload) -> void
 
       # Include the module's import identities, and every function's signature
       # and index mapping. The live entries and hosts are always linked afresh.

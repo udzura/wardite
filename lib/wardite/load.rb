@@ -330,9 +330,13 @@ module Wardite
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
     # @rbs mir_cache: String?
+    # @rbs mir_cache_verify: Symbol
     # @rbs return: Instance
-    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :stack, disabled_optimizations: [], mir_profile: false, mir_cache: nil)
+    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :stack, disabled_optimizations: [], mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum)
       start = Time.now.to_f #: Float
+      unless mir_cache_verify == :checksum || mir_cache_verify == :sha256
+        raise ArgumentError, "MIR cache verification must be checksum or sha256"
+      end
       @buf = buf
       cache = nil #: Efflorescence::MIRCache?
       if mir_cache
@@ -343,7 +347,7 @@ module Wardite
           bytes = buf.read || "".b
           configuration = Efflorescence::Configuration.new(disabled_optimizations)
           disabled_optimizations = configuration.disabled
-          cache = Efflorescence::MIRCache.new(mir_cache, bytes, configuration)
+          cache = Efflorescence::MIRCache.new(mir_cache, bytes, configuration, verify: mir_cache_verify)
           @buf = StringIO.new(bytes)
         end
       end

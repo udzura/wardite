@@ -42,6 +42,7 @@ module Wardite
         @mir_dump = false
         @mir_profile = false
         @mir_cache = nil
+        @mir_cache_verify = :checksum
         @snapshot = nil
         @memsize = 1
         parser = RUBY_ENGINE == "spinel" ? SpinelOptions : OptionParser
@@ -68,6 +69,12 @@ module Wardite
           opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }
           opts.on("--mir-profile", "Instrument MIR execution (do not use for timing)") { @mir_profile = true }
           opts.on("--mir-cache DIR", "Reuse MIR2 in a local directory") { |dir| @mir_cache = dir }
+          opts.on("--mir-cache-verify MODE", "Verify the MIR2 cache with checksum (default) or sha256") do |mode|
+            unless mode == "checksum" || mode == "sha256"
+              raise Wardite::ArgumentError, "--mir-cache-verify expects checksum or sha256"
+            end
+            @mir_cache_verify = mode.to_sym
+          end
           opts.on("--snapshot DIR", "Resume WASI startup from a local snapshot (needs --mir-cache; fixes clocks and random bytes read before it)") { |dir| @snapshot = dir }
           opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
             @yjit = true
@@ -117,7 +124,7 @@ module Wardite
         ins = File.open(file, "rb") do |f|
           Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi, engine: new_engine ? :efflorescence : :stack,
             disabled_optimizations: disabled_optimizations, mir_profile: mir_profile,
-            mir_cache: mir_dump ? nil : mir_cache)
+            mir_cache: mir_dump ? nil : mir_cache, mir_cache_verify: @mir_cache_verify)
         end
         if memsize > 1
           ins.store.memories[0].grow(memsize)
