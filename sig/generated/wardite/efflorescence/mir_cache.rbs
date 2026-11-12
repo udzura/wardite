@@ -70,6 +70,12 @@ module Wardite
         # @rbs return: Array[Integer]
         def vector: (String format, Integer width) -> Array[Integer]
 
+        # @rbs target: Array[Integer]
+        # @rbs format: String
+        # @rbs width: Integer
+        # @rbs return: void
+        def read_into: (Array[Integer] target, String format, Integer width) -> void
+
         # @rbs return: Array[Symbol]
         def types: () -> Array[Symbol]
 
@@ -127,14 +133,14 @@ module Wardite
         private
 
         # @rbs body: Wardite::CodeSection::CodeBody
-        # @rbs entry: FunctionEntry
-        # @rbs index: Integer
-        # @rbs return: Function
-        def read_function: (Wardite::CodeSection::CodeBody body, FunctionEntry entry, Integer index) -> Function
+        # @rbs function: Function
+        # @rbs return: void
+        def read_function: (Wardite::CodeSection::CodeBody body, Function function) -> void
 
         # @rbs function: Function
-        # @rbs return: Array[[Integer, Array[Integer]]]
-        def read_sites: (Function function) -> Array[[ Integer, Array[Integer] ]]
+        # @rbs functions: Array[Function]
+        # @rbs return: void
+        def read_sites: (Function function, Array[Function] functions) -> void
 
         # @rbs function: Function
         # @rbs return: DynamicCallSite

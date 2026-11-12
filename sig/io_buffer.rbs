@@ -1,0 +1,7 @@
+class IO
+  class Buffer
+    # The core signature currently omits the block form documented by Ruby.
+    def self.for: [Result] (String) { (Buffer) -> Result } -> Result
+                | ...
+  end
+end

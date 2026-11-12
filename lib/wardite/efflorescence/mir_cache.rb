@@ -80,6 +80,35 @@ module Wardite
           result
         end
 
+        # @rbs target: Array[Integer]
+        # @rbs format: String
+        # @rbs width: Integer
+        # @rbs return: void
+        def read_into(target, format, width)
+          if RUBY_ENGINE == "spinel"
+            length = count(width)
+            offset = @offset
+            limit = offset + length * width
+            target.clear
+            IO::Buffer.for(@bytes) do |buffer|
+              if width == 8
+                while offset < limit
+                  target << buffer.get_value(:s64, offset)
+                  offset += 8
+                end
+              else
+                while offset < limit
+                  target << buffer.get_value(:s32, offset)
+                  offset += 4
+                end
+              end
+            end
+            @offset = limit
+          else
+            target.replace(vector(format, width))
+          end
+        end
+
         # @rbs return: Array[Symbol]
         def types
           vector("C", 1).map { |id| TYPES[id] || raise(Invalid) }
@@ -237,51 +266,44 @@ module Wardite
           raise Invalid unless @reader.count(4) == @defined_count
 
           functions = [] #: Array[Function]
-          call_records = [] #: Array[Array[[Integer, Array[Integer]]]]
           bodies = @instance.code_section&.func_codes || []
           bodies.each_with_index do |body, pool_index|
             index = @import_count + pool_index
-            function = read_function(body, @entries.fetch(index), index)
-            functions << function
-            call_records << read_sites(function)
+            entry = @entries.fetch(index)
+            functions << Function.new(index, entry.parameter_types, entry.result_types,
+              body.locals_count.sum, pool_index: pool_index)
           end
-          @reader.finish
-
-          functions.zip(call_records).each do |function, records|
-            raise Invalid unless records
-            records.each do |index, arguments|
-              callee = functions.fetch(index)
-              check_arguments(function, arguments, callee.parameter_types)
-              function.add_call_site(CallSite.new(callee, arguments))
-            end
+          bodies.each_with_index do |body, pool_index|
+            function = functions[pool_index] || raise(Invalid)
+            read_function(body, function)
+            read_sites(function, functions)
             check_code(function)
           end
+          @reader.finish
           functions
         end
 
         private
 
         # @rbs body: Wardite::CodeSection::CodeBody
-        # @rbs entry: FunctionEntry
-        # @rbs index: Integer
-        # @rbs return: Function
-        def read_function(body, entry, index)
+        # @rbs function: Function
+        # @rbs return: void
+        def read_function(body, function)
           flags = @reader.integer
           raise Invalid unless flags.between?(0, FUNCTION_FLAGS)
 
           types = @reader.types
-          params = entry.parameter_types
+          params = function.parameter_types
           first_local = params.size
-          first_temporary = first_local + body.locals_count.sum
+          first_temporary = first_local + function.local_count
           raise Invalid unless first_temporary <= types.size && types.take(first_local) == params
 
           local_index = first_local
-          body.locals_type.zip(body.locals_count).each do |type, count|
-            raise Invalid unless count && types.slice(local_index, count)&.all? { |actual| actual == type }
+          body.locals_type.each_with_index do |type, index|
+            count = body.locals_count.fetch(index)
+            raise Invalid unless types.slice(local_index, count)&.all? { |actual| actual == type }
             local_index += count
           end
-          locals = types.slice(first_local, first_temporary - first_local) || raise(Invalid)
-          function = Function.new(index, params, entry.result_types, locals.size, local_types: locals, pool_index: entry.defined_index)
           function.uses_i64 = (flags & USES_I64) != 0
           function.uses_float = (flags & USES_FLOAT) != 0
           function.uses_eh = (flags & USES_EH) != 0
@@ -289,9 +311,11 @@ module Wardite
           function.uses_dynamic_calls = (flags & USES_DYNAMIC_CALLS) != 0
           raise Invalid if !function.uses_eh && types.include?(:exnref)
 
-          initial = @reader.vector("q<", 8)
+          initial = function.initial_registers
+          @reader.read_into(initial, "q<", 8)
           raise Invalid unless initial.size == types.size
-          constants = @reader.vector("l<", 4)
+          constants = function.constant_registers
+          @reader.read_into(constants, "l<", 4)
           previous = first_temporary - 1
           constants.each do |slot|
             raise Invalid unless slot > previous && slot < types.size
@@ -308,24 +332,25 @@ module Wardite
             end
           end
           function.register_types.replace(types)
-          function.initial_registers.replace(initial)
-          function.constant_registers.replace(constants)
 
-          code = @reader.vector("q<", 8)
+          code = function.bytecode
+          @reader.read_into(code, "q<", 8)
           raise Invalid if code.empty? || code.size % Lowerer::WIDTH != 0
-          # Keep the lowerer's integer array representation in Spinel.
-          function.bytecode.replace(code)
-          function
         end
 
         # @rbs function: Function
-        # @rbs return: Array[[Integer, Array[Integer]]]
-        def read_sites(function)
-          calls = Array.new(@reader.count(8)) do
+        # @rbs functions: Array[Function]
+        # @rbs return: void
+        def read_sites(function, functions)
+          @reader.count(8).times do
             index = @reader.integer
             raise Invalid unless index.between?(0, @defined_count - 1)
-            [index, @reader.vector("l<", 4)]
-          end #: Array[[Integer, Array[Integer]]]
+            callee = functions[index] || raise(Invalid)
+            site = CallSite.new(callee, [])
+            @reader.read_into(site.arguments, "l<", 4)
+            check_arguments(function, site.arguments, callee.parameter_types)
+            function.add_call_site(site)
+          end
           @reader.count(20).times { function.dynamic_sites << read_dynamic_site(function) }
           @reader.count(16).times { function.memory_sites << read_memory_site(function) }
           @reader.count(8).times do
@@ -339,7 +364,6 @@ module Wardite
             clauses = Array.new(@reader.count(20)) { read_catch(function, handler_count) }
             function.flat_handlers << HandlerDescriptor.new(clauses)
           end
-          calls
         end
 
         # @rbs function: Function
@@ -349,7 +373,6 @@ module Wardite
           table_index = @reader.integer
           params = @reader.types
           results = @reader.types
-          arguments = @reader.vector("l<", 4)
           if host_index == -1
             raise Invalid unless table_index == 0 && @table_type == :funcref &&
               @signatures.key?([params, results]) && results.size <= 1 &&
@@ -359,8 +382,10 @@ module Wardite
             host = @entries.fetch(host_index)
             raise Invalid unless params == host.parameter_types && results == host.result_types
           end
-          check_arguments(function, arguments, params)
-          DynamicCallSite.new(host_index, arguments, params, results, table_index: table_index)
+          site = DynamicCallSite.new(host_index, [], params, results, table_index: table_index)
+          @reader.read_into(site.arguments, "l<", 4)
+          check_arguments(function, site.arguments, params)
+          site
         end
 
         # @rbs function: Function
