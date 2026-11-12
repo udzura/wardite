@@ -17,6 +17,7 @@ WARDITE_TRACE=1 build/wardite --new-engine --mir-cache "$HOME/.cache/wardite" \
 - キーは、スナップショットの形式バージョン、各メモリの現在のページ数、MIR2キャッシュのキー（Wasm全体のSHA-256、形式と生成コードのバージョン、最適化の無効化設定、ホスト識別子）、WASIの `snapshot_identity`（引数、環境変数、開いている全fdの番号と種別、preopenのパス）のSHA-256。
 - [VM](../lib/wardite/efflorescence/vm.rb) の `CALL_HOST` と `CALL_INDIRECT` は、ホスト関数を呼ぶ間 `frame.pc` に命令の位置を保持する。`execute_flat` は `frame.pc` から始まる。`execute_host_site` は記録中だけ許可リストを判定し、公開呼び出しが入れ子でなければ保存する。判定は1プロセスで1回だけ行う。
 - 復元は、Storeを通常どおり作った後、ファイルの全体を検査してからメモリとglobalを書き換え、`VM#resume` でフレームを積み直して最上位フレームのホスト呼び出しから再実行する。
+- [ADR 0011](adr/0011-efflorescence-unboxed-globals.md)の整数配列とは、保存の直前にStoreへ書き戻し、`VM#resume` の開始時にStoreから読み込むことで同期する。
 - 許可リストは `args_*`、`environ_*`、`fd_prestat_*`、`fd_fdstat_get`、`clock_res_get`、`clock_time_get`、`random_get` と、fd 0〜2に対する `fd_filestat_get`。
 - startセクションを持つモジュールでは保存も復元もしない。
 

@@ -14,6 +14,7 @@ module Wardite
 
       # @rbs @semantic_ir: Wardite::Efflorescence::IR?
       # @rbs @optimized_ir: Wardite::Efflorescence::IR?
+      # @rbs @global_bits: Array[Integer]
 
       # @rbs instance: Wardite::Instance
       # @rbs disabled_optimizations: Array[Symbol]
@@ -24,6 +25,8 @@ module Wardite
       def initialize(instance, disabled_optimizations: [], profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false)
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
+        @global_bits = []
+        @has_globals = !instance.store.globals.empty?
         @function_indices = {} #: Hash[Integer, Integer]
         # Retain the original objects so IDs stay valid even if a host edits
         # Store.funcs. Spinel cannot use an identity Hash for these objects.
@@ -364,12 +367,42 @@ module Wardite
         pools[index] || raise(Wardite::EvalError, "missing MIR frame pool")
       end
 
+      # Update in place so a suspended execute_flat retains the same array
+      # across a host call, including a reentrant call on this VM.
+      # @rbs return: void
+      def read_globals
+        @instance.store.globals.each_with_index do |global, index|
+          @global_bits[index] = @store_access.global_bits_at(index, global.type)
+        end
+      end
+
+      # @rbs return: void
+      def write_globals
+        @instance.store.globals.each_with_index do |global, index|
+          @store_access.write_global_bits(index, global.type, @global_bits.fetch(index))
+        end
+      end
+
       # @rbs host_index: Integer
       # @rbs arguments: Array[Integer]
       # @rbs metrics: Wardite::Efflorescence::Metrics
-      # @rbs return: Integer?
       # @rbs sources: Array[Integer]?
-      def invoke_host(host_index, arguments, metrics, sources = nil)
+      # @rbs return: Integer?
+      def invoke_host_with_globals(host_index, arguments, metrics, sources)
+        write_globals
+        begin
+          invoke_host(host_index, arguments, metrics, sources)
+        ensure
+          read_globals
+        end
+      end
+
+      # @rbs host_index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      # @rbs sources: Array[Integer]?
+      # @rbs return: Integer?
+      def invoke_host(host_index, arguments, metrics, sources)
         host = @ir.hosts[host_index] || raise(Wardite::EvalError, "missing MIR host function")
         metrics.host_calls += 1 if @profiling
         if RUBY_ENGINE != "spinel"
@@ -424,17 +457,22 @@ module Wardite
         raise Wardite::EvalError, "host ABI result mismatch for #{host.external.name}"
       end
 
-      # Each public entry owns its frames, pools and counters, including when a
-      # host callback re-enters the VM. Store mutations are shared immediately.
+      # Each public or start entry owns its frames, pools and counters. Host
+      # calls synchronize globals before a callback can re-enter the VM.
       # @rbs entry: Wardite::Efflorescence::FunctionEntry
       # @rbs arguments: Array[Integer]
       # @rbs return: Integer?
       def execute(entry, arguments)
         if entry.kind == :host
+          read_globals if @has_globals
           metrics = @profiling ? Metrics.new : @metrics
-          result = invoke_host(entry.host_index, arguments, metrics)
-          @metrics = metrics
-          return result
+          begin
+            return @has_globals ? invoke_host_with_globals(entry.host_index, arguments, metrics, nil) :
+              invoke_host(entry.host_index, arguments, metrics, nil)
+          ensure
+            @metrics = metrics
+            write_globals if @has_globals
+          end
         end
 
         pools = new_pools
@@ -451,11 +489,14 @@ module Wardite
         pools
       end
 
+      # Globals live in @global_bits while frames run. A restored snapshot
+      # writes the Store first, so both public calls and resume read it here.
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
       # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
       # @rbs root_entries: Integer
       # @rbs return: Integer
       def run_frames(pools, active_frames, root_entries)
+        read_globals if @has_globals
         metrics = @profiling ? Metrics.new : @metrics
         metrics.root_defined_entries = root_entries if @profiling
         outer = @active_frames
@@ -472,6 +513,7 @@ module Wardite
           metrics.frames_created = created
           @metrics = metrics
         end
+        write_globals if @has_globals
       end
 
       # @rbs frame: Wardite::Efflorescence::Frame
@@ -487,10 +529,18 @@ module Wardite
           host = @ir.hosts[host_index] || raise(Wardite::EvalError, "missing MIR host function")
           if recorder.checkpoint?(host, registers, site.arguments)
             @snapshot = nil
-            recorder.save(@instance, @active_frames) if @depth == 1
+            if @depth == 1
+              # The snapshot reads globals from the Store.
+              write_globals if @has_globals
+              recorder.save(@instance, @active_frames)
+            end
           end
         end
-        result = invoke_host(host_index, registers, metrics, site.arguments)
+        result = unless @has_globals
+          invoke_host(host_index, registers, metrics, site.arguments)
+        else
+          invoke_host_with_globals(host_index, registers, metrics, site.arguments)
+        end
         registers[destination] = result if destination >= 0 && result
       end
 
@@ -585,14 +635,6 @@ module Wardite
           when Opcode::F64_STORE
             offset = instructions.fetch(pc + 3)
             @store_access.store(registers[b], offset, 8, registers[a])
-          when Opcode::F32_GLOBAL_GET
-            registers[a] = @store_access.global_get_float(b, :f32)
-          when Opcode::F64_GLOBAL_GET
-            registers[a] = @store_access.global_get_float(b, :f64)
-          when Opcode::F32_GLOBAL_SET
-            @store_access.global_set_float(a, :f32, registers[b])
-          when Opcode::F64_GLOBAL_SET
-            @store_access.global_set_float(a, :f64, registers[b])
           else
             raise Wardite::EvalError, "Efflorescence: invalid MIR opcode #{opcode}"
           end
@@ -607,6 +649,7 @@ module Wardite
       def execute_flat(frame, pools, active_frames, metrics)
         frames = active_frames
         registers = frame.registers
+        global_bits = @global_bits
         instructions = frame.function.bytecode
         pc = Integer(frame.pc)
         # Avoid Kernel#loop's StopIteration handler in the native hot loop.
@@ -871,10 +914,10 @@ module Wardite
             next
           when 52 # Opcode::GLOBAL_GET
             b = instructions.fetch(pc + 2)
-            registers[a] = @store_access.global_get(b)
+            registers[a] = global_bits[b]
           when 53 # Opcode::GLOBAL_SET
             b = instructions.fetch(pc + 2)
-            @store_access.global_set(a, registers[b])
+            global_bits[a] = registers[b]
           when 54 # Opcode::I32_LOAD
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
@@ -1094,10 +1137,22 @@ module Wardite
             @store_access.store(registers[b], c, 4, registers[a])
           when 115 # Opcode::I64_GLOBAL_GET
             b = instructions.fetch(pc + 2)
-            registers[a] = @store_access.global_get_i64(b)
+            registers[a] = global_bits[b]
           when 116 # Opcode::I64_GLOBAL_SET
             b = instructions.fetch(pc + 2)
-            @store_access.global_set_i64(a, registers[b])
+            global_bits[a] = registers[b]
+          when 191 # Opcode::F32_GLOBAL_GET
+            b = instructions.fetch(pc + 2)
+            registers[a] = global_bits[b]
+          when 192 # Opcode::F64_GLOBAL_GET
+            b = instructions.fetch(pc + 2)
+            registers[a] = global_bits[b]
+          when 193 # Opcode::F32_GLOBAL_SET
+            b = instructions.fetch(pc + 2)
+            global_bits[a] = registers[b]
+          when 194 # Opcode::F64_GLOBAL_SET
+            b = instructions.fetch(pc + 2)
+            global_bits[a] = registers[b]
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

@@ -1,6 +1,6 @@
 # ADR 0011: Efflorescenceのglobalを整数配列で保持する
 
-- **状態** 提案
+- **状態** 実装・計測済み。[実装と計測の記録](../efflorescence-unboxed-globals.md)
 - **日付** 2026-11-12
 - **前提** [ruby.wasm対応フェーズ2](0008-efflorescence-ruby-wasm-phase2.md)の「7. ゲスト実行時間の改善」
 
