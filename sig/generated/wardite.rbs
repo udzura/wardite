@@ -259,6 +259,8 @@ module Wardite
 
     MAX_PAGES: Integer
 
+    @storage: IO::Buffer?
+
     @buffer: IO::Buffer?
 
     @data: String?
@@ -280,7 +282,7 @@ module Wardite
     # @rbs return: String
     def data=: (String value) -> String
 
-    # The Spinel host API exposes the current owned buffer. Reacquire it
+    # The Spinel host API exposes only the current Wasm bytes. Reacquire it
     # after any guest call that can grow memory.
     # @rbs return: IO::Buffer
     def buffer: () -> IO::Buffer
@@ -312,6 +314,22 @@ module Wardite
     def grow: (Integer delta) -> Integer
 
     def inspect: () -> untyped
+
+    private
+
+    # @rbs pages: Integer
+    # @rbs limit: Integer
+    # @rbs return: bool
+    def grow_buffer: (Integer pages, Integer limit) -> bool
+
+    # @rbs replacement: IO::Buffer
+    # @rbs size: Integer
+    # @rbs return: void
+    def replace_storage: (IO::Buffer replacement, Integer size) -> void
+
+    # @rbs pages: Integer
+    # @rbs return: IO::Buffer?
+    def allocate_storage: (Integer pages) -> IO::Buffer?
   end
 
   class Table
