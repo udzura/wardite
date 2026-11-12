@@ -34,12 +34,22 @@ Dir.mktmpdir("wardite-ruby-wasm") do |workdir|
       engines << ["Spinel Efflorescence", native, "spinel-cache"] if native
       engines.each do |name, engine, cache|
         cached = [*engine, "--mir-cache", File.join(workdir, cache), *wardite_options, "--", *guest_args]
-        commands << ["#{name} (cache miss)", cached, "miss"] if index.zero?
-        commands << ["#{name} (cache hit)", cached, "hit"]
+        commands << ["#{name} (cache miss)", cached, "MIR2 cache miss:"] if index.zero?
+        commands << ["#{name} (cache hit)", cached, "MIR2 cache hit:"]
       end
     end
-    commands.each do |runtime, command, cache_status|
-      env = cache_status ? {"WARDITE_TRACE" => "1"} : {}
+    if ENV["WARDITE_VERIFY_SNAPSHOT"] == "1"
+      engines = [["Efflorescence", wardite, "cruby"]]
+      engines << ["Spinel Efflorescence", native, "spinel"] if native
+      engines.each do |name, engine, host|
+        snapshot = [*engine, "--mir-cache", File.join(workdir, "#{host}-snapshot-cache"),
+          "--snapshot", File.join(workdir, "#{host}-snapshot"), *wardite_options, "--", *guest_args]
+        commands << ["#{name} (snapshot save)", snapshot, "snapshot saved:"]
+        commands << ["#{name} (snapshot restore)", snapshot, "snapshot restored:"]
+      end
+    end
+    commands.each do |runtime, command, trace|
+      env = trace ? {"WARDITE_TRACE" => "1"} : {}
       stdout, stderr, status = if defined?(Bundler)
         Bundler.with_original_env { Open3.capture3(env, *command) }
       else
@@ -48,8 +58,8 @@ Dir.mktmpdir("wardite-ruby-wasm") do |workdir|
       unless stdout == expected && status.exitstatus == expected_exit
         abort "#{runtime} #{name}: #{status.inspect}, stdout=#{stdout.inspect}\n#{stderr}"
       end
-      if cache_status && !stderr.include?("MIR2 cache #{cache_status}:")
-        abort "#{runtime} #{name}: expected cache #{cache_status}\n#{stderr}"
+      if trace && !stderr.include?(trace)
+        abort "#{runtime} #{name}: expected #{trace}\n#{stderr}"
       end
     end
     puts "#{name} matched Wasmtime (exit #{expected_exit})"

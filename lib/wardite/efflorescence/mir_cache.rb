@@ -27,6 +27,9 @@ module Wardite
 
       class Invalid < StandardError; end
 
+      # Identifies the module, the generated code, and the host build.
+      attr_reader :key #: String
+
       # All records are little-endian. Vectors carry a nonnegative 32-bit element count.
       # A record count is bounded by the bytes still available to decode it.
       class Reader
@@ -476,6 +479,7 @@ module Wardite
         key_data = versions + Digest::SHA256.digest(wasm) + disabled
         key_data = "spinel\0".b + key_data if RUBY_ENGINE == "spinel"
         key = Digest::SHA256.digest(key_data)
+        @key = key
         @header = MAGIC + versions + key
         @directory = File.expand_path(directory)
         @path = File.join(@directory, "#{key.unpack1("H*")}.mir2")
@@ -486,21 +490,7 @@ module Wardite
       # @rbs instance: Wardite::Instance
       # @rbs return: Array[Function]?
       def read(instance)
-        contents = File.open(@path, File::RDONLY | File::NONBLOCK) do |file|
-          stat = file.stat
-          raise Invalid unless stat.file? && stat.size <= MAX_BYTES
-          file.binmode
-          contents = file.read(stat.size) || raise(Invalid)
-          raise Invalid unless file.eof?
-          contents
-        end
-        prefix_size = @header.bytesize + DIGEST_SIZE
-        raise Invalid unless contents.bytesize.between?(prefix_size, MAX_BYTES) && contents.start_with?(@header)
-
-        payload = contents.byteslice(prefix_size..) || raise(Invalid)
-        raise Invalid unless contents.byteslice(@header.bytesize, DIGEST_SIZE) == Digest::SHA256.digest(payload)
-
-        reader = Reader.new(payload)
+        reader = Reader.new(MIRCache.read_payload(@path, @header))
         entries = module_entries(instance)
         raise Invalid unless reader.bytes(reader.count(1)) == encode_layout(instance, entries)
         functions = Decoder.new(reader, instance, entries).decode
@@ -525,7 +515,7 @@ module Wardite
           writer.function(function)
           return if @header.bytesize + DIGEST_SIZE + writer.bytes.bytesize > MAX_BYTES
         end
-        publish(writer.bytes)
+        MIRCache.publish(@directory, @path, @header, writer.bytes)
       rescue SystemCallError, IOError
         # Cache I/O is optional once the normal build has succeeded.
         nil
@@ -554,20 +544,45 @@ module Wardite
         raise Invalid
       end
 
+      # Read a header, a SHA-256 of the payload, and the payload. Opening
+      # without blocking keeps a FIFO from stalling the start of a run.
+      # @rbs path: String
+      # @rbs header: String
+      # @rbs return: String
+      def self.read_payload(path, header)
+        contents = File.open(path, File::RDONLY | File::NONBLOCK) do |file|
+          stat = file.stat
+          raise Invalid unless stat.file? && stat.size <= MAX_BYTES
+          file.binmode
+          contents = file.read(stat.size) || raise(Invalid)
+          raise Invalid unless file.eof?
+          contents
+        end
+        prefix_size = header.bytesize + DIGEST_SIZE
+        raise Invalid unless contents.bytesize.between?(prefix_size, MAX_BYTES) && contents.start_with?(header)
+
+        payload = contents.byteslice(prefix_size..) || raise(Invalid)
+        raise Invalid unless contents.byteslice(header.bytesize, DIGEST_SIZE) == Digest::SHA256.digest(payload)
+        payload
+      end
+
       # Exclusive creation protects a concurrent writer's temporary file.
       # Close the file before publishing it under the cache key.
+      # @rbs directory: String
+      # @rbs destination: String
+      # @rbs header: String
       # @rbs payload: String
       # @rbs return: void
-      def publish(payload)
-        path = File.join(@directory, ".wardite-#{SecureRandom.hex(16)}.tmp")
+      def self.publish(directory, destination, header, payload)
+        path = File.join(directory, ".wardite-#{SecureRandom.hex(16)}.tmp")
         file = File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600)
         begin
           file.binmode
-          file.write(@header)
+          file.write(header)
           file.write(Digest::SHA256.digest(payload))
           file.write(payload)
           file.close
-          File.rename(path, @path)
+          File.rename(path, destination)
         ensure
           file.close unless file.closed?
           File.unlink(path) if File.exist?(path)

@@ -35,6 +35,9 @@ module Wardite
       class Invalid < StandardError
       end
 
+      # Identifies the module, the generated code, and the host build.
+      attr_reader key: String
+
       # All records are little-endian. Vectors carry a nonnegative 32-bit element count.
       # A record count is bounded by the bytes still available to decode it.
       class Reader
@@ -187,11 +190,21 @@ module Wardite
       # @rbs return: Array[FunctionEntry]
       def module_entries: (Wardite::Instance instance) -> Array[FunctionEntry]
 
+      # Read a header, a SHA-256 of the payload, and the payload. Opening
+      # without blocking keeps a FIFO from stalling the start of a run.
+      # @rbs path: String
+      # @rbs header: String
+      # @rbs return: String
+      def self.read_payload: (String path, String header) -> String
+
       # Exclusive creation protects a concurrent writer's temporary file.
       # Close the file before publishing it under the cache key.
+      # @rbs directory: String
+      # @rbs destination: String
+      # @rbs header: String
       # @rbs payload: String
       # @rbs return: void
-      def publish: (String payload) -> void
+      def self.publish: (String directory, String destination, String header, String payload) -> void
 
       # Include the module's import identities, and every function's signature
       # and index mapping. The live entries and hosts are always linked afresh.

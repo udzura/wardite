@@ -33,6 +33,8 @@ module Wardite
 
       attr_reader mir_cache: String?
 
+      attr_reader snapshot: String?
+
       attr_reader profile_file_path: String?
 
       # @rbs args: Array[String]
@@ -56,6 +58,11 @@ module Wardite
 
       # @rbs return: void
       def invoke_wasi: () -> void
+
+      # The snapshot key reads the environment, so build it where _start runs.
+      # @rbs instance: ::Wardite::Instance
+      # @rbs return: void
+      def start_wasi: (::Wardite::Instance instance) -> void
 
       # @rbs return: String?
       def mount_src: () -> String?

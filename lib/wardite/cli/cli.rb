@@ -27,6 +27,7 @@ module Wardite
       attr_reader :mir_dump #: bool
       attr_reader :mir_profile #: bool
       attr_reader :mir_cache #: String?
+      attr_reader :snapshot #: String?
 
       attr_reader :profile_file_path #: String?
 
@@ -41,6 +42,7 @@ module Wardite
         @mir_dump = false
         @mir_profile = false
         @mir_cache = nil
+        @snapshot = nil
         @memsize = 1
         parser = RUBY_ENGINE == "spinel" ? SpinelOptions : OptionParser
         options = parser.new do |opts|
@@ -66,6 +68,7 @@ module Wardite
           opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }
           opts.on("--mir-profile", "Instrument MIR execution (do not use for timing)") { @mir_profile = true }
           opts.on("--mir-cache DIR", "Reuse MIR2 in a local directory") { |dir| @mir_cache = dir }
+          opts.on("--snapshot DIR", "Resume WASI startup from a local snapshot (needs --mir-cache; fixes clocks and random bytes read before it)") { |dir| @snapshot = dir }
           opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
             @yjit = true
           }
@@ -77,6 +80,9 @@ module Wardite
         options.parse!(args)
         if !new_engine && (!disabled_optimizations.empty? || mir_dump || mir_profile || mir_cache)
           raise "MIR options require --new-engine"
+        end
+        if snapshot && (!new_engine || !mir_cache || mir_dump || mir_profile)
+          raise "--snapshot requires --new-engine and --mir-cache, without --mir-dump or --mir-profile"
         end
         @file = args[0] || raise("require file argument")
         @args = (args[1..-1] || [])
@@ -181,11 +187,33 @@ module Wardite
 
         if defined? Bundler
           Bundler.with_original_env do
-            instance.runtime.call(:_start, [])
+            start_wasi(instance)
           end
         else
-          instance.runtime.call(:_start, [])
+          start_wasi(instance)
         end
+      end
+
+      # The snapshot key reads the environment, so build it where _start runs.
+      # @rbs instance: ::Wardite::Instance
+      # @rbs return: void
+      def start_wasi(instance)
+        runtime = instance.runtime
+        directory = snapshot
+        if directory && runtime.is_a?(Wardite::Efflorescence::VM)
+          cache = runtime.mir_cache
+          if cache && instance.wasi && !instance.start_section
+            require "wardite/efflorescence/snapshot" unless RUBY_ENGINE == "spinel"
+            recorder = Wardite::Efflorescence::Snapshot.new(directory, instance, cache)
+            frames = runtime.mir_cache_hit ? recorder.restore(runtime) : nil
+            if frames
+              runtime.resume(frames)
+              return
+            end
+            runtime.snapshot = recorder
+          end
+        end
+        runtime.call(:_start, [])
       end
 
       # @rbs return: String?

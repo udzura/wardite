@@ -1,0 +1,83 @@
+# Generated from lib/wardite/efflorescence/snapshot.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class SavedFrame
+      attr_reader pool_index: Integer
+
+      attr_reader pc: Integer
+
+      attr_reader return_register: Integer
+
+      attr_reader registers: Array[Integer]
+
+      attr_reader handlers: Array[Integer]
+
+      # @rbs pool_index: Integer
+      # @rbs pc: Integer
+      # @rbs return_register: Integer
+      # @rbs registers: Array[Integer]
+      # @rbs handlers: Array[Integer]
+      def initialize: (Integer pool_index, Integer pc, Integer return_register, Array[Integer] registers, Array[Integer] handlers) -> untyped
+    end
+
+    # Startup snapshot of a WASI command (ADR 0012). The state is saved just
+    # before the first WASI call whose result is not fixed by the key, and a
+    # later run with the same key resumes from there.
+    class Snapshot
+      MAGIC: untyped
+
+      FORMAT_VERSION: ::Integer
+
+      PAGE_SIZE: ::Integer
+
+      ZERO_PAGE: untyped
+
+      # Their results depend only on values in the key, or are frozen into the
+      # snapshot (clocks and random bytes). fd_filestat_get is allowed for
+      # stdio only: CRuby probes fds 0-2 before anything else.
+      ALLOWED: untyped
+
+      attr_reader path: String
+
+      # @rbs directory: String
+      # @rbs instance: Wardite::Instance
+      # @rbs mir_cache: Wardite::Efflorescence::MIRCache
+      def initialize: (String directory, Wardite::Instance instance, Wardite::Efflorescence::MIRCache mir_cache) -> untyped
+
+      # Does this host call end the deterministic prefix of the run?
+      # @rbs host: Wardite::Efflorescence::HostFunction
+      # @rbs registers: Array[Integer]
+      # @rbs sources: Array[Integer]
+      # @rbs return: bool
+      def checkpoint?: (Wardite::Efflorescence::HostFunction host, Array[Integer] registers, Array[Integer] sources) -> bool
+
+      # Saving is best effort: any refusal or I/O error leaves the run as is.
+      # @rbs instance: Wardite::Instance
+      # @rbs frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs return: void
+      def save: (Wardite::Instance instance, Array[Wardite::Efflorescence::Frame] frames) -> void
+
+      # Validate everything before touching the Store, so a rejected file
+      # leaves a fresh instance for the normal start.
+      # @rbs vm: Wardite::Efflorescence::VM
+      # @rbs return: Array[Wardite::Efflorescence::SavedFrame]?
+      def restore: (Wardite::Efflorescence::VM vm) -> Array[Wardite::Efflorescence::SavedFrame]?
+
+      private
+
+      # The top frame resumes at its host call. Callers resume after the call
+      # that created the frame above them, which writes its return register.
+      # @rbs functions: Array[Wardite::Efflorescence::Function]
+      # @rbs frames: Array[Wardite::Efflorescence::SavedFrame]
+      # @rbs index: Integer
+      # @rbs return: void
+      def check_frame: (Array[Wardite::Efflorescence::Function] functions, Array[Wardite::Efflorescence::SavedFrame] frames, Integer index) -> void
+
+      # @rbs message: String
+      # @rbs started: Float
+      # @rbs return: void
+      def trace: (String message, ?Float started) -> void
+    end
+  end
+end

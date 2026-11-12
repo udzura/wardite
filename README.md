@@ -89,6 +89,14 @@ the Wasm, links imports, and initializes a fresh instance. `--mir-dump` and
 `engine: :efflorescence`. CRuby and Spinel use different cache keys.
 [MIR2 cache measurements](docs/efflorescence-mir2-cache.md)
 
+For WASI commands, `--snapshot DIR` (with `--new-engine --mir-cache DIR`) saves
+the guest state just before its first WASI call that reads files or writes output,
+and later runs with the same Wasm, arguments, environment, preopens and stdio
+kinds resume from there. Clock values and random bytes read before that point
+are frozen into the snapshot, so every resumed run sees the same values (for Ruby, the same hash
+seed). Do not use it where that matters, such as hashing untrusted keys.
+[ADR 0012](docs/adr/0012-efflorescence-startup-snapshot.md)
+
 [M1](docs/efflorescence-m1.md) adds the remaining basic i32 operations,
 if/else/select/br_table, and new exception handling (try_table/throw/throw_ref).
 Tags can carry numeric payloads. Nullable exnref locals and multi-result blocks carry
