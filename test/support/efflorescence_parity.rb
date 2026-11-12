@@ -45,13 +45,14 @@ module EfflorescenceParity
     [binary]
   end
 
-  def self.observe(command, directory, engine, fixtures, binaries, disabled)
+  def self.observe(command, directory, engine, fixtures, binaries, disabled, cache: nil, hit: false)
     plan = File.join(directory, "plan.tsv")
     result = File.join(directory, "result.tsv")
     File.write(plan, fixtures.map do |fixture|
       [fixture.id, binaries.fetch(fixture.id), fixture.steps.map(&:first).join(","), fixture.windows].join("\t")
     end.join("\n") + "\n")
-    stdout, stderr = capture(*command, engine.to_s, plan, result, disabled.join(","))
+    options = cache ? [cache, hit ? "hit" : "build"] : []
+    stdout, stderr = capture(*command, engine.to_s, plan, result, disabled.join(","), *options)
     expected_stdout = fixtures.map(&:stdout).join
     raise "#{engine} stdout: #{expected_stdout.inspect} expected, #{stdout.inspect} observed" unless stdout == expected_stdout
     rows = File.readlines(result, chomp: true).map do |line|

@@ -12,7 +12,7 @@ module Wardite
     # optimizer/validator fixes, and changes to the metadata used by the VM.
     class MIRCache
       MAGIC = "WARDMIR\0".b
-      FORMAT_VERSION = 2
+      FORMAT_VERSION = 3
       CODE_VERSION = 1
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
@@ -38,10 +38,15 @@ module Wardite
       # All records are little-endian. Vectors carry a nonnegative 32-bit element count.
       # A record count is bounded by the bytes still available to decode it.
       class Reader
+        attr_reader :offset #: Integer
+
         # @rbs bytes: String
-        def initialize(bytes)
+        # @rbs offset: Integer
+        # @rbs length: Integer?
+        def initialize(bytes, offset: 0, length: nil)
           @bytes = bytes
-          @offset = 0
+          @offset = offset
+          @limit = length ? offset + length : bytes.bytesize
         end
 
         # @rbs length: Integer
@@ -80,6 +85,35 @@ module Wardite
           result
         end
 
+        # @rbs target: Array[Integer]
+        # @rbs format: String
+        # @rbs width: Integer
+        # @rbs return: void
+        def read_into(target, format, width)
+          if RUBY_ENGINE == "spinel"
+            length = count(width)
+            offset = @offset
+            limit = offset + length * width
+            target.clear
+            IO::Buffer.for(@bytes) do |buffer|
+              if width == 8
+                while offset < limit
+                  target << buffer.get_value(:s64, offset)
+                  offset += 8
+                end
+              else
+                while offset < limit
+                  target << buffer.get_value(:s32, offset)
+                  offset += 4
+                end
+              end
+            end
+            @offset = limit
+          else
+            target.replace(vector(format, width))
+          end
+        end
+
         # @rbs return: Array[Symbol]
         def types
           vector("C", 1).map { |id| TYPES[id] || raise(Invalid) }
@@ -87,7 +121,7 @@ module Wardite
 
         # @rbs return: void
         def finish
-          raise Invalid unless @offset == @bytes.bytesize
+          raise Invalid unless @offset == @limit
         end
 
         private
@@ -95,7 +129,7 @@ module Wardite
         # @rbs length: Integer
         # @rbs return: void
         def ensure_bytes(length)
-          raise Invalid if length > @bytes.bytesize - @offset
+          raise Invalid if length > @limit - @offset
         end
       end
 
@@ -178,6 +212,8 @@ module Wardite
       class Decoder
         include Opcode
 
+        attr_reader :functions #: Array[Function]
+
         # Reuse the semantic register roles for fixed operands. Lowering
         # moves direct call arguments into a side table and leaves optional
         # destinations and return operands to be checked against signatures.
@@ -210,13 +246,18 @@ module Wardite
           end
         end.freeze #: Array[Symbol?]
 
-        # @rbs reader: Reader
+        # @rbs payload: String
         # @rbs instance: Wardite::Instance
         # @rbs entries: Array[FunctionEntry]
-        def initialize(reader, instance, entries)
-          @reader = reader
-          @instance = instance
+        def initialize(payload, instance, entries)
+          @payload = payload
+          @reader = Reader.new(payload)
           @entries = entries
+          @bodies = instance.code_section&.func_codes || []
+          @tags = instance.tags
+          @functions = []
+          @offsets = [] #: Array[Integer]
+          @lengths = [] #: Array[Integer]
           @import_count = instance.import_section.imports.size
           @defined_count = entries.size - @import_count
           @data_count = instance.data_section&.segments&.size || 0
@@ -232,56 +273,71 @@ module Wardite
           end
         end
 
-        # @rbs return: Array[Function]
-        def decode
-          raise Invalid unless @reader.count(4) == @defined_count
+        # @rbs layout: String
+        # @rbs return: void
+        def declare(layout)
+          raise Invalid unless @reader.count(8) == @defined_count && @bodies.size == @defined_count
+          @defined_count.times do
+            @offsets << @reader.integer
+            @lengths << @reader.integer
+          end
+          raise Invalid unless @reader.bytes(@reader.count(1)) == layout
 
-          functions = [] #: Array[Function]
-          call_records = [] #: Array[Array[[Integer, Array[Integer]]]]
-          bodies = @instance.code_section&.func_codes || []
-          bodies.each_with_index do |body, pool_index|
+          cursor = @reader.offset
+          @defined_count.times do |pool_index|
+            offset = @offsets.fetch(pool_index)
+            length = @lengths.fetch(pool_index)
+            raise Invalid unless offset == cursor && length > 0 && length <= @payload.bytesize - cursor
+            cursor += length
+
             index = @import_count + pool_index
-            function = read_function(body, @entries.fetch(index), index)
-            functions << function
-            call_records << read_sites(function)
+            entry = @entries.fetch(index)
+            function = Function.new(index, entry.parameter_types, entry.result_types, 0, pool_index: pool_index)
+            function.cache_pending = true
+            @functions << function
           end
-          @reader.finish
+          raise Invalid unless cursor == @payload.bytesize
+        end
 
-          functions.zip(call_records).each do |function, records|
-            raise Invalid unless records
-            records.each do |index, arguments|
-              callee = functions.fetch(index)
-              check_arguments(function, arguments, callee.parameter_types)
-              function.add_call_site(CallSite.new(callee, arguments))
-            end
-            check_code(function)
-          end
-          functions
+        # A failed decode must never expose a partially filled function. Keep
+        # the slot unavailable even if a Ruby caller catches the error.
+        # @rbs function: Function
+        # @rbs return: void
+        def restore(function)
+          index = function.pool_index
+          length = @lengths.fetch(index)
+          raise Invalid unless length > 0
+          @lengths[index] = 0
+          @reader = Reader.new(@payload, offset: @offsets.fetch(index), length: length)
+          read_function(@bodies.fetch(index), function)
+          read_sites(function, @functions)
+          @reader.finish
+          check_code(function)
+          function.cache_pending = false
         end
 
         private
 
         # @rbs body: Wardite::CodeSection::CodeBody
-        # @rbs entry: FunctionEntry
-        # @rbs index: Integer
-        # @rbs return: Function
-        def read_function(body, entry, index)
+        # @rbs function: Function
+        # @rbs return: void
+        def read_function(body, function)
           flags = @reader.integer
           raise Invalid unless flags.between?(0, FUNCTION_FLAGS)
 
           types = @reader.types
-          params = entry.parameter_types
+          params = function.parameter_types
           first_local = params.size
-          first_temporary = first_local + body.locals_count.sum
+          function.local_count = body.locals_count.sum
+          first_temporary = first_local + function.local_count
           raise Invalid unless first_temporary <= types.size && types.take(first_local) == params
 
           local_index = first_local
-          body.locals_type.zip(body.locals_count).each do |type, count|
-            raise Invalid unless count && types.slice(local_index, count)&.all? { |actual| actual == type }
+          body.locals_type.each_with_index do |type, index|
+            count = body.locals_count.fetch(index)
+            raise Invalid unless types.slice(local_index, count)&.all? { |actual| actual == type }
             local_index += count
           end
-          locals = types.slice(first_local, first_temporary - first_local) || raise(Invalid)
-          function = Function.new(index, params, entry.result_types, locals.size, local_types: locals, pool_index: entry.defined_index)
           function.uses_i64 = (flags & USES_I64) != 0
           function.uses_float = (flags & USES_FLOAT) != 0
           function.uses_eh = (flags & USES_EH) != 0
@@ -289,9 +345,11 @@ module Wardite
           function.uses_dynamic_calls = (flags & USES_DYNAMIC_CALLS) != 0
           raise Invalid if !function.uses_eh && types.include?(:exnref)
 
-          initial = @reader.vector("q<", 8)
+          initial = function.initial_registers
+          @reader.read_into(initial, "q<", 8)
           raise Invalid unless initial.size == types.size
-          constants = @reader.vector("l<", 4)
+          constants = function.constant_registers
+          @reader.read_into(constants, "l<", 4)
           previous = first_temporary - 1
           constants.each do |slot|
             raise Invalid unless slot > previous && slot < types.size
@@ -308,24 +366,25 @@ module Wardite
             end
           end
           function.register_types.replace(types)
-          function.initial_registers.replace(initial)
-          function.constant_registers.replace(constants)
 
-          code = @reader.vector("q<", 8)
+          code = function.bytecode
+          @reader.read_into(code, "q<", 8)
           raise Invalid if code.empty? || code.size % Lowerer::WIDTH != 0
-          # Keep the lowerer's integer array representation in Spinel.
-          function.bytecode.replace(code)
-          function
         end
 
         # @rbs function: Function
-        # @rbs return: Array[[Integer, Array[Integer]]]
-        def read_sites(function)
-          calls = Array.new(@reader.count(8)) do
+        # @rbs functions: Array[Function]
+        # @rbs return: void
+        def read_sites(function, functions)
+          @reader.count(8).times do
             index = @reader.integer
             raise Invalid unless index.between?(0, @defined_count - 1)
-            [index, @reader.vector("l<", 4)]
-          end #: Array[[Integer, Array[Integer]]]
+            callee = functions[index] || raise(Invalid)
+            site = CallSite.new(callee, [])
+            @reader.read_into(site.arguments, "l<", 4)
+            check_arguments(function, site.arguments, callee.parameter_types)
+            function.add_call_site(site)
+          end
           @reader.count(20).times { function.dynamic_sites << read_dynamic_site(function) }
           @reader.count(16).times { function.memory_sites << read_memory_site(function) }
           @reader.count(8).times do
@@ -339,7 +398,6 @@ module Wardite
             clauses = Array.new(@reader.count(20)) { read_catch(function, handler_count) }
             function.flat_handlers << HandlerDescriptor.new(clauses)
           end
-          calls
         end
 
         # @rbs function: Function
@@ -349,7 +407,6 @@ module Wardite
           table_index = @reader.integer
           params = @reader.types
           results = @reader.types
-          arguments = @reader.vector("l<", 4)
           if host_index == -1
             raise Invalid unless table_index == 0 && @table_type == :funcref &&
               @signatures.key?([params, results]) && results.size <= 1 &&
@@ -359,8 +416,10 @@ module Wardite
             host = @entries.fetch(host_index)
             raise Invalid unless params == host.parameter_types && results == host.result_types
           end
-          check_arguments(function, arguments, params)
-          DynamicCallSite.new(host_index, arguments, params, results, table_index: table_index)
+          site = DynamicCallSite.new(host_index, [], params, results, table_index: table_index)
+          @reader.read_into(site.arguments, "l<", 4)
+          check_arguments(function, site.arguments, params)
+          site
         end
 
         # @rbs function: Function
@@ -439,7 +498,7 @@ module Wardite
         # @rbs tag: Integer
         # @rbs return: Array[Symbol]
         def tag_types(tag)
-          at(@instance.tags, tag).parameter_types
+          at(@tags, tag).parameter_types
         end
 
         # @rbs function: Function
@@ -479,7 +538,8 @@ module Wardite
       # @rbs wasm: String
       # @rbs configuration: Configuration
       # @rbs verify: Symbol
-      def initialize(directory, wasm, configuration, verify: :checksum)
+      # @rbs eager: bool
+      def initialize(directory, wasm, configuration, verify: :checksum, eager: false)
         versions = [FORMAT_VERSION, CODE_VERSION].pack("L<2")
         disabled = configuration.disabled.uniq.sort.join(",")
         key_data = versions + Digest::SHA256.digest(wasm) + disabled
@@ -490,6 +550,8 @@ module Wardite
         @directory = File.expand_path(directory)
         @path = File.join(@directory, "#{key.unpack1("H*")}.mir2")
         @verify = verify
+        @eager = eager
+        @decoder = nil #: Decoder?
       end
 
       # Restore against module declarations so a miss can decode and check the
@@ -497,15 +559,40 @@ module Wardite
       # @rbs instance: Wardite::Instance
       # @rbs return: Array[Function]?
       def read(instance)
-        reader = Reader.new(read_verified_payload)
+        payload = read_verified_payload
         entries = module_entries(instance)
-        raise Invalid unless reader.bytes(reader.count(1)) == encode_layout(instance, entries)
-        functions = Decoder.new(reader, instance, entries).decode
+        decoder = Decoder.new(payload, instance, entries)
+        decoder.declare(encode_layout(instance, entries))
+        if @eager
+          decoder.functions.each { |function| decoder.restore(function) }
+        else
+          @decoder = decoder
+        end
         $stderr.puts "MIR2 cache hit: #{@path}" if ENV["WARDITE_TRACE"]
-        functions
+        decoder.functions
       rescue SystemCallError, IOError, Invalid
         $stderr.puts "MIR2 cache miss: #{@path}" if ENV["WARDITE_TRACE"]
         nil
+      end
+
+      # @rbs function: Function
+      # @rbs return: void
+      def restore_function(function)
+        return unless function.cache_pending
+
+        decoder = @decoder || raise(Invalid)
+        decoder.restore(function)
+      rescue Invalid
+        raise Wardite::EvalError, "invalid MIR2 function #{function.index} in #{@path}. Delete this cache file and retry."
+      end
+
+      # @rbs return: void
+      def restore_all
+        decoder = @decoder
+        return unless decoder
+
+        decoder.functions.each { |function| restore_function(function) }
+        @decoder = nil
       end
 
       # @rbs instance: Wardite::Instance
@@ -513,16 +600,21 @@ module Wardite
       # @rbs return: void
       def write(instance, ir)
         FileUtils.mkdir_p(@directory)
-        writer = Writer.new
         layout = encode_layout(instance, ir.entries)
-        writer.integers(layout.bytesize)
-        writer.bytes << layout
-        writer.integers(ir.functions.size)
+        table = Writer.new
+        table.integers(ir.functions.size)
+        records = Writer.new
+        offset = 8 + 8 * ir.functions.size + layout.bytesize
         ir.functions.each do |function|
-          writer.function(function)
-          return if @header.bytesize + INTEGRITY_SIZE + writer.bytes.bytesize > MAX_BYTES
+          start = records.bytes.bytesize
+          records.function(function)
+          table.integers(offset + start, records.bytes.bytesize - start)
+          return if @header.bytesize + INTEGRITY_SIZE + offset + records.bytes.bytesize > MAX_BYTES
         end
-        payload = writer.bytes
+        table.integers(layout.bytesize)
+        payload = table.bytes
+        payload << layout
+        payload << records.bytes
         length = [payload.bytesize].pack("Q<")
         prefix = @header + length + MIRCache.sample_checksum(payload, length) + Digest::SHA256.digest(payload)
         MIRCache.publish(@directory, @path, prefix, payload)

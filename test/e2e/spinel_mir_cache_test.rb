@@ -17,6 +17,7 @@ class WarditeSpinelMIRCacheTest < Test::Unit::TestCase
     assert status.success?, stderr
     assert_include stdout, "--mir-cache DIR"
     assert_include stdout, "--mir-cache-verify MODE"
+    assert_include stdout, "--mir-cache-eager"
   end
 
   test "Spinel hits its own cache across processes and rebuilds a truncated entry" do
@@ -36,12 +37,15 @@ class WarditeSpinelMIRCacheTest < Test::Unit::TestCase
     end
   end
 
-  test "CRuby and Spinel write the same integrity fields and reject unsampled invalid MIR" do
+  test "CRuby and Spinel write the same integrity fields and defer unsampled function errors" do
     Dir.mktmpdir do |directory|
       wasm = File.join(directory, "identity.wasm")
       mib = 1024 * 1024
+      bad_index = 1200
+      identity = "(func (param i32) (result i32) local.get 0)\n"
       wat = "(module (func (export \"value\") (param i32) (result i32) local.get 0)\n" +
-        "(func (param i32) (result i32) local.get 0)\n" * 12_000 + ")"
+        identity * (bad_index - 1) + "(func (export \"bad\") (param i32) (result i32) local.get 0)\n" +
+        identity * (12_000 - bad_index) + ")"
       bytes = compile_efflorescence_wat(wat)
       File.binwrite(wasm, bytes)
       args = ["--invoke", "value", "--", wasm, "42"]
@@ -64,9 +68,12 @@ class WarditeSpinelMIRCacheTest < Test::Unit::TestCase
       assert_equal Digest::SHA256.digest(sample), original.byteslice(56, 32)
       assert_equal Digest::SHA256.digest(payload), original.byteslice(88, 32)
 
-      bytecode = cruby.ir.functions.fetch(1).bytecode.pack("q<*")
-      code = original.index(bytecode, 120 + 65536)
+      bytecode = cruby.ir.functions.fetch(bad_index).bytecode.pack("q<*")
+      record, size = original.unpack("l<2", offset: 124 + 8 * bad_index)
+      code = original.index(bytecode, 120 + record)
       assert_not_nil code
+      assert_operator code, :>=, 120 + 65536
+      assert_operator code + bytecode.bytesize, :<=, 120 + record + size
       assert_operator code + bytecode.bytesize, :<, 120 + mib
       assert_operator code + bytecode.bytesize, :<, original.bytesize - 65536
       %w[sha256 checksum].each do |mode|
@@ -83,7 +90,18 @@ class WarditeSpinelMIRCacheTest < Test::Unit::TestCase
           corrupt = original.dup
           corrupt.setbyte(offset, 255)
           File.binwrite(path, corrupt)
-          assert_cached_call(cache, "miss", "I32(42)", "--mir-cache-verify", mode, *args)
+          if mode == "checksum"
+            assert_cached_call(cache, "hit", "I32(42)", *args)
+            _stdout, stderr, status = Open3.capture3({"WARDITE_TRACE" => "1"}, @binary,
+              "--new-engine", "--no-wasi", "--mir-cache", cache, "--invoke", "bad", "--", wasm, "42")
+            assert_false status.success?
+            assert_include stderr, "MIR2 cache hit:"
+            assert_include stderr, "invalid MIR2 function #{bad_index} in #{path}"
+            assert_equal corrupt, File.binread(path)
+            assert_cached_call(cache, "miss", "I32(42)", "--mir-cache-eager", *args)
+          else
+            assert_cached_call(cache, "miss", "I32(42)", "--mir-cache-verify", mode, *args)
+          end
           assert_equal original, File.binread(path)
         end
       end

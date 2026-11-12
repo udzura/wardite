@@ -73,6 +73,14 @@ class WarditeSpinelTest < Test::Unit::TestCase
       assert_not_nil transfer
       assert_not_match(/sp_box_oint|sp_PolyArray_/, transfer,
         "argument transfer must stay unboxed and must not box an unused return value")
+      restore = code[/^static [^\n]+sp_(?:\w+__)?Decoder_read_function\([^;\n]*\) \{.*?(?=^static |\z)/m]
+      assert_not_nil restore, "Missing MIR2 function reader"
+      assert_not_match(/sp_poly_as_int_array|sp_PolyArray_push/, restore)
+      read_into = code[/^static [^\n]+sp_(?:\w+__)?Reader_read_into\([^;\n]*\) \{.*?(?=^static |\z)/m]
+      assert_not_nil read_into, "Missing MIR2 integer reader"
+      assert_match(/sp_IntArray \* lv_target/, read_into)
+      assert_match(/sp_IntArray_push/, read_into)
+      assert_not_match(/sp_poly_as_int_array|sp_PolyArray_push/, read_into)
     end
   end
 

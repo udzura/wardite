@@ -590,7 +590,9 @@ module Wardite
 
       attr_reader result_types: Array[Symbol]
 
-      attr_reader local_count: Integer
+      attr_accessor local_count: Integer
+
+      attr_accessor cache_pending: bool
 
       attr_reader instructions: Array[Wardite::Efflorescence::Instruction]
 
@@ -874,7 +876,8 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs reuse: bool
-      def initialize: (Wardite::Efflorescence::Function function, bool reuse) -> untyped
+      # @rbs cache: Wardite::Efflorescence::MIRCache?
+      def initialize: (Wardite::Efflorescence::Function function, bool reuse, ?Wardite::Efflorescence::MIRCache? cache) -> untyped
 
       # @rbs destination: Integer
       # @rbs return: Wardite::Efflorescence::Frame

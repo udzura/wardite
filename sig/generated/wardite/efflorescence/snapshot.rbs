@@ -71,8 +71,9 @@ module Wardite
       # @rbs functions: Array[Wardite::Efflorescence::Function]
       # @rbs frames: Array[Wardite::Efflorescence::SavedFrame]
       # @rbs index: Integer
+      # @rbs cache: Wardite::Efflorescence::MIRCache
       # @rbs return: void
-      def check_frame: (Array[Wardite::Efflorescence::Function] functions, Array[Wardite::Efflorescence::SavedFrame] frames, Integer index) -> void
+      def check_frame: (Array[Wardite::Efflorescence::Function] functions, Array[Wardite::Efflorescence::SavedFrame] frames, Integer index, Wardite::Efflorescence::MIRCache cache) -> void
 
       # @rbs message: String
       # @rbs started: Float
