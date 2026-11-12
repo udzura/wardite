@@ -590,20 +590,9 @@ module Wardite
       memory = store.memories[0]
       return Wasi::EFAULT unless memory && memory.range?(offset, 24)
 
-      fdflags = 0
-      if file.is_a?(Wasi::PreopenedDir)
-        ftype = Wasi.to_ftype(File.stat(file.guest_path).ftype)
-      else
-        flags = if RUBY_ENGINE == "spinel"
-          Wasi::Native.wardite_wasi_getfl(file.fileno)
-        else
-          file.fcntl(Fcntl::F_GETFL, 0)
-        end
-        return Wasi::EBADF if flags < 0
-        fdflags |= Wasi::FD_APPEND if (flags & File::APPEND) != 0
-        fdflags |= Wasi::FD_NONBLOCK if (flags & File::NONBLOCK) != 0
-        ftype = Wasi.to_ftype(file.stat.ftype)
-      end
+      kind = fd_kind(file)
+      return Wasi::EBADF unless kind
+      ftype, fdflags = kind
 
       fs_right_base = 0
       fs_right_inheriting = 0
@@ -753,6 +742,42 @@ module Wardite
       return Wasi::EFAULT unless memory && memory.range?(buf, buflen)
       memory.write_bytes(buf, SecureRandom.random_bytes(buflen))
       0
+    end
+
+    # Everything an allowed call before a startup snapshot can observe:
+    # arguments, environment, and the kind of every open descriptor.
+    # @rbs return: String
+    def snapshot_identity
+      identity = "".b
+      entries = argv.map { |arg| "#{arg}\0".b } + ["\0".b] + environment_entries
+      entries.each { |entry| identity << [entry.bytesize].pack("L<") << entry }
+      fd_table.keys.sort.each do |fd|
+        file = fd_table[fd]
+        next unless file
+        if file.is_a?(Wasi::PreopenedDir)
+          identity << [fd, -1, -1].pack("l<3") << "#{file.path}\0#{file.guest_path}\0".b
+        else
+          kind = fd_kind(file) || [-1, -1]
+          identity << [fd, kind[0], kind[1]].pack("l<3")
+        end
+      end
+      identity
+    end
+
+    # @rbs file: IO|File|::Wardite::Wasi::PreopenedDir
+    # @rbs return: [Integer, Integer]?
+    def fd_kind(file)
+      return [Wasi.to_ftype(File.stat(file.guest_path).ftype), 0] if file.is_a?(Wasi::PreopenedDir)
+      flags = if RUBY_ENGINE == "spinel"
+        Wasi::Native.wardite_wasi_getfl(file.fileno)
+      else
+        file.fcntl(Fcntl::F_GETFL, 0)
+      end
+      return nil if flags < 0
+      fdflags = 0
+      fdflags |= Wasi::FD_APPEND if (flags & File::APPEND) != 0
+      fdflags |= Wasi::FD_NONBLOCK if (flags & File::NONBLOCK) != 0
+      [Wasi.to_ftype(file.stat.ftype), fdflags]
     end
 
     private

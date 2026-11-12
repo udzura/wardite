@@ -8,6 +8,9 @@ module Wardite
       attr_reader :ir #: Wardite::Efflorescence::IR
       attr_reader :metrics #: Wardite::Efflorescence::Metrics
       attr_reader :mir_cache_hit #: bool
+      attr_reader :mir_cache #: Wardite::Efflorescence::MIRCache?
+      # Records a startup snapshot before the first WASI call outside its allowlist.
+      attr_accessor :snapshot #: Wardite::Efflorescence::Snapshot?
 
       # @rbs @semantic_ir: Wardite::Efflorescence::IR?
       # @rbs @optimized_ir: Wardite::Efflorescence::IR?
@@ -37,6 +40,10 @@ module Wardite
         @profiling = profile
         @metrics = Metrics.new
         @semantic_ir = @optimized_ir = nil
+        @mir_cache = mir_cache
+        @snapshot = nil
+        @active_frames = [] #: Array[Wardite::Efflorescence::Frame]
+        @depth = 0
         translator = Translator.new(instance)
         linked = translator.link
         if mir_cache && !profile && !cache_checked
@@ -123,6 +130,25 @@ module Wardite
         inspection = Inspection.new
         "Semantic MIR (#{inspection.statistics(semantic_ir)})\n#{inspection.disassemble(semantic_ir)}\n" \
           "Optimized MIR (#{inspection.statistics(optimized_ir)})\n#{inspection.disassemble(optimized_ir)}"
+      end
+
+      # Continue a public call restored from a startup snapshot. Each frame
+      # resumes at its saved pc: the host call for the top, a return for others.
+      # @rbs saved: Array[Wardite::Efflorescence::SavedFrame]
+      # @rbs return: void
+      def resume(saved)
+        pools = new_pools
+        frames = [] #: Array[Wardite::Efflorescence::Frame]
+        saved.each do |state|
+          frame = pool_at(pools, state.pool_index).acquire(state.return_register)
+          registers = frame.registers
+          state.registers.each_with_index { |value, i| registers[i] = value }
+          state.handlers.each { |handler| frame.handlers << handler }
+          frame.pc = state.pc
+          frames << frame
+        end
+        run_frames(pools, frames, 0)
+        nil
       end
 
       private
@@ -437,33 +463,57 @@ module Wardite
       # @rbs arguments: Array[Integer]
       # @rbs return: Integer?
       def execute(entry, arguments)
-        read_globals if @has_globals
-        metrics = @profiling ? Metrics.new : @metrics
-        pools = [] #: Array[Wardite::Efflorescence::FramePool]
-        active_frames = [] #: Array[Wardite::Efflorescence::Frame]
-        begin
-          if entry.kind == :host
+        if entry.kind == :host
+          read_globals if @has_globals
+          metrics = @profiling ? Metrics.new : @metrics
+          begin
             return @has_globals ? invoke_host_with_globals(entry.host_index, arguments, metrics, nil) :
               invoke_host(entry.host_index, arguments, metrics, nil)
-          end
-
-          @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }
-          frame = pool_at(pools, entry.defined_index).acquire(-1)
-          active_frames << frame
-          metrics.root_defined_entries = 1 if @profiling
-          arguments.each_with_index { |value, i| frame.registers[i] = value }
-          result = execute_flat(frame, pools, active_frames, metrics)
-          entry.result_types.empty? ? nil : result
-        ensure
-          active_frames.each { |active| pool_at(pools, active.pool_index).release(active) }
-          if @profiling
-            created = 0
-            pools.each { |pool| created += pool.created }
-            metrics.frames_created = created
+          ensure
             @metrics = metrics
+            write_globals if @has_globals
           end
-          write_globals if @has_globals
         end
+
+        pools = new_pools
+        frame = pool_at(pools, entry.defined_index).acquire(-1)
+        arguments.each_with_index { |value, i| frame.registers[i] = value }
+        result = run_frames(pools, [frame], 1)
+        entry.result_types.empty? ? nil : result
+      end
+
+      # @rbs return: Array[Wardite::Efflorescence::FramePool]
+      def new_pools
+        pools = [] #: Array[Wardite::Efflorescence::FramePool]
+        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }
+        pools
+      end
+
+      # Globals live in @global_bits while frames run. A restored snapshot
+      # writes the Store first, so both public calls and resume read it here.
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs root_entries: Integer
+      # @rbs return: Integer
+      def run_frames(pools, active_frames, root_entries)
+        read_globals if @has_globals
+        metrics = @profiling ? Metrics.new : @metrics
+        metrics.root_defined_entries = root_entries if @profiling
+        outer = @active_frames
+        @active_frames = active_frames
+        @depth += 1
+        execute_flat(current_frame(active_frames), pools, active_frames, metrics)
+      ensure
+        @depth -= 1
+        @active_frames = outer
+        active_frames.each { |active| pool_at(pools, active.pool_index).release(active) }
+        if @profiling
+          created = 0
+          pools.each { |pool| created += pool.created }
+          metrics.frames_created = created
+          @metrics = metrics
+        end
+        write_globals if @has_globals
       end
 
       # @rbs frame: Wardite::Efflorescence::Frame
@@ -474,6 +524,18 @@ module Wardite
       # @rbs return: void
       def execute_host_site(frame, site, host_index, destination, metrics)
         registers = frame.registers
+        recorder = @snapshot
+        if recorder
+          host = @ir.hosts[host_index] || raise(Wardite::EvalError, "missing MIR host function")
+          if recorder.checkpoint?(host, registers, site.arguments)
+            @snapshot = nil
+            if @depth == 1
+              # The snapshot reads globals from the Store.
+              write_globals if @has_globals
+              recorder.save(@instance, @active_frames)
+            end
+          end
+        end
         result = unless @has_globals
           invoke_host(host_index, registers, metrics, site.arguments)
         else
@@ -528,8 +590,10 @@ module Wardite
         entry = indirect_entry(site, registers[selector])
         if entry.kind == :host
           execute_host_site(frame, site, entry.host_index, destination, metrics)
+          frame.pc += Lowerer::WIDTH
           frame
         else
+          frame.pc += Lowerer::WIDTH
           next_frame = pool_at(pools, entry.defined_index).acquire(destination)
           frames << next_frame
           target = next_frame.registers
@@ -587,7 +651,7 @@ module Wardite
         registers = frame.registers
         global_bits = @global_bits
         instructions = frame.function.bytecode
-        pc = 0
+        pc = Integer(frame.pc)
         # Avoid Kernel#loop's StopIteration handler in the native hot loop.
         while true
           opcode = instructions.fetch(pc)
@@ -706,11 +770,12 @@ module Wardite
             pc = 0
             next
           when 67 # Opcode::CALL_HOST
+            frame.pc = pc
             execute_direct_host(frame, instructions.fetch(pc + 2), a, metrics)
           when 68 # Opcode::CALL_INDIRECT
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
-            frame.pc = pc + Lowerer::WIDTH
+            frame.pc = pc
             frame = execute_indirect(frame, pools, frames, a, b, c, metrics)
             registers = frame.registers
             instructions = frame.function.bytecode

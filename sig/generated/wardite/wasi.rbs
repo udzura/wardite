@@ -214,6 +214,15 @@ module Wardite
     # @rbs return: Object
     def random_get: (Store store, Array[wasmValue] args) -> Object
 
+    # Everything an allowed call before a startup snapshot can observe:
+    # arguments, environment, and the kind of every open descriptor.
+    # @rbs return: String
+    def snapshot_identity: () -> String
+
+    # @rbs file: IO|File|::Wardite::Wasi::PreopenedDir
+    # @rbs return: [Integer, Integer]?
+    def fd_kind: (IO | File | ::Wardite::Wasi::PreopenedDir file) -> [ Integer, Integer ]?
+
     private
 
     # @rbs store: Wardite::Store

@@ -11,6 +11,11 @@ module Wardite
 
       attr_reader mir_cache_hit: bool
 
+      attr_reader mir_cache: Wardite::Efflorescence::MIRCache?
+
+      # Records a startup snapshot before the first WASI call outside its allowlist.
+      attr_accessor snapshot: Wardite::Efflorescence::Snapshot?
+
       @global_bits: Array[Integer]
 
       @optimized_ir: Wardite::Efflorescence::IR?
@@ -61,6 +66,12 @@ module Wardite
 
       # @rbs return: String
       def dump_mir: () -> String
+
+      # Continue a public call restored from a startup snapshot. Each frame
+      # resumes at its saved pc: the host call for the top, a return for others.
+      # @rbs saved: Array[Wardite::Efflorescence::SavedFrame]
+      # @rbs return: void
+      def resume: (Array[Wardite::Efflorescence::SavedFrame] saved) -> void
 
       private
 
@@ -165,6 +176,17 @@ module Wardite
       # @rbs arguments: Array[Integer]
       # @rbs return: Integer?
       def execute: (Wardite::Efflorescence::FunctionEntry entry, Array[Integer] arguments) -> Integer?
+
+      # @rbs return: Array[Wardite::Efflorescence::FramePool]
+      def new_pools: () -> Array[Wardite::Efflorescence::FramePool]
+
+      # Globals live in @global_bits while frames run. A restored snapshot
+      # writes the Store first, so both public calls and resume read it here.
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs root_entries: Integer
+      # @rbs return: Integer
+      def run_frames: (Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] active_frames, Integer root_entries) -> Integer
 
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs site: Wardite::Efflorescence::DynamicCallSite
