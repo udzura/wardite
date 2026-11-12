@@ -25,11 +25,21 @@ class WarditeSpinelTest < Test::Unit::TestCase
       body = code[/^static [^\n]+sp_(?:Wardite__Efflorescence__)?VM_execute_flat\([^;\n]*\) \{.*?(?=^static |\z)/m]
       assert_not_nil body, "Missing generated execute_flat"
       assert_match(/switch \([^\n]*_t\d+/, body)
-      assert_equal (0..Wardite::Efflorescence::Opcode::I64_GLOBAL_SET).to_a,
+      opcodes = Wardite::Efflorescence::Opcode
+      global_get = [opcodes::GLOBAL_GET, opcodes::I64_GLOBAL_GET, opcodes::F32_GLOBAL_GET, opcodes::F64_GLOBAL_GET]
+      global_set = [opcodes::GLOBAL_SET, opcodes::I64_GLOBAL_SET, opcodes::F32_GLOBAL_SET, opcodes::F64_GLOBAL_SET]
+      assert_equal (0..opcodes::I64_GLOBAL_SET).to_a + (opcodes::F32_GLOBAL_GET..opcodes::F64_GLOBAL_SET).to_a,
         body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
-        "execute_flat should dispatch the integer and control opcodes through the literal switch"
+        "execute_flat should dispatch integer, control and global opcodes through the literal switch"
+      assert_match(/sp_IntArray \* lv_global_bits\b/, body)
+      (global_get + global_set).each do |opcode|
+        branch = body[/^\s*case #{opcode}LL:.*?(?=^\s*case \d+LL:|^\s*default:)/m]
+        assert_not_nil branch, "Missing #{opcodes::NAMES.fetch(opcode)} case"
+        assert_match(/\blv_global_bits\b/, branch)
+        assert_not_match(/\bsp_(?:poly|box)_\w+\s*\(/, branch)
+      end
       assert_match(/sp_(?:Wardite__Efflorescence__)?VM_execute_float\(/, body,
-        "float opcodes must use the cold dispatch helper")
+        "float arithmetic and memory opcodes must use the cold dispatch helper")
       float_body = code[/^static [^\n]+sp_(?:Wardite__Efflorescence__)?VM_execute_float\([^;\n]*\) \{.*?(?=^static |\z)/m]
       assert_not_nil float_body, "Missing generated execute_float"
       assert_match(/sp_IntArray \* lv_registers/, float_body,
@@ -63,6 +73,22 @@ class WarditeSpinelTest < Test::Unit::TestCase
       assert_not_nil transfer
       assert_not_match(/sp_box_oint|sp_PolyArray_/, transfer,
         "argument transfer must stay unboxed and must not box an unused return value")
+    end
+  end
+
+  test "global values synchronize across host calls, traps and shared stores" do
+    Dir.mktmpdir("wardite-global-sync") do |dir|
+      source = File.join(ROOT, "test/support/efflorescence_global_sync.wat")
+      probe = File.join(ROOT, "test/spinel/efflorescence_global_sync.rb")
+      wasm = File.join(dir, "globals.wasm")
+      worker = File.join(dir, "globals")
+      File.binwrite(wasm, compile_efflorescence_wat(File.read(source)))
+      output, status = Open3.capture2e(ENV.fetch("SPINEL", "spinel"), "--strict-require",
+        "-I#{ROOT}/lib", "-O2", probe, "-o", worker)
+      assert status.success?, output
+      output, status = Open3.capture2e(worker, wasm)
+      assert status.success?, output
+      assert_equal "global synchronization passed\n", output
     end
   end
 

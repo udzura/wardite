@@ -10,6 +10,11 @@
 現在はflat実行器の `while true` 化を製品ソースへ反映し、パッチなし・ありのSpinelで検証と計測を完了した。
 段階的な検証の結果は末尾の「Warditeへのwhile採用と最終比較」に記録する。
 
+ADR 0011では、生成Cの `execute_flat` の回帰テストにglobal命令を追加した。
+i32、i64、f32、f64のget/setが `sp_IntArray` のglobal配列を使い、
+各分岐に `sp_poly_` と `sp_box_` の呼び出しがないことを検査する。
+[生成Cのテスト](../test/e2e/spinel_test.rb)
+
 ## 命令フェッチに生成される処理
 
 Rubyの `instructions.fetch(pc)` は、おおむね次のCになる。変数名は読みやすく省略した。

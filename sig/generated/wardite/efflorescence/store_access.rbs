@@ -2,8 +2,8 @@
 
 module Wardite
   module Efflorescence
-    # Checked byte operations live off the integer dispatch path. Store remains
-    # the owner of all state; never retain a Memory#data buffer across a call.
+    # Checked byte operations and global synchronization live off the integer
+    # dispatch path. Never retain a Memory#data buffer across a call.
     class StoreAccess
       PAGE_SIZE: ::Integer
 
@@ -52,6 +52,17 @@ module Wardite
       # @rbs value: Integer
       # @rbs return: void
       def global_set_i64: (Integer index, Integer value) -> void
+
+      # @rbs index: Integer
+      # @rbs type: Symbol
+      # @rbs return: Integer
+      def global_bits_at: (Integer index, Symbol type) -> Integer
+
+      # @rbs index: Integer
+      # @rbs type: Symbol
+      # @rbs value: Integer
+      # @rbs return: void
+      def write_global_bits: (Integer index, Symbol type, Integer value) -> void
 
       # @rbs address: Integer
       # @rbs offset: Integer

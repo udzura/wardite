@@ -19,7 +19,8 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     assert_equal 1, methods.size
     methods.each do |body|
       labels = body.scan(/^          when (\d+) # Opcode::([A-Z_0-9]+)$/)
-      assert_equal OP::NAMES[0..OP::I64_GLOBAL_SET].sort, labels.map(&:last).sort
+      expected = OP::NAMES[0..OP::I64_GLOBAL_SET] + OP::NAMES[OP::F32_GLOBAL_GET..OP::F64_GLOBAL_SET]
+      assert_equal expected.sort, labels.map(&:last).sort
       labels.each do |number, name|
         assert_equal OP.const_get(name), Integer(number), "dispatch literal for #{name}"
       end

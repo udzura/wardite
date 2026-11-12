@@ -1,0 +1,3451 @@
+{
+  "date": "2026-11-12",
+  "baseline": "94a60e566a7349092697c9a5efabe3e5afbeb062",
+  "host": "Apple M3 Pro, macOS 27.0.1 arm64",
+  "spinel_revision": "6e7fc13556709bf7d7ba4af5bd1d12bebc00733e",
+  "spinel_patches": [
+    "0001-io-buffer-string-view.patch",
+    "0002-io-buffer-allocation-error.patch"
+  ],
+  "spinel_flags": [
+    "-O2"
+  ],
+  "startup": {
+    "wasm_sha256": "5d87d7e932b9b698892711f065d5e0313ad7aad96f88a9693d05aaae02541669",
+    "guest": "ruby 4.0.9 (2026-11-11) +PRISM [wasm32-wasi]",
+    "guest_arguments": [
+      "--disable-gems",
+      "-e",
+      "puts RUBY_DESCRIPTION"
+    ],
+    "host_ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+    "warmups": 1,
+    "runs": 5,
+    "samples": [
+      {
+        "process_seconds": 8.034591999836266,
+        "load_seconds": 0.7928481101989746,
+        "guest_seconds": 7.241743889637291,
+        "runtime": "CRuby YJIT",
+        "version": "after",
+        "run": 1
+      },
+      {
+        "process_seconds": 8.285120999906212,
+        "load_seconds": 0.7982158660888672,
+        "guest_seconds": 7.486905133817345,
+        "runtime": "CRuby YJIT",
+        "version": "before",
+        "run": 1
+      },
+      {
+        "process_seconds": 11.68430700013414,
+        "load_seconds": 1.227086067199707,
+        "guest_seconds": 10.457220932934433,
+        "runtime": "CRuby",
+        "version": "after",
+        "run": 1
+      },
+      {
+        "process_seconds": 12.031175999902189,
+        "load_seconds": 1.1919059753417969,
+        "guest_seconds": 10.839270024560392,
+        "runtime": "CRuby",
+        "version": "before",
+        "run": 1
+      },
+      {
+        "process_seconds": 1.0986449997872114,
+        "load_seconds": 0.5621528625488281,
+        "guest_seconds": 0.5364921372383833,
+        "runtime": "Spinel",
+        "version": "after",
+        "run": 1
+      },
+      {
+        "process_seconds": 1.2240710002370179,
+        "load_seconds": 0.513786792755127,
+        "guest_seconds": 0.7102842074818909,
+        "runtime": "Spinel",
+        "version": "before",
+        "run": 1
+      },
+      {
+        "process_seconds": 1.2303469995968044,
+        "load_seconds": 0.5143499374389648,
+        "guest_seconds": 0.7159970621578395,
+        "runtime": "Spinel",
+        "version": "before",
+        "run": 2
+      },
+      {
+        "process_seconds": 1.0928180003538728,
+        "load_seconds": 0.5350980758666992,
+        "guest_seconds": 0.5577199244871736,
+        "runtime": "Spinel",
+        "version": "after",
+        "run": 2
+      },
+      {
+        "process_seconds": 12.530014999676496,
+        "load_seconds": 1.2790801525115967,
+        "guest_seconds": 11.250934847164899,
+        "runtime": "CRuby",
+        "version": "before",
+        "run": 2
+      },
+      {
+        "process_seconds": 11.648163999896497,
+        "load_seconds": 1.1999001502990723,
+        "guest_seconds": 10.448263849597424,
+        "runtime": "CRuby",
+        "version": "after",
+        "run": 2
+      },
+      {
+        "process_seconds": 8.257630000356585,
+        "load_seconds": 0.8016262054443359,
+        "guest_seconds": 7.456003794912249,
+        "runtime": "CRuby YJIT",
+        "version": "before",
+        "run": 2
+      },
+      {
+        "process_seconds": 8.241142000071704,
+        "load_seconds": 0.7815470695495605,
+        "guest_seconds": 7.459594930522144,
+        "runtime": "CRuby YJIT",
+        "version": "after",
+        "run": 2
+      },
+      {
+        "process_seconds": 8.122403000015765,
+        "load_seconds": 0.8036627769470215,
+        "guest_seconds": 7.318740223068744,
+        "runtime": "CRuby YJIT",
+        "version": "after",
+        "run": 3
+      },
+      {
+        "process_seconds": 8.323574000038207,
+        "load_seconds": 0.7966232299804688,
+        "guest_seconds": 7.526950770057738,
+        "runtime": "CRuby YJIT",
+        "version": "before",
+        "run": 3
+      },
+      {
+        "process_seconds": 11.757049000356346,
+        "load_seconds": 1.22635817527771,
+        "guest_seconds": 10.530690825078636,
+        "runtime": "CRuby",
+        "version": "after",
+        "run": 3
+      },
+      {
+        "process_seconds": 12.07767300028354,
+        "load_seconds": 1.1964261531829834,
+        "guest_seconds": 10.881246847100556,
+        "runtime": "CRuby",
+        "version": "before",
+        "run": 3
+      },
+      {
+        "process_seconds": 1.0474620000459254,
+        "load_seconds": 0.5069868564605713,
+        "guest_seconds": 0.5404751435853541,
+        "runtime": "Spinel",
+        "version": "after",
+        "run": 3
+      },
+      {
+        "process_seconds": 1.225192999932915,
+        "load_seconds": 0.5148229598999023,
+        "guest_seconds": 0.7103700400330126,
+        "runtime": "Spinel",
+        "version": "before",
+        "run": 3
+      },
+      {
+        "process_seconds": 1.2648700000718236,
+        "load_seconds": 0.5695180892944336,
+        "guest_seconds": 0.69535191077739,
+        "runtime": "Spinel",
+        "version": "before",
+        "run": 4
+      },
+      {
+        "process_seconds": 1.0416299998760223,
+        "load_seconds": 0.5071160793304443,
+        "guest_seconds": 0.534513920545578,
+        "runtime": "Spinel",
+        "version": "after",
+        "run": 4
+      },
+      {
+        "process_seconds": 12.14558200025931,
+        "load_seconds": 1.1914749145507812,
+        "guest_seconds": 10.954107085708529,
+        "runtime": "CRuby",
+        "version": "before",
+        "run": 4
+      },
+      {
+        "process_seconds": 11.629968000110239,
+        "load_seconds": 1.1960690021514893,
+        "guest_seconds": 10.43389899795875,
+        "runtime": "CRuby",
+        "version": "after",
+        "run": 4
+      },
+      {
+        "process_seconds": 8.209567000158131,
+        "load_seconds": 0.7901968955993652,
+        "guest_seconds": 7.419370104558766,
+        "runtime": "CRuby YJIT",
+        "version": "before",
+        "run": 4
+      },
+      {
+        "process_seconds": 8.295429999940097,
+        "load_seconds": 0.7802178859710693,
+        "guest_seconds": 7.515212113969028,
+        "runtime": "CRuby YJIT",
+        "version": "after",
+        "run": 4
+      },
+      {
+        "process_seconds": 8.09703700011596,
+        "load_seconds": 0.7873940467834473,
+        "guest_seconds": 7.309642953332514,
+        "runtime": "CRuby YJIT",
+        "version": "after",
+        "run": 5
+      },
+      {
+        "process_seconds": 8.192892000079155,
+        "load_seconds": 0.7753369808197021,
+        "guest_seconds": 7.417555019259453,
+        "runtime": "CRuby YJIT",
+        "version": "before",
+        "run": 5
+      },
+      {
+        "process_seconds": 11.546513000037521,
+        "load_seconds": 1.1908650398254395,
+        "guest_seconds": 10.355647960212082,
+        "runtime": "CRuby",
+        "version": "after",
+        "run": 5
+      },
+      {
+        "process_seconds": 12.261793000157923,
+        "load_seconds": 1.18864107131958,
+        "guest_seconds": 11.073151928838342,
+        "runtime": "CRuby",
+        "version": "before",
+        "run": 5
+      },
+      {
+        "process_seconds": 1.0645559998229146,
+        "load_seconds": 0.5241928100585938,
+        "guest_seconds": 0.5403631897643209,
+        "runtime": "Spinel",
+        "version": "after",
+        "run": 5
+      },
+      {
+        "process_seconds": 1.2072850000113249,
+        "load_seconds": 0.5113699436187744,
+        "guest_seconds": 0.6959150563925505,
+        "runtime": "Spinel",
+        "version": "before",
+        "run": 5
+      }
+    ]
+  },
+  "small": {
+    "runs": 11,
+    "warmups": 2,
+    "measurements": [
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "inline_mix",
+        "rounds": 100000,
+        "checksum": 3870791521,
+        "load_median_ms": 1.438,
+        "load_min_ms": 0.877,
+        "load_max_ms": 1.608,
+        "execute_median_ms": 68.245,
+        "execute_min_ms": 63.604,
+        "execute_max_ms": 70.082
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "inline_mix",
+        "rounds": 100000,
+        "checksum": 3870791521,
+        "load_median_ms": 0.289,
+        "load_min_ms": 0.27,
+        "load_max_ms": 0.306,
+        "execute_median_ms": 3.483,
+        "execute_min_ms": 3.409,
+        "execute_max_ms": 3.531
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "inline_mix",
+        "rounds": 100000,
+        "checksum": 3870791521,
+        "load_median_ms": 1.48,
+        "load_min_ms": 1.417,
+        "load_max_ms": 2.252,
+        "execute_median_ms": 65.477,
+        "execute_min_ms": 63.294,
+        "execute_max_ms": 70.016
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "inline_mix",
+        "rounds": 100000,
+        "checksum": 3870791521,
+        "load_median_ms": 0.29,
+        "load_min_ms": 0.279,
+        "load_max_ms": 0.303,
+        "execute_median_ms": 3.467,
+        "execute_min_ms": 3.438,
+        "execute_max_ms": 3.764
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "call_mix",
+        "rounds": 100000,
+        "checksum": 3870791521,
+        "load_median_ms": 1.4,
+        "load_min_ms": 0.876,
+        "load_max_ms": 1.444,
+        "execute_median_ms": 112.719,
+        "execute_min_ms": 109.883,
+        "execute_max_ms": 116.696
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "call_mix",
+        "rounds": 100000,
+        "checksum": 3870791521,
+        "load_median_ms": 0.288,
+        "load_min_ms": 0.277,
+        "load_max_ms": 0.31,
+        "execute_median_ms": 5.456,
+        "execute_min_ms": 5.265,
+        "execute_max_ms": 5.567
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "call_mix",
+        "rounds": 100000,
+        "checksum": 3870791521,
+        "load_median_ms": 1.4,
+        "load_min_ms": 1.392,
+        "load_max_ms": 1.546,
+        "execute_median_ms": 113.886,
+        "execute_min_ms": 109.736,
+        "execute_max_ms": 116.269
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "call_mix",
+        "rounds": 100000,
+        "checksum": 3870791521,
+        "load_median_ms": 0.294,
+        "load_min_ms": 0.274,
+        "load_max_ms": 0.32,
+        "execute_median_ms": 5.407,
+        "execute_min_ms": 5.258,
+        "execute_max_ms": 5.488
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "empty_loop",
+        "rounds": 100000,
+        "checksum": 123,
+        "load_median_ms": 2.206,
+        "load_min_ms": 1.725,
+        "load_max_ms": 2.532,
+        "execute_median_ms": 20.921,
+        "execute_min_ms": 19.918,
+        "execute_max_ms": 22.253
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "empty_loop",
+        "rounds": 100000,
+        "checksum": 123,
+        "load_median_ms": 0.437,
+        "load_min_ms": 0.42,
+        "load_max_ms": 0.473,
+        "execute_median_ms": 1.297,
+        "execute_min_ms": 1.222,
+        "execute_max_ms": 1.33
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "empty_loop",
+        "rounds": 100000,
+        "checksum": 123,
+        "load_median_ms": 2.209,
+        "load_min_ms": 1.672,
+        "load_max_ms": 2.253,
+        "execute_median_ms": 21.066,
+        "execute_min_ms": 20.321,
+        "execute_max_ms": 22.348
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "empty_loop",
+        "rounds": 100000,
+        "checksum": 123,
+        "load_median_ms": 0.432,
+        "load_min_ms": 0.428,
+        "load_max_ms": 0.46,
+        "execute_median_ms": 1.297,
+        "execute_min_ms": 1.228,
+        "execute_max_ms": 1.31
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "call_zero",
+        "rounds": 100000,
+        "checksum": 700123,
+        "load_median_ms": 2.202,
+        "load_min_ms": 1.683,
+        "load_max_ms": 2.275,
+        "execute_median_ms": 77.245,
+        "execute_min_ms": 75.399,
+        "execute_max_ms": 79.276
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "call_zero",
+        "rounds": 100000,
+        "checksum": 700123,
+        "load_median_ms": 0.427,
+        "load_min_ms": 0.421,
+        "load_max_ms": 0.477,
+        "execute_median_ms": 3.933,
+        "execute_min_ms": 3.85,
+        "execute_max_ms": 4.174
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "call_zero",
+        "rounds": 100000,
+        "checksum": 700123,
+        "load_median_ms": 2.214,
+        "load_min_ms": 1.674,
+        "load_max_ms": 2.262,
+        "execute_median_ms": 78.545,
+        "execute_min_ms": 75.817,
+        "execute_max_ms": 79.68
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "call_zero",
+        "rounds": 100000,
+        "checksum": 700123,
+        "load_median_ms": 0.437,
+        "load_min_ms": 0.427,
+        "load_max_ms": 0.461,
+        "execute_median_ms": 3.965,
+        "execute_min_ms": 3.913,
+        "execute_max_ms": 4.076
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "call_one",
+        "rounds": 100000,
+        "checksum": 123,
+        "load_median_ms": 2.215,
+        "load_min_ms": 1.668,
+        "load_max_ms": 2.453,
+        "execute_median_ms": 66.373,
+        "execute_min_ms": 63.616,
+        "execute_max_ms": 68.377
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "call_one",
+        "rounds": 100000,
+        "checksum": 123,
+        "load_median_ms": 0.43,
+        "load_min_ms": 0.418,
+        "load_max_ms": 0.469,
+        "execute_median_ms": 3.303,
+        "execute_min_ms": 3.214,
+        "execute_max_ms": 3.492
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "call_one",
+        "rounds": 100000,
+        "checksum": 123,
+        "load_median_ms": 2.23,
+        "load_min_ms": 1.67,
+        "load_max_ms": 2.415,
+        "execute_median_ms": 66.912,
+        "execute_min_ms": 64.828,
+        "execute_max_ms": 69.232
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "call_one",
+        "rounds": 100000,
+        "checksum": 123,
+        "load_median_ms": 0.433,
+        "load_min_ms": 0.427,
+        "load_max_ms": 0.447,
+        "execute_median_ms": 3.39,
+        "execute_min_ms": 3.197,
+        "execute_max_ms": 3.55
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "call_two",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 2.229,
+        "load_min_ms": 1.658,
+        "load_max_ms": 2.362,
+        "execute_median_ms": 84.079,
+        "execute_min_ms": 82.662,
+        "execute_max_ms": 85.451
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "call_two",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.427,
+        "load_min_ms": 0.416,
+        "load_max_ms": 0.444,
+        "execute_median_ms": 4.205,
+        "execute_min_ms": 4.114,
+        "execute_max_ms": 4.324
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "call_two",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 2.245,
+        "load_min_ms": 1.663,
+        "load_max_ms": 2.272,
+        "execute_median_ms": 84.356,
+        "execute_min_ms": 83.424,
+        "execute_max_ms": 86.179
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "call_two",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.433,
+        "load_min_ms": 0.425,
+        "load_max_ms": 0.464,
+        "execute_median_ms": 4.2,
+        "execute_min_ms": 4.109,
+        "execute_max_ms": 4.265
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "call_three",
+        "rounds": 100000,
+        "checksum": 300123,
+        "load_median_ms": 2.228,
+        "load_min_ms": 1.691,
+        "load_max_ms": 2.461,
+        "execute_median_ms": 101.539,
+        "execute_min_ms": 99.152,
+        "execute_max_ms": 102.987
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "call_three",
+        "rounds": 100000,
+        "checksum": 300123,
+        "load_median_ms": 0.428,
+        "load_min_ms": 0.419,
+        "load_max_ms": 0.449,
+        "execute_median_ms": 4.889,
+        "execute_min_ms": 4.751,
+        "execute_max_ms": 4.997
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "call_three",
+        "rounds": 100000,
+        "checksum": 300123,
+        "load_median_ms": 2.214,
+        "load_min_ms": 1.66,
+        "load_max_ms": 2.281,
+        "execute_median_ms": 101.1,
+        "execute_min_ms": 100.487,
+        "execute_max_ms": 102.694
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "call_three",
+        "rounds": 100000,
+        "checksum": 300123,
+        "load_median_ms": 0.437,
+        "load_min_ms": 0.426,
+        "load_max_ms": 0.482,
+        "execute_median_ms": 4.99,
+        "execute_min_ms": 4.859,
+        "execute_max_ms": 8.237
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "call_four",
+        "rounds": 100000,
+        "checksum": 600123,
+        "load_median_ms": 2.208,
+        "load_min_ms": 1.67,
+        "load_max_ms": 2.245,
+        "execute_median_ms": 112.648,
+        "execute_min_ms": 110.515,
+        "execute_max_ms": 116.967
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "call_four",
+        "rounds": 100000,
+        "checksum": 600123,
+        "load_median_ms": 0.428,
+        "load_min_ms": 0.421,
+        "load_max_ms": 0.457,
+        "execute_median_ms": 5.579,
+        "execute_min_ms": 5.49,
+        "execute_max_ms": 5.696
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "call_four",
+        "rounds": 100000,
+        "checksum": 600123,
+        "load_median_ms": 2.22,
+        "load_min_ms": 2.205,
+        "load_max_ms": 2.517,
+        "execute_median_ms": 112.402,
+        "execute_min_ms": 109.85,
+        "execute_max_ms": 116.396
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "call_four",
+        "rounds": 100000,
+        "checksum": 600123,
+        "load_median_ms": 0.436,
+        "load_min_ms": 0.425,
+        "load_max_ms": 0.457,
+        "execute_median_ms": 5.649,
+        "execute_min_ms": 5.559,
+        "execute_max_ms": 5.764
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "direct_defined",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 1.296,
+        "load_min_ms": 0.774,
+        "load_max_ms": 1.378,
+        "execute_median_ms": 76.263,
+        "execute_min_ms": 73.927,
+        "execute_max_ms": 78.055
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "direct_defined",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.302,
+        "load_min_ms": 0.292,
+        "load_max_ms": 0.328,
+        "execute_median_ms": 3.824,
+        "execute_min_ms": 3.72,
+        "execute_max_ms": 4.001
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "direct_defined",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 1.312,
+        "load_min_ms": 1.283,
+        "load_max_ms": 1.479,
+        "execute_median_ms": 75.567,
+        "execute_min_ms": 73.567,
+        "execute_max_ms": 77.018
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "direct_defined",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.3,
+        "load_min_ms": 0.289,
+        "load_max_ms": 0.321,
+        "execute_median_ms": 3.893,
+        "execute_min_ms": 3.773,
+        "execute_max_ms": 4.008
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "direct_host",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 1.301,
+        "load_min_ms": 1.286,
+        "load_max_ms": 1.328,
+        "execute_median_ms": 90.641,
+        "execute_min_ms": 89.189,
+        "execute_max_ms": 92.82
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "direct_host",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.304,
+        "load_min_ms": 0.296,
+        "load_max_ms": 0.315,
+        "execute_median_ms": 8.034,
+        "execute_min_ms": 7.936,
+        "execute_max_ms": 8.196
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "direct_host",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 1.301,
+        "load_min_ms": 0.77,
+        "load_max_ms": 1.479,
+        "execute_median_ms": 91.535,
+        "execute_min_ms": 88.984,
+        "execute_max_ms": 93.552
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "direct_host",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.301,
+        "load_min_ms": 0.293,
+        "load_max_ms": 0.309,
+        "execute_median_ms": 8.242,
+        "execute_min_ms": 8.026,
+        "execute_max_ms": 8.494
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "indirect_defined",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 1.325,
+        "load_min_ms": 1.302,
+        "load_max_ms": 1.498,
+        "execute_median_ms": 151.931,
+        "execute_min_ms": 151.08,
+        "execute_max_ms": 156.038
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "indirect_defined",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.305,
+        "load_min_ms": 0.295,
+        "load_max_ms": 0.324,
+        "execute_median_ms": 11.036,
+        "execute_min_ms": 10.92,
+        "execute_max_ms": 11.3
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "indirect_defined",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 1.323,
+        "load_min_ms": 1.304,
+        "load_max_ms": 1.642,
+        "execute_median_ms": 151.631,
+        "execute_min_ms": 149.539,
+        "execute_max_ms": 154.399
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "indirect_defined",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.312,
+        "load_min_ms": 0.293,
+        "load_max_ms": 0.332,
+        "execute_median_ms": 11.103,
+        "execute_min_ms": 10.986,
+        "execute_max_ms": 11.252
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "indirect_host",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 1.287,
+        "load_min_ms": 0.711,
+        "load_max_ms": 1.445,
+        "execute_median_ms": 135.115,
+        "execute_min_ms": 132.807,
+        "execute_max_ms": 173.941
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "indirect_host",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.3,
+        "load_min_ms": 0.29,
+        "load_max_ms": 0.417,
+        "execute_median_ms": 13.578,
+        "execute_min_ms": 13.435,
+        "execute_max_ms": 15.893
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "indirect_host",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 1.311,
+        "load_min_ms": 0.767,
+        "load_max_ms": 1.476,
+        "execute_median_ms": 134.726,
+        "execute_min_ms": 132.302,
+        "execute_max_ms": 139.762
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "indirect_host",
+        "rounds": 100000,
+        "checksum": 100123,
+        "load_median_ms": 0.304,
+        "load_min_ms": 0.294,
+        "load_max_ms": 0.369,
+        "execute_median_ms": 13.963,
+        "execute_min_ms": 13.691,
+        "execute_max_ms": 14.454
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "alu",
+        "rounds": 20000,
+        "checksum": 3171840554768500685,
+        "load_median_ms": 1.355,
+        "load_min_ms": 0.771,
+        "load_max_ms": 1.458,
+        "execute_median_ms": 54.749,
+        "execute_min_ms": 53.833,
+        "execute_max_ms": 55.68
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "alu",
+        "rounds": 20000,
+        "checksum": 3171840554768500685,
+        "load_median_ms": 0.287,
+        "load_min_ms": 0.282,
+        "load_max_ms": 0.315,
+        "execute_median_ms": 1.332,
+        "execute_min_ms": 1.264,
+        "execute_max_ms": 1.376
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "alu",
+        "rounds": 20000,
+        "checksum": 3171840554768500685,
+        "load_median_ms": 1.326,
+        "load_min_ms": 0.806,
+        "load_max_ms": 1.492,
+        "execute_median_ms": 54.64,
+        "execute_min_ms": 53.799,
+        "execute_max_ms": 56.809
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "alu",
+        "rounds": 20000,
+        "checksum": 3171840554768500685,
+        "load_median_ms": 0.292,
+        "load_min_ms": 0.284,
+        "load_max_ms": 0.315,
+        "execute_median_ms": 1.296,
+        "execute_min_ms": 1.266,
+        "execute_max_ms": 1.388
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "division",
+        "rounds": 20000,
+        "checksum": 2305843009213693951,
+        "load_median_ms": 1.324,
+        "load_min_ms": 0.784,
+        "load_max_ms": 1.452,
+        "execute_median_ms": 223.144,
+        "execute_min_ms": 220.012,
+        "execute_max_ms": 230.142
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "division",
+        "rounds": 20000,
+        "checksum": 2305843009213693951,
+        "load_median_ms": 0.289,
+        "load_min_ms": 0.276,
+        "load_max_ms": 0.352,
+        "execute_median_ms": 2.916,
+        "execute_min_ms": 2.735,
+        "execute_max_ms": 3.031
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "division",
+        "rounds": 20000,
+        "checksum": 2305843009213693951,
+        "load_median_ms": 1.353,
+        "load_min_ms": 0.788,
+        "load_max_ms": 1.483,
+        "execute_median_ms": 223.997,
+        "execute_min_ms": 219.341,
+        "execute_max_ms": 229.026
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "division",
+        "rounds": 20000,
+        "checksum": 2305843009213693951,
+        "load_median_ms": 0.294,
+        "load_min_ms": 0.284,
+        "load_max_ms": 0.302,
+        "execute_median_ms": 2.897,
+        "execute_min_ms": 2.768,
+        "execute_max_ms": 2.987
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "memory",
+        "rounds": 20000,
+        "checksum": 85899345940123,
+        "load_median_ms": 1.435,
+        "load_min_ms": 1.339,
+        "load_max_ms": 1.797,
+        "execute_median_ms": 42.225,
+        "execute_min_ms": 41.307,
+        "execute_max_ms": 45.499
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "memory",
+        "rounds": 20000,
+        "checksum": 85899345940123,
+        "load_median_ms": 0.292,
+        "load_min_ms": 0.281,
+        "load_max_ms": 0.343,
+        "execute_median_ms": 0.957,
+        "execute_min_ms": 0.9,
+        "execute_max_ms": 1.022
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "memory",
+        "rounds": 20000,
+        "checksum": 85899345940123,
+        "load_median_ms": 1.38,
+        "load_min_ms": 1.337,
+        "load_max_ms": 1.864,
+        "execute_median_ms": 42.012,
+        "execute_min_ms": 41.338,
+        "execute_max_ms": 43.135
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "memory",
+        "rounds": 20000,
+        "checksum": 85899345940123,
+        "load_median_ms": 0.289,
+        "load_min_ms": 0.283,
+        "load_max_ms": 0.34,
+        "execute_median_ms": 0.96,
+        "execute_min_ms": 0.895,
+        "execute_max_ms": 1.222
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "mixed_call",
+        "rounds": 20000,
+        "checksum": 200010123,
+        "load_median_ms": 1.429,
+        "load_min_ms": 1.357,
+        "load_max_ms": 2.143,
+        "execute_median_ms": 44.186,
+        "execute_min_ms": 43.739,
+        "execute_max_ms": 64.429
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "mixed_call",
+        "rounds": 20000,
+        "checksum": 200010123,
+        "load_median_ms": 0.292,
+        "load_min_ms": 0.281,
+        "load_max_ms": 0.33,
+        "execute_median_ms": 1.745,
+        "execute_min_ms": 1.673,
+        "execute_max_ms": 1.868
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "mixed_call",
+        "rounds": 20000,
+        "checksum": 200010123,
+        "load_median_ms": 1.457,
+        "load_min_ms": 0.789,
+        "load_max_ms": 1.907,
+        "execute_median_ms": 44.584,
+        "execute_min_ms": 44.006,
+        "execute_max_ms": 44.837
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "mixed_call",
+        "rounds": 20000,
+        "checksum": 200010123,
+        "load_median_ms": 0.29,
+        "load_min_ms": 0.278,
+        "load_max_ms": 0.343,
+        "execute_median_ms": 1.733,
+        "execute_min_ms": 1.689,
+        "execute_max_ms": 1.768
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "float_alu",
+        "rounds": 20000,
+        "checksum": 1075838977,
+        "load_median_ms": 1.228,
+        "load_min_ms": 0.63,
+        "load_max_ms": 1.459,
+        "execute_median_ms": 43.962,
+        "execute_min_ms": 43.045,
+        "execute_max_ms": 44.419
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "float_alu",
+        "rounds": 20000,
+        "checksum": 1075838977,
+        "load_median_ms": 0.267,
+        "load_min_ms": 0.265,
+        "load_max_ms": 0.281,
+        "execute_median_ms": 11.327,
+        "execute_min_ms": 11.124,
+        "execute_max_ms": 11.694
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "float_alu",
+        "rounds": 20000,
+        "checksum": 1075838977,
+        "load_median_ms": 1.248,
+        "load_min_ms": 1.199,
+        "load_max_ms": 1.434,
+        "execute_median_ms": 44.022,
+        "execute_min_ms": 43.164,
+        "execute_max_ms": 44.608
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "float_alu",
+        "rounds": 20000,
+        "checksum": 1075838977,
+        "load_median_ms": 0.269,
+        "load_min_ms": 0.26,
+        "load_max_ms": 0.277,
+        "execute_median_ms": 11.235,
+        "execute_min_ms": 11.04,
+        "execute_max_ms": 11.452
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "float_convert",
+        "rounds": 20000,
+        "checksum": 200010123,
+        "load_median_ms": 1.227,
+        "load_min_ms": 0.724,
+        "load_max_ms": 1.793,
+        "execute_median_ms": 62.027,
+        "execute_min_ms": 60.988,
+        "execute_max_ms": 64.894
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "float_convert",
+        "rounds": 20000,
+        "checksum": 200010123,
+        "load_median_ms": 0.27,
+        "load_min_ms": 0.263,
+        "load_max_ms": 0.292,
+        "execute_median_ms": 6.3,
+        "execute_min_ms": 6.148,
+        "execute_max_ms": 6.743
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "float_convert",
+        "rounds": 20000,
+        "checksum": 200010123,
+        "load_median_ms": 1.263,
+        "load_min_ms": 0.658,
+        "load_max_ms": 1.444,
+        "execute_median_ms": 62.233,
+        "execute_min_ms": 61.329,
+        "execute_max_ms": 63.335
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "float_convert",
+        "rounds": 20000,
+        "checksum": 200010123,
+        "load_median_ms": 0.273,
+        "load_min_ms": 0.262,
+        "load_max_ms": 0.355,
+        "execute_median_ms": 6.236,
+        "execute_min_ms": 6.079,
+        "execute_max_ms": 6.461
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "case": "float_mixed_call",
+        "rounds": 20000,
+        "checksum": 4662354812770189312,
+        "load_median_ms": 1.219,
+        "load_min_ms": 1.193,
+        "load_max_ms": 1.73,
+        "execute_median_ms": 53.857,
+        "execute_min_ms": 53.256,
+        "execute_max_ms": 54.075
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "case": "float_mixed_call",
+        "rounds": 20000,
+        "checksum": 4662354812770189312,
+        "load_median_ms": 0.267,
+        "load_min_ms": 0.26,
+        "load_max_ms": 0.281,
+        "execute_median_ms": 10.644,
+        "execute_min_ms": 10.432,
+        "execute_max_ms": 10.995
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "case": "float_mixed_call",
+        "rounds": 20000,
+        "checksum": 4662354812770189312,
+        "load_median_ms": 1.231,
+        "load_min_ms": 0.714,
+        "load_max_ms": 1.474,
+        "execute_median_ms": 54.097,
+        "execute_min_ms": 53.313,
+        "execute_max_ms": 55.041
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "case": "float_mixed_call",
+        "rounds": 20000,
+        "checksum": 4662354812770189312,
+        "load_median_ms": 0.273,
+        "load_min_ms": 0.262,
+        "load_max_ms": 0.298,
+        "execute_median_ms": 10.53,
+        "execute_min_ms": 10.409,
+        "execute_max_ms": 10.786
+      }
+    ]
+  },
+  "store_and_float_boundary": {
+    "rounds": 3000,
+    "runs": 11,
+    "warmups": 2,
+    "seed": 123,
+    "samples": [
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 1,
+        "checksum": 192384000,
+        "load_seconds": 0.000817000400274992,
+        "execute_seconds": 0.8625849997624755
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 1,
+        "checksum": 192384000,
+        "load_seconds": 0.000845000147819519,
+        "execute_seconds": 0.8733800002373755
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 1,
+        "checksum": 192384000,
+        "load_seconds": 0.0003110002726316452,
+        "execute_seconds": 0.03303899988532066
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 1,
+        "checksum": 192384000,
+        "load_seconds": 0.0002969997003674507,
+        "execute_seconds": 0.03326100017875433
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 2,
+        "checksum": 192384000,
+        "load_seconds": 0.0002749999985098839,
+        "execute_seconds": 0.03310400014743209
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 2,
+        "checksum": 192384000,
+        "load_seconds": 0.000297000166028738,
+        "execute_seconds": 0.03312000026926398
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 2,
+        "checksum": 192384000,
+        "load_seconds": 0.0008490001782774925,
+        "execute_seconds": 0.8727400000207126
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 2,
+        "checksum": 192384000,
+        "load_seconds": 0.0008180001750588417,
+        "execute_seconds": 0.8688429999165237
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 3,
+        "checksum": 192384000,
+        "load_seconds": 0.000816000159829855,
+        "execute_seconds": 0.8686950001865625
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 3,
+        "checksum": 192384000,
+        "load_seconds": 0.0013580000959336758,
+        "execute_seconds": 0.8797519998624921
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 3,
+        "checksum": 192384000,
+        "load_seconds": 0.0003019999712705612,
+        "execute_seconds": 0.03300700010731816
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 3,
+        "checksum": 192384000,
+        "load_seconds": 0.0003070002421736717,
+        "execute_seconds": 0.03312300005927682
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 4,
+        "checksum": 192384000,
+        "load_seconds": 0.0002709999680519104,
+        "execute_seconds": 0.03307999996468425
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 4,
+        "checksum": 192384000,
+        "load_seconds": 0.0002909996546804905,
+        "execute_seconds": 0.03304200014099479
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 4,
+        "checksum": 192384000,
+        "load_seconds": 0.0013819998130202293,
+        "execute_seconds": 0.877725999802351
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 4,
+        "checksum": 192384000,
+        "load_seconds": 0.001362999901175499,
+        "execute_seconds": 0.8739340002648532
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 5,
+        "checksum": 192384000,
+        "load_seconds": 0.0008159996941685677,
+        "execute_seconds": 0.8604150000028312
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 5,
+        "checksum": 192384000,
+        "load_seconds": 0.001356000080704689,
+        "execute_seconds": 0.8656969997100532
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 5,
+        "checksum": 192384000,
+        "load_seconds": 0.0003060000017285347,
+        "execute_seconds": 0.03310999972745776
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 5,
+        "checksum": 192384000,
+        "load_seconds": 0.0003009997308254242,
+        "execute_seconds": 0.03319000033661723
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 6,
+        "checksum": 192384000,
+        "load_seconds": 0.0002800002694129944,
+        "execute_seconds": 0.03314199997112155
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 6,
+        "checksum": 192384000,
+        "load_seconds": 0.00030299974605441093,
+        "execute_seconds": 0.0331020001322031
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 6,
+        "checksum": 192384000,
+        "load_seconds": 0.0008260002359747887,
+        "execute_seconds": 0.8721610000357032
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 6,
+        "checksum": 192384000,
+        "load_seconds": 0.001356000080704689,
+        "execute_seconds": 0.8629469997249544
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 7,
+        "checksum": 192384000,
+        "load_seconds": 0.0008149999193847179,
+        "execute_seconds": 0.8688790001906455
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 7,
+        "checksum": 192384000,
+        "load_seconds": 0.0008300002664327621,
+        "execute_seconds": 0.8600839995779097
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 7,
+        "checksum": 192384000,
+        "load_seconds": 0.0003060000017285347,
+        "execute_seconds": 0.03312999987974763
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 7,
+        "checksum": 192384000,
+        "load_seconds": 0.0003100000321865082,
+        "execute_seconds": 0.033296999987214804
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 8,
+        "checksum": 192384000,
+        "load_seconds": 0.0002720002084970474,
+        "execute_seconds": 0.033239000011235476
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 8,
+        "checksum": 192384000,
+        "load_seconds": 0.000295999925583601,
+        "execute_seconds": 0.033050999976694584
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 8,
+        "checksum": 192384000,
+        "load_seconds": 0.0013689999468624592,
+        "execute_seconds": 0.9074459997937083
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 8,
+        "checksum": 192384000,
+        "load_seconds": 0.0013930001296103,
+        "execute_seconds": 0.9981820001266897
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 9,
+        "checksum": 192384000,
+        "load_seconds": 0.0010460000485181808,
+        "execute_seconds": 0.894768999889493
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 9,
+        "checksum": 192384000,
+        "load_seconds": 0.0008769999258220196,
+        "execute_seconds": 0.8656000001356006
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 9,
+        "checksum": 192384000,
+        "load_seconds": 0.0003260001540184021,
+        "execute_seconds": 0.03377099987119436
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 9,
+        "checksum": 192384000,
+        "load_seconds": 0.00031299982219934464,
+        "execute_seconds": 0.03364600008353591
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 10,
+        "checksum": 192384000,
+        "load_seconds": 0.00030900025740265846,
+        "execute_seconds": 0.03362199990078807
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 10,
+        "checksum": 192384000,
+        "load_seconds": 0.000295999925583601,
+        "execute_seconds": 0.03383300034329295
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 10,
+        "checksum": 192384000,
+        "load_seconds": 0.0008280002512037754,
+        "execute_seconds": 0.8745409999974072
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 10,
+        "checksum": 192384000,
+        "load_seconds": 0.0015019997954368591,
+        "execute_seconds": 0.8656760002486408
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "array_scan",
+        "run": 11,
+        "checksum": 192384000,
+        "load_seconds": 0.0015019997954368591,
+        "execute_seconds": 0.8662890000268817
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "array_scan",
+        "run": 11,
+        "checksum": 192384000,
+        "load_seconds": 0.0008660000748932362,
+        "execute_seconds": 0.8669320000335574
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "array_scan",
+        "run": 11,
+        "checksum": 192384000,
+        "load_seconds": 0.00031899986788630486,
+        "execute_seconds": 0.03315200004726648
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "array_scan",
+        "run": 11,
+        "checksum": 192384000,
+        "load_seconds": 0.000305000226944685,
+        "execute_seconds": 0.03340599965304136
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 1,
+        "checksum": 385452,
+        "load_seconds": 0.0009200000204145908,
+        "execute_seconds": 0.023130000103265047
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 1,
+        "checksum": 385452,
+        "load_seconds": 0.0009909998625516891,
+        "execute_seconds": 0.02361400006338954
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 1,
+        "checksum": 385452,
+        "load_seconds": 0.0003009997308254242,
+        "execute_seconds": 0.000260000117123127
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 1,
+        "checksum": 385452,
+        "load_seconds": 0.000286999624222517,
+        "execute_seconds": 0.00025700032711029053
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 2,
+        "checksum": 385452,
+        "load_seconds": 0.00027299998328089714,
+        "execute_seconds": 0.0002550003118813038
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 2,
+        "checksum": 385452,
+        "load_seconds": 0.00028399983420968056,
+        "execute_seconds": 0.0002560000866651535
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 2,
+        "checksum": 385452,
+        "load_seconds": 0.0014039999805390835,
+        "execute_seconds": 0.023419999983161688
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 2,
+        "checksum": 385452,
+        "load_seconds": 0.0015890002250671387,
+        "execute_seconds": 0.023326999973505735
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 3,
+        "checksum": 385452,
+        "load_seconds": 0.0008689998649060726,
+        "execute_seconds": 0.02394099999219179
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 3,
+        "checksum": 385452,
+        "load_seconds": 0.0017690001986920834,
+        "execute_seconds": 0.02437799982726574
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 3,
+        "checksum": 385452,
+        "load_seconds": 0.00030899979174137115,
+        "execute_seconds": 0.0002649999223649502
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 3,
+        "checksum": 385452,
+        "load_seconds": 0.000295999925583601,
+        "execute_seconds": 0.0002450002357363701
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 4,
+        "checksum": 385452,
+        "load_seconds": 0.0002669999375939369,
+        "execute_seconds": 0.00025400007143616676
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 4,
+        "checksum": 385452,
+        "load_seconds": 0.0002720002084970474,
+        "execute_seconds": 0.00024299975484609604
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 4,
+        "checksum": 385452,
+        "load_seconds": 0.0008660000748932362,
+        "execute_seconds": 0.023932999931275845
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 4,
+        "checksum": 385452,
+        "load_seconds": 0.0014999997802078724,
+        "execute_seconds": 0.023665999993681908
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 5,
+        "checksum": 385452,
+        "load_seconds": 0.0014999997802078724,
+        "execute_seconds": 0.02317199995741248
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 5,
+        "checksum": 385452,
+        "load_seconds": 0.0008870000019669533,
+        "execute_seconds": 0.024084999691694975
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 5,
+        "checksum": 385452,
+        "load_seconds": 0.0003160000778734684,
+        "execute_seconds": 0.00025899987667798996
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 5,
+        "checksum": 385452,
+        "load_seconds": 0.00029799994081258774,
+        "execute_seconds": 0.0002569998614490032
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 6,
+        "checksum": 385452,
+        "load_seconds": 0.00025899987667798996,
+        "execute_seconds": 0.0002770000137388706
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 6,
+        "checksum": 385452,
+        "load_seconds": 0.0003070002421736717,
+        "execute_seconds": 0.0002569998614490032
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 6,
+        "checksum": 385452,
+        "load_seconds": 0.000932999886572361,
+        "execute_seconds": 0.024356999900192022
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 6,
+        "checksum": 385452,
+        "load_seconds": 0.001480999868363142,
+        "execute_seconds": 0.0237510004080832
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 7,
+        "checksum": 385452,
+        "load_seconds": 0.0008630002848803997,
+        "execute_seconds": 0.02360800001770258
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 7,
+        "checksum": 385452,
+        "load_seconds": 0.0017069997265934944,
+        "execute_seconds": 0.024065000005066395
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 7,
+        "checksum": 385452,
+        "load_seconds": 0.00029799994081258774,
+        "execute_seconds": 0.000260000117123127
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 7,
+        "checksum": 385452,
+        "load_seconds": 0.0003200001083314419,
+        "execute_seconds": 0.0002659996971487999
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 8,
+        "checksum": 385452,
+        "load_seconds": 0.0002460000105202198,
+        "execute_seconds": 0.0002360004000365734
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 8,
+        "checksum": 385452,
+        "load_seconds": 0.00028900010511279106,
+        "execute_seconds": 0.0002560000866651535
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 8,
+        "checksum": 385452,
+        "load_seconds": 0.0009170002304017544,
+        "execute_seconds": 0.023493999615311623
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 8,
+        "checksum": 385452,
+        "load_seconds": 0.001577999908477068,
+        "execute_seconds": 0.023048999719321728
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 9,
+        "checksum": 385452,
+        "load_seconds": 0.000851999968290329,
+        "execute_seconds": 0.024027000181376934
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 9,
+        "checksum": 385452,
+        "load_seconds": 0.000932999886572361,
+        "execute_seconds": 0.023773000109940767
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 9,
+        "checksum": 385452,
+        "load_seconds": 0.0003200001083314419,
+        "execute_seconds": 0.00024199998006224632
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 9,
+        "checksum": 385452,
+        "load_seconds": 0.00029399991035461426,
+        "execute_seconds": 0.0002560000866651535
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 10,
+        "checksum": 385452,
+        "load_seconds": 0.00026399968191981316,
+        "execute_seconds": 0.00025700032711029053
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 10,
+        "checksum": 385452,
+        "load_seconds": 0.00028799986466765404,
+        "execute_seconds": 0.00025900034233927727
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 10,
+        "checksum": 385452,
+        "load_seconds": 0.000986000057309866,
+        "execute_seconds": 0.02406700002029538
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 10,
+        "checksum": 385452,
+        "load_seconds": 0.0015370002947747707,
+        "execute_seconds": 0.023163000121712685
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 11,
+        "checksum": 385452,
+        "load_seconds": 0.0015250002034008503,
+        "execute_seconds": 0.023502000141888857
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 11,
+        "checksum": 385452,
+        "load_seconds": 0.0016239997930824757,
+        "execute_seconds": 0.023818999994546175
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "copy_fill",
+        "run": 11,
+        "checksum": 385452,
+        "load_seconds": 0.0002910001203417778,
+        "execute_seconds": 0.00024199998006224632
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "copy_fill",
+        "run": 11,
+        "checksum": 385452,
+        "load_seconds": 0.00029900018125772476,
+        "execute_seconds": 0.00025899987667798996
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 1,
+        "checksum": 698607827,
+        "load_seconds": 0.0009110001847147942,
+        "execute_seconds": 0.0024159997701644897
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 1,
+        "checksum": 698607827,
+        "load_seconds": 0.0016350001096725464,
+        "execute_seconds": 0.0018879999406635761
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 1,
+        "checksum": 698607827,
+        "load_seconds": 0.0003169998526573181,
+        "execute_seconds": 0.00019300030544400215
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 1,
+        "checksum": 698607827,
+        "load_seconds": 0.0002810000441968441,
+        "execute_seconds": 0.00011699972674250603
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 2,
+        "checksum": 698607827,
+        "load_seconds": 0.0002649999223649502,
+        "execute_seconds": 0.00012300023809075356
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 2,
+        "checksum": 698607827,
+        "load_seconds": 0.0002900003455579281,
+        "execute_seconds": 0.0001860000193119049
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 2,
+        "checksum": 698607827,
+        "load_seconds": 0.0016769999638199806,
+        "execute_seconds": 0.0018969997763633728
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 2,
+        "checksum": 698607827,
+        "load_seconds": 0.0008499999530613422,
+        "execute_seconds": 0.0023529999889433384
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 3,
+        "checksum": 698607827,
+        "load_seconds": 0.0009230002760887146,
+        "execute_seconds": 0.0024029999040067196
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 3,
+        "checksum": 698607827,
+        "load_seconds": 0.0015750001184642315,
+        "execute_seconds": 0.0018719998188316822
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 3,
+        "checksum": 698607827,
+        "load_seconds": 0.0003069997765123844,
+        "execute_seconds": 0.0001860000193119049
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 3,
+        "checksum": 698607827,
+        "load_seconds": 0.0002799998037517071,
+        "execute_seconds": 0.00013400008901953697
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 4,
+        "checksum": 698607827,
+        "load_seconds": 0.0002919998951256275,
+        "execute_seconds": 0.00012600002810359
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 4,
+        "checksum": 698607827,
+        "load_seconds": 0.00032899994403123856,
+        "execute_seconds": 0.00018800003454089165
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 4,
+        "checksum": 698607827,
+        "load_seconds": 0.0008689998649060726,
+        "execute_seconds": 0.0019169999286532402
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 4,
+        "checksum": 698607827,
+        "load_seconds": 0.000924999825656414,
+        "execute_seconds": 0.002363000065088272
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 5,
+        "checksum": 698607827,
+        "load_seconds": 0.0008209999650716782,
+        "execute_seconds": 0.0023309998214244843
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 5,
+        "checksum": 698607827,
+        "load_seconds": 0.0009289998561143875,
+        "execute_seconds": 0.0020840000361204147
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 5,
+        "checksum": 698607827,
+        "load_seconds": 0.0003019999712705612,
+        "execute_seconds": 0.0001909998245537281
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 5,
+        "checksum": 698607827,
+        "load_seconds": 0.0003019999712705612,
+        "execute_seconds": 0.0001300000585615635
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 6,
+        "checksum": 698607827,
+        "load_seconds": 0.00026799971237778664,
+        "execute_seconds": 0.00012400001287460327
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 6,
+        "checksum": 698607827,
+        "load_seconds": 0.0002999999560415745,
+        "execute_seconds": 0.00018700025975704193
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 6,
+        "checksum": 698607827,
+        "load_seconds": 0.0015410003252327442,
+        "execute_seconds": 0.0020689996890723705
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 6,
+        "checksum": 698607827,
+        "load_seconds": 0.0008979998528957367,
+        "execute_seconds": 0.002297000028192997
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 7,
+        "checksum": 698607827,
+        "load_seconds": 0.0009159999899566174,
+        "execute_seconds": 0.0024049999192357063
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 7,
+        "checksum": 698607827,
+        "load_seconds": 0.0016389996744692326,
+        "execute_seconds": 0.0020240000449121
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 7,
+        "checksum": 698607827,
+        "load_seconds": 0.0003159996122121811,
+        "execute_seconds": 0.00018800003454089165
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 7,
+        "checksum": 698607827,
+        "load_seconds": 0.0002950001507997513,
+        "execute_seconds": 0.00012600002810359
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 8,
+        "checksum": 698607827,
+        "load_seconds": 0.00026899995282292366,
+        "execute_seconds": 0.00012800004333257675
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 8,
+        "checksum": 698607827,
+        "load_seconds": 0.0003160000778734684,
+        "execute_seconds": 0.0001909998245537281
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 8,
+        "checksum": 698607827,
+        "load_seconds": 0.0014880001544952393,
+        "execute_seconds": 0.0019299997948110104
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 8,
+        "checksum": 698607827,
+        "load_seconds": 0.0008839997462928295,
+        "execute_seconds": 0.0023590000346302986
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 9,
+        "checksum": 698607827,
+        "load_seconds": 0.0008809999562799931,
+        "execute_seconds": 0.0023289998061954975
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 9,
+        "checksum": 698607827,
+        "load_seconds": 0.0008999998681247234,
+        "execute_seconds": 0.0018640002235770226
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 9,
+        "checksum": 698607827,
+        "load_seconds": 0.0003060000017285347,
+        "execute_seconds": 0.0001860000193119049
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 9,
+        "checksum": 698607827,
+        "load_seconds": 0.000297000166028738,
+        "execute_seconds": 0.00012600002810359
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 10,
+        "checksum": 698607827,
+        "load_seconds": 0.0002650003880262375,
+        "execute_seconds": 0.00012299977242946625
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 10,
+        "checksum": 698607827,
+        "load_seconds": 0.00027299998328089714,
+        "execute_seconds": 0.00017799995839595795
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 10,
+        "checksum": 698607827,
+        "load_seconds": 0.0009099999442696571,
+        "execute_seconds": 0.001984999980777502
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 10,
+        "checksum": 698607827,
+        "load_seconds": 0.000851999968290329,
+        "execute_seconds": 0.0023439996875822544
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "global_update",
+        "run": 11,
+        "checksum": 698607827,
+        "load_seconds": 0.0008559999987483025,
+        "execute_seconds": 0.002373000141233206
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "global_update",
+        "run": 11,
+        "checksum": 698607827,
+        "load_seconds": 0.0008780001662671566,
+        "execute_seconds": 0.001955999992787838
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "global_update",
+        "run": 11,
+        "checksum": 698607827,
+        "load_seconds": 0.0003049997612833977,
+        "execute_seconds": 0.00018800003454089165
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "global_update",
+        "run": 11,
+        "checksum": 698607827,
+        "load_seconds": 0.00028300005942583084,
+        "execute_seconds": 0.00011699972674250603
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 1,
+        "checksum": 210349,
+        "load_seconds": 0.0016700001433491707,
+        "execute_seconds": 0.007712999824434519
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 1,
+        "checksum": 210349,
+        "load_seconds": 0.00165200000628829,
+        "execute_seconds": 0.007809000089764595
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 1,
+        "checksum": 210349,
+        "load_seconds": 0.00030299974605441093,
+        "execute_seconds": 0.0002460000105202198
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 1,
+        "checksum": 210349,
+        "load_seconds": 0.00028900010511279106,
+        "execute_seconds": 0.00022799987345933914
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 2,
+        "checksum": 210349,
+        "load_seconds": 0.00028799986466765404,
+        "execute_seconds": 0.00024199998006224632
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 2,
+        "checksum": 210349,
+        "load_seconds": 0.0003169998526573181,
+        "execute_seconds": 0.0002500000409781933
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 2,
+        "checksum": 210349,
+        "load_seconds": 0.0016029998660087585,
+        "execute_seconds": 0.00774900009855628
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 2,
+        "checksum": 210349,
+        "load_seconds": 0.0009200000204145908,
+        "execute_seconds": 0.007786999922245741
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 3,
+        "checksum": 210349,
+        "load_seconds": 0.0016389996744692326,
+        "execute_seconds": 0.007883000187575817
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 3,
+        "checksum": 210349,
+        "load_seconds": 0.0014559999108314514,
+        "execute_seconds": 0.007734000217169523
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 3,
+        "checksum": 210349,
+        "load_seconds": 0.0003120000474154949,
+        "execute_seconds": 0.00024299975484609604
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 3,
+        "checksum": 210349,
+        "load_seconds": 0.0003049997612833977,
+        "execute_seconds": 0.00024800002574920654
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 4,
+        "checksum": 210349,
+        "load_seconds": 0.0003360002301633358,
+        "execute_seconds": 0.0002569998614490032
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 4,
+        "checksum": 210349,
+        "load_seconds": 0.00033999979496002197,
+        "execute_seconds": 0.00025300029665231705
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 4,
+        "checksum": 210349,
+        "load_seconds": 0.0015879999846220016,
+        "execute_seconds": 0.007861999794840813
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 4,
+        "checksum": 210349,
+        "load_seconds": 0.0008719996549189091,
+        "execute_seconds": 0.007765000220388174
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 5,
+        "checksum": 210349,
+        "load_seconds": 0.0009580003097653389,
+        "execute_seconds": 0.007710000034421682
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 5,
+        "checksum": 210349,
+        "load_seconds": 0.0014670002274215221,
+        "execute_seconds": 0.007937000133097172
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 5,
+        "checksum": 210349,
+        "load_seconds": 0.0003460003063082695,
+        "execute_seconds": 0.00027299998328089714
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 5,
+        "checksum": 210349,
+        "load_seconds": 0.00030899979174137115,
+        "execute_seconds": 0.00025800010189414024
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 6,
+        "checksum": 210349,
+        "load_seconds": 0.0002859998494386673,
+        "execute_seconds": 0.0002450002357363701
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 6,
+        "checksum": 210349,
+        "load_seconds": 0.00030800001695752144,
+        "execute_seconds": 0.00025800010189414024
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 6,
+        "checksum": 210349,
+        "load_seconds": 0.0009069996885955334,
+        "execute_seconds": 0.0079950001090765
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 6,
+        "checksum": 210349,
+        "load_seconds": 0.0009980001486837864,
+        "execute_seconds": 0.007757999934256077
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 7,
+        "checksum": 210349,
+        "load_seconds": 0.0009040003642439842,
+        "execute_seconds": 0.008596999570727348
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 7,
+        "checksum": 210349,
+        "load_seconds": 0.0016969996504485607,
+        "execute_seconds": 0.008067000191658735
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 7,
+        "checksum": 210349,
+        "load_seconds": 0.00030800001695752144,
+        "execute_seconds": 0.0002550003118813038
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 7,
+        "checksum": 210349,
+        "load_seconds": 0.0003320001997053623,
+        "execute_seconds": 0.0002469997853040695
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 8,
+        "checksum": 210349,
+        "load_seconds": 0.0002800002694129944,
+        "execute_seconds": 0.00027399975806474686
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 8,
+        "checksum": 210349,
+        "load_seconds": 0.00032799970358610153,
+        "execute_seconds": 0.000297000166028738
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 8,
+        "checksum": 210349,
+        "load_seconds": 0.0011129998601973057,
+        "execute_seconds": 0.008204999845474958
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 8,
+        "checksum": 210349,
+        "load_seconds": 0.001724999863654375,
+        "execute_seconds": 0.007896999828517437
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 9,
+        "checksum": 210349,
+        "load_seconds": 0.0009530000388622284,
+        "execute_seconds": 0.007818999700248241
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 9,
+        "checksum": 210349,
+        "load_seconds": 0.0008559999987483025,
+        "execute_seconds": 0.007883999962359667
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 9,
+        "checksum": 210349,
+        "load_seconds": 0.0003109998069703579,
+        "execute_seconds": 0.00025400007143616676
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 9,
+        "checksum": 210349,
+        "load_seconds": 0.00032899994403123856,
+        "execute_seconds": 0.0002359999343752861
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 10,
+        "checksum": 210349,
+        "load_seconds": 0.0002749999985098839,
+        "execute_seconds": 0.00026299990713596344
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 10,
+        "checksum": 210349,
+        "load_seconds": 0.00028399983420968056,
+        "execute_seconds": 0.00023799994960427284
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 10,
+        "checksum": 210349,
+        "load_seconds": 0.0008819997310638428,
+        "execute_seconds": 0.00795700028538704
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 10,
+        "checksum": 210349,
+        "load_seconds": 0.0009020003490149975,
+        "execute_seconds": 0.007933999877423048
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "export": "segment_init",
+        "run": 11,
+        "checksum": 210349,
+        "load_seconds": 0.0009630001150071621,
+        "execute_seconds": 0.007981000002473593
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "export": "segment_init",
+        "run": 11,
+        "checksum": 210349,
+        "load_seconds": 0.0009240000508725643,
+        "execute_seconds": 0.008148000109940767
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "export": "segment_init",
+        "run": 11,
+        "checksum": 210349,
+        "load_seconds": 0.00030299974605441093,
+        "execute_seconds": 0.00026700040325522423
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "export": "segment_init",
+        "run": 11,
+        "checksum": 210349,
+        "load_seconds": 0.00033299997448921204,
+        "execute_seconds": 0.00026400014758110046
+      }
+    ],
+    "boundary_rounds": 30000,
+    "boundary": [
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 1,
+        "trial": 2,
+        "unboxed_ms": 67.89700035005808,
+        "boxed_ms": 72.56399979814887
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 1,
+        "trial": 3,
+        "unboxed_ms": 67.84800020977855,
+        "boxed_ms": 72.26199982687831
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 1,
+        "trial": 4,
+        "unboxed_ms": 68.06800002232194,
+        "boxed_ms": 72.18000013381243
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 1,
+        "trial": 5,
+        "unboxed_ms": 68.32099985331297,
+        "boxed_ms": 71.52999984100461
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 1,
+        "trial": 2,
+        "unboxed_ms": 68.23100009933114,
+        "boxed_ms": 72.9249999858439
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 1,
+        "trial": 3,
+        "unboxed_ms": 67.81699974089861,
+        "boxed_ms": 71.5530002489686
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 1,
+        "trial": 4,
+        "unboxed_ms": 67.10499990731478,
+        "boxed_ms": 71.37100026011467
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 1,
+        "trial": 5,
+        "unboxed_ms": 67.76999961584806,
+        "boxed_ms": 71.33299997076392
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 1,
+        "trial": 2,
+        "unboxed_ms": 18.428000155836344,
+        "boxed_ms": 20.300999749451876
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 1,
+        "trial": 3,
+        "unboxed_ms": 18.728999886661768,
+        "boxed_ms": 19.309000112116337
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 1,
+        "trial": 4,
+        "unboxed_ms": 18.372999969869852,
+        "boxed_ms": 19.346000161021948
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 1,
+        "trial": 5,
+        "unboxed_ms": 18.30400014296174,
+        "boxed_ms": 19.386999774724245
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 1,
+        "trial": 2,
+        "unboxed_ms": 18.48899992182851,
+        "boxed_ms": 20.20999975502491
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 1,
+        "trial": 3,
+        "unboxed_ms": 18.36700038984418,
+        "boxed_ms": 18.74700002372265
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 1,
+        "trial": 4,
+        "unboxed_ms": 18.356999848037958,
+        "boxed_ms": 19.109999760985374
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 1,
+        "trial": 5,
+        "unboxed_ms": 18.112000077962875,
+        "boxed_ms": 19.051000010222197
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 2,
+        "trial": 2,
+        "unboxed_ms": 18.132000230252743,
+        "boxed_ms": 19.27000004798174
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 2,
+        "trial": 3,
+        "unboxed_ms": 18.33599992096424,
+        "boxed_ms": 18.829999957233667
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 2,
+        "trial": 4,
+        "unboxed_ms": 18.48099986091256,
+        "boxed_ms": 19.21299984678626
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 2,
+        "trial": 5,
+        "unboxed_ms": 18.542999867349863,
+        "boxed_ms": 18.958999775350094
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 2,
+        "trial": 2,
+        "unboxed_ms": 18.27399991452694,
+        "boxed_ms": 19.078999757766724
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 2,
+        "trial": 3,
+        "unboxed_ms": 18.037999980151653,
+        "boxed_ms": 19.31300014257431
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 2,
+        "trial": 4,
+        "unboxed_ms": 18.13500002026558,
+        "boxed_ms": 19.246000330895185
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 2,
+        "trial": 5,
+        "unboxed_ms": 18.72100029140711,
+        "boxed_ms": 18.91799969598651
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 2,
+        "trial": 2,
+        "unboxed_ms": 94.51299998909235,
+        "boxed_ms": 156.47799987345934
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 2,
+        "trial": 3,
+        "unboxed_ms": 78.97599972784519,
+        "boxed_ms": 82.72600034251809
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 2,
+        "trial": 4,
+        "unboxed_ms": 76.0389999486506,
+        "boxed_ms": 81.17399970069528
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 2,
+        "trial": 5,
+        "unboxed_ms": 70.19799994304776,
+        "boxed_ms": 73.39300028979778
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 2,
+        "trial": 2,
+        "unboxed_ms": 67.41000013425946,
+        "boxed_ms": 72.11200008168817
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 2,
+        "trial": 3,
+        "unboxed_ms": 67.99500016495585,
+        "boxed_ms": 72.26799987256527
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 2,
+        "trial": 4,
+        "unboxed_ms": 68.52700002491474,
+        "boxed_ms": 72.37099995836616
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 2,
+        "trial": 5,
+        "unboxed_ms": 68.12399998307228,
+        "boxed_ms": 72.57199985906482
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 3,
+        "trial": 2,
+        "unboxed_ms": 70.22199966013432,
+        "boxed_ms": 73.80899973213673
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 3,
+        "trial": 3,
+        "unboxed_ms": 69.03799995779991,
+        "boxed_ms": 73.08200001716614
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 3,
+        "trial": 4,
+        "unboxed_ms": 67.9889996536076,
+        "boxed_ms": 73.37000034749508
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 3,
+        "trial": 5,
+        "unboxed_ms": 67.91500002145767,
+        "boxed_ms": 73.02499981597066
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 3,
+        "trial": 2,
+        "unboxed_ms": 69.90699982270598,
+        "boxed_ms": 73.1979999691248
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 3,
+        "trial": 3,
+        "unboxed_ms": 69.1710002720356,
+        "boxed_ms": 73.08400003239512
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 3,
+        "trial": 4,
+        "unboxed_ms": 69.58499969914556,
+        "boxed_ms": 72.94100010767579
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 3,
+        "trial": 5,
+        "unboxed_ms": 70.36899961531162,
+        "boxed_ms": 73.15400009974837
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 3,
+        "trial": 2,
+        "unboxed_ms": 18.41800007969141,
+        "boxed_ms": 19.25700018182397
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 3,
+        "trial": 3,
+        "unboxed_ms": 18.379999790340662,
+        "boxed_ms": 19.39500030130148
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 3,
+        "trial": 4,
+        "unboxed_ms": 17.878999933600426,
+        "boxed_ms": 19.493999890983105
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 3,
+        "trial": 5,
+        "unboxed_ms": 18.93500005826354,
+        "boxed_ms": 19.942000042647123
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 3,
+        "trial": 2,
+        "unboxed_ms": 18.62700004130602,
+        "boxed_ms": 18.730000127106905
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 3,
+        "trial": 3,
+        "unboxed_ms": 18.12199968844652,
+        "boxed_ms": 19.059000071138144
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 3,
+        "trial": 4,
+        "unboxed_ms": 18.23600009083748,
+        "boxed_ms": 19.556999672204256
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 3,
+        "trial": 5,
+        "unboxed_ms": 18.555999733507633,
+        "boxed_ms": 19.32099973782897
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 4,
+        "trial": 2,
+        "unboxed_ms": 18.637000117450953,
+        "boxed_ms": 18.84799962863326
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 4,
+        "trial": 3,
+        "unboxed_ms": 18.29899987205863,
+        "boxed_ms": 19.01700021699071
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 4,
+        "trial": 4,
+        "unboxed_ms": 18.428000155836344,
+        "boxed_ms": 19.185999874025583
+      },
+      {
+        "runtime": "Spinel",
+        "version": "after",
+        "process": 4,
+        "trial": 5,
+        "unboxed_ms": 18.40599998831749,
+        "boxed_ms": 19.338000100106
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 4,
+        "trial": 2,
+        "unboxed_ms": 18.20999989286065,
+        "boxed_ms": 19.375000149011612
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 4,
+        "trial": 3,
+        "unboxed_ms": 18.434000201523304,
+        "boxed_ms": 19.371999893337488
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 4,
+        "trial": 4,
+        "unboxed_ms": 18.2160004042089,
+        "boxed_ms": 18.875999841839075
+      },
+      {
+        "runtime": "Spinel",
+        "version": "before",
+        "process": 4,
+        "trial": 5,
+        "unboxed_ms": 18.265999853610992,
+        "boxed_ms": 19.388000015169382
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 4,
+        "trial": 2,
+        "unboxed_ms": 69.12299990653992,
+        "boxed_ms": 72.82799994572997
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 4,
+        "trial": 3,
+        "unboxed_ms": 69.1639999859035,
+        "boxed_ms": 72.71500024944544
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 4,
+        "trial": 4,
+        "unboxed_ms": 69.21799993142486,
+        "boxed_ms": 72.92400021106005
+      },
+      {
+        "runtime": "CRuby",
+        "version": "after",
+        "process": 4,
+        "trial": 5,
+        "unboxed_ms": 69.21399990096688,
+        "boxed_ms": 73.45600007101893
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 4,
+        "trial": 2,
+        "unboxed_ms": 67.42900004610419,
+        "boxed_ms": 71.7960000038147
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 4,
+        "trial": 3,
+        "unboxed_ms": 69.04199998825788,
+        "boxed_ms": 72.29200005531311
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 4,
+        "trial": 4,
+        "unboxed_ms": 68.59199982136488,
+        "boxed_ms": 73.28499993309379
+      },
+      {
+        "runtime": "CRuby",
+        "version": "before",
+        "process": 4,
+        "trial": 5,
+        "unboxed_ms": 68.34300002083182,
+        "boxed_ms": 72.93300004675984
+      }
+    ]
+  },
+  "profiles": {
+    "before": {
+      "total_samples": 1965,
+      "guest_samples": 1168,
+      "guest_leaf_symbols": {
+        "sp_VM_execute_flat": 840,
+        "sp_FramePool_acquire": 52,
+        "sp_class_anc_step": 40,
+        "sp_VM_calculate": 25,
+        "sp_pd_58a8a817": 23,
+        "sp_poly_bitop": 20,
+        "__bzero": 19,
+        "sp_class_anc_walk": 17,
+        "_platform_memset": 12,
+        "iob_set_core": 12,
+        "sp_I64Arithmetic_s_calculate": 11,
+        "_platform_memmove": 10,
+        "sp_StoreAccess_store": 10,
+        "sp_poly_is_a": 8,
+        "sp_bsub_cls_of": 7,
+        "sp_class_le_mod": 7,
+        "sp_poly_get_class": 7,
+        "iob_value_ptr": 6,
+        "sp_unbox_class": 5,
+        "sp_gc_mark": 4,
+        "sp_poly_truthy": 4,
+        "sp_PtrArray_push": 3,
+        "sp_poly_eq_deep": 3,
+        "sp_poly_arr_include_eq": 3,
+        "sp_IOBuffer_get_i": 2,
+        "sp_I64Arithmetic_s_shift_right": 2,
+        "sp_mark_rbval": 1,
+        "sp_PtrArray_gc_scan": 1,
+        "sp_slab_free": 1,
+        "sp_gc_alloc_80": 1,
+        "sp_I32_new": 1,
+        "sp_PolyPolyHash_get": 1,
+        "sp_Function_dynamic_site": 1,
+        "sp_rbval_eql_key": 1,
+        "sp_StoreAccess_fill": 1,
+        "<deduplicated_symbol>": 1,
+        "iob_get_core": 1,
+        "sp_StoreAccess_copy": 1,
+        "sp_poly_eq_slow": 1,
+        "sp_slab_take": 1,
+        "iob_writable_slice": 1,
+        "sp_poly_index_poly": 1
+      }
+    },
+    "after": {
+      "total_samples": 1111,
+      "guest_samples": 566,
+      "guest_leaf_symbols": {
+        "sp_VM_execute_flat": 468,
+        "sp_VM_calculate": 23,
+        "__bzero": 14,
+        "sp_FramePool_acquire": 8,
+        "sp_poly_arr_include_eq": 7,
+        "sp_I64Arithmetic_s_calculate": 6,
+        "iob_set_core": 6,
+        "_platform_memmove": 4,
+        "sp_IOBuffer_get_i": 4,
+        "sp_StoreAccess_store": 3,
+        "_platform_memset": 2,
+        "sp_gc_mark": 2,
+        "iob_value_ptr": 2,
+        "sp_PtrArray_push": 2,
+        "sp_I64Arithmetic_s_shift_right": 2,
+        "iob_writable_slice": 2,
+        "sp_PolyPolyHash_scan": 1,
+        "sp_slab_mark": 1,
+        "sp_slab_sweep_worker": 1,
+        "sp_IR_entry_at": 1,
+        "sp_pd_dba2c41f": 1,
+        "sp_poly_truthy": 1,
+        "sp_I64Arithmetic_s_shift_left": 1,
+        "sp_poly_index_poly": 1,
+        "sp_poly_eq_deep": 1,
+        "sp_bsub_cls_of": 1,
+        "sp_poly_eq_slow": 1
+      }
+    }
+  }
+}
