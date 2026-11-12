@@ -39,7 +39,7 @@ Dir.mktmpdir("wardite-ruby-wasm") do |workdir|
       end
     end
     commands.each do |runtime, command, cache_status|
-      env = cache_status ? {"WARITE_TRACE" => "1"} : {}
+      env = cache_status ? {"WARDITE_TRACE" => "1"} : {}
       stdout, stderr, status = if defined?(Bundler)
         Bundler.with_original_env { Open3.capture3(env, *command) }
       else

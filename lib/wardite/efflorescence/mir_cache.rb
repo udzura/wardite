@@ -504,10 +504,10 @@ module Wardite
         entries = module_entries(instance)
         raise Invalid unless reader.bytes(reader.count(1)) == encode_layout(instance, entries)
         functions = Decoder.new(reader, instance, entries).decode
-        $stderr.puts "MIR2 cache hit: #{@path}" if ENV["WARITE_TRACE"]
+        $stderr.puts "MIR2 cache hit: #{@path}" if ENV["WARDITE_TRACE"]
         functions
       rescue SystemCallError, IOError, Invalid
-        $stderr.puts "MIR2 cache miss: #{@path}" if ENV["WARITE_TRACE"]
+        $stderr.puts "MIR2 cache miss: #{@path}" if ENV["WARDITE_TRACE"]
         nil
       end
 

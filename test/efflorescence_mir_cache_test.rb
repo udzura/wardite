@@ -347,7 +347,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
   end
 
   def assert_cli(message, *options, bypass: false)
-    stdout, stderr, status = Open3.capture3({"WARITE_TRACE" => "1"}, RbConfig.ruby, "-Ilib", "exe/wardite",
+    stdout, stderr, status = Open3.capture3({"WARDITE_TRACE" => "1"}, RbConfig.ruby, "-Ilib", "exe/wardite",
       "--new-engine", "--mir-cache", @cache, "--no-wasi", "--invoke", "add", *options, "--", add_wasm, "20", "22")
     assert_true status.success?, stderr
     assert_empty stdout

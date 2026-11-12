@@ -3,12 +3,12 @@
 [ADR 0008のフェーズ5](adr/0008-efflorescence-ruby-wasm-phase2.md#5-mir2ビルドキャッシュ)を実装した。CRubyとSpinelで `--new-engine --mir-cache DIR` を指定すると、同じWasmとMIR設定で別プロセスからlowering済みのコードを再利用する。
 
 ```sh
-WARITE_TRACE=1 bundle exec ruby -Ilib exe/wardite --new-engine --yjit \
+WARDITE_TRACE=1 bundle exec ruby -Ilib exe/wardite --new-engine --yjit \
   --mir-cache "$HOME/.cache/wardite" -- "$ruby_wasm" --disable-gems \
   -e 'puts RUBY_VERSION; puts 6*7'
 ```
 
-`WARITE_TRACE=1` で標準エラーに `MIR2 cache miss` または `MIR2 cache hit` が出る。Ruby APIでは `engine: :efflorescence, mir_cache: directory` を渡す。ヒットの有無は `instance.runtime.mir_cache_hit` で確認できる。`--mir-dump` と `--mir-profile` は通常のビルドを使う。Ruby APIでヒット後に `semantic_ir`、`optimized_ir`、`dump_mir` を呼ぶと、その時点で検査用のMIRを生成する。
+`WARDITE_TRACE=1` で標準エラーに `MIR2 cache miss` または `MIR2 cache hit` が出る。Ruby APIでは `engine: :efflorescence, mir_cache: directory` を渡す。ヒットの有無は `instance.runtime.mir_cache_hit` で確認できる。`--mir-dump` と `--mir-profile` は通常のビルドを使う。Ruby APIでヒット後に `semantic_ir`、`optimized_ir`、`dump_mir` を呼ぶと、その時点で検査用のMIRを生成する。
 
 ## 形式と再リンク
 
@@ -35,7 +35,7 @@ for sample in 1 2 3; do
   cache=$(mktemp -d)
   /usr/bin/time -l ruby --yjit -Ilib benchmark/measure_ruby_wasm_startup.rb "$ruby_wasm"
   for mode in miss hit; do
-    WARITE_TRACE=1 /usr/bin/time -l ruby --yjit -Ilib \
+    WARDITE_TRACE=1 /usr/bin/time -l ruby --yjit -Ilib \
       benchmark/measure_ruby_wasm_startup.rb "$ruby_wasm" --mir-cache "$cache"
   done
   wc -c "$cache"/*.mir2
