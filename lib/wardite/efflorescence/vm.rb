@@ -16,7 +16,9 @@ module Wardite
       # @rbs disabled_optimizations: Array[Symbol]
       # @rbs profile: bool
       # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
-      def initialize(instance, disabled_optimizations: [], profile: false, mir_cache: nil)
+      # @rbs cached_functions: Array[Function]?
+      # @rbs cache_checked: bool
+      def initialize(instance, disabled_optimizations: [], profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false)
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
         @function_indices = {} #: Hash[Integer, Integer]
@@ -34,12 +36,15 @@ module Wardite
         @semantic_ir = @optimized_ir = nil
         translator = Translator.new(instance)
         linked = translator.link
-        cached = nil #: Wardite::Efflorescence::IR?
-        if mir_cache && !profile
-          cached = mir_cache.read(instance, linked)
+        if mir_cache && !profile && !cache_checked
+          cached_functions = mir_cache.read(instance)
         end
-        @mir_cache_hit = !cached.nil?
-        @ir = cached || build_mir(translator, linked, profile)
+        @mir_cache_hit = !cached_functions.nil?
+        @ir = if cached_functions
+          IR.new(cached_functions, entries: linked.entries, hosts: linked.hosts)
+        else
+          build_mir(translator, linked, profile)
+        end
         if mir_cache && !profile && !@mir_cache_hit
           mir_cache.write(instance, @ir)
         end

@@ -63,7 +63,19 @@ module Wardite
       @import_object = import_object #: Hash[Symbol, wasmModule]
 
       @tags = []
-      check_engine_features(engine)
+      check_module_features(engine)
+      cached_functions = nil #: Array[Efflorescence::Function]?
+      if engine == :efflorescence && mir_cache && !mir_profile
+        cached_functions = mir_cache.read(self)
+      end
+      types = type_section
+      code_section&.func_codes&.each do |body|
+        if cached_functions
+          body.type_section = types
+        else
+          body.check_features(types, engine == :stack)
+        end
+      end
       check_data_count
       @store = Store.new(self)
       @exports = Exports.new(self.export_section, store)
@@ -79,7 +91,9 @@ module Wardite
 
       @runtime = case engine
       when :stack then Runtime.new(self)
-      when :efflorescence then Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile, mir_cache: mir_cache)
+      when :efflorescence
+        Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile,
+          mir_cache: mir_cache, cached_functions: cached_functions, cache_checked: true)
       else raise LoadError, "unknown engine: #{engine}"
       end
     end
@@ -87,7 +101,7 @@ module Wardite
     # Run before allocating Store/Exports or executing a start function.
     # @rbs engine: Symbol
     # @rbs return: void
-    def check_engine_features(engine)
+    def check_module_features(engine)
       check_memory_initialization if engine == :efflorescence
       types = type_section
       if engine == :efflorescence
@@ -114,31 +128,24 @@ module Wardite
       if engine == :stack && types && (types.defined_types + types.defined_results).any? { |list| list.include?(:exnref) }
         raise LoadError, "stack engine does not support exnref"
       end
+    end
+
+    # @rbs &block: (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void
+    # @rbs return: void
+    def each_defined_function(&block)
+      functions = function_section
       codes = code_section
-      return unless codes
-      codes.func_codes.each do |body|
-        if engine == :stack && body.locals_type.include?(:exnref)
-          raise LoadError, "stack engine does not support exnref"
-        end
-        body.body.each do |instruction|
-          code = instruction[1]
-          if engine == :stack && [:try_table, :throw, :throw_ref].include?(code)
-            raise LoadError, "stack engine does not support EH"
-          end
-          instruction[2].each do |operand|
-            next unless operand.is_a?(Block)
-            index = operand.type_index
-            if index >= 0
-              params = types&.defined_types&.[](index)
-              results = types&.defined_results&.[](index)
-              raise LoadError, "invalid block type index #{index}" unless params && results
-              operand.resolve(params, results)
-            end
-            if engine == :stack && (index >= 0 || operand.result_types.include?(:exnref))
-              raise LoadError, "stack engine does not support indexed/reference block signatures"
-            end
-          end
-        end
+      if (functions&.func_indices&.size || 0) != (codes&.func_codes&.size || 0)
+        raise LoadError, "function and code section lengths differ"
+      end
+      return unless functions && codes
+
+      types = type_section
+      functions.func_indices.each_with_index do |index, position|
+        params = types&.defined_types&.[](index)
+        results = types&.defined_results&.[](index)
+        raise LoadError, "invalid function type index #{index}" unless params && results
+        block.call(params, results, codes.func_codes.fetch(position))
       end
     end
 
@@ -1032,8 +1039,6 @@ module Wardite
     # @rbs return: void
     def initialize(inst)
       type_section = inst.type_section
-      func_section = inst.function_section
-      code_section = inst.code_section
 
       import_section = inst.import_section
       @funcs = []
@@ -1054,20 +1059,10 @@ module Wardite
         self.funcs << ExternalFunction.new(target_module, name, callsig, retsig)
       end
 
-      if (func_section&.func_indices&.size || 0) != (code_section&.func_codes&.size || 0)
-        raise LoadError, "function and code section lengths differ"
-      end
-      if func_section && code_section
-        func_section.func_indices.each_with_index do |sigindex, findex|
-          callsig = type_section&.defined_types&.[](sigindex)
-          retsig = type_section&.defined_results&.[](sigindex)
-          raise LoadError, "invalid function type index #{sigindex}" unless callsig && retsig
-
-          codes = code_section.func_codes.fetch(findex)
-          wasm_function = WasmFunction.new(callsig, retsig, codes)
-          wasm_function.findex = self.funcs.size
-          self.funcs << wasm_function
-        end
+      inst.each_defined_function do |callsig, retsig, body|
+        wasm_function = WasmFunction.new(callsig, retsig, body)
+        wasm_function.findex = self.funcs.size
+        self.funcs << wasm_function
       end
 
       @memories = []

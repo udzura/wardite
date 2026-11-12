@@ -97,11 +97,33 @@ module Wardite
 
       attr_accessor locals_type: Array[Symbol]
 
-      attr_accessor body: Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+      attr_writer instruction_bytes: String?
+
+      attr_writer type_section: TypeSection?
 
       # @rbs &blk: (CodeBody) -> void
       # @rbs return: void
       def initialize: () { (CodeBody) -> void } -> void
+
+      # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      def body: () -> Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+
+      # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      # @rbs return: void
+      def body=: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions) -> void
+
+      # @rbs types: TypeSection?
+      # @rbs stack: bool
+      # @rbs return: void
+      def check_features: (TypeSection? types, bool stack) -> void
+
+      private
+
+      # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      # @rbs types: TypeSection?
+      # @rbs stack: bool
+      # @rbs return: void
+      def check_instructions: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions, TypeSection? types, bool stack) -> void
     end
 
     attr_accessor func_codes: Array[CodeBody]
@@ -195,8 +217,9 @@ module Wardite
     # @rbs return: Integer
     def self.preamble: () -> Integer
 
+    # @rbs defer_code: bool
     # @rbs return: Array[Section]
-    def self.sections: () -> Array[Section]
+    def self.sections: (?bool defer_code) -> Array[Section]
 
     # @rbs return: TypeSection
     def self.type_section: () -> TypeSection
@@ -225,12 +248,14 @@ module Wardite
     # @rbs return: TableSection
     def self.table_section: () -> TableSection
 
+    # @rbs defer_code: bool
     # @rbs return: CodeSection
-    def self.code_section: () -> CodeSection
+    def self.code_section: (?bool defer_code) -> CodeSection
 
     # @rbs sbuf: StringIO
+    # @rbs defer_code: bool
     # @rbs return: CodeSection::CodeBody
-    def self.read_function_body: (StringIO sbuf) -> CodeSection::CodeBody
+    def self.read_function_body: (StringIO sbuf, ?bool defer_code) -> CodeSection::CodeBody
 
     # @rbs buf: StringIO
     # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]

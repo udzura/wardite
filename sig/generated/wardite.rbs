@@ -37,7 +37,11 @@ module Wardite
     # Run before allocating Store/Exports or executing a start function.
     # @rbs engine: Symbol
     # @rbs return: void
-    def check_engine_features: (Symbol engine) -> void
+    def check_module_features: (Symbol engine) -> void
+
+    # @rbs &block: (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void
+    # @rbs return: void
+    def each_defined_function: () { (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void } -> void
 
     # Validate active segments before shared initialization can mutate memory.
     # @rbs return: void

@@ -86,6 +86,61 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     end
   end
 
+  test "a hit decodes function bodies only when they are inspected" do
+    wasm = compile_efflorescence_wat(<<~WAT)
+      (module
+        (type $pair (func (result i32 i32)))
+        (func (export "value") (result i32)
+          block (type $pair) i32.const 40 i32.const 2 end i32.add)
+        (func))
+    WAT
+    miss = load_bytes(wasm)
+    assert_false miss.mir_cache_hit
+    decoded = 0
+    trace = TracePoint.new(:call) do |event|
+      decoded += 1 if event.self.equal?(Wardite::BinaryLoader) && event.method_id == :code_body
+    end
+
+    trace.enable do
+      buffer = StringIO.new(wasm)
+      instance = Wardite::BinaryLoader.load_from_buffer(buffer, enable_wasi: false,
+        engine: :efflorescence, mir_cache: @cache)
+      buffer.close
+      hit = instance.runtime
+      assert_true hit.mir_cache_hit
+      assert_equal 42, hit.call_unboxed(:value, [])
+      assert_equal 0, decoded
+
+      function = instance.store.funcs.fetch(0)
+      body = function.body
+      assert_equal [:i32, :i32], body.first.fetch(2).first.result_types
+      assert_same body, function.body
+      assert_equal 1, decoded
+
+      assert_equal miss.dump_mir, hit.dump_mir
+      assert_equal 2, decoded
+    end
+  end
+
+  test "a cache miss checks malformed bodies before Store initialization or import lookup" do
+    wasm = compile_efflorescence_wat(<<~WAT)
+      (module
+        (import "env" "unused" (func))
+        (func block (type 8) end))
+    WAT
+    effects = []
+    imports = Hash.new { effects << :import_lookup }
+    trace = TracePoint.new(:call) do |event|
+      effects << :store if event.defined_class == Wardite::Store && event.method_id == :initialize
+    end
+    trace.enable do
+      error = assert_raise(Wardite::LoadError) { load_bytes(wasm, import_object: imports) }
+      assert_equal "invalid block type index 8", error.message
+    end
+    assert_empty effects
+    assert_empty cache_files
+  end
+
   test "the key covers Wasm and normalized optimization settings" do
     wasm = compile_efflorescence_wat('(module (func (export "value") (result i32) i32.const 1))')
     changed = compile_efflorescence_wat('(module (func (export "value") (result i32) i32.const 2))')
@@ -187,7 +242,13 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
 
     mutations.each do |corrupt|
       File.binwrite(file, corrupt)
-      rebuilt = load_bytes(wasm)
+      steps = []
+      trace = TracePoint.new(:call) do |event|
+        steps << :decode if event.self.equal?(Wardite::BinaryLoader) && event.method_id == :code_body
+        steps << :store if event.defined_class == Wardite::Store && event.method_id == :initialize
+      end
+      rebuilt = trace.enable { load_bytes(wasm) }
+      assert_equal [:decode, :store], steps
       assert_false rebuilt.mir_cache_hit
       assert_equal 42, rebuilt.call_unboxed(:value, [42])
       assert_equal original, File.binread(file)
