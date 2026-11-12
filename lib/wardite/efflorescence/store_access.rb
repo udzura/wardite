@@ -3,8 +3,8 @@
 
 module Wardite
   module Efflorescence
-    # Checked byte operations live off the integer dispatch path. Store remains
-    # the owner of all state; never retain a Memory#data buffer across a call.
+    # Checked byte operations and global synchronization live off the integer
+    # dispatch path. Never retain a Memory#data buffer across a call.
     class StoreAccess
       PAGE_SIZE = 65536
       MAX_PAGES = 65536
@@ -82,6 +82,31 @@ module Wardite
       # @rbs return: void
       def global_set_i64(index, value)
         global_at(index).value = Wardite::I64(value)
+      end
+
+      # @rbs index: Integer
+      # @rbs type: Symbol
+      # @rbs return: Integer
+      def global_bits_at(index, type)
+        case type
+        when :i32 then global_get(index)
+        when :i64 then global_get_i64(index)
+        else global_get_float(index, type)
+        end
+      end
+
+      # @rbs index: Integer
+      # @rbs type: Symbol
+      # @rbs value: Integer
+      # @rbs return: void
+      def write_global_bits(index, type, value)
+        return if value == global_bits_at(index, type)
+
+        case type
+        when :i32 then global_set(index, value)
+        when :i64 then global_set_i64(index, value)
+        else global_set_float(index, type, value)
+        end
       end
 
       # @rbs address: Integer

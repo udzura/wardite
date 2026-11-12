@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'test_helper'
+require 'rbconfig'
 require_relative 'support/efflorescence_helper'
 require_relative 'support/efflorescence_m2_cases'
 
@@ -8,6 +9,19 @@ class EfflorescenceM2GlobalsTest < Test::Unit::TestCase
   include EfflorescenceHelper
   include EfflorescenceM2Cases
   E = Wardite::Efflorescence
+
+  test 'global values synchronize across host calls traps and shared stores' do
+    root = File.expand_path('..', __dir__)
+    Dir.mktmpdir('wardite-global-sync') do |dir|
+      source = File.join(__dir__, 'support/efflorescence_global_sync.wat')
+      probe = File.join(__dir__, 'spinel/efflorescence_global_sync.rb')
+      wasm = File.join(dir, 'globals.wasm')
+      File.binwrite(wasm, compile_efflorescence_wat(File.read(source)))
+      output, status = Open3.capture2e(RbConfig.ruby, "-I#{root}/lib", probe, wasm)
+      assert status.success?, output
+      assert_equal "global synchronization passed\n", output
+    end
+  end
 
   test 'global snapshots calls recursion persistence and instance separation agree with the stack VM' do
     bytes = compile_efflorescence_wat(GLOBAL_WAT)

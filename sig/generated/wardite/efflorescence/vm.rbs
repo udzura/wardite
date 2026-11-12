@@ -11,6 +11,8 @@ module Wardite
 
       attr_reader mir_cache_hit: bool
 
+      @global_bits: Array[Integer]
+
       @optimized_ir: Wardite::Efflorescence::IR?
 
       @semantic_ir: Wardite::Efflorescence::IR?
@@ -129,12 +131,27 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::FramePool
       def pool_at: (Array[Wardite::Efflorescence::FramePool] pools, Integer index) -> Wardite::Efflorescence::FramePool
 
+      # Update in place so a suspended execute_flat retains the same array
+      # across a host call, including a reentrant call on this VM.
+      # @rbs return: void
+      def read_globals: () -> void
+
+      # @rbs return: void
+      def write_globals: () -> void
+
       # @rbs host_index: Integer
       # @rbs arguments: Array[Integer]
       # @rbs metrics: Wardite::Efflorescence::Metrics
-      # @rbs return: Integer?
       # @rbs sources: Array[Integer]?
-      def invoke_host: (Integer host_index, Array[Integer] arguments, Wardite::Efflorescence::Metrics metrics, ?Array[Integer]? sources) -> Integer?
+      # @rbs return: Integer?
+      def invoke_host_with_globals: (Integer host_index, Array[Integer] arguments, Wardite::Efflorescence::Metrics metrics, Array[Integer]? sources) -> Integer?
+
+      # @rbs host_index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      # @rbs sources: Array[Integer]?
+      # @rbs return: Integer?
+      def invoke_host: (Integer host_index, Array[Integer] arguments, Wardite::Efflorescence::Metrics metrics, Array[Integer]? sources) -> Integer?
 
       # @rbs host: Wardite::Efflorescence::HostFunction
       # @rbs arguments: Array[Integer]
@@ -142,8 +159,8 @@ module Wardite
       # @rbs return: Integer?
       def invoke_typed_host: (Wardite::Efflorescence::HostFunction host, Array[Integer] arguments, Array[Integer]? sources) -> Integer?
 
-      # Each public entry owns its frames, pools and counters, including when a
-      # host callback re-enters the VM. Store mutations are shared immediately.
+      # Each public or start entry owns its frames, pools and counters. Host
+      # calls synchronize globals before a callback can re-enter the VM.
       # @rbs entry: Wardite::Efflorescence::FunctionEntry
       # @rbs arguments: Array[Integer]
       # @rbs return: Integer?
