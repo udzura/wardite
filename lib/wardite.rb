@@ -1161,6 +1161,7 @@ module Wardite
 
     # @rbs @data: String?
     # @rbs @buffer: IO::Buffer?
+    # @rbs @storage: IO::Buffer?
 
     attr_accessor :current #: Integer
     attr_accessor :max #: Integer|nil
@@ -1170,7 +1171,8 @@ module Wardite
     # @rbs return: void
     def initialize(min, max)
       if RUBY_ENGINE == "spinel"
-        @buffer = IO::Buffer.new(min * PAGE_SIZE)
+        buffer = IO::Buffer.new(min * PAGE_SIZE)
+        @storage = @buffer = buffer
       else
         @data = String.new("\0" * (min * PAGE_SIZE)).b
       end
@@ -1191,7 +1193,7 @@ module Wardite
       @data = value
     end
 
-    # The Spinel host API exposes the current owned buffer. Reacquire it
+    # The Spinel host API exposes only the current Wasm bytes. Reacquire it
     # after any guest call that can grow memory.
     # @rbs return: IO::Buffer
     def buffer
@@ -1259,16 +1261,7 @@ module Wardite
         return -1 if delta < 0 || previous > limit || delta > limit - previous
         return previous if delta == 0
 
-        old = buffer
-        return -1 if old.locked?
-        begin
-          replacement = IO::Buffer.new((previous + delta) * PAGE_SIZE)
-        rescue NoMemoryError, Errno::ENOMEM, IO::Buffer::AllocationError
-          return -1
-        end
-        replacement.copy(old, 0, old.size) if old.size > 0
-        old.free
-        @buffer = replacement
+        return -1 unless grow_buffer(previous + delta, limit)
       else
         declared = max
         return -1 if declared && previous + delta > declared
@@ -1281,6 +1274,58 @@ module Wardite
     def inspect
       preview = read_bytes(0, [bytesize, 64].min)
       "#<Wardite::Memory initial=#{bytesize.inspect} max=#{@max.inspect} preview=#{preview.inspect}...>"
+    end
+
+    private
+
+    # @rbs pages: Integer
+    # @rbs limit: Integer
+    # @rbs return: bool
+    def grow_buffer(pages, limit)
+      old = buffer
+      return false if old.locked?
+
+      storage = @storage
+      raise "missing linear memory storage" unless storage
+      size = pages * PAGE_SIZE
+      if size <= storage.size
+        # Move ownership without copying. Spinel slices point to their
+        # original root, so the transfer also invalidates outstanding views.
+        replace_storage(storage.transfer, size)
+        return true
+      end
+
+      spare = [pages / 8, 1].max
+      capacity = [pages + spare, limit].min
+      replacement = allocate_storage(capacity)
+      replacement = allocate_storage(pages) if !replacement && capacity > pages
+      return false unless replacement
+      replacement.copy(old, 0, old.size) if old.size > 0
+      replace_storage(replacement, size)
+      true
+    end
+
+    # @rbs replacement: IO::Buffer
+    # @rbs size: Integer
+    # @rbs return: void
+    def replace_storage(replacement, size)
+      # Allocation zeroes the entire storage. The hidden suffix stays zero
+      # because all guest and host accesses go through the size-bounded view.
+      view = replacement.size == size ? replacement : replacement.slice(0, size)
+      storage = @storage
+      old = buffer
+      old.free unless old.equal?(storage)
+      storage&.free
+      @storage = replacement
+      @buffer = view
+    end
+
+    # @rbs pages: Integer
+    # @rbs return: IO::Buffer?
+    def allocate_storage(pages)
+      IO::Buffer.new(pages * PAGE_SIZE)
+    rescue NoMemoryError, Errno::ENOMEM, IO::Buffer::AllocationError
+      nil
     end
   end
 
