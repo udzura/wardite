@@ -90,9 +90,13 @@ the Wasm, links imports, and initializes a fresh instance. `--mir-dump` and
 
 The default `--mir-cache-verify checksum` checks the payload size and samples
 blocks. Use `--mir-cache-verify sha256` or Ruby's `mir_cache_verify: :sha256`
-to check the whole payload. Both modes use the same cache file and check MIR
-structure. Corruption outside the sampled blocks can go undetected in checksum
-mode, including changes that leave the MIR structurally valid.
+to check the whole payload. Both modes use the same cache file. By default,
+each function is restored and structurally checked before its first execution.
+Use `--mir-cache-eager` or Ruby's `mir_cache_eager: true` to check every
+function at load time. If a lazy check fails, Wardite stops and reports the
+cache path. Delete that file and rerun. Corruption outside the sampled blocks
+can go undetected in checksum mode, including changes that leave the MIR
+structurally valid.
 [MIR2 cache measurements](docs/efflorescence-mir2-cache.md)
 
 For WASI commands, `--snapshot DIR` (with `--new-engine --mir-cache DIR`) saves

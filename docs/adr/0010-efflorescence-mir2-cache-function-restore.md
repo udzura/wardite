@@ -1,6 +1,6 @@
 # ADR 0010: MIR2キャッシュからの関数復元の高速化
 
-- **状態** 提案
+- **状態** 実装・計測済み。[計測記録](../efflorescence-mir2-cache.md#関数復元の計測)
 - **日付** 2026-11-12
 - **前提** [ruby.wasm対応フェーズ2](0008-efflorescence-ruby-wasm-phase2.md)、[MIR2キャッシュの実装記録](../efflorescence-mir2-cache.md)
 

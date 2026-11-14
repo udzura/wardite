@@ -170,6 +170,7 @@ module Wardite
 
       # @rbs return: void
       def restore_inspection_ir
+        @mir_cache&.restore_all
         linked = IR.new([], entries: @ir.entries, hosts: @ir.hosts)
         build_mir(Translator.new(@instance), linked, false)
       end
@@ -485,7 +486,7 @@ module Wardite
       # @rbs return: Array[Wardite::Efflorescence::FramePool]
       def new_pools
         pools = [] #: Array[Wardite::Efflorescence::FramePool]
-        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames) }
+        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames, @mir_cache) }
         pools
       end
 

@@ -149,7 +149,8 @@ module Wardite
           frames << SavedFrame.new(pool_index, pc, return_register, registers, handlers)
         end
         raise MIRCache::Invalid if frames.empty?
-        frames.each_with_index { |frame, index| check_frame(functions, frames, index) }
+        cache = vm.mir_cache || raise(MIRCache::Invalid)
+        frames.each_with_index { |frame, index| check_frame(functions, frames, index, cache) }
         memory = store.memories[0]
         pages = reader.integer
         used = reader.vector("l<", 4)
@@ -191,10 +192,12 @@ module Wardite
       # @rbs functions: Array[Wardite::Efflorescence::Function]
       # @rbs frames: Array[Wardite::Efflorescence::SavedFrame]
       # @rbs index: Integer
+      # @rbs cache: Wardite::Efflorescence::MIRCache
       # @rbs return: void
-      def check_frame(functions, frames, index)
+      def check_frame(functions, frames, index, cache)
         frame = frames.fetch(index)
         function = functions[frame.pool_index] || raise(MIRCache::Invalid)
+        cache.restore_function(function)
         code = function.bytecode
         pc = frame.pc
         raise MIRCache::Invalid unless pc >= 0 && pc < code.size && pc % Lowerer::WIDTH == 0

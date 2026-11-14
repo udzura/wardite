@@ -51,8 +51,12 @@ module Wardite
       # All records are little-endian. Vectors carry a nonnegative 32-bit element count.
       # A record count is bounded by the bytes still available to decode it.
       class Reader
+        attr_reader offset: Integer
+
         # @rbs bytes: String
-        def initialize: (String bytes) -> untyped
+        # @rbs offset: Integer
+        # @rbs length: Integer?
+        def initialize: (String bytes, ?offset: Integer, ?length: Integer?) -> untyped
 
         # @rbs length: Integer
         # @rbs return: String
@@ -69,6 +73,12 @@ module Wardite
         # @rbs width: Integer
         # @rbs return: Array[Integer]
         def vector: (String format, Integer width) -> Array[Integer]
+
+        # @rbs target: Array[Integer]
+        # @rbs format: String
+        # @rbs width: Integer
+        # @rbs return: void
+        def read_into: (Array[Integer] target, String format, Integer width) -> void
 
         # @rbs return: Array[Symbol]
         def types: () -> Array[Symbol]
@@ -109,6 +119,8 @@ module Wardite
       class Decoder
         include Opcode
 
+        attr_reader functions: Array[Function]
+
         # Reuse the semantic register roles for fixed operands. Lowering
         # moves direct call arguments into a side table and leaves optional
         # destinations and return operands to be checked against signatures.
@@ -116,25 +128,32 @@ module Wardite
 
         EXTRA_OPERANDS: Array[Symbol?]
 
-        # @rbs reader: Reader
+        # @rbs payload: String
         # @rbs instance: Wardite::Instance
         # @rbs entries: Array[FunctionEntry]
-        def initialize: (Reader reader, Wardite::Instance instance, Array[FunctionEntry] entries) -> untyped
+        def initialize: (String payload, Wardite::Instance instance, Array[FunctionEntry] entries) -> untyped
 
-        # @rbs return: Array[Function]
-        def decode: () -> Array[Function]
+        # @rbs layout: String
+        # @rbs return: void
+        def declare: (String layout) -> void
+
+        # A failed decode must never expose a partially filled function. Keep
+        # the slot unavailable even if a Ruby caller catches the error.
+        # @rbs function: Function
+        # @rbs return: void
+        def restore: (Function function) -> void
 
         private
 
         # @rbs body: Wardite::CodeSection::CodeBody
-        # @rbs entry: FunctionEntry
-        # @rbs index: Integer
-        # @rbs return: Function
-        def read_function: (Wardite::CodeSection::CodeBody body, FunctionEntry entry, Integer index) -> Function
+        # @rbs function: Function
+        # @rbs return: void
+        def read_function: (Wardite::CodeSection::CodeBody body, Function function) -> void
 
         # @rbs function: Function
-        # @rbs return: Array[[Integer, Array[Integer]]]
-        def read_sites: (Function function) -> Array[[ Integer, Array[Integer] ]]
+        # @rbs functions: Array[Function]
+        # @rbs return: void
+        def read_sites: (Function function, Array[Function] functions) -> void
 
         # @rbs function: Function
         # @rbs return: DynamicCallSite
@@ -182,13 +201,21 @@ module Wardite
       # @rbs wasm: String
       # @rbs configuration: Configuration
       # @rbs verify: Symbol
-      def initialize: (String directory, String wasm, Configuration configuration, ?verify: Symbol) -> untyped
+      # @rbs eager: bool
+      def initialize: (String directory, String wasm, Configuration configuration, ?verify: Symbol, ?eager: bool) -> untyped
 
       # Restore against module declarations so a miss can decode and check the
       # Wasm bodies before Store initialization or any host lookup.
       # @rbs instance: Wardite::Instance
       # @rbs return: Array[Function]?
       def read: (Wardite::Instance instance) -> Array[Function]?
+
+      # @rbs function: Function
+      # @rbs return: void
+      def restore_function: (Function function) -> void
+
+      # @rbs return: void
+      def restore_all: () -> void
 
       # @rbs instance: Wardite::Instance
       # @rbs ir: IR

@@ -74,7 +74,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     fixture = File.join(__dir__, "fixtures/efflorescence/m5_store_eh.wat")
     wasm = compile_efflorescence_wat(File.read(fixture))
     miss = load_bytes(wasm)
-    hit = load_bytes(wasm)
+    hit = load_bytes(wasm, mir_cache_eager: true)
 
     assert_false miss.mir_cache_hit
     assert_true hit.mir_cache_hit
@@ -195,10 +195,10 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     assert_equal [:immediate], options
     hit = load_bytes(wasm, import_object: {env: host})
     assert_true hit.mir_cache_hit
+    assert_equal 42, hit.call_unboxed(:value, [41])
     assert_equal miss.ir.functions.first.bytecode, hit.ir.functions.first.bytecode
     assert_include hit.ir.functions.first.bytecode.each_slice(4).map(&:first),
       Wardite::Efflorescence::Opcode::I32_ADD_IMM
-    assert_equal 42, hit.call_unboxed(:value, [41])
   end
 
   test "format mismatch, truncation, invalid counts, opcodes, register and branch indices fall back" do
@@ -211,9 +211,9 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     original = File.binread(file)
     header_size = CACHE_HEADER_SIZE
     payload_offset = PAYLOAD_OFFSET
-    layout_offset = payload_offset + 4
-    function_count = layout_offset + original.unpack1("l<", offset: payload_offset)
-    type_vector = function_count + 8 # function count and flags
+    layout_offset = payload_offset + 4 + 8 + 4 # count, one table row, and layout length
+    function_offset = payload_offset + original.unpack1("l<", offset: payload_offset + 4)
+    type_vector = function_offset + 4 # flags
     initial_vector = type_vector + 4 + original.unpack1("l<", offset: type_vector)
     constant_vector = initial_vector + 4 + 8 * original.unpack1("l<", offset: initial_vector)
     code_vector = constant_vector + 4 + 4 * original.unpack1("l<", offset: constant_vector)
@@ -233,7 +233,9 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     ]
     [
       [layout_offset, "C", original.getbyte(layout_offset) ^ 1], # module layout
-      [function_count, "l<", 0x7fffffff],
+      [payload_offset, "l<", 0x7fffffff], # function count
+      [payload_offset + 4, "l<", -1], # function offset
+      [payload_offset + 8, "l<", 0x7fffffff], # function length
       [code_vector, "l<", 3], # code width
       [branch_offset, "q<", 999], # opcode
       [branch_offset + 8, "q<", -1], # register index
@@ -241,10 +243,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
       [branch_offset + 16, "q<", 0x7ffffffc], # out-of-range target
     ].each do |offset, format, value|
       corrupt = patched(original, offset, format, value)
-      payload = corrupt.byteslice(payload_offset..)
-      corrupt[header_size + 8, 32] = Digest::SHA256.digest([payload.bytesize].pack("Q<") + payload)
-      corrupt[header_size + 40, 32] = Digest::SHA256.digest(payload)
-      mutations << corrupt
+      mutations << update_small_digests(corrupt)
     end
 
     %i[checksum sha256].product(mutations).each do |mode, corrupt|
@@ -254,13 +253,93 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
         steps << :decode if event.self.equal?(Wardite::BinaryLoader) && event.method_id == :code_body
         steps << :store if event.defined_class == Wardite::Store && event.method_id == :initialize
       end
-      rebuilt = trace.enable { load_bytes(wasm, mir_cache_verify: mode) }
+      rebuilt = trace.enable { load_bytes(wasm, mir_cache_verify: mode, mir_cache_eager: true) }
       assert_equal [:decode, :store], steps
       assert_false rebuilt.mir_cache_hit
       assert_equal 42, rebuilt.call_unboxed(:value, [42])
       assert_equal original, File.binread(file)
     end
     assert_true load_bytes(wasm).mir_cache_hit
+  end
+
+  test "lazy restoration follows direct, indirect, host reentry and EH calls" do
+    wasm = compile_efflorescence_wat(<<~WAT)
+      (module
+        (import "env" "reenter" (func $host (result i32)))
+        (tag $tag (param i32))
+        (table 1 funcref)
+        (type $t (func (result i32)))
+        (elem (i32.const 0) func $throws)
+        (func (export "run") (result i32) call $host)
+        (func (export "handler") (result i32)
+          (block $caught (result i32)
+            (try_table (catch $tag $caught)
+              i32.const 0 call_indirect (type $t) drop)
+            unreachable))
+        (func $throws (result i32) call $value throw $tag)
+        (func $value (result i32) i32.const 42)
+        (func (export "unused") (result i32) i32.const 99))
+    WAT
+    disabled = [:all]
+    load_bytes(wasm, disabled_optimizations: disabled, import_object: {env: {reenter: ->(*) { 42 }}})
+    vm = nil
+    host = ->(*) { vm.call_unboxed(:handler, []) }
+    vm = load_bytes(wasm, disabled_optimizations: disabled, import_object: {env: {reenter: host}})
+    assert_true vm.mir_cache_hit
+    assert_equal [true] * 5, vm.ir.functions.map(&:cache_pending)
+    assert_equal 42, vm.call_unboxed(:run, [])
+    assert_equal [false, false, false, false, true], vm.ir.functions.map(&:cache_pending)
+    assert_equal 42, vm.call_unboxed(:run, [])
+    vm.optimized_ir
+    assert_equal [false] * 5, vm.ir.functions.map(&:cache_pending)
+  end
+
+  test "lazy restoration reports a corrupt function only when it is called" do
+    wasm = compile_efflorescence_wat(<<~WAT)
+      (module
+        (func (export "good") (result i32) i32.const 42)
+        (func (export "bad") (result i32) i32.const 43))
+    WAT
+    original_vm = load_bytes(wasm)
+    file = cache_files.fetch(0)
+    original = File.binread(file)
+    offset, length = original.unpack("l<2", offset: PAYLOAD_OFFSET + 12)
+    start = PAYLOAD_OFFSET + offset
+    code = original.index(original_vm.ir.functions.fetch(1).bytecode.pack("q<*"), start)
+    assert_not_nil code
+    assert_operator code, :<, start + length
+    File.binwrite(file, update_small_digests(patched(original, code, "q<", 999)))
+
+    vm = load_bytes(wasm)
+    assert_true vm.mir_cache_hit
+    assert_equal 42, vm.call_unboxed(:good, [])
+    assert_true vm.ir.functions.fetch(1).cache_pending
+    2.times do
+      error = assert_raise(Wardite::EvalError) { vm.call_unboxed(:bad, []) }
+      assert_include error.message, file
+    end
+    error = assert_raise(Wardite::EvalError) { vm.dump_mir }
+    assert_include error.message, file
+    assert_not_equal original, File.binread(file)
+
+    eager = load_bytes(wasm, mir_cache_eager: true)
+    assert_false eager.mir_cache_hit
+    assert_equal 43, eager.call_unboxed(:bad, [])
+    assert_equal original, File.binread(file)
+  end
+
+  test "lazy cache loading rejects overlapping or out-of-bounds function records" do
+    wasm = compile_efflorescence_wat("(module (func) (func))")
+    load_bytes(wasm)
+    file = cache_files.fetch(0)
+    original = File.binread(file)
+    offset = original.unpack1("l<", offset: PAYLOAD_OFFSET + 4)
+    [patched(original, PAYLOAD_OFFSET + 12, "l<", offset),
+     patched(original, PAYLOAD_OFFSET + 16, "l<", original.bytesize)].each do |corrupt|
+      File.binwrite(file, update_small_digests(corrupt))
+      assert_false load_bytes(wasm).mir_cache_hit
+      assert_equal original, File.binread(file)
+    end
   end
 
   test "both modes share a file and read only the selected digest" do
@@ -286,15 +365,21 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     assert_raise(Wardite::ArgumentError) { load_bytes(wasm, mir_cache_verify: :unknown) }
   end
 
-  test "version 1 files are left aside and rebuilt in version 2" do
+  test "version 2 files are left aside and rebuilt in version 3" do
     wasm = File.binread(add_wasm)
     load_bytes(wasm)
     current = cache_files.fetch(0)
-    payload = File.binread(current).byteslice(PAYLOAD_OFFSET..)
-    version = [1, 1].pack("L<2")
+    indexed = File.binread(current).byteslice(PAYLOAD_OFFSET..)
+    count = indexed.unpack1("l<")
+    table_end = 4 + count * 8
+    body = indexed.unpack1("l<", offset: 4)
+    payload = indexed.byteslice(table_end...body) + [count].pack("l<") + indexed.byteslice(body..)
+    version = [2, 1].pack("L<2")
     key = Digest::SHA256.digest(version + Digest::SHA256.digest(wasm))
     legacy = File.join(@cache, "#{key.unpack1("H*")}.mir2")
-    File.binwrite(legacy, "WARDMIR\0".b + version + key + Digest::SHA256.digest(payload) + payload)
+    size = [payload.bytesize].pack("Q<")
+    File.binwrite(legacy, "WARDMIR\0".b + version + key + size + Digest::SHA256.digest(size + payload) +
+      Digest::SHA256.digest(payload) + payload)
     File.unlink(current)
 
     assert_false load_bytes(wasm, mir_cache_verify: :sha256).mir_cache_hit
@@ -341,6 +426,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     assert_cli("MIR2 cache miss")
     assert_cli("MIR2 cache hit")
     assert_cli("MIR2 cache hit", "--mir-cache-verify", "sha256")
+    assert_cli("MIR2 cache hit", "--mir-cache-eager")
     assert_cli("Semantic MIR", "--mir-dump", bypass: true)
     assert_cli("dispatches=", "--mir-profile", bypass: true)
     assert_cli("MIR2 cache hit")
@@ -407,6 +493,14 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     result = bytes.dup
     result[offset, word.bytesize] = word
     result
+  end
+
+  def update_small_digests(cache)
+    payload = cache.byteslice(PAYLOAD_OFFSET..)
+    assert_operator payload.bytesize, :<=, 128 * 1024
+    cache[CACHE_HEADER_SIZE + 8, 32] = Digest::SHA256.digest([payload.bytesize].pack("Q<") + payload)
+    cache[CACHE_HEADER_SIZE + 40, 32] = Digest::SHA256.digest(payload)
+    cache
   end
 
   def assert_cli(message, *options, bypass: false)

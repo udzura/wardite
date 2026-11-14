@@ -673,7 +673,8 @@ module Wardite
       attr_reader :pool_index #: Integer
       attr_reader :parameter_types #: Array[Symbol]
       attr_reader :result_types #: Array[Symbol]
-      attr_reader :local_count #: Integer
+      attr_accessor :local_count #: Integer
+      attr_accessor :cache_pending #: bool
       attr_reader :instructions #: Array[Wardite::Efflorescence::Instruction]
       attr_reader :initial_registers #: Array[Integer]
       attr_reader :constant_registers #: Array[Integer]
@@ -703,6 +704,7 @@ module Wardite
         @parameter_types = parameter_types.dup
         @result_types = result_types.dup
         @local_count = local_count
+        @cache_pending = false
         @register_types = parameter_types + (local_types || Array.new(local_count, :i32))
         @handlers = []
         @flat_handlers = []
@@ -1131,10 +1133,12 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs reuse: bool
-      def initialize(function, reuse)
+      # @rbs cache: Wardite::Efflorescence::MIRCache?
+      def initialize(function, reuse, cache = nil)
         @function = function
         @reuse = reuse
-        @clear_references = function.uses_eh
+        @cache = cache
+        @clear_references = false
         @free = [] #: Array[Wardite::Efflorescence::Frame]
         @created = 0
       end
@@ -1149,6 +1153,11 @@ module Wardite
             return frame
           end
         end
+        if @function.cache_pending
+          cache = @cache || raise(Wardite::EvalError, "missing MIR2 cache for pending function")
+          cache.restore_function(@function)
+        end
+        @clear_references = @function.uses_eh
         @created += 1
         Frame.new(@function, destination)
       end

@@ -146,8 +146,10 @@ class ParityWorker
   # @rbs fields: Array[String]
   # @rbs engine: Symbol
   # @rbs disabled: Array[Symbol]
+  # @rbs cache: String?
+  # @rbs hit: bool
   # @rbs return: void
-  def self.observe(output, fields, engine, disabled)
+  def self.observe(output, fields, engine, disabled, cache, hit)
     id, path, exports, windows = fields.fetch(0), fields.fetch(1), fields.fetch(2), fields.fetch(3)
     host = ParityHost.new
     imports = Wardite::HashModule.new({
@@ -157,7 +159,7 @@ class ParityWorker
     begin
       instance = File.open(path, "rb") do |file|
         Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: engine,
-          import_object: { env: imports }, mir_profile: true, disabled_optimizations: disabled)
+          import_object: { env: imports }, mir_profile: cache.nil?, disabled_optimizations: disabled, mir_cache: cache)
       end
     rescue Wardite::LoadError => error
       raise error unless exports == "-"
@@ -172,11 +174,14 @@ class ParityWorker
       output.puts([id, "-", "trap:unreachable", "-", "", host.events.join(","), "-"].join("\t"))
       return
     end
+    runtime = instance.runtime
+    if hit && runtime.is_a?(Wardite::Efflorescence::VM) && !runtime.mir_cache_hit
+      raise "#{id}: expected MIR2 cache hit"
+    end
     if exports == "-"
       output.puts([id, "-", "load:success", "-", "", host.events.join(","), "-"].join("\t"))
       return
     end
-    runtime = instance.runtime
     store = instance.store
     exports.split(",").each do |name|
       result = invoke(runtime, name)
@@ -189,10 +194,12 @@ end
 
 engine = ARGV.fetch(0).to_sym
 disabled = ARGV.fetch(3).split(",").map { |value| value.to_sym }
+cache = ARGV[4]
+hit = ARGV[5] == "hit"
 File.open(ARGV.fetch(2), "w") do |output|
   File.open(ARGV.fetch(1), "r") do |input|
     while row = input.gets
-      ParityWorker.observe(output, row.chomp.split("\t"), engine, disabled)
+      ParityWorker.observe(output, row.chomp.split("\t"), engine, disabled, cache, hit)
     end
   end
 end
