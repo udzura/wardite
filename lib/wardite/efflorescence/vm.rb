@@ -47,7 +47,7 @@ module Wardite
         translator = Translator.new(instance)
         linked = translator.link
         if mir_cache && !profile && !cache_checked
-          cached_functions = mir_cache.read(instance)
+          cached_functions = mir_cache.read_functions(instance)
         end
         @mir_cache_hit = !cached_functions.nil?
         @ir = if cached_functions
@@ -56,7 +56,7 @@ module Wardite
           build_mir(translator, linked, profile)
         end
         if mir_cache && !profile && !@mir_cache_hit
-          mir_cache.write(instance, @ir)
+          mir_cache.write_ir(instance, @ir)
         end
         start = instance.start_section
         if start

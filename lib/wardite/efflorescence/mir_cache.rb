@@ -558,7 +558,7 @@ module Wardite
       # Wasm bodies before Store initialization or any host lookup.
       # @rbs instance: Wardite::Instance
       # @rbs return: Array[Function]?
-      def read(instance)
+      def read_functions(instance)
         payload = read_verified_payload
         entries = module_entries(instance)
         decoder = Decoder.new(payload, instance, entries)
@@ -598,7 +598,7 @@ module Wardite
       # @rbs instance: Wardite::Instance
       # @rbs ir: IR
       # @rbs return: void
-      def write(instance, ir)
+      def write_ir(instance, ir)
         FileUtils.mkdir_p(@directory)
         layout = encode_layout(instance, ir.entries)
         table = Writer.new

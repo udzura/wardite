@@ -6,7 +6,7 @@
 
 ## 背景
 
-[MIRCache#read](../../lib/wardite/efflorescence/mir_cache.rb) はキャッシュヒットのたびに、ペイロード全体のSHA-256を計算してヘッダーの値と照合する。Ruby 4.0.9のWasmではペイロードが約79 MiBある。
+[MIRCache#read_functions](../../lib/wardite/efflorescence/mir_cache.rb) はキャッシュヒットのたびに、ペイロード全体のSHA-256を計算してヘッダーの値と照合する。Ruby 4.0.9のWasmではペイロードが約79 MiBある。
 
 Spinel版（`6f1a2c259`、`-O2`）でキャッシュヒット時の起動を `sample` で1回プロファイルした（1 ms間隔、1151サンプル。プロセス全体は約1.5秒）。`sp_crypto_sha256_block` が121サンプルで、取得できた区間の約1割を占めた。
 

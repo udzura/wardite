@@ -51,13 +51,13 @@ jobs:
     name: Spinel tests
     runs-on: ubuntu-24.04
     env:
-      # 2026.10.25+1967: the compiler revision verified with Wardite.
-      SPINEL_REF: 6e7fc13556709bf7d7ba4af5bd1d12bebc00733e
+      SPINEL_REF: 58ee6361642befd3770516137c41a6553f0262d1
     strategy:
       matrix:
         ruby:
           - '4.0.9'
-    timeout-minutes: 30
+    # Allow time for a cold Spinel build before the native suite.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Set up Ruby and bundle
@@ -89,8 +89,8 @@ jobs:
         with:
           # Include the runtime, headers, and packages, not just the executable.
           path: ${{ runner.temp }}/spinel
-          # Bump v1 if the build recipe changes. Only exact matches are reused.
-          key: spinel-install-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.SPINEL_REF }}-${{ steps.spinel-environment.outputs.hash }}-${{ hashFiles('spinel/patches/*.patch') }}
+          # Bump the cache version if the build recipe changes.
+          key: spinel-install-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.SPINEL_REF }}-${{ steps.spinel-environment.outputs.hash }}
       - name: Check out Spinel
         if: steps.spinel-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
@@ -103,7 +103,6 @@ jobs:
         if: steps.spinel-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          git -C .ci/spinel apply "$GITHUB_WORKSPACE"/spinel/patches/*.patch
           make -C .ci/spinel deps
           make -C .ci/spinel -j2 install PREFIX="$RUNNER_TEMP/spinel"
       - name: Add Spinel to PATH

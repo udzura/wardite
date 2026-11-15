@@ -66,7 +66,7 @@ module Wardite
       check_module_features(engine)
       cached_functions = nil #: Array[Efflorescence::Function]?
       if engine == :efflorescence && mir_cache && !mir_profile
-        cached_functions = mir_cache.read(self)
+        cached_functions = mir_cache.read_functions(self)
       end
       types = type_section
       code_section&.func_codes&.each do |body|
