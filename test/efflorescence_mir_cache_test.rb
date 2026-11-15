@@ -442,7 +442,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
       require "wardite"
       require "wardite/efflorescence/mir_cache"
       Wardite::Efflorescence::MIRCache.prepend(Module.new do
-        def write(*)
+        def write_ir(*)
           puts "ready"
           $stdout.flush
           abort "write cancelled" unless $stdin.gets

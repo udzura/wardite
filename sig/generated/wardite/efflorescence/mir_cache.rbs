@@ -208,7 +208,7 @@ module Wardite
       # Wasm bodies before Store initialization or any host lookup.
       # @rbs instance: Wardite::Instance
       # @rbs return: Array[Function]?
-      def read: (Wardite::Instance instance) -> Array[Function]?
+      def read_functions: (Wardite::Instance instance) -> Array[Function]?
 
       # @rbs function: Function
       # @rbs return: void
@@ -220,7 +220,7 @@ module Wardite
       # @rbs instance: Wardite::Instance
       # @rbs ir: IR
       # @rbs return: void
-      def write: (Wardite::Instance instance, IR ir) -> void
+      def write_ir: (Wardite::Instance instance, IR ir) -> void
 
       private
 
