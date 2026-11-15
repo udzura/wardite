@@ -7,9 +7,7 @@ module Wardite
     def fetch_uleb128(buf, max_level: 4)
       dest = 0
       level = 0
-      while b = buf.read(1)
-        raise LoadError, "buffer too short" unless b
-        c = b.ord
+      while c = buf.getbyte
         return c if c < 0x80 && level.zero?
 
         upper, lower = (c >> 7), (c & (1 << 7) - 1)
@@ -39,8 +37,7 @@ module Wardite
       negative = false
       level = 0
       terminated = false
-      while b = buf.read(1)
-        c = b.ord
+      while c = buf.getbyte
 
         upper, lower = (c >> 7), (c & (1 << 7) - 1)
         bytes << lower

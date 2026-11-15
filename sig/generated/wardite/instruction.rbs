@@ -64,6 +64,29 @@ module Wardite
 
     # @rbs code: Symbol
     # @rbs return: Array[Symbol]
+    def self.build_operand_types: (Symbol code) -> Array[Symbol]
+
+    class DecodeSpec
+      attr_reader namespace: Symbol
+
+      attr_reader code: Symbol
+
+      attr_reader operand_types: Array[Symbol]
+
+      # @rbs namespace: Symbol
+      # @rbs code: Symbol
+      # @rbs operand_types: Array[Symbol]
+      def initialize: (Symbol namespace, Symbol code, Array[Symbol] operand_types) -> untyped
+    end
+
+    OPERAND_TYPES_BY_CODE: Hash[Symbol, Array[Symbol]]
+
+    OPCODE_SPECS: Array[DecodeSpec]
+
+    FC_SPECS: Array[DecodeSpec]
+
+    # @rbs code: Symbol
+    # @rbs return: Array[Symbol]
     def self.operand_of: (Symbol code) -> Array[Symbol]
 
     # @see https://www.w3.org/TR/wasm-core-1/#value-types%E2%91%A2

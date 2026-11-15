@@ -410,11 +410,8 @@ module Wardite
       sections = [] #: Array[Section]
 
       loop do
-        byte = @buf.read(1)
-        if !byte
-          break
-        end
-        code = byte.ord
+        code = @buf.getbyte
+        break unless code
 
         section = case code
           when Wardite::SectionType
@@ -466,15 +463,15 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        fncode = assert_read(sbuf, 1)
-        if fncode != "\x60"
+        fncode = assert_byte(sbuf)
+        if fncode != 0x60
           raise LoadError, "not a function definition"
         end
 
         arglen = fetch_uleb128(sbuf)
         arg = [] #: Array[Symbol]
         arglen.times do
-          case ty = assert_read(sbuf, 1)&.ord
+          case ty = assert_byte(sbuf)
           when 0x69
             arg << :exnref
           when 0x7f
@@ -494,7 +491,7 @@ module Wardite
         retlen = fetch_uleb128(sbuf)
         ret = [] #: Array[Symbol]
         retlen.times do
-          case ty = assert_read(sbuf, 1)&.ord
+          case ty = assert_byte(sbuf)
           when 0x69
             ret << :exnref
           when 0x7f
@@ -521,7 +518,7 @@ module Wardite
       dest.size = fetch_uleb128(@buf)
       sbuf = StringIO.new(assert_read(@buf, dest.size))
       fetch_uleb128(sbuf).times do
-        raise LoadError, "unsupported tag attribute" unless assert_read(sbuf, 1).ord == 0
+        raise LoadError, "unsupported tag attribute" unless assert_byte(sbuf) == 0
         dest.type_indices << fetch_uleb128(sbuf)
       end
       raise LoadError, "trailing tag section data" unless sbuf.eof?
@@ -541,11 +538,7 @@ module Wardite
         module_name = assert_read(sbuf, mlen)
         nlen = fetch_uleb128(sbuf)
         name = assert_read(sbuf, nlen)
-        kind_ = assert_read(sbuf, 1)
-        kind = kind_[0]&.ord
-        if !kind
-          raise "[BUG] empty unpacked string" # guard rbs
-        end
+        kind = assert_byte(sbuf)
 
         raise LoadError, "tag imports are not supported" if kind == 4
         raise LoadError, "unsupported import kind #{kind} for #{module_name}.#{name}" unless kind == 0
@@ -617,7 +610,7 @@ module Wardite
         code = fetch_insn_while_end(sbuf)
         ops = code_body(StringIO.new(code))
         dest.table_offsets << decode_expr(ops)
-        if etype == 2 && assert_read(sbuf, 1).ord != 0
+        if etype == 2 && assert_byte(sbuf) != 0
           raise LoadError, "unsupported element type"
         end
 
@@ -638,12 +631,12 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        gtype = Op.i2type(assert_read(sbuf, 1).ord)
-        mut = sbuf.read 1
+        gtype = Op.i2type(assert_byte(sbuf))
+        mut = sbuf.getbyte
         if !mut
           raise LoadError, "global section too short"
         end
-        unless mut.ord == 0 || mut.ord == 1
+        unless mut == 0 || mut == 1
           raise LoadError, "unsupported global mutability flags"
         end
         
@@ -661,7 +654,7 @@ module Wardite
 
         global = GlobalSection::Global.new do |g|
           g.type = gtype
-          g.mutable = (mut.ord == 0x01)
+          g.mutable = (mut == 0x01)
           g.shared = false # always
           g.value = value
         end
@@ -728,19 +721,19 @@ module Wardite
     def self.read_function_body(sbuf, defer_code = false)
       ilen = fetch_uleb128(sbuf)
       code = assert_read(sbuf, ilen)
-      last_code = code[-1]
+      last_code = code.getbyte(-1)
       if ! last_code
         raise "[BUG] empty code fetched" # guard for steep check
       end
-      if last_code.ord != 0x0b
-        $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{last_code.ord}"
+      if last_code != 0x0b
+        $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{last_code}"
       end
       cbuf = StringIO.new(code)
       CodeSection::CodeBody.new do |body|
         locals_len = fetch_uleb128(cbuf)
         while locals_len > 0
           body.locals_count << fetch_uleb128(cbuf)
-          body.locals_type << Op.i2type(assert_read(cbuf, 1).ord)
+          body.locals_type << Op.i2type(assert_byte(cbuf))
           locals_len -= 1
         end
         if defer_code
@@ -751,27 +744,26 @@ module Wardite
       end
     end
 
-    # @rbs buf: StringIO
+    # @rbs buf: File|StringIO
     # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     def self.code_body(buf)
       dest = [] #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       # HINT: [symname, index of op, index of else, index of end]
       branching_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       fixed_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
-      while c = buf.read(1)
-        namespace, code, operand_types = resolve_code(c, buf)
+      while opcode = buf.getbyte
+        spec = resolve_spec(opcode, buf)
+        code = spec.code
         operand = [] #: Array[operandItem]
-        operand_types.each do |typ|
+        spec.operand_types.each do |typ|
           case typ
           when :u8
-            ope = buf.read 1
-            if ! ope
-              raise LoadError, "buffer too short"
-            end
-            operand << ope.ord
+            byte = buf.getbyte
+            raise LoadError, "buffer too short" unless byte
+            operand << byte
           when :u32
             value = fetch_uleb128(buf)
-            if operand.empty? && c.ord >= 0x28 && c.ord <= 0x3e && value >= 64
+            if operand.empty? && opcode >= 0x28 && opcode <= 0x3e && value >= 64
               raise LoadError, "multi-memory memargs are not supported"
             end
             operand << value
@@ -795,7 +787,7 @@ module Wardite
           when :catches
             clauses = [] #: Array[Integer]
             fetch_uleb128(buf).times do
-              kind = assert_read(buf, 1).ord
+              kind = assert_byte(buf)
               raise LoadError, "invalid catch kind #{kind}" unless kind <= 3
               tag = kind <= 1 ? fetch_uleb128(buf) : -1
               depth = fetch_uleb128(buf)
@@ -809,7 +801,7 @@ module Wardite
         end
 
         # HINT: [namespace, code, operand, else_pos, end_pos]
-        dest << [namespace, code, operand, nil, nil]
+        dest << [spec.namespace, code, operand, nil, nil]
         if code == :block || code == :loop || code == :if || code == :try_table
           branching_stack << [code, dest.size - 1, -1, -1]
         elsif code == :else
@@ -855,7 +847,7 @@ module Wardite
     end
 
     # Decode s33, distinguishing the one-byte value/void forms from indices.
-    # @rbs buf: StringIO
+    # @rbs buf: File|StringIO
     # @rbs return: Block
     def self.read_blocktype(buf)
       first = buf.pos
@@ -873,20 +865,26 @@ module Wardite
     end
 
     # @rbs c: String
-    # @rbs buf: StringIO
+    # @rbs buf: File|StringIO
     # @rbs return: [Symbol, Symbol, Array[Symbol]]
     def self.resolve_code(c, buf)
-      ord = c.ord
-      code = Op::SYMS[ord]
-      if code == :fc
-        lower = fetch_uleb128(buf)
-        sym = Op::FC_SYMS[lower]
-        namespace = Op::FC_OPERANDS[lower] || :default
-        return [namespace, sym, Op.operand_of(sym)]
-      end
-      namespace = Op::NAMESPACES[ord] || raise(LoadError, "unsupported code: #{ord}")
-      return [namespace, code, Op.operand_of(code)]
+      spec = resolve_spec(c.ord, buf)
+      [spec.namespace, spec.code, spec.operand_types.dup]
     end
+
+    # @rbs opcode: Integer
+    # @rbs buf: File|StringIO
+    # @rbs return: Op::DecodeSpec
+    def self.resolve_spec(opcode, buf)
+      if opcode == 0xfc
+        lower = fetch_uleb128(buf)
+        # Preserve the unresolved opcode for the engine's unsupported-op check.
+        Op::FC_SPECS[lower] || Op::DecodeSpec.new(:default, Op::FC_SYMS[lower], [])
+      else
+        Op::OPCODE_SPECS[opcode] || raise(LoadError, "unsupported code: #{opcode}")
+      end
+    end
+    private_class_method :resolve_spec
 
     # @rbs return: DataSection
     def self.data_section
@@ -949,7 +947,7 @@ module Wardite
     # @rbs return: String
     def self.fetch_insn_while_end(sbuf)
       first = sbuf.pos
-      opcode = assert_read(sbuf, 1).ord
+      opcode = assert_byte(sbuf)
       case opcode
       when 0x41 then fetch_sleb128(sbuf, width: 32)
       when 0x42 then fetch_sleb128(sbuf, width: 64)
@@ -957,7 +955,7 @@ module Wardite
       when 0x44 then assert_read(sbuf, 8)
       else raise LoadError, "unsupported constant expression"
       end
-      raise LoadError, "constant expression requires end" unless assert_read(sbuf, 1).ord == 0x0b
+      raise LoadError, "constant expression requires end" unless assert_byte(sbuf) == 0x0b
       length = sbuf.pos - first
       sbuf.pos = first
       assert_read(sbuf, length)
@@ -1028,11 +1026,7 @@ module Wardite
       len.times do |i|
         nlen = fetch_uleb128(sbuf)
         name = assert_read(sbuf, nlen)
-        kind_ = assert_read(sbuf, 1)
-        kind = kind_[0]&.ord
-        if !kind
-          raise "[BUG] empty unpacked string" # guard rbs
-        end
+        kind = assert_byte(sbuf)
 
         raise LoadError, "tag exports are not supported" if kind == 4
         index = fetch_uleb128(sbuf)
@@ -1053,6 +1047,12 @@ module Wardite
       size = fetch_uleb128(@buf)
       @buf.read(size)
       nil
+    end
+
+    # @rbs sbuf: File|StringIO
+    # @rbs return: Integer
+    def self.assert_byte(sbuf)
+      sbuf.getbyte || raise(LoadError, "too short section size")
     end
 
     # @rbs sbuf: File|StringIO
