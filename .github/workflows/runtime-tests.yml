@@ -50,6 +50,9 @@ jobs:
   spinel:
     name: Spinel tests
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
     env:
       SPINEL_REF: 58ee6361642befd3770516137c41a6553f0262d1
     strategy:
@@ -82,17 +85,67 @@ jobs:
           printf 'image=%s\nversion=%s\nprefix=%s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}" "$RUNNER_TEMP/spinel" > "$fingerprint"
           cc --version >> "$fingerprint"
           ruby --version >> "$fingerprint"
-          echo "hash=$(sha256sum "$fingerprint" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+          hash=$(sha256sum "$fingerprint" | cut -d ' ' -f 1)
+          # Bump the version if the build recipe changes.
+          echo "name=spinel-install-v2-$RUNNER_OS-$RUNNER_ARCH-$SPINEL_REF-$hash" >> "$GITHUB_OUTPUT"
       - name: Restore installed Spinel
         id: spinel-cache
         uses: actions/cache/restore@v4
         with:
           # Include the runtime, headers, and packages, not just the executable.
           path: ${{ runner.temp }}/spinel
-          # Bump the cache version if the build recipe changes.
-          key: spinel-install-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.SPINEL_REF }}-${{ steps.spinel-environment.outputs.hash }}
+          key: ${{ steps.spinel-environment.outputs.name }}
+      - name: Find a Spinel artifact from main
+        id: spinel-artifact
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: ${{ steps.spinel-environment.outputs.name }}
+        shell: bash
+        run: |
+          artifacts=$(gh api --method GET --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts" \
+            -f name="$ARTIFACT_NAME" -F per_page=100 | jq -r --arg repo "$GITHUB_REPOSITORY_ID" '
+              .artifacts[]
+              | select(.expired == false and .workflow_run.head_branch == "main"
+                  and (.workflow_run.head_repository_id | tostring) == $repo)
+              | [.id, .workflow_run.id] | @tsv
+            ')
+          while IFS=$'\t' read -r artifact_id run_id; do
+            [[ -n "$run_id" && "$run_id" != "$GITHUB_RUN_ID" ]] || continue
+            # Use executables only from a successful run of this workflow on main.
+            if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" | jq -e '
+              .head_branch == "main" and .head_repository.id == .repository.id
+              and (.event == "push" or .event == "workflow_dispatch")
+              and .path == ".github/workflows/runtime-tests.yml" and .conclusion == "success"
+            ' >/dev/null; then
+              printf 'artifact-id=%s\nrun-id=%s\n' "$artifact_id" "$run_id" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done <<< "$artifacts"
+      - name: Download the Spinel artifact
+        id: spinel-download
+        if: steps.spinel-cache.outputs.cache-hit != 'true' && steps.spinel-artifact.outputs.artifact-id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.spinel-artifact.outputs.run-id }}
+          artifact-ids: ${{ steps.spinel-artifact.outputs.artifact-id }}
+          path: ${{ runner.temp }}/spinel-artifact
+      - name: Restore Spinel from the artifact
+        id: spinel-restore
+        if: steps.spinel-download.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          staging=$(mktemp -d "$RUNNER_TEMP/spinel-install.XXXXXX")
+          trap 'rm -rf "$staging"' EXIT
+          tar -xzf "$RUNNER_TEMP/spinel-artifact/spinel.tar.gz" -C "$staging"
+          test -x "$staging/spinel/lib/spinel/spinel"
+          test -r "$staging/spinel/lib/spinel/lib/libspinel_rt.a"
+          mv -T "$staging/spinel" "$RUNNER_TEMP/spinel"
       - name: Check out Spinel
-        if: steps.spinel-cache.outputs.cache-hit != 'true'
+        if: steps.spinel-cache.outputs.cache-hit != 'true' && steps.spinel-restore.outcome != 'success'
         uses: actions/checkout@v4
         with:
           repository: matz/spinel
@@ -100,7 +153,8 @@ jobs:
           path: .ci/spinel
           persist-credentials: false
       - name: Build and install Spinel
-        if: steps.spinel-cache.outputs.cache-hit != 'true'
+        id: spinel-build
+        if: steps.spinel-cache.outputs.cache-hit != 'true' && steps.spinel-restore.outcome != 'success'
         shell: bash
         run: |
           make -C .ci/spinel deps
@@ -123,3 +177,17 @@ jobs:
           key: ${{ steps.spinel-cache.outputs.cache-primary-key }}
       - name: Run Spinel tests
         run: make spinel-test RUBY="bundle exec ruby"
+      - name: Archive installed Spinel
+        id: spinel-archive
+        if: steps.spinel-artifact.outputs.artifact-id == '' || steps.spinel-build.outcome == 'success'
+        shell: bash
+        run: tar -czf "$RUNNER_TEMP/spinel.tar.gz" -C "$RUNNER_TEMP" spinel
+      - name: Upload the Spinel toolchain
+        if: steps.spinel-archive.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.spinel-environment.outputs.name }}
+          path: ${{ runner.temp }}/spinel.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
