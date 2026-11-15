@@ -2,7 +2,7 @@
 
 [ADR 0008の6a](adr/0008-efflorescence-ruby-wasm-phase2.md#6a-spinelに書き込み可能なstringビューを実装)では、Spinelに `IO::Buffer.for(string) { |buffer| ... }` を追加し、Efflorescenceの `memory.fill` で書き込み可能なビューを使った。ブロック中はStringの変更を拒否する。正常終了と例外でロックを解除し、渡したバッファを解放する。凍結Stringは読み取り専用。Spinelの回帰フィクスチャをCRuby 4.0.9と照合した。
 
-Spinel側のコミットは `255955a06a0311df92f6b422c69d65ff2f39fe6e`。WarditeのCIでは固定したSpinel `6e7fc13556709bf7d7ba4af5bd1d12bebc00733e` に `spinel/patches/0001-io-buffer-string-view.patch` を適用する。
+Spinel側の当初の実装は `255955a06a0311df92f6b422c69d65ff2f39fe6e`。現在のCIで使うブランチには、ブロック付き `IO::Buffer.for` の実装が含まれる。
 
 Apple M3 ProのSpinel `-O2` で、初回のfillでページを確保してから256 MiBを3回埋めた。バイトループは628.70–632.33 ms、Stringビューと `buffer.clear` は4.13–4.67 msだった。Ruby 4.0.9のWasmは `-e 'puts RUBY_VERSION; puts 6*7'` を実行し、標準出力の `4.0.9` と `42` を確認した。
 
@@ -16,11 +16,10 @@ CRubyのホストAPIは `Memory#data` のStringを引き続き使える。両ホ
 
 ## ビルド
 
-Spinel側では `a9a35b85d75ca273558f7e25a875cc240fc0f5a3` で、`IO::Buffer.new` の領域割り当て失敗を `Errno::ENOMEM` として伝える。WarditeのCIは固定したSpinelに両方のパッチを適用し、パッチのハッシュをツールチェーンキャッシュのキーに含める。同じ構成をローカルでビルドするには、Spinelのクリーンな作業ツリーを `spinel_src` に指定し、Warditeのルートから実行する。
+WarditeのCIは [udzura/spinel の `codex/io-buffer-allocation-error` ブランチ](https://github.com/udzura/spinel/tree/codex/io-buffer-allocation-error) を使う。このブランチは `IO::Buffer.new` の領域割り当て失敗を `IO::Buffer::AllocationError` として伝える。CIは実行ごとにブランチの先端を解決し、そのコミットをツールチェーンキャッシュのキーに含める。同じブランチをローカルでビルドするには、クローン先のパスを `spinel_src` に指定し、Warditeのルートから実行する。
 
 ```sh
-git -C "$spinel_src" switch --detach 6e7fc13556709bf7d7ba4af5bd1d12bebc00733e
-git -C "$spinel_src" apply "$PWD"/spinel/patches/*.patch
+git clone --single-branch --branch codex/io-buffer-allocation-error https://github.com/udzura/spinel.git "$spinel_src"
 make -C "$spinel_src" deps
 make -C "$spinel_src" all
 make spinel SPINEL="$spinel_src/bin/spinel"
