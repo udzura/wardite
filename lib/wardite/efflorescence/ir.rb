@@ -544,7 +544,10 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.terminal?(opcode)
-        [BR, RETURN, TRAP, THROW, THROW_REF].include?(opcode)
+        case opcode
+        when BR, RETURN, TRAP, THROW, THROW_REF then true
+        else false
+        end
       end
 
       # @rbs instruction: Wardite::Efflorescence::Instruction

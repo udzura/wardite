@@ -67,22 +67,103 @@ module Wardite
         instructions = function.instructions
         raise TranslationError, "Efflorescence: empty MIR function" if instructions.empty?
         validate_types(function, ir, tags)
+        if !function.uses_eh && function.handlers.empty? && function.throw_sites.empty? &&
+            !function.register_types.include?(:exnref)
+          leaders = plain_leaders(instructions)
+          if leaders
+            validate_plain(function, leaders)
+            return
+          end
+        end
+
         analysis = Analysis.new(function)
         flow = analysis.flow
-        register_count = function.register_count
+        blocks, block_for_pc = build_blocks(analysis.leaders)
+        order = reverse_postorder(blocks, block_for_pc, flow)
+        validate_blocks(function, blocks, order, block_for_pc, flow)
+      end
+
+      private
+
+      # @rbs instructions: Array[Wardite::Efflorescence::Instruction]
+      # @rbs return: Array[Integer]?
+      def plain_leaders(instructions)
+        count = instructions.size
+        leaders = Array.new(count, 0)
+        leaders[0] = 1
+        pc = 0
+        while pc < count
+          instruction = instructions.fetch(pc)
+          opcode = instruction[0]
+          case opcode
+          when Opcode::EH_ENTER, Opcode::EH_TRIM, Opcode::THROW, Opcode::THROW_REF, Opcode::COPY_REF
+            return nil
+          end
+          position = Opcode.target_position(instruction)
+          if position >= 0
+            target = instruction[position]
+            raise TranslationError, "invalid MIR branch target #{target}" unless target >= 0 && target < count
+            leaders[target] = 1
+          end
+          pc += 1
+          leaders[pc] = 1 if pc < count && (position >= 0 || Opcode.terminal?(opcode))
+        end
+        leaders
+      end
+
+      # @rbs leaders: Array[Integer]
+      # @rbs return: [Array[Wardite::Efflorescence::RegisterValidation::Block], Array[Integer]]
+      def build_blocks(leaders)
         blocks = [] #: Array[Wardite::Efflorescence::RegisterValidation::Block]
-        block_for_pc = [] #: Array[Integer]
+        block_for_pc = Array.new(leaders.size, 0)
         first = 0
-        instructions.size.times do |pc|
-          if pc > 0 && analysis.leaders[pc] == 1
+        pc = 0
+        while pc < leaders.size
+          if pc > 0 && leaders.fetch(pc) == 1
             blocks << Block.new(first, pc)
             first = pc
           end
-          block_for_pc << blocks.size
+          block_for_pc[pc] = blocks.size
+          pc += 1
         end
-        blocks << Block.new(first, instructions.size)
-        order = reverse_postorder(blocks, block_for_pc, flow)
+        blocks << Block.new(first, leaders.size)
+        [blocks, block_for_pc]
+      end
 
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs leaders: Array[Integer]
+      # @rbs return: void
+      def validate_plain(function, leaders)
+        instructions = function.instructions
+        blocks, block_for_pc = build_blocks(leaders)
+        blocks.each do |block|
+          instruction = instructions.fetch(block.limit - 1)
+          position = Opcode.target_position(instruction)
+          block.successors << block_for_pc.fetch(instruction[position]) if position >= 0
+          if block.limit < instructions.size && !Opcode.terminal?(instruction[0])
+            block.successors << block_for_pc.fetch(block.limit)
+          end
+        end
+
+        order = block_reverse_postorder(blocks)
+        order.each do |index|
+          block = blocks.fetch(index)
+          if block.successors.empty? && !Opcode.terminal?(instructions.fetch(block.limit - 1)[0])
+            raise TranslationError, "MIR falls through without RETURN"
+          end
+        end
+        validate_blocks(function, blocks, order, block_for_pc, nil)
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
+      # @rbs order: Array[Integer]
+      # @rbs block_for_pc: Array[Integer]
+      # @rbs flow: Wardite::Efflorescence::FlowGraph?
+      # @rbs return: void
+      def validate_blocks(function, blocks, order, block_for_pc, flow)
+        instructions = function.instructions
+        register_count = function.register_count
         word_count = (register_count + WORD_MASK) >> WORD_SHIFT
         constants = Array.new(word_count, 0)
         defined = Array.new(word_count, 0)
@@ -115,11 +196,13 @@ module Wardite
                 ordinal += 1
               end
               # A CALL result exists only on its normal successor.
-              flow.exceptional.fetch(pc).each do |clause|
-                edge_defined = defined.dup
-                clause.destinations.each { |register| mark(edge_defined, register) }
-                target = block_for_pc.fetch(clause.target_pc)
-                pending += 1 if blocks.fetch(target).merge(edge_defined)
+              if flow
+                flow.exceptional.fetch(pc).each do |clause|
+                  edge_defined = defined.dup
+                  clause.destinations.each { |register| mark(edge_defined, register) }
+                  target = block_for_pc.fetch(clause.target_pc)
+                  pending += 1 if blocks.fetch(target).merge(edge_defined)
+                end
               end
               destination = Opcode.destination(instruction)
               if destination >= 0
@@ -130,17 +213,20 @@ module Wardite
               end
               pc += 1
             end
-            flow.normal.fetch(block.limit - 1).each do |target_pc|
-              target = block_for_pc.fetch(target_pc)
-              pending += 1 if blocks.fetch(target).merge(defined)
+            if flow
+              flow.normal.fetch(block.limit - 1).each do |target_pc|
+                target = block_for_pc.fetch(target_pc)
+                pending += 1 if blocks.fetch(target).merge(defined)
+              end
+            else
+              block.successors.each do |target|
+                pending += 1 if blocks.fetch(target).merge(defined)
+              end
             end
           end
         end
       end
-      private
 
-      # Visit predecessors before joins where possible, then revisit changed
-      # states across backedges until the worklist is empty.
       # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
       # @rbs block_for_pc: Array[Integer]
       # @rbs flow: Wardite::Efflorescence::FlowGraph
@@ -153,6 +239,14 @@ module Wardite
           end
         end
 
+        block_reverse_postorder(blocks)
+      end
+
+      # Visit predecessors before joins where possible, then revisit changed
+      # states across backedges until the worklist is empty.
+      # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
+      # @rbs return: Array[Integer]
+      def block_reverse_postorder(blocks)
         seen = Array.new(blocks.size, false)
         next_edge = Array.new(blocks.size, 0)
         seen[0] = true
