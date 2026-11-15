@@ -142,8 +142,11 @@ module Wardite
         @reads = Array.new(function.register_count, 0)
         @writes = Array.new(function.register_count, 0)
         function.instructions.each_with_index do |instruction, pc|
-          function.reads(instruction).each do |register|
-            @reads[register] += 1
+          read_count = function.read_count(instruction)
+          ordinal = 0
+          while ordinal < read_count
+            @reads[function.read_at(instruction, ordinal)] += 1
+            ordinal += 1
           end
           destination = Opcode.destination(instruction)
           @writes[destination] += 1 if destination >= 0

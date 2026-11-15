@@ -392,43 +392,86 @@ module Wardite
         F64_GLOBAL_SET => :f64,
       }.freeze #: Hash[Integer, Symbol]
 
-      # These are semantic register accesses, excluding frame initialization.
+      # Semantic register operand positions, excluding frame initialization.
+      READ_POSITIONS = Array.new(F64_GLOBAL_SET + 1) do |opcode|
+        positions = case opcode
+          when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
+               COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
+               I32_XOR_IMM, I32_SHL_IMM, I32_SHR_U_IMM, I32_XOR_SHR_U_IMM, I32_XOR_SHL_IMM
+            [2]
+          when I32_ADD, I32_SUB, I32_MUL, I32_XOR, I32_SHL, I32_SHR_U,
+               I32_EQ, I32_NE, I32_LTS, I32_LTU, I32_GTS, I32_GTU, I32_LES, I32_LEU, I32_GES, I32_GEU,
+               I32_DIV_S, I32_DIV_U, I32_REM_S, I32_REM_U, I32_AND, I32_OR, I32_SHR_S, I32_ROTL, I32_ROTR
+            [2, 3]
+          when BR_IF, BR_IF_ZERO
+            [1]
+          when CALL_INDIRECT
+            [3]
+          when I32_STORE, I32_STORE8, I32_STORE16
+            [1, 2]
+          when THROW_REF
+            [1]
+          when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
+            [] #: Array[Integer]
+          else
+            types = extended_alu_types(opcode)
+            if types
+              types.size == 2 ? [2] : [2, 3]
+            elsif EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_GLOBAL_SET_TYPES.key?(opcode)
+              [2]
+            elsif EXTENDED_STORE_TYPES.key?(opcode)
+              [1, 2]
+            elsif EXTENDED_GLOBAL_GET_TYPES.key?(opcode)
+              [] #: Array[Integer]
+            end
+          end
+        positions&.freeze
+      end.freeze #: Array[Array[Integer]?]
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Integer
+      def self.read_count(instruction)
+        opcode = instruction[0]
+        case opcode
+        when CALL
+          instruction.size > 3 ? instruction.size - 3 : 0
+        when RETURN
+          instruction[1] < 0 ? 0 : 1
+        else
+          fixed_read_positions(opcode).size
+        end
+      end
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs ordinal: Integer
+      # @rbs return: Integer
+      def self.read_position(instruction, ordinal)
+        opcode = instruction[0]
+        raise IndexError, "invalid MIR read ordinal #{ordinal}" if ordinal < 0
+        case opcode
+        when CALL
+          return ordinal + 3 if ordinal < instruction.size - 3
+        when RETURN
+          return 1 if ordinal == 0 && instruction[1] >= 0
+        else
+          return fixed_read_positions(opcode).fetch(ordinal)
+        end
+        raise IndexError, "invalid MIR read ordinal #{ordinal}"
+      end
+
+      # @rbs opcode: Integer
+      # @rbs return: Array[Integer]
+      def self.fixed_read_positions(opcode)
+        positions = READ_POSITIONS[opcode] if opcode >= 0
+        positions || raise(UnsupportedFeature, "Efflorescence: unknown MIR opcode #{opcode}")
+      end
+      private_class_method :fixed_read_positions
+      private_constant :READ_POSITIONS
+
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Array[Integer]
       def self.read_positions(instruction)
-        opcode = instruction[0]
-        case opcode
-        when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
-             COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
-             I32_XOR_IMM, I32_SHL_IMM, I32_SHR_U_IMM, I32_XOR_SHR_U_IMM, I32_XOR_SHL_IMM
-          [2]
-        when I32_ADD, I32_SUB, I32_MUL, I32_XOR, I32_SHL, I32_SHR_U,
-             I32_EQ, I32_NE, I32_LTS, I32_LTU, I32_GTS, I32_GTU, I32_LES, I32_LEU, I32_GES, I32_GEU,
-             I32_DIV_S, I32_DIV_U, I32_REM_S, I32_REM_U, I32_AND, I32_OR, I32_SHR_S, I32_ROTL, I32_ROTR
-          [2, 3]
-        when BR_IF, BR_IF_ZERO
-          [1]
-        when CALL
-          (3...instruction.size).to_a
-        when CALL_INDIRECT
-          [3]
-        when RETURN
-          instruction[1] < 0 ? [] : [1]
-        when I32_STORE, I32_STORE8, I32_STORE16
-          [1, 2]
-        when THROW_REF
-          [1]
-        when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
-          []
-        else
-          types = extended_alu_types(opcode)
-          return types.size == 2 ? [2] : [2, 3] if types
-          return [2] if EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_GLOBAL_SET_TYPES.key?(opcode)
-          return [1, 2] if EXTENDED_STORE_TYPES.key?(opcode)
-          return [] if EXTENDED_GLOBAL_GET_TYPES.key?(opcode)
-
-          raise UnsupportedFeature, "Efflorescence: unknown MIR opcode #{opcode}"
-        end
+        Array.new(read_count(instruction)) { |ordinal| read_position(instruction, ordinal) }
       end
 
       # @rbs instruction: Wardite::Efflorescence::Instruction
@@ -862,13 +905,44 @@ module Wardite
       end
 
       # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Integer
+      def read_count(instruction)
+        count = Opcode.read_count(instruction)
+        side = side_reads(instruction)
+        side ? count + side.size : count
+      end
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs ordinal: Integer
+      # @rbs return: Integer
+      def read_at(instruction, ordinal)
+        raise IndexError, "invalid MIR read ordinal #{ordinal}" if ordinal < 0
+        side = side_reads(instruction)
+        if side
+          count = Opcode.read_count(instruction)
+          return side.fetch(ordinal - count) if ordinal >= count
+        end
+        instruction[Opcode.read_position(instruction, ordinal)]
+      end
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Array[Integer]?
+      def side_reads(instruction)
+        opcode = instruction[0]
+        if opcode == Opcode::THROW
+          @throw_sites.fetch(instruction[1]).payload_registers
+        elsif Opcode.memory_site?(opcode)
+          memory_site(instruction[1]).sources
+        elsif Opcode.dynamic_call?(opcode)
+          dynamic_site(instruction[2]).arguments
+        end
+      end
+      private :side_reads
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Array[Integer]
       def reads(instruction)
-        result = Opcode.read_positions(instruction).map { |position| instruction[position] }
-        result += @throw_sites.fetch(instruction[1]).payload_registers if instruction[0] == Opcode::THROW
-        result += memory_site(instruction[1]).sources if Opcode.memory_site?(instruction[0])
-        result += dynamic_site(instruction[2]).arguments if Opcode.dynamic_call?(instruction[0])
-        result
+        Array.new(read_count(instruction)) { |ordinal| read_at(instruction, ordinal) }
       end
 
       # @rbs return: Wardite::Efflorescence::Function

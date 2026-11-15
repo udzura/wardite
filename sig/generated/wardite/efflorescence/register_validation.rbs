@@ -71,10 +71,26 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs instruction: Wardite::Efflorescence::Instruction
-      # @rbs reads: Array[Integer]
+      # @rbs read_count: Integer
       # @rbs destination: Integer
       # @rbs return: void
-      def validate_extended_instruction: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Array[Integer] reads, Integer destination) -> void
+      def validate_extended_instruction: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Integer read_count, Integer destination) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs types: Array[Symbol]
+      # @rbs first: Integer
+      # @rbs limit: Integer
+      # @rbs type_offset: Integer
+      # @rbs return: void
+      def check_reads: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Array[Symbol] types, Integer first, Integer limit, ?Integer type_offset) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs type: Symbol
+      # @rbs limit: Integer
+      # @rbs return: void
+      def check_reads_of_type: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Symbol type, Integer limit) -> void
 
       # @rbs tags: Array[Wardite::Efflorescence::Tag]?
       # @rbs index: Integer

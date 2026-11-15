@@ -105,10 +105,14 @@ module Wardite
             pc = block.first
             while pc < block.limit
               instruction = instructions.fetch(pc)
-              function.reads(instruction).each do |register|
+              read_count = function.read_count(instruction)
+              ordinal = 0
+              while ordinal < read_count
+                register = function.read_at(instruction, ordinal)
                 unless register >= 0 && register < register_count && marked?(defined, register)
                   raise TranslationError, "Efflorescence: function #{function.index}, MIR PC #{pc}: r#{register} read before definition"
                 end
+                ordinal += 1
               end
               # A CALL result exists only on its normal successor.
               flow.exceptional.fetch(pc).each do |clause|
@@ -231,22 +235,26 @@ module Wardite
                 raise TranslationError, "MIR host call signature mismatch"
               end
             end
-            check_register(function, instruction[3], :i32) if opcode == Opcode::CALL_INDIRECT
-            site.arguments.each_with_index { |register, i| check_register(function, register, site.parameter_types.fetch(i)) }
+            ordinal = 0
+            if opcode == Opcode::CALL_INDIRECT
+              check_register(function, function.read_at(instruction, ordinal), :i32)
+              ordinal += 1
+            end
+            check_reads(function, instruction, site.parameter_types, ordinal, function.read_count(instruction))
             check_result(function, destination, site.result_types)
             next
           end
-          reads = function.reads(instruction)
+          read_count = function.read_count(instruction)
           destination = Opcode.destination(instruction)
           if opcode > Opcode::CALL_INDIRECT
-            validate_extended_instruction(function, instruction, reads, destination)
+            validate_extended_instruction(function, instruction, read_count, destination)
             next
           end
           case opcode
           when Opcode::THROW
             site = function.throw_sites.fetch(instruction[1])
-            types = payload_types(tags, site.tag_index, reads.size)
-            reads.each_with_index { |register, i| check_register(function, register, types.fetch(i)) }
+            types = payload_types(tags, site.tag_index, read_count)
+            check_reads(function, instruction, types, 0, read_count)
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
             unless type && FunctionEntry.numeric_type?(type)
@@ -258,18 +266,18 @@ module Wardite
           when Opcode::CALL
             if ir
               entry = ir.entry_at(instruction[2])
-              unless entry.kind == :defined && reads.size == entry.parameter_types.size
+              unless entry.kind == :defined && read_count == entry.parameter_types.size
                 raise TranslationError, "invalid MIR direct call signature"
               end
-              reads.each_with_index { |register, i| check_register(function, register, entry.parameter_types.fetch(i)) }
+              check_reads(function, instruction, entry.parameter_types, 0, read_count)
               check_result(function, destination, entry.result_types)
             else
-              reads.each { |register| check_register(function, register, :i32) }
+              check_reads_of_type(function, instruction, :i32, read_count)
               check_register(function, destination, :i32) if destination >= 0
             end
           else
             expected = opcode == Opcode::COPY_REF || opcode == Opcode::THROW_REF ? :exnref : :i32
-            reads.each { |register| check_register(function, register, expected) }
+            check_reads_of_type(function, instruction, expected, read_count)
             check_register(function, destination, expected) if destination >= 0
           end
         end
@@ -286,15 +294,15 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs instruction: Wardite::Efflorescence::Instruction
-      # @rbs reads: Array[Integer]
+      # @rbs read_count: Integer
       # @rbs destination: Integer
       # @rbs return: void
-      def validate_extended_instruction(function, instruction, reads, destination)
+      def validate_extended_instruction(function, instruction, read_count, destination)
         opcode = instruction[0]
         types = Opcode.extended_alu_types(opcode)
         if types
           check_register(function, destination, types.fetch(0))
-          reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }
+          check_reads(function, instruction, types, 0, read_count, 1)
         elsif (type = Opcode::EXTENDED_LOAD_TYPES[opcode])
           check_register(function, destination, type)
           check_register(function, instruction[2], :i32)
@@ -307,6 +315,34 @@ module Wardite
           check_register(function, instruction[2], type)
         else
           raise TranslationError, "unknown extended MIR opcode #{opcode}"
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs types: Array[Symbol]
+      # @rbs first: Integer
+      # @rbs limit: Integer
+      # @rbs type_offset: Integer
+      # @rbs return: void
+      def check_reads(function, instruction, types, first, limit, type_offset = 0)
+        ordinal = first
+        while ordinal < limit
+          check_register(function, function.read_at(instruction, ordinal), types.fetch(ordinal - first + type_offset))
+          ordinal += 1
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs type: Symbol
+      # @rbs limit: Integer
+      # @rbs return: void
+      def check_reads_of_type(function, instruction, type, limit)
+        ordinal = 0
+        while ordinal < limit
+          check_register(function, function.read_at(instruction, ordinal), type)
+          ordinal += 1
         end
       end
 
