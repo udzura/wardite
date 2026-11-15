@@ -1,9 +1,10 @@
 # ADR 0014: MIR生成時の検証・デコードの走査と割り当てを減らす
 
-- **状態** 提案（実装仕様）
+- **状態** 実装済み
 - **日付** 2026-11-16
 - **基準** 本体 `1de771d`、[性能調査](../efflorescence-mir-generation-performance.md)
 - **必読** [実装担当向け入口・共通検証条件](../efflorescence-mir-generation-implementation.md)
+- **実装計測** [前後比較と回帰検証](../efflorescence-mir-build-validation-and-decoding-results.md)
 - **関連** [ADR 0007](0007-efflorescence-ruby-wasm-phase1.md) の検証契約
 
 ## 背景と決定
