@@ -111,6 +111,14 @@ class EfflorescenceRegisterValidationTest < Test::Unit::TestCase
     }
   end
 
+  test "EH flow rejects incongruent handler stacks at a normal join" do
+    function = E::Function.new(0, [:i32], [], 0)
+    function.handlers << E::HandlerDescriptor.new([])
+    code = [[OP::EH_ENTER, 0], [OP::BR_IF, 0, 3], [OP::EH_TRIM, 0], [OP::RETURN, -1]]
+    function.replace_instructions(code.map { |operands| E::Instruction.new(operands) })
+    assert_raise_message("inconsistent handler stack at MIR PC 3") { E::RegisterValidation.new.validate(function) }
+  end
+
   private
 
   def count_flow_graphs
