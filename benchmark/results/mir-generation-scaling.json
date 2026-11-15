@@ -1,0 +1,2945 @@
+{
+  "revision": "1de771dcf6024792e053aa2ed9214df3a9613d8f",
+  "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+  "directory": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-detail-native",
+  "commands": {
+    "cruby": [
+      "/Users/udzura/.rbenv/versions/4.0.9/bin/ruby",
+      "-I/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-detail-native/lib",
+      "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-detail-native/mir_generation_worker.rb"
+    ],
+    "spinel": [
+      "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-detail-native/worker"
+    ]
+  },
+  "runs": 3,
+  "warmups": 1,
+  "variants": [
+    "default"
+  ],
+  "timing": "load_from_buffer only; no cache or export execution; nested detail timers are inclusive",
+  "fixtures": {
+    "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-1024.wasm": {
+      "bytes": 7207,
+      "sha256": "7b4ecf928d6a5ba9599f5534682d7221876749d8ec77008888b3741f4a44cd25"
+    },
+    "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-2048.wasm": {
+      "bytes": 14375,
+      "sha256": "88abf4c5c7f62b6a46512cbbf35d871d1a93f1c6094636801111fc0583206c43"
+    },
+    "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-256.wasm": {
+      "bytes": 1831,
+      "sha256": "06618c48a6091e6eedd1cf9b3632980cc9af8c5fa4e097e9b5dc1413bf8a65f5"
+    },
+    "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-512.wasm": {
+      "bytes": 3623,
+      "sha256": "684de177602896105f941adeabf126078233c8b5b5c093ab43ca02355027455a"
+    }
+  },
+  "samples": [
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-1024.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.007951999999932013,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0010269999984302558,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00011300000187475234,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.00001599999814061448,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.000919999998586718,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.004806000004464295,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0008050000033108518,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00006800000119255856,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0009920000011334196,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00016900000628083944,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00010400000610388815,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.003981999994721264,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.0025809999933699146,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00004400000034365803,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.00021500000002561137,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0003369999976712279,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.0022910000043339096,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0003600000054575503,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00015300000086426735,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00001700000575510785,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2050.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 1025.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 2050.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-1024.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.09157099999720231,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.003714999998919666,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0003569999971659854,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.00001200000406242907,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000004999994416721165,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0030259999984991737,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.07826800000475487,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.005510999995749444,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.0005369999998947605,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0036499999987427145,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.002723000005062204,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0008309999975608662,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.07031799999822397,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.05854199999885168,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00043000000005122274,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0019189999948139302,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.002237000000604894,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.01391200000216486,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0011169999997946434,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0013999999937368557,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00007300000288523734,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2050.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 1025.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 2050.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-1024.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.09098400000220863,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.004147999999986496,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0003519999954733066,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000014999997802078724,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000006000002031214535,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0030489999990095384,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.07727000000159023,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.005436999999801628,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.0005219999948167242,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.004049000002851244,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0029339999964577146,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0008349999989150092,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.06911899999977322,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.05733900000632275,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.000428999999712687,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0019170000014128163,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.002224999996542465,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.013908000008086674,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0010909999982686713,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.001384999995934777,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.0000689999942551367,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2050.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 1025.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 2050.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-1024.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.007645999998203479,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0009720000016386621,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00011100000119768083,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000014000004739500582,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0008749999979045242,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.004668000001402106,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0008010000019567087,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00006299999949987978,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0009409999984200113,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0001720000000204891,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00010399999882793054,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.003855000002658926,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.0024919999996200204,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.0000470000013592653,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.00019500000053085387,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0003409999990253709,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.0022360000002663583,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0003499999947962351,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00015500000154133886,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00001599999814061448,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2050.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 1025.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 2050.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-1024.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.007513999997172505,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0009829999980865978,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00011199999426025897,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000011000003723893315,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000003999994078185409,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0008490000036545098,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.004588999996485654,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.000778000001446344,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.000060999998822808266,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0009569999965606257,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0001610000035725534,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00010099999781232327,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.0038049999930080958,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.002462999997078441,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00004400000034365803,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.00019700000120792538,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0003280000019003637,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.002168000013625715,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.00035099999513477087,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00014399999781744555,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000015000005078036338,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2050.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 1025.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 2050.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-1024.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.09376699999847915,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.003851999994367361,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0003789999973378144,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000011999996786471456,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.003540999998222105,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.07955999999830965,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0057549999983166344,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.0005380000002332963,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.003785000000789296,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0022400000016205013,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0008410000009462237,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.07213600000250153,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.06021599999803584,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.0004250000056345016,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0019289999981992878,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0022800000006100163,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.01379899999301415,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0010929999989457428,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0014499999961117283,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00007000000186963007,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2050.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 1025.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 1027.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 2050.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-2048.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.018674999999348074,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0021990000022924505,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0002229999954579398,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.0000109999964479357,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0000040000013541430235,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0016879999966477044,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.012643000001844484,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0015889999995124526,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00013000000035390258,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.002171000000089407,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00033900000562425703,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00022300000273389742,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.010956999998597894,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.008045000002312008,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00008800000068731606,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.00041900000360328704,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0007320000004256144,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.0038319999948726036,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0007049999985611066,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00028000000020256266,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00002699999458855018,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 4098.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2049.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 4098.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-2048.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.29231699999945704,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0083809999996447,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00078600000415463,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000013000004400964826,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.007452999998349696,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.2634650000036345,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.010756999996374361,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.0010140000013052486,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.008302999995066784,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.002001000008021947,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0020120000044698827,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.2516819999946165,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.22605299999850104,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.0008450000023003668,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0037529999972321093,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0038980000026640482,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.028815999990911223,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.002171000000089407,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0027409999966039322,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00013700000272365287,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 4098.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2049.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 4098.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-2048.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.28817500000150176,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.007987999997567385,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0007049999985611066,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000013999997463542968,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000006000002031214535,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.006840999994892627,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.26038900000276044,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.010782000004837755,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.001013999994029291,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.007898999996541534,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0018640000052982941,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0020050000021001324,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.24869500000204425,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.22343299999920418,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.0008460000026389025,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0037980000051902607,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.003892999993695412,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.028482999994594138,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.002179999995860271,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0027430000045569614,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00013899999612476677,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 4098.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2049.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 4098.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-2048.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.018490000002202578,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0021919999999227002,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00022199999511940405,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.00001200000406242907,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0016990000003715977,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.01245300000300631,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0016120000000228174,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00012900000001536682,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.002162999997381121,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00034499999310355633,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00021800000104121864,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.010768000000098255,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.007999000001291279,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.0000870000003487803,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.00038700000004610047,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0007530000002589077,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.0037540000048466027,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0007169999953475781,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0002840000015567057,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000027000001864507794,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 4098.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2049.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 4098.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-2048.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.018600000003061723,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.002147999999579042,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00022899999748915434,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.00001200000406242907,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0000040000013541430235,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0017130000051110983,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.012572999999974854,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0016590000013820827,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00012100000458303839,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0021199999973759986,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0003440000000409782,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00021999999444233254,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.010844999997061677,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.00804700000298908,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00008800000068731606,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0003989999968325719,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0007850000038160942,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.003844999984721653,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0007560000012745149,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0002900000035879202,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000025999994250014424,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 4098.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2049.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 4098.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-2048.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.28882500000327127,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.00756800000090152,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0007160000022849999,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000011999996786471456,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.006777999995392747,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.2615159999986645,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.010816999994858634,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.0009960000024875626,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.007501999993110076,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0018640000052982941,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.002011999997193925,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.24972900000284426,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.2245790000015404,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.0008449999950244091,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.003855000002658926,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.003920999995898455,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.028388000006088987,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.002183999997214414,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0027610000033746473,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00013000000035390258,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 4098.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2049.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 2051.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 4098.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-256.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.0016929999983403832,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.00026000000070780516,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00002800000220304355,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000011000003723893315,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0000040000013541430235,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.00019600000086938962,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0008909999960451387,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0001720000000204891,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.000018999999156221747,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0002410000015515834,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00008999999408842996,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00002699999458855018,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.0006240000002435409,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.00022300000273389742,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.000013000004400964826,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.00005099999543745071,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.00009500000305706635,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.0004760000083479099,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.00005199999577598646,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00003899999865097925,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000006000002031214535,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 514.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 257.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 514.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-256.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.013442000003124122,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0006429999993997626,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00009300000237999484,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000012999997125007212,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0007819999955245294,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.010244999997667037,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0013959999996586703,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.0001449999981559813,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0005810000002384186,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00031800000579096377,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00028699999529635534,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.008109000002150424,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.004409999994095415,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00010800000018207356,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0010639999964041635,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0005080000046291389,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.004124999999476131,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.00028200000087963417,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00035200000274926424,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00002099999983329326,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 514.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 257.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 514.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-256.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.023603000001457985,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0006809999977122061,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00009200000204145908,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000016000005416572094,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000007999995432328433,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.000910000002477318,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.01991200000338722,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0015339999954449013,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00015100000018719584,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0005910000036237761,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0005030000029364601,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00032500000088475645,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.017071000002033543,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.009485999995376915,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00023399999918183312,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0014440000013564713,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.000495000000228174,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.006206000012753066,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.00039600000309292227,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00034900000173365697,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000030000002880115062,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 514.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 257.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 514.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-256.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.0017529999968246557,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0002719999974942766,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00002800000220304355,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000011999996786471456,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0000040000013541430235,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.00020500000391621143,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0008869999946909957,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.00017700000171316788,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.000019999999494757503,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.00024500000290572643,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00009099999442696571,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00002699999458855018,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.0006189999985508621,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.00021600000036414713,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.000012999997125007212,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.00005400000372901559,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.00009300000237999484,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.00047899999481160194,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.00005200000305194408,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00004099999932805076,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000006999995093792677,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 514.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 257.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 514.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-256.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.001728000002913177,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.00027599999884841964,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00002800000220304355,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.0000109999964479357,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0000040000013541430235,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0001990000018849969,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0008959999977378175,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0001740000006975606,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.000019999999494757503,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0002549999990151264,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00009299999510403723,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00002699999458855018,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.0006280000015976839,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.00022900000476511195,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.000013000004400964826,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.00005199999577598646,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.00009300000237999484,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.00048400000378023833,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.00005199999577598646,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.000039999998989515007,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000006000002031214535,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 514.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 257.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 514.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-256.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.013510999997379258,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0006450000000768341,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00009000000136438757,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.0000109999964479357,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0007800000021234155,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.010315999999875203,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0013910000052419491,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00014599999849451706,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0005810000002384186,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00031999999919207767,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0002860000022337772,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.008159999997587875,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.004402000005939044,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00011000000085914508,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0010899999979301356,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0004980000012437813,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.004119999997783452,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.00028000000020256266,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0003530000030878,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000022000000171829015,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 514.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 257.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 259.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 514.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-512.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.0035480000005918555,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.000548999996681232,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00005699999746866524,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000011000003723893315,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000003999994078185409,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.00039600000309292227,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0020629999999073334,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.00031599999783793464,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00003599999763537198,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0005259999961708672,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00008599999273428693,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0002919999969890341,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.001485000000684522,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.0006389999980456196,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.000022000000171829015,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.000097999996796716,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.00010000000474974513,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.0008850000012898818,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.00009800000407267362,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00006800000119255856,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000008000002708286047,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 1026.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 513.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 1026.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-512.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.03359700000146404,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0019289999981992878,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0001830000037443824,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000011999996786471456,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0015179999973042868,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.026731999998446554,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0028359999996609986,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00026200000138487667,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0018669999990379438,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0005300000048009679,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0007879999975557439,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.02338400000007823,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.01709600000322098,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00021600000036414713,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.000985999999102205,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.001007999999274034,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.006961999999475665,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0005949999977019615,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0006950000024517067,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00003899999865097925,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 1026.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 513.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 1026.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-512.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.03431800000544172,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0022390000012819655,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00018799999816110358,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000013999997463542968,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000006000002031214535,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0015260000000125729,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.027048000003560446,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0028700000038952567,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00026899999647866935,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.002153000001271721,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.0005319999982020818,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0007970000006025657,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.023656999997911043,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.017278999999689404,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00021600000036414713,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0009970000028260984,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0010289999991073273,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.007068000006256625,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0006090000024414621,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0007039999982225709,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00003800000558840111,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 1026.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 513.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 1026.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-512.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.0036489999984041788,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0005670000027748756,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0000560000044060871,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000013000004400964826,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.00038499999936902896,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.002117999996698927,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0003300000025774352,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00004099999932805076,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0005390000005718321,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00008900000102585182,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00029200000426499173,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.001524999999674037,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.0006439999997382984,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00002300000051036477,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.00010299999848939478,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0001049999991664663,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.0009349999963887967,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.00010000000474974513,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00007200000254670158,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000011000003723893315,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 1026.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 513.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 1026.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-512.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.0036340000006021,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0005999999993946403,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.000055999997130129486,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000011999996786471456,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0000040000013541430235,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.0003819999983534217,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0020930000027874485,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0003209999995306134,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.000039999998989515007,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.000574999998207204,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.00009200000204145908,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.00029200000426499173,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.0015100000018719584,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.0006409999987226911,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00002300000051036477,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.000097999996796716,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.00010099999781232327,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.000906000001123175,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.000097999996796716,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.00006800000119255856,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.000009000003046821803,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 1026.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 513.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 1026.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-fixtures/i32-chain-512.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.033450000002630986,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0019240000037825666,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.00018099999579135329,
+          "calls": 1
+        },
+        "store": {
+          "value": 0.000011000003723893315,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000005999994755256921,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.001516000003903173,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.026578999997582287,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.002839000000676606,
+          "calls": 1
+        },
+        "lower": {
+          "value": 0.00026899999647866935,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 0.0018620000046212226,
+          "calls": 1
+        },
+        "ir_copy": {
+          "value": 0.000534999999217689,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.0007949999999254942,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.023232999999891035,
+          "calls": 1
+        },
+        "propagate": {
+          "value": 0.016946999996434897,
+          "calls": 1
+        },
+        "immediate": {
+          "value": 0.00021099999867146835,
+          "calls": 1
+        },
+        "branch": {
+          "value": 0.0009839999984251335,
+          "calls": 1
+        },
+        "superinstruction": {
+          "value": 0.0009989999962272123,
+          "calls": 1
+        },
+        "analysis": {
+          "value": 0.006967999994230922,
+          "calls": 8
+        },
+        "flow_graph": {
+          "value": 0.0005979999987175688,
+          "calls": 1
+        },
+        "validate_types": {
+          "value": 0.0006989999965298921,
+          "calls": 1
+        },
+        "reverse_postorder": {
+          "value": 0.00003699999797390774,
+          "calls": 1
+        },
+        "functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 1026.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 513.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 515.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 1.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 1026.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    }
+  ]
+}
