@@ -174,6 +174,33 @@ required `IO::Buffer` changes.
 See the [build instructions and host memory API](docs/efflorescence-spinel-linear-memory.md).
 Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
 
+#### Cross-compile from macOS with Zig
+
+With Zig 0.17.1, Ruby, and the Xcode Command Line Tools installed, run:
+
+```sh
+make spinel-zig
+```
+
+The first build downloads and builds the same Spinel revision used in CI.
+It builds the Spinel runtime and native StringIO code for each target and
+uses Zig to compile and link the resulting Wardite executables.
+
+| Target | Executable |
+| --- | --- |
+| macOS arm64 | `build/spinel-zig/aarch64-macos.13.0/wardite` |
+| Linux x86_64 | `build/spinel-zig/x86_64-linux-gnu.2.28/wardite` |
+| Linux arm64 | `build/spinel-zig/aarch64-linux-gnu.2.28/wardite` |
+
+Linux builds dynamically link the target system's glibc. The default glibc
+baseline is 2.28 and the macOS deployment target is 13.0. Set `ZIG_GLIBC`
+or `ZIG_MACOS` to change those values. Use `ZIG` to select the compiler,
+`ZIG_JOBS` to set parallelism, or `ZIG_TARGETS` to build a subset:
+
+```sh
+make spinel-zig ZIG=/opt/homebrew/bin/zig ZIG_TARGETS=x86_64-linux
+```
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/udzura/wardite.
