@@ -51,13 +51,13 @@ jobs:
     name: Spinel tests
     runs-on: ubuntu-24.04
     env:
-      SPINEL_REPOSITORY: udzura/spinel
-      SPINEL_BRANCH: codex/io-buffer-allocation-error
+      SPINEL_REF: 58ee6361642befd3770516137c41a6553f0262d1
     strategy:
       matrix:
         ruby:
           - '4.0.9'
-    timeout-minutes: 30
+    # Allow time for a cold Spinel build before the native suite.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Set up Ruby and bundle
@@ -78,9 +78,6 @@ jobs:
         id: spinel-environment
         shell: bash
         run: |
-          # Use the same commit for the cache key and checkout even if the branch moves.
-          ref=$(git ls-remote --exit-code "https://github.com/$SPINEL_REPOSITORY.git" "refs/heads/$SPINEL_BRANCH")
-          printf 'commit=%s\n' "${ref%%$'\t'*}" >> "$GITHUB_OUTPUT"
           fingerprint="$RUNNER_TEMP/spinel-build-environment.txt"
           printf 'image=%s\nversion=%s\nprefix=%s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}" "$RUNNER_TEMP/spinel" > "$fingerprint"
           cc --version >> "$fingerprint"
@@ -93,13 +90,13 @@ jobs:
           # Include the runtime, headers, and packages, not just the executable.
           path: ${{ runner.temp }}/spinel
           # Bump the cache version if the build recipe changes.
-          key: spinel-install-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.spinel-environment.outputs.commit }}-${{ steps.spinel-environment.outputs.hash }}
+          key: spinel-install-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.SPINEL_REF }}-${{ steps.spinel-environment.outputs.hash }}
       - name: Check out Spinel
         if: steps.spinel-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.SPINEL_REPOSITORY }}
-          ref: ${{ steps.spinel-environment.outputs.commit }}
+          repository: matz/spinel
+          ref: ${{ env.SPINEL_REF }}
           path: .ci/spinel
           persist-credentials: false
       - name: Build and install Spinel
