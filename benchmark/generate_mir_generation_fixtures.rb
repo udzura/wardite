@@ -3,7 +3,7 @@
 require "fileutils"
 directory = File.expand_path(ARGV.fetch(0))
 FileUtils.mkdir_p(directory)
-[256, 512, 1024, 2048].each do |size|
+[256, 512, 1024, 2048, 4096, 8192].each do |size|
   path = File.join(directory, "i32-chain-#{size}")
   File.write("#{path}.wat", <<~WAT)
     (module

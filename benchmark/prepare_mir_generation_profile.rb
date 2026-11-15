@@ -23,7 +23,9 @@ targets = {
 }
 if detail
   targets.merge!({
-    "Wardite::BinaryLoader.code_body" => "code_body",
+    "Wardite::BinaryLoader.decode_body" => "code_body",
+    "Wardite::Efflorescence::RegisterValidation.validate_plain" => "validate_plain",
+    "Wardite::Efflorescence::RegisterValidation.block_reverse_postorder" => "block_reverse_postorder",
     "Wardite::Efflorescence::IR.copy" => "ir_copy",
     "Wardite::Efflorescence::Passes::Inlining.run" => "inline",
     "Wardite::Efflorescence::Passes::CopyPropagation.run" => "copy_pass",

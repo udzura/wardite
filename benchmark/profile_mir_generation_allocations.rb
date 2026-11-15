@@ -39,6 +39,8 @@ end
 eff = Wardite::Efflorescence
 [
   [Wardite::BinaryLoader.singleton_class, :sections, :sections],
+  [Wardite::BinaryLoader.singleton_class, :decode_body, :code_body],
+
   [Wardite::CodeSection::CodeBody, :check_features, :features],
   [eff::Translator, :translate, :translate],
   [eff::Optimizer, :optimize, :optimize],

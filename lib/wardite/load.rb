@@ -136,13 +136,27 @@ module Wardite
     end
   end
 
+  # The loader owns this result until a CodeBody exposes its mutable instructions.
+  class DecodedBody
+    attr_reader :instructions #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    attr_reader :blocks #: Array[Block]
+    attr_reader :has_eh_instructions #: bool
+
+    # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    # @rbs blocks: Array[Block]
+    # @rbs has_eh_instructions: bool
+    def initialize(instructions, blocks, has_eh_instructions)
+      @instructions = instructions
+      @blocks = blocks
+      @has_eh_instructions = has_eh_instructions
+    end
+  end
+
   class CodeSection < Section
     class CodeBody
       attr_accessor :locals_count #: Array[Integer]
 
       attr_accessor :locals_type #: Array[Symbol]
-
-      attr_writer :instruction_bytes #: String?
 
       attr_writer :type_section #: TypeSection?
 
@@ -153,6 +167,7 @@ module Wardite
         @locals_type = []
         @body = [] #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
         @instruction_bytes = nil
+        @decoded = nil #: DecodedBody?
         @type_section = nil
         blk.call(self)
       end
@@ -160,6 +175,8 @@ module Wardite
       # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       def body
         check_features(@type_section, false) if @instruction_bytes
+        # The caller can mutate both the array and the Block objects in it.
+        @decoded = nil
         @body
       end
 
@@ -168,6 +185,20 @@ module Wardite
       def body=(instructions)
         @body = instructions
         @instruction_bytes = nil
+        @decoded = nil
+      end
+
+      # @rbs bytes: String?
+      # @rbs return: void
+      def instruction_bytes=(bytes)
+        @instruction_bytes = bytes
+        @decoded = nil
+      end
+
+      # @rbs buf: File|StringIO
+      # @rbs return: void
+      def decode_from(buf)
+        install_decoded(BinaryLoader.decode_body(buf))
       end
 
       # @rbs types: TypeSection?
@@ -177,13 +208,37 @@ module Wardite
         if stack && locals_type.include?(:exnref)
           raise LoadError, "stack engine does not support exnref"
         end
-        bytes = @instruction_bytes
-        instructions = bytes ? BinaryLoader.code_body(StringIO.new(bytes)) : @body
-        check_instructions(instructions, types, stack)
-        self.body = instructions if bytes
+        if (bytes = @instruction_bytes)
+          decoded = BinaryLoader.decode_body(StringIO.new(bytes))
+          check_decoded(decoded, types, stack)
+          install_decoded(decoded)
+        elsif (decoded = @decoded)
+          check_decoded(decoded, types, stack)
+        else
+          check_instructions(@body, types, stack)
+        end
       end
 
       private
+
+      # @rbs decoded: DecodedBody
+      # @rbs return: void
+      def install_decoded(decoded)
+        @body = decoded.instructions
+        @instruction_bytes = nil
+        @decoded = decoded
+      end
+
+      # @rbs decoded: DecodedBody
+      # @rbs types: TypeSection?
+      # @rbs stack: bool
+      # @rbs return: void
+      def check_decoded(decoded, types, stack)
+        if stack && decoded.has_eh_instructions
+          raise LoadError, "stack engine does not support EH"
+        end
+        decoded.blocks.each { |block| check_block(block, types, stack) }
+      end
 
       # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       # @rbs types: TypeSection?
@@ -191,22 +246,29 @@ module Wardite
       # @rbs return: void
       def check_instructions(instructions, types, stack)
         instructions.each do |instruction|
-          if stack && [:try_table, :throw, :throw_ref].include?(instruction[1])
+          if stack && BinaryLoader.eh_instruction?(instruction[1])
             raise LoadError, "stack engine does not support EH"
           end
           instruction[2].each do |operand|
-            next unless operand.is_a?(Block)
-            index = operand.type_index
-            if index >= 0
-              params = types&.defined_types&.[](index)
-              results = types&.defined_results&.[](index)
-              raise LoadError, "invalid block type index #{index}" unless params && results
-              operand.resolve(params, results)
-            end
-            if stack && (index >= 0 || operand.result_types.include?(:exnref))
-              raise LoadError, "stack engine does not support indexed/reference block signatures"
-            end
+            check_block(operand, types, stack) if operand.is_a?(Block)
           end
+        end
+      end
+
+      # @rbs block: Block
+      # @rbs types: TypeSection?
+      # @rbs stack: bool
+      # @rbs return: void
+      def check_block(block, types, stack)
+        index = block.type_index
+        if index >= 0
+          params = types&.defined_types&.[](index)
+          results = types&.defined_results&.[](index)
+          raise LoadError, "invalid block type index #{index}" unless params && results
+          block.resolve(params, results)
+        end
+        if stack && (index >= 0 || block.result_types.include?(:exnref))
+          raise LoadError, "stack engine does not support indexed/reference block signatures"
         end
       end
     end
@@ -739,7 +801,7 @@ module Wardite
         if defer_code
           body.instruction_bytes = (cbuf.read || "".b).freeze
         else
-          body.body = code_body(cbuf)
+          body.decode_from(cbuf)
         end
       end
     end
@@ -747,13 +809,22 @@ module Wardite
     # @rbs buf: File|StringIO
     # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     def self.code_body(buf)
+      decode_body(buf).instructions
+    end
+
+    # @rbs buf: File|StringIO
+    # @rbs return: DecodedBody
+    def self.decode_body(buf)
       dest = [] #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      blocks = [] #: Array[Block]
+      has_eh_instructions = false
       # HINT: [symname, index of op, index of else, index of end]
       branching_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       fixed_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       while opcode = buf.getbyte
         spec = resolve_spec(opcode, buf)
         code = spec.code
+        has_eh_instructions ||= eh_instruction?(code)
         operand = [] #: Array[operandItem]
         spec.operand_types.each do |typ|
           case typ
@@ -783,6 +854,7 @@ module Wardite
             operand << FloatImmediate.new(typ, FloatBits.read(typ, data))
           when :u8_block, :blocktype
             value = read_blocktype(buf)
+            blocks << value
             operand << value
           when :catches
             clauses = [] #: Array[Integer]
@@ -837,13 +909,19 @@ module Wardite
           raise "[BUG] unknown sym #{sym.inspect}"
         end
       end
-      dest
+      DecodedBody.new(dest, blocks, has_eh_instructions)
     rescue => e
       require "pp"
       $stderr.puts "parsed:::"
       $stderr.puts "#{dest.pretty_inspect}"
       $stderr.puts "code = #{code}"
       raise e
+    end
+
+    # @rbs code: Symbol
+    # @rbs return: bool
+    def self.eh_instruction?(code)
+      code == :try_table || code == :throw || code == :throw_ref
     end
 
     # Decode s33, distinguishing the one-byte value/void forms from indices.

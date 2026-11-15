@@ -158,4 +158,64 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
       end
     end
   end
+
+  test "eager feature validation resolves the original block and invalidates the summary on access" do
+    loader = Wardite::BinaryLoader
+    indexed_body = StringIO.new([0x02, 0x00, 0x0b, 0x0b].pack("C*"))
+    types = Wardite::TypeSection.new
+    types.defined_types << [:i32]
+    types.defined_results << [:i64]
+    body = Wardite::CodeSection::CodeBody.new { |code| code.decode_from(indexed_body) }
+    resolved = []
+    trace = TracePoint.new(:call) do |event|
+      resolved << event.self if event.defined_class == Wardite::Block && event.method_id == :resolve
+      flunk("decoder-owned body used the fallback scan") if event.method_id == :check_instructions
+    end
+    trace.enable { body.check_features(types, false) }
+    instructions = body.body
+    indexed = instructions.first.fetch(2).first
+    assert_same indexed, resolved.fetch(0)
+    assert_equal [:i32], indexed.parameter_types
+    assert_equal [:i64], indexed.result_types
+    instructions.first.fetch(2)[0] = Wardite::Block.new(type_index: 8)
+    assert_raise_message("invalid block type index 8") { body.check_features(types, false) }
+
+    numeric = Wardite::CodeSection::CodeBody.new { |code| code.decode_from(StringIO.new("\x02\x7f\x0b\x0b".b)) }
+    numeric.check_features(types, true)
+    numeric.body.first.fetch(2).first.resolve([], [:exnref])
+    assert_raise_message(/indexed\/reference block signatures/) { numeric.check_features(types, true) }
+    assert_equal [:end], loader.code_body(StringIO.new("\x0b".b)).map { |instruction| instruction[1] }
+  end
+
+  test "assigning body or instruction bytes clears decoder-owned feature information" do
+    loader = Wardite::BinaryLoader
+    body = Wardite::CodeSection::CodeBody.new { |code| code.decode_from(StringIO.new("\x0b".b)) }
+    replacement = loader.code_body(StringIO.new("\x0a\x0b".b))
+    body.body = replacement
+    assert_raise_message("stack engine does not support EH") { body.check_features(nil, true) }
+    replacement.replace(loader.code_body(StringIO.new("\x02\x08\x0b\x0b".b)))
+    assert_raise_message("invalid block type index 8") { body.check_features(nil, false) }
+
+    body.decode_from(StringIO.new("\x0a\x0b".b))
+    body.instruction_bytes = nil
+    scanned = false
+    trace = TracePoint.new(:call) { |event| scanned = true if event.method_id == :check_instructions }
+    trace.enable { assert_raise_message("stack engine does not support EH") { body.check_features(nil, true) } }
+    assert_true scanned
+  end
+
+  test "deferred feature failure keeps the original bytes available for retry" do
+    family = Wardite::TypeSection.new
+    family.defined_types << []
+    family.defined_results << [:i32]
+    body = Wardite::CodeSection::CodeBody.new do |code|
+      code.instruction_bytes = "\x02\x00\x0b\x0b".b
+      code.type_section = family
+    end
+    assert_raise_message("invalid block type index 0") { body.check_features(nil, false) }
+    assert_raise_message(/indexed\/reference block signatures/) { body.check_features(family, true) }
+    assert_equal [:i32], body.body.first.fetch(2).first.result_types
+    body.body.unshift([:default, :throw_ref, [], nil, nil])
+    assert_raise_message("stack engine does not support EH") { body.check_features(family, true) }
+  end
 end
