@@ -1,0 +1,236 @@
+{
+  "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+  "phases_inclusive": {
+    "sections": {
+      "seconds": 4.001256999996258,
+      "objects": 22488536,
+      "calls": 1
+    },
+    "features": {
+      "seconds": 0.5296190001317882,
+      "objects": 8,
+      "calls": 8161
+    },
+    "translate": {
+      "seconds": 3.9558280000055674,
+      "objects": 7597524,
+      "calls": 1
+    },
+    "ir_copy": {
+      "seconds": 5.477874999996857,
+      "objects": 9833408,
+      "calls": 2
+    },
+    "analysis": {
+      "seconds": 4.480604000367748,
+      "objects": 6768138,
+      "calls": 10096
+    },
+    "optimize": {
+      "seconds": 5.588268999999855,
+      "objects": 9993792,
+      "calls": 1
+    },
+    "validate_types": {
+      "seconds": 3.818418999981077,
+      "objects": 4563725,
+      "calls": 8161
+    },
+    "flow_graph": {
+      "seconds": 2.7525010000244947,
+      "objects": 10992183,
+      "calls": 8161
+    },
+    "validate": {
+      "seconds": 19.285403999921982,
+      "objects": 30862889,
+      "calls": 8161
+    },
+    "lower": {
+      "seconds": 1.1596910000007483,
+      "objects": 164014,
+      "calls": 1
+    }
+  },
+  "gc_delta": {
+    "count": 52,
+    "time": 6774,
+    "marking_time": 5703,
+    "sweeping_time": 1071,
+    "heap_allocated_pages": 18305,
+    "heap_empty_pages": 1974,
+    "heap_allocatable_slots": 2006782,
+    "heap_available_slots": 21772271,
+    "heap_live_slots": 17435706,
+    "heap_free_slots": 4336565,
+    "heap_final_slots": 0,
+    "heap_marked_slots": 17337901,
+    "heap_eden_pages": 16331,
+    "total_allocated_pages": 18305,
+    "total_freed_pages": 0,
+    "total_allocated_objects": 71257138,
+    "total_freed_objects": 53821432,
+    "malloc_increase_bytes": 7643059,
+    "malloc_increase_bytes_limit": 16777216,
+    "minor_gc_count": 37,
+    "major_gc_count": 15,
+    "compact_count": 0,
+    "read_barrier_faults": 0,
+    "total_moved_objects": 0,
+    "remembered_wb_unprotected_objects": 0,
+    "remembered_wb_unprotected_objects_limit": 171948,
+    "old_objects": 17195506,
+    "old_objects_limit": 34389562,
+    "oldmalloc_increase_bytes": 41202371,
+    "oldmalloc_increase_bytes_limit": 33319278
+  },
+  "slowest_validation": [
+    {
+      "index": 63,
+      "seconds": 0.7574010000025737,
+      "objects": 566179,
+      "instructions": 39580,
+      "registers": 23011
+    },
+    {
+      "index": 7739,
+      "seconds": 0.6230239999931655,
+      "objects": 575041,
+      "instructions": 40547,
+      "registers": 24568
+    },
+    {
+      "index": 8124,
+      "seconds": 0.5626529999935883,
+      "objects": 454,
+      "instructions": 32,
+      "registers": 40
+    },
+    {
+      "index": 5065,
+      "seconds": 0.5620380000036675,
+      "objects": 62664,
+      "instructions": 4274,
+      "registers": 2300
+    },
+    {
+      "index": 394,
+      "seconds": 0.40218800000002375,
+      "objects": 2598,
+      "instructions": 182,
+      "registers": 131
+    },
+    {
+      "index": 3616,
+      "seconds": 0.3787179999999353,
+      "objects": 394043,
+      "instructions": 26788,
+      "registers": 17375
+    },
+    {
+      "index": 3961,
+      "seconds": 0.29704900000069756,
+      "objects": 354204,
+      "instructions": 24686,
+      "registers": 13806
+    },
+    {
+      "index": 7357,
+      "seconds": 0.29401099999813596,
+      "objects": 376461,
+      "instructions": 24713,
+      "registers": 13024
+    },
+    {
+      "index": 3966,
+      "seconds": 0.26528899999539135,
+      "objects": 297154,
+      "instructions": 20129,
+      "registers": 11411
+    },
+    {
+      "index": 7522,
+      "seconds": 0.2633289999939734,
+      "objects": 286233,
+      "instructions": 19692,
+      "registers": 10751
+    },
+    {
+      "index": 65,
+      "seconds": 0.24093599999469006,
+      "objects": 297154,
+      "instructions": 20129,
+      "registers": 11411
+    },
+    {
+      "index": 7475,
+      "seconds": 0.1766090000019176,
+      "objects": 242094,
+      "instructions": 16883,
+      "registers": 8639
+    },
+    {
+      "index": 3125,
+      "seconds": 0.1261690000028466,
+      "objects": 187237,
+      "instructions": 13123,
+      "registers": 7429
+    },
+    {
+      "index": 5024,
+      "seconds": 0.12118200000259094,
+      "objects": 178384,
+      "instructions": 12893,
+      "registers": 6708
+    },
+    {
+      "index": 6523,
+      "seconds": 0.12038200000097277,
+      "objects": 184099,
+      "instructions": 13002,
+      "registers": 7260
+    },
+    {
+      "index": 64,
+      "seconds": 0.11373299999831943,
+      "objects": 174173,
+      "instructions": 12063,
+      "registers": 6554
+    },
+    {
+      "index": 6029,
+      "seconds": 0.1132179999985965,
+      "objects": 175785,
+      "instructions": 12375,
+      "registers": 6866
+    },
+    {
+      "index": 7439,
+      "seconds": 0.11218100000405684,
+      "objects": 172112,
+      "instructions": 11629,
+      "registers": 6542
+    },
+    {
+      "index": 3963,
+      "seconds": 0.1030449999962002,
+      "objects": 158493,
+      "instructions": 10971,
+      "registers": 5869
+    },
+    {
+      "index": 3115,
+      "seconds": 0.08617799999774434,
+      "objects": 143668,
+      "instructions": 10420,
+      "registers": 5855
+    }
+  ],
+  "top_self_samples": "+---------+------+---------------------------------------------------------------------------+\n| Samples | %    | name                                                                      |\n+---------+------+---------------------------------------------------------------------------+\n| 5786    | 10.4 | Wardite::Efflorescence::Opcode.read_positions                             |\n| 5407    | 9.7  | Array#include?                                                            |\n| 3604    | 6.5  | Wardite::Efflorescence::Instruction#[]                                    |\n| 3604    | 6.5  | Array#fetch                                                               |\n| 2998    | 5.4  | Wardite::Efflorescence::RegisterValidation::Block#merge                   |\n| 1930    | 3.5  | Array#each                                                                |\n| 1781    | 3.2  | Wardite::Efflorescence::Translator#translate_function                     |\n| 1635    | 2.9  | Wardite::BinaryLoader.code_body                                           |\n| 1594    | 2.9  | Integer#===                                                               |\n| 1541    | 2.8  | Wardite::Efflorescence::Function#reads                                    |\n| 1500    | 2.7  | Wardite::Efflorescence::Opcode.destination                                |\n| 1431    | 2.6  | Wardite::Efflorescence::FlowGraph#initialize                              |\n| 1416    | 2.5  | Wardite::Efflorescence::RegisterValidation#validate                       |\n| 1084    | 1.9  | Wardite::Efflorescence::RegisterValidation#validate_types                 |\n| 1030    | 1.8  | Kernel#dup                                                                |\n| 924     | 1.7  | Wardite::Efflorescence::Analysis#initialize                               |\n| 905     | 1.6  | Kernel#Integer                                                            |\n| 860     | 1.5  | Wardite::Efflorescence::Opcode.target_position                            |\n| 856     | 1.5  | Wardite::Efflorescence::Lowerer#compile                                   |\n| 848     | 1.5  | Array#map                                                                 |\n| 749     | 1.3  | Wardite::Efflorescence::Opcode.dynamic_call?                              |\n| 691     | 1.2  | Wardite::Efflorescence::RegisterValidation#reverse_postorder              |\n| 660     | 1.2  | Wardite::Efflorescence::Opcode.memory_site?                               |\n| 574     | 1.0  | StringIO#read                                                             |\n| 562     | 1.0  | Enumerable#each_with_index                                                |\n| 552     | 1.0  | Wardite::Efflorescence::Function#copy                                     |\n| 516     | 0.9  | Wardite::Efflorescence::Function#allocate_register                        |\n| 512     | 0.9  | Wardite::BinaryLoader.resolve_code                                        |\n| 493     | 0.9  | Wardite::CodeSection::CodeBody#check_instructions                         |\n| 441     | 0.8  | Wardite::Efflorescence::Opcode.terminal?                                  |\n| 426     | 0.8  | Wardite::Efflorescence::RegisterValidation#marked?                        |\n| 410     | 0.7  | Kernel#initialize_dup                                                     |\n| 401     | 0.7  | Wardite::Leb128Helper#fetch_sleb128                                       |\n| 396     | 0.7  | Wardite::Efflorescence::Instruction#copy                                  |\n| 392     | 0.7  | Wardite::Efflorescence::Translator#emit                                   |\n| 374     | 0.7  | Wardite::Op.operand_of                                                    |\n| 367     | 0.7  | Wardite::Efflorescence::RegisterValidation#mark                           |\n| 355     | 0.6  | Wardite::Efflorescence::FlowGraph#merge                                   |\n| 343     | 0.6  | Array#initialize                                                          |\n| 334     | 0.6  | Wardite::Leb128Helper#fetch_uleb128                                       |\n| 329     | 0.6  | Array#initialize_copy                                                     |\n| 290     | 0.5  | Wardite::Efflorescence::Translator#pop_value                              |\n| 256     | 0.5  | Wardite::Efflorescence::Instruction#initialize                            |\n| 248     | 0.4  | Wardite::Efflorescence::Translator#type_of                                |\n| 240     | 0.4  | Wardite::Efflorescence::RegisterValidation#check_register                 |\n| 236     | 0.4  | Wardite::FloatBits.float_type?                                            |\n| 230     | 0.4  | Wardite::Efflorescence::Translator#validate_store_instruction             |\n| 201     | 0.4  | Wardite::Efflorescence::Translator#integer_operand                        |\n| 198     | 0.4  | Wardite::Efflorescence::Opcode.may_throw?                                 |\n| 197     | 0.4  | Hash#key?                                                                 |\n| 196     | 0.4  | Wardite::Efflorescence::Translator#pop_typed                              |\n| 183     | 0.3  | Wardite::Efflorescence::Instruction#size                                  |\n| 150     | 0.3  | Wardite::Efflorescence::Translator#end_control                            |\n| 140     | 0.3  | Range#each                                                                |\n| 125     | 0.2  | String#ord                                                                |\n| 117     | 0.2  | Integer#times                                                             |\n| 111     | 0.2  | Wardite::Efflorescence::Translator::Control#initialize                    |\n| 105     | 0.2  | Wardite::Efflorescence::Translator#register                               |\n| 90      | 0.2  | Wardite::Efflorescence::Function#initial_value                            |\n| 89      | 0.2  | Wardite::Efflorescence::Translator#constant                               |\n| 89      | 0.2  | Array#pop                                                                 |\n| 83      | 0.1  | Integer#<<                                                                |\n| 82      | 0.1  | Wardite::Efflorescence::Translator#branch                                 |\n| 79      | 0.1  | Wardite::Efflorescence::Translator#copy_value                             |\n| 79      | 0.1  | Wardite::Efflorescence::RegisterValidation::Block#initialize              |\n| 70      | 0.1  | Array#==                                                                  |\n| 64      | 0.1  | Integer#>>                                                                |\n| 63      | 0.1  | Wardite::Efflorescence::Function#register_count                           |\n| 63      | 0.1  | Wardite::Efflorescence::Translator#patch                                  |\n| 63      | 0.1  | Wardite::Efflorescence::Function#allocate_constant                        |\n| 61      | 0.1  | Array#reverse_each                                                        |\n| 55      | 0.1  | Wardite::Efflorescence::Translator#top_values                             |\n| 55      | 0.1  | Wardite::Efflorescence::Function#initialize                               |\n| 52      | 0.1  | Kernel#is_a?                                                              |\n| 51      | 0.1  | Wardite::Efflorescence::Translator#finish_arm                             |\n| 47      | 0.1  | Wardite::BinaryLoader.read_blocktype                                      |\n| 45      | 0.1  | block (2 levels) in wrap                                                  |\n| 44      | 0.1  | Enumerable#to_a                                                           |\n| 42      | 0.1  | Wardite::Efflorescence::Translator#new_control                            |\n| 40      | 0.1  | Array.new                                                                 |\n| 37      | 0.1  | Wardite::Block#initialize                                                 |\n| 32      | 0.1  | Wardite::Efflorescence::Instruction#[]=                                   |\n| 32      | 0.1  | Hash#fetch                                                                |\n| 29      | 0.1  | Array#all?                                                                |\n| 28      | 0.1  | Wardite::Efflorescence::FunctionEntry.check_signature                     |\n| 28      | 0.1  | Wardite::Block.void                                                       |\n| 25      | 0.0  | Wardite::Efflorescence::Translator#label                                  |\n| 24      | 0.0  | Wardite::Efflorescence::FunctionEntry.numeric_type?                       |\n| 22      | 0.0  | Wardite::Efflorescence::Translator#parallel_copy                          |\n| 20      | 0.0  | Wardite::Efflorescence::Opcode.extended_alu_types                         |\n| 19      | 0.0  | Wardite::Efflorescence::Function#parameter_count                          |\n| 18      | 0.0  | Wardite::Efflorescence::Translator#label_types                            |\n| 17      | 0.0  | Wardite::BinaryLoader.read_function_body                                  |\n| 16      | 0.0  | Wardite::Efflorescence::Passes::CopyPropagation#propagate                 |\n| 15      | 0.0  | Wardite::Efflorescence::IR#entry_at                                       |\n| 15      | 0.0  | Wardite::Efflorescence::Translator#snapshot_locals                        |\n| 14      | 0.0  | Kernel.require                                                            |\n| 14      | 0.0  | Wardite::Efflorescence::Translator#preserve_local                         |\n| 13      | 0.0  | IO#read                                                                   |\n| 12      | 0.0  | Array#any?                                                                |\n| 9       | 0.0  | GC.stat                                                                   |\n| 9       | 0.0  | Range#to_a                                                                |\n| 9       | 0.0  | Wardite::Efflorescence::Translator#mark_unreachable                       |\n| 9       | 0.0  | String#[]=                                                                |\n| 9       | 0.0  | Wardite::BinaryLoader.assert_read                                         |\n| 8       | 0.0  | Wardite::Efflorescence::RegisterValidation#check_result                   |\n| 8       | 0.0  | Wardite::Efflorescence::CallSite#initialize                               |\n| 7       | 0.0  | Process.clock_gettime                                                     |\n| 7       | 0.0  | Array#reverse                                                             |\n| 7       | 0.0  | StringIO#pos                                                              |\n| 6       | 0.0  | Wardite::Efflorescence::IR#defined_at                                     |\n| 6       | 0.0  | Class#new                                                                 |\n| 6       | 0.0  | Wardite::Efflorescence::VM#initialize                                     |\n| 6       | 0.0  | Wardite::WasmFunction#locals_type                                         |\n| 4       | 0.0  | Wardite::WasmFunction#body                                                |\n| 4       | 0.0  | Array#[]                                                                  |\n| 4       | 0.0  | Wardite::Store#initialize                                                 |\n| 4       | 0.0  | Wardite::Efflorescence::FunctionEntry#copy                                |\n| 4       | 0.0  | Wardite::Efflorescence::Analysis#flow                                     |\n| 4       | 0.0  | Wardite::Efflorescence::RegisterValidation#validate_extended_instruction  |\n| 4       | 0.0  | Wardite::Efflorescence::Translator#else_control                           |\n| 3       | 0.0  | Array#last                                                                |\n| 3       | 0.0  | Wardite::Efflorescence::I64Arithmetic.join                                |\n| 3       | 0.0  | Wardite::Op.i2type                                                        |\n| 3       | 0.0  | Wardite::Efflorescence::DynamicCallSite#copy                              |\n| 3       | 0.0  | Wardite::Instance#check_memory_initialization                             |\n| 3       | 0.0  | Wardite::Efflorescence::Optimizer#optimize                                |\n| 2       | 0.0  | StringIO.new                                                              |\n| 2       | 0.0  | Wardite::CodeSection::CodeBody#initialize                                 |\n| 2       | 0.0  | Wardite::Efflorescence::IR#function_at                                    |\n| 2       | 0.0  | Wardite::Efflorescence::Passes::Inlining#run                              |\n| 2       | 0.0  | Wardite::Efflorescence::Passes::Superinstructions#run                     |\n| 2       | 0.0  | Wardite::Efflorescence::FunctionEntry#initialize                          |\n| 2       | 0.0  | Wardite::CodeSection::CodeBody#body                                       |\n| 2       | 0.0  | Wardite::WasmFunction#locals_count                                        |\n| 2       | 0.0  | Wardite::Memory#write_bytes                                               |\n| 2       | 0.0  | Wardite::Instance#initialize                                              |\n| 2       | 0.0  | Wardite::CodeSection::CodeBody#check_features                             |\n| 2       | 0.0  | Wardite::Instance#each_defined_function                                   |\n| 2       | 0.0  | Wardite::Memory#bytesize                                                  |\n| 2       | 0.0  | Wardite::WasmFunction#initialize                                          |\n| 1       | 0.0  | File#initialize                                                           |\n| 1       | 0.0  | Wardite::Efflorescence::Function#dynamic_site                             |\n| 1       | 0.0  | Wardite::Efflorescence::VM#build_mir                                      |\n| 1       | 0.0  | Wardite::Efflorescence::Function#remap_targets!                           |\n| 1       | 0.0  | Wardite::Efflorescence::Rewrite#emit                                      |\n| 1       | 0.0  | Wardite::Efflorescence::Function#remap_handler_targets!                   |\n| 1       | 0.0  | Array#fill                                                                |\n| 1       | 0.0  | Wardite::Efflorescence::Passes::ImmediateSpecialization#run               |\n| 1       | 0.0  | Wardite::Efflorescence::Rewrite#initialize                                |\n| 1       | 0.0  | Wardite::Efflorescence::Passes::CopyPropagation#remove_overwritten_copies |\n| 1       | 0.0  | Wardite::Efflorescence::Optimizer#optimize_function                       |\n| 1       | 0.0  | Wardite::Efflorescence::Rewrite#mark                                      |\n| 1       | 0.0  | Wardite::Efflorescence::Function#replace_instructions                     |\n| 1       | 0.0  | Wardite::Efflorescence::I64Arithmetic.normalize                           |\n| 1       | 0.0  | Wardite::Efflorescence::Translator#translate                              |\n| 1       | 0.0  | Integer#|                                                                 |\n| 1       | 0.0  | Wardite::BinaryLoader.decode_expr                                         |\n| 1       | 0.0  | Wardite::Efflorescence::Translator#link                                   |\n| 1       | 0.0  | Wardite::Table#set                                                        |\n| 1       | 0.0  | Wardite::Memory#range?                                                    |\n| 1       | 0.0  | StringIO#pos=                                                             |\n| 1       | 0.0  | StringIO#initialize                                                       |\n| 1       | 0.0  | String#[]                                                                 |\n| 1       | 0.0  | String#bytesize                                                           |\n| 1       | 0.0  | Wardite::BinaryLoader.data_section                                        |\n+---------+------+---------------------------------------------------------------------------+",
+  "fixture": {
+    "path": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+    "sha256": "1ac460e944a54c17529aa05e6cad4575aab6d3d2466745f935237f7a46351e98"
+  },
+  "revision": "1de771dcf6024792e053aa2ed9214df3a9613d8f",
+  "vernier": "1.8.0"
+}

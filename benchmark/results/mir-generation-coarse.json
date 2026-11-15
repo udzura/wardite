@@ -1,0 +1,909 @@
+{
+  "revision": "1de771dcf6024792e053aa2ed9214df3a9613d8f",
+  "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+  "directory": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-native",
+  "commands": {
+    "cruby": [
+      "/Users/udzura/.rbenv/versions/4.0.9/bin/ruby",
+      "-I/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-native/lib",
+      "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-native/mir_generation_worker.rb"
+    ],
+    "spinel": [
+      "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-native/worker"
+    ]
+  },
+  "runs": 3,
+  "warmups": 1,
+  "variants": [
+    "default"
+  ],
+  "timing": "load_from_buffer only; no cache or export execution; nested detail timers are inclusive",
+  "fixtures": {
+    "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm": {
+      "bytes": 25163662,
+      "sha256": "1ac460e944a54c17529aa05e6cad4575aab6d3d2466745f935237f7a46351e98"
+    },
+    "/Users/udzura/ghq/github.com/udzura/wardite/examples/i32_bench.wasm": {
+      "bytes": 418,
+      "sha256": "dfc37b1b41eca774dac324c8d2ad2d6e8704fc517c1c51cdd08bea0c5d7717a3"
+    }
+  },
+  "samples": [
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 11.51282099999662,
+          "calls": 1
+        },
+        "sections": {
+          "value": 3.0115369999984978,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.9197340000246186,
+          "calls": 8161
+        },
+        "store": {
+          "value": 0.002983999998832587,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0019010000032722019,
+          "calls": 1
+        },
+        "translate": {
+          "value": 2.0939830000061193,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 1.0705220000018016,
+          "calls": 1
+        },
+        "validate": {
+          "value": 4.205668999980844,
+          "calls": 8161
+        },
+        "lower": {
+          "value": 0.20202399999834597,
+          "calls": 1
+        },
+        "functions": {
+          "value": 8161.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2173080.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2172832.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1383608.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 24568.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 292.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 3374.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 34.94176100000186,
+          "calls": 1
+        },
+        "sections": {
+          "value": 4.112033999997948,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.5483140001088032,
+          "calls": 8161
+        },
+        "store": {
+          "value": 0.05631300000095507,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.01995399999577785,
+          "calls": 1
+        },
+        "translate": {
+          "value": 4.069408999996085,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 5.274774999998044,
+          "calls": 1
+        },
+        "validate": {
+          "value": 19.691726000019116,
+          "calls": 8161
+        },
+        "lower": {
+          "value": 1.1520009999949252,
+          "calls": 1
+        },
+        "functions": {
+          "value": 8161.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2173080.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2172832.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1383608.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 24568.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 292.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 3374.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 34.73139399999491,
+          "calls": 1
+        },
+        "sections": {
+          "value": 4.0560200000036275,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.5493080000160262,
+          "calls": 8161
+        },
+        "store": {
+          "value": 0.05583999999362277,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.020100000001548324,
+          "calls": 1
+        },
+        "translate": {
+          "value": 4.086449000002176,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 5.265828999996302,
+          "calls": 1
+        },
+        "validate": {
+          "value": 19.529123000014806,
+          "calls": 8161
+        },
+        "lower": {
+          "value": 1.1503880000018398,
+          "calls": 1
+        },
+        "functions": {
+          "value": 8161.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2173080.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2172832.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1383608.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 24568.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 292.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 3374.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 11.57871399999567,
+          "calls": 1
+        },
+        "sections": {
+          "value": 3.1231520000001183,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.9272849999906612,
+          "calls": 8161
+        },
+        "store": {
+          "value": 0.002843000002030749,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0023490000021411106,
+          "calls": 1
+        },
+        "translate": {
+          "value": 2.093875000005937,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 1.023670000002312,
+          "calls": 1
+        },
+        "validate": {
+          "value": 4.199703999969643,
+          "calls": 8161
+        },
+        "lower": {
+          "value": 0.2011800000036601,
+          "calls": 1
+        },
+        "functions": {
+          "value": 8161.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2173080.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2172832.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1383608.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 24568.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 292.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 3374.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 11.464853999998013,
+          "calls": 1
+        },
+        "sections": {
+          "value": 2.9882250000009662,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.9197320000312175,
+          "calls": 8161
+        },
+        "store": {
+          "value": 0.0031139999991864897,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0022030000036465935,
+          "calls": 1
+        },
+        "translate": {
+          "value": 2.1063929999945685,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 1.0449010000011185,
+          "calls": 1
+        },
+        "validate": {
+          "value": 4.193937999938498,
+          "calls": 8161
+        },
+        "lower": {
+          "value": 0.20196200000646058,
+          "calls": 1
+        },
+        "functions": {
+          "value": 8161.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2173080.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2172832.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1383608.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 24568.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 292.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 3374.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 34.69130199999927,
+          "calls": 1
+        },
+        "sections": {
+          "value": 4.055608000002394,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.5415690000954783,
+          "calls": 8161
+        },
+        "store": {
+          "value": 0.056934000000183005,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.022429000004194677,
+          "calls": 1
+        },
+        "translate": {
+          "value": 4.0431769999995595,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 5.249092999998538,
+          "calls": 1
+        },
+        "validate": {
+          "value": 19.55932299997221,
+          "calls": 8161
+        },
+        "lower": {
+          "value": 1.1443270000017947,
+          "calls": 1
+        },
+        "functions": {
+          "value": 8161.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2173080.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2172832.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1383608.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 24568.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 292.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 3374.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/examples/i32_bench.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.0007869999972172081,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.00019799999427050352,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.000009000003046821803,
+          "calls": 2
+        },
+        "store": {
+          "value": 0.00005999999848427251,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000007000002369750291,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.00006800000119255856,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.00013899999612476677,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.00007500000356230885,
+          "calls": 2
+        },
+        "lower": {
+          "value": 0.0000040000013541430235,
+          "calls": 1
+        },
+        "functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 41.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 29.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 40.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 23.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 41.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/examples/i32_bench.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 0.0017049999951268546,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.0002049999966402538,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0000109999964479357,
+          "calls": 2
+        },
+        "store": {
+          "value": 0.00001599999814061448,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000010000003385357559,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.00015100000018719584,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0008310000048368238,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0002660000027390197,
+          "calls": 2
+        },
+        "lower": {
+          "value": 0.00002600000152597204,
+          "calls": 1
+        },
+        "functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 41.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 29.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 40.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 23.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 41.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/examples/i32_bench.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.0017059999954653904,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.00017500000103609636,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.000011999996786471456,
+          "calls": 2
+        },
+        "store": {
+          "value": 0.000014999997802078724,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000008000002708286047,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.00014199999714037403,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0007980000009411015,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.00034500000037951395,
+          "calls": 2
+        },
+        "lower": {
+          "value": 0.00002699999458855018,
+          "calls": 1
+        },
+        "functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 41.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 29.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 40.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 23.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 41.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/examples/i32_bench.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 0.000552999998035375,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.00007599999662488699,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0000040000013541430235,
+          "calls": 2
+        },
+        "store": {
+          "value": 0.00001599999814061448,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000007000002369750291,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.00006199999916134402,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0001649999976507388,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.00006299999949987978,
+          "calls": 2
+        },
+        "lower": {
+          "value": 0.000006000002031214535,
+          "calls": 1
+        },
+        "functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 41.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 29.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 40.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 23.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 41.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/examples/i32_bench.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.0005050000036135316,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.00007000000186963007,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0000040000013541430235,
+          "calls": 2
+        },
+        "store": {
+          "value": 0.00001799999881768599,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000009000003046821803,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.000058999998145736754,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0001410000040777959,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.000057999997807201,
+          "calls": 2
+        },
+        "lower": {
+          "value": 0.000005000001692678779,
+          "calls": 1
+        },
+        "functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 41.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 29.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 40.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 23.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 41.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/examples/i32_bench.wasm",
+      "runtime": "cruby",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 0.0015510000012000091,
+          "calls": 1
+        },
+        "sections": {
+          "value": 0.00016899999900488183,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.0000109999964479357,
+          "calls": 2
+        },
+        "store": {
+          "value": 0.000014000004739500582,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.000007999995432328433,
+          "calls": 1
+        },
+        "translate": {
+          "value": 0.00013800000306218863,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 0.0007800000021234155,
+          "calls": 1
+        },
+        "validate": {
+          "value": 0.0002569999996921979,
+          "calls": 2
+        },
+        "lower": {
+          "value": 0.000025000001187436283,
+          "calls": 1
+        },
+        "functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 41.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 29.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 40.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 23.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 2.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 41.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    }
+  ]
+}

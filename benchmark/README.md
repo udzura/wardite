@@ -6,6 +6,14 @@ enabled in the script. See [Run](#run) for the complete
 matrix and options. The scripts below provide additional optimization-specific
 comparisons.
 
+## MIR generation before caching
+
+[MIR生成性能調査（日本語）](../docs/efflorescence-mir-generation-performance.md)
+separates Wasm decoding, translation, optimization, register validation, and
+lowering on CRuby and Spinel. It includes a reproducible timer-instrumented
+source-copy build, raw measurements, allocation profiling, and i32 scaling
+fixtures. See the report for commands and measurement boundaries.
+
 ## M2 memory and global validation
 
 ```sh

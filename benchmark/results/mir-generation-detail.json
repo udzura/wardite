@@ -1,0 +1,387 @@
+{
+  "revision": "1de771dcf6024792e053aa2ed9214df3a9613d8f",
+  "ruby": "ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [arm64-darwin27]",
+  "directory": "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-detail-native",
+  "commands": {
+    "spinel": [
+      "/Users/udzura/ghq/github.com/udzura/wardite/build/mir-generation-detail-native/worker"
+    ]
+  },
+  "runs": 3,
+  "warmups": 1,
+  "variants": [
+    "default"
+  ],
+  "timing": "load_from_buffer only; no cache or export execution; nested detail timers are inclusive",
+  "fixtures": {
+    "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm": {
+      "bytes": 25163662,
+      "sha256": "1ac460e944a54c17529aa05e6cad4575aab6d3d2466745f935237f7a46351e98"
+    }
+  },
+  "samples": [
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 1,
+      "phases": {
+        "total": {
+          "value": 11.659936000003654,
+          "calls": 1
+        },
+        "sections": {
+          "value": 3.001943000002939,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.9244570000009844,
+          "calls": 8161
+        },
+        "store": {
+          "value": 0.003019000003405381,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.002210999999078922,
+          "calls": 1
+        },
+        "translate": {
+          "value": 2.1775930000003427,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 1.063893000005919,
+          "calls": 1
+        },
+        "validate": {
+          "value": 4.277542000090762,
+          "calls": 8161
+        },
+        "lower": {
+          "value": 0.20470599999680417,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 2.9795950000334415,
+          "calls": 13479
+        },
+        "ir_copy": {
+          "value": 1.0502830000041286,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.4713439999977709,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.009363000026496593,
+          "calls": 297
+        },
+        "propagate": {
+          "value": 0.0031700000108685344,
+          "calls": 297
+        },
+        "immediate": {
+          "value": 0.00008299999899463728,
+          "calls": 297
+        },
+        "branch": {
+          "value": 0.0010589999947114848,
+          "calls": 297
+        },
+        "superinstruction": {
+          "value": 0.0011239999657846056,
+          "calls": 297
+        },
+        "analysis": {
+          "value": 0.5134240001425496,
+          "calls": 10096
+        },
+        "flow_graph": {
+          "value": 0.7756510001127026,
+          "calls": 8161
+        },
+        "validate_types": {
+          "value": 0.6589509997938876,
+          "calls": 8161
+        },
+        "reverse_postorder": {
+          "value": 0.18269300006795675,
+          "calls": 8161
+        },
+        "functions": {
+          "value": 8161.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2173080.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2172832.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1383608.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 24568.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 292.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 3374.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 2,
+      "phases": {
+        "total": {
+          "value": 11.649099999995087,
+          "calls": 1
+        },
+        "sections": {
+          "value": 3.1001479999977164,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.9233750000203145,
+          "calls": 8161
+        },
+        "store": {
+          "value": 0.003339999995660037,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.002237000000604894,
+          "calls": 1
+        },
+        "translate": {
+          "value": 2.106636000004073,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 1.0245920000015758,
+          "calls": 1
+        },
+        "validate": {
+          "value": 4.2750810000434285,
+          "calls": 8161
+        },
+        "lower": {
+          "value": 0.20906700000341516,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 3.0774199999141274,
+          "calls": 13479
+        },
+        "ir_copy": {
+          "value": 1.0119720000002417,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.4514199999975972,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.008863999988534488,
+          "calls": 297
+        },
+        "propagate": {
+          "value": 0.003077000023040455,
+          "calls": 297
+        },
+        "immediate": {
+          "value": 0.00006999999459367245,
+          "calls": 297
+        },
+        "branch": {
+          "value": 0.0009749999881023541,
+          "calls": 297
+        },
+        "superinstruction": {
+          "value": 0.0010500000425963663,
+          "calls": 297
+        },
+        "analysis": {
+          "value": 0.5089689999440452,
+          "calls": 10096
+        },
+        "flow_graph": {
+          "value": 0.7915999999604537,
+          "calls": 8161
+        },
+        "validate_types": {
+          "value": 0.6586890001999564,
+          "calls": 8161
+        },
+        "reverse_postorder": {
+          "value": 0.18112900003325194,
+          "calls": 8161
+        },
+        "functions": {
+          "value": 8161.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2173080.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2172832.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1383608.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 24568.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 292.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 3374.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    },
+    {
+      "fixture": "/Users/udzura/ghq/github.com/udzura/wardite/tmp/ruby.wasm",
+      "runtime": "spinel",
+      "variant": "default",
+      "run": 3,
+      "phases": {
+        "total": {
+          "value": 11.534435999994457,
+          "calls": 1
+        },
+        "sections": {
+          "value": 2.9906359999949927,
+          "calls": 1
+        },
+        "features": {
+          "value": 0.9187079999901471,
+          "calls": 8161
+        },
+        "store": {
+          "value": 0.0031919999964884482,
+          "calls": 1
+        },
+        "link": {
+          "value": 0.0022960000060265884,
+          "calls": 1
+        },
+        "translate": {
+          "value": 2.0920210000040242,
+          "calls": 1
+        },
+        "optimize": {
+          "value": 1.0422570000009728,
+          "calls": 1
+        },
+        "validate": {
+          "value": 4.27404099998239,
+          "calls": 8161
+        },
+        "lower": {
+          "value": 0.20675299999857089,
+          "calls": 1
+        },
+        "code_body": {
+          "value": 2.9685759999629227,
+          "calls": 13479
+        },
+        "ir_copy": {
+          "value": 1.0296979999984615,
+          "calls": 2
+        },
+        "inline": {
+          "value": 0.4509760000000824,
+          "calls": 1
+        },
+        "copy_pass": {
+          "value": 0.008792999979050364,
+          "calls": 297
+        },
+        "propagate": {
+          "value": 0.0029610000201500952,
+          "calls": 297
+        },
+        "immediate": {
+          "value": 0.00007500000356230885,
+          "calls": 297
+        },
+        "branch": {
+          "value": 0.0009980000322684646,
+          "calls": 297
+        },
+        "superinstruction": {
+          "value": 0.001019999966956675,
+          "calls": 297
+        },
+        "analysis": {
+          "value": 0.5146329998606234,
+          "calls": 10096
+        },
+        "flow_graph": {
+          "value": 0.7782330003392417,
+          "calls": 8161
+        },
+        "validate_types": {
+          "value": 0.6578010001467192,
+          "calls": 8161
+        },
+        "reverse_postorder": {
+          "value": 0.1792440000353963,
+          "calls": 8161
+        },
+        "functions": {
+          "value": 8161.0,
+          "calls": 0
+        },
+        "instructions": {
+          "value": 2173080.0,
+          "calls": 0
+        },
+        "optimized_instructions": {
+          "value": 2172832.0,
+          "calls": 0
+        },
+        "registers": {
+          "value": 1383608.0,
+          "calls": 0
+        },
+        "max_registers": {
+          "value": 24568.0,
+          "calls": 0
+        },
+        "eligible_functions": {
+          "value": 292.0,
+          "calls": 0
+        },
+        "eligible_instructions": {
+          "value": 3374.0,
+          "calls": 0
+        }
+      },
+      "peak_rss_bytes": null
+    }
+  ]
+}
