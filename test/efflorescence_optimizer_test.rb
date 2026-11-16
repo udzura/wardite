@@ -2,6 +2,7 @@
 
 require "test_helper"
 require_relative "support/efflorescence_helper"
+require_relative "support/mir_generation_digest"
 require "wardite/cli/cli"
 
 class EfflorescenceOptimizerTest < Test::Unit::TestCase
@@ -45,6 +46,37 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
 
     source.constant_registers.clear
     assert_empty source.copy.constant_registers
+  end
+
+  test "optimized instructions registers and side tables are independent after lowering" do
+    source = E::Function.new(0, [:i32], [:i32], 0)
+    result = source.allocate_constant(42)
+    source.replace_instructions([E::Instruction.new([OP::RETURN, result])])
+    source.handlers << E::HandlerDescriptor.new([E::CatchTarget.new(0, [0], -1, 0, 0)])
+    source.throw_sites << E::ThrowSite.new(0, [result])
+    source.memory_sites << E::MemorySite.new([0, result, 0])
+    source.dynamic_sites << E::DynamicCallSite.new(0, [result], [:i32], [:i32])
+    source.uses_eh = true
+    source.uses_store = true
+    source.uses_dynamic_calls = true
+    semantic = E::IR.new([source])
+    fingerprint = MIRGenerationDigest.ir(semantic)
+
+    output = E::Optimizer.new(E::Configuration.new([])).optimize(semantic)
+    E::Lowerer.new.compile(output)
+    assert_equal fingerprint, MIRGenerationDigest.ir(semantic)
+    optimized = output.functions.fetch(0)
+    optimized.instructions.first[1] = 0
+    optimized.initial_registers[result] = 7
+    optimized.register_types[result] = :i64
+    optimized.constant_registers.clear
+    optimized.handlers.first.clauses.first.payload_registers[0] = result
+    optimized.throw_sites.first.payload_registers.clear
+    optimized.memory_sites.first.sources[0] = result
+    optimized.dynamic_sites.first.arguments.clear
+    optimized.dynamic_sites.first.parameter_types.clear
+    output.entries.first.parameter_types.clear
+    assert_equal fingerprint, MIRGenerationDigest.ir(semantic)
   end
 
   test "dispatch labels are integer literals synchronized with opcode definitions" do

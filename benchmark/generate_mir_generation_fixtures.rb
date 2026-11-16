@@ -31,3 +31,14 @@ File.open("#{path}.wat", "w") do |wat|
   wat.puts ")"
 end
 abort "wasm-tools failed" unless system("wasm-tools", "parse", "#{path}.wat", "-o", "#{path}.wasm")
+
+# Many static CALL sites to one eligible leaf exceed the per-caller budget.
+path = File.join(directory, "inline-dense")
+File.write("#{path}.wat", <<~WAT)
+  (module
+    (func $leaf (param i32) (result i32) local.get 0 i32.const 1 i32.add)
+    (func (export "run") (param i32) (result i32)
+      #{'local.get 0 call $leaf local.set 0 ' * 256}
+      local.get 0))
+WAT
+abort "wasm-tools failed" unless system("wasm-tools", "parse", "#{path}.wat", "-o", "#{path}.wasm")

@@ -234,6 +234,8 @@ module Wardite
         # @rbs callees: Hash[Integer, Wardite::Efflorescence::Function]
         # @rbs return: bool
         def expand_calls(function, ir, callees)
+          return false unless expandable_call?(function, ir, callees)
+
           rewrite = Rewrite.new(function)
           added_instructions = 0
           added_registers = 0
@@ -241,11 +243,8 @@ module Wardite
           function.instructions.each_with_index do |instruction, pc|
             rewrite.mark(pc)
             if instruction[0] == Opcode::CALL && (callee = callee_for(ir, callees, instruction))
-              # Count the expansion before copy cleanup, conservatively.
-              growth = callee.parameter_count + callee.local_count + callee.instructions.size - 2
-              growth += 1 if instruction[1] >= 0
-              growth = 0 if growth < 0
-              registers = callee.register_count + (callee.local_count > 0 ? 1 : 0)
+              growth = instruction_growth(callee, instruction)
+              registers = register_growth(callee)
               if added_instructions + growth <= MAX_ADDED_INSTRUCTIONS &&
                   added_registers + registers <= MAX_ADDED_REGISTERS
                 expand(function, callee, instruction, rewrite)
@@ -259,6 +258,40 @@ module Wardite
           end
           rewrite.finish
           changed
+        end
+
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs ir: Wardite::Efflorescence::IR
+        # @rbs callees: Hash[Integer, Wardite::Efflorescence::Function]
+        # @rbs return: bool
+        def expandable_call?(function, ir, callees)
+          instructions = function.instructions
+          pc = 0
+          while pc < instructions.size
+            instruction = instructions.fetch(pc)
+            if instruction[0] == Opcode::CALL && (callee = callee_for(ir, callees, instruction))
+              return true if instruction_growth(callee, instruction) <= MAX_ADDED_INSTRUCTIONS &&
+                register_growth(callee) <= MAX_ADDED_REGISTERS
+            end
+            pc += 1
+          end
+          false
+        end
+
+        # Count the expansion before copy cleanup, conservatively.
+        # @rbs callee: Wardite::Efflorescence::Function
+        # @rbs call: Wardite::Efflorescence::Instruction
+        # @rbs return: Integer
+        def instruction_growth(callee, call)
+          growth = callee.parameter_count + callee.local_count + callee.instructions.size - 2
+          growth += 1 if call[1] >= 0
+          growth < 0 ? 0 : growth
+        end
+
+        # @rbs callee: Wardite::Efflorescence::Function
+        # @rbs return: Integer
+        def register_growth(callee)
+          callee.register_count + (callee.local_count > 0 ? 1 : 0)
         end
 
         # Check the module index even when there are no inline candidates.
