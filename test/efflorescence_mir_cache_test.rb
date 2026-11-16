@@ -44,6 +44,21 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     FileUtils.remove_entry(@directory)
   end
 
+  test "expanded calls keep the same bytecode on eager and lazy cache hits" do
+    wasm = compile_efflorescence_wat(File.read(MIX_WAT))
+    miss = load_bytes(wasm)
+    assert_false miss.mir_cache_hit
+    caller = miss.ir.function_at(2)
+    assert_empty caller.calls
+    [false, true].each do |eager|
+      hit = load_bytes(wasm, mir_cache_eager: eager)
+      assert_true hit.mir_cache_hit
+      assert_equal reference_mix(20, 123), hit.call_unboxed("call_mix", [20, 123])
+      assert_equal caller.bytecode, hit.ir.function_at(2).bytecode
+      assert_equal miss.dump_mir, hit.dump_mir
+    end
+  end
+
   test "start effects, memory, globals, and host bindings are fresh after a hit" do
     wasm = compile_efflorescence_wat(STATE_WAT)
     calls = []

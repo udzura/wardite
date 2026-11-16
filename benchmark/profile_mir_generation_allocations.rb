@@ -47,6 +47,8 @@ revision = ENV.fetch("MIR_GENERATION_REVISION") { IO.popen(["git", "rev-parse", 
   [eff::Translator, :translate, :translate],
   [eff::Optimizer, :optimize, :optimize],
   [eff::IR, :copy, :ir_copy],
+  [eff::Passes::Inlining, :run, :inline],
+
   [eff::RegisterValidation, :validate, :validate],
   [eff::RegisterValidation, :validate_types, :validate_types],
   [eff::Analysis, :initialize, :analysis],

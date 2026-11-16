@@ -73,7 +73,7 @@ module Wardite
     end
 
     module Passes
-      # Expand only small, straight-line leaves from a snapshot of the IR.
+      # Expand only small, straight-line leaves from pre-rewrite snapshots.
       # One round avoids transitive/exponential expansion and keeps recursion
       # on the ordinary CALL path. Existing local passes clean up the copies.
       class Inlining
@@ -98,9 +98,33 @@ module Wardite
         def eligible?: (Wardite::Efflorescence::Function function) -> bool
 
         # @rbs function: Wardite::Efflorescence::Function
-        # @rbs callees: Wardite::Efflorescence::IR
+        # @rbs ir: Wardite::Efflorescence::IR
+        # @rbs callees: Hash[Integer, Wardite::Efflorescence::Function]
         # @rbs return: bool
-        def expand_calls: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR callees) -> bool
+        def expand_calls: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR ir, Hash[Integer, Wardite::Efflorescence::Function] callees) -> bool
+
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs ir: Wardite::Efflorescence::IR
+        # @rbs callees: Hash[Integer, Wardite::Efflorescence::Function]
+        # @rbs return: bool
+        def expandable_call?: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR ir, Hash[Integer, Wardite::Efflorescence::Function] callees) -> bool
+
+        # Count the expansion before copy cleanup, conservatively.
+        # @rbs callee: Wardite::Efflorescence::Function
+        # @rbs call: Wardite::Efflorescence::Instruction
+        # @rbs return: Integer
+        def instruction_growth: (Wardite::Efflorescence::Function callee, Wardite::Efflorescence::Instruction call) -> Integer
+
+        # @rbs callee: Wardite::Efflorescence::Function
+        # @rbs return: Integer
+        def register_growth: (Wardite::Efflorescence::Function callee) -> Integer
+
+        # Check the module index even when there are no inline candidates.
+        # @rbs ir: Wardite::Efflorescence::IR
+        # @rbs callees: Hash[Integer, Wardite::Efflorescence::Function]
+        # @rbs call: Wardite::Efflorescence::Instruction
+        # @rbs return: Wardite::Efflorescence::Function?
+        def callee_for: (Wardite::Efflorescence::IR ir, Hash[Integer, Wardite::Efflorescence::Function] callees, Wardite::Efflorescence::Instruction call) -> Wardite::Efflorescence::Function?
 
         # @rbs caller: Wardite::Efflorescence::Function
         # @rbs callee: Wardite::Efflorescence::Function

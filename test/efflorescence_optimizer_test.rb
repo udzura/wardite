@@ -2,6 +2,7 @@
 
 require "test_helper"
 require_relative "support/efflorescence_helper"
+require_relative "support/mir_generation_digest"
 require "wardite/cli/cli"
 
 class EfflorescenceOptimizerTest < Test::Unit::TestCase
@@ -11,6 +12,82 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
 
   def configurations
     [[], [:all], *E::Configuration::FEATURES.map { |feature| [feature] }]
+  end
+
+  test "function copy uses actual constant membership and rebuilds parameter and local slots" do
+    source = E::Function.new(4, [:i64], [:f64], 1, local_types: [:f32], pool_index: 2)
+    source.initial_registers[0] = -7
+    source.initial_registers[1] = 0xff800123
+    temporary = source.allocate_register(-42, type: :i64)
+    bits = source.allocate_constant(-4503599627370205, type: :f64)
+    source.allocate_constant(0xff800123, type: :f32)
+    130.times { |n| source.allocate_constant(n) }
+    source.replace_instructions([E::Instruction.new([OP::RETURN, bits])])
+    source.constant_registers.reverse!
+    source.constant_registers.concat([bits, -1, source.register_count + 2, 0, 1])
+
+    legacy_constants = (2...source.register_count).select { |register| source.constant_registers.include?(register) }
+    constants_visited = 0
+    source.constant_registers.define_singleton_method(:each) do |&visit|
+      super() do |register|
+        constants_visited += 1
+        visit.call(register)
+      end
+    end
+    registers_rebuilt = 0
+    probes = 0
+    trace = TracePoint.new(:call, :c_call) do |event|
+      probes += 1 if event.method_id == :include? && event.self.equal?(source.constant_registers)
+      registers_rebuilt += 1 if event.defined_class == E::Function && event.method_id == :allocate_register
+    end
+    copy = trace.enable { source.copy }
+    assert_equal source.constant_registers.size, constants_visited
+    assert_equal source.register_count - source.parameter_count - source.local_count, registers_rebuilt
+    assert_equal 0, probes
+    assert_equal [4, 2, 1], [copy.index, copy.pool_index, copy.local_count]
+    assert_equal legacy_constants, copy.constant_registers
+    assert_equal [0, 0, *source.initial_registers.drop(2)], copy.initial_registers
+    assert_equal source.register_types, copy.register_types
+    assert_equal [:i64], copy.parameter_types
+    assert_equal [:f64], copy.result_types
+    assert_true copy.uses_i64
+    assert_true copy.uses_float
+    copy.instructions.first[1] = temporary
+    assert_equal bits, source.instructions.first[1]
+
+    source.constant_registers.clear
+    assert_empty source.copy.constant_registers
+  end
+
+  test "optimized instructions registers and side tables are independent after lowering" do
+    source = E::Function.new(0, [:i32], [:i32], 0)
+    result = source.allocate_constant(42)
+    source.replace_instructions([E::Instruction.new([OP::RETURN, result])])
+    source.handlers << E::HandlerDescriptor.new([E::CatchTarget.new(0, [0], -1, 0, 0)])
+    source.throw_sites << E::ThrowSite.new(0, [result])
+    source.memory_sites << E::MemorySite.new([0, result, 0])
+    source.dynamic_sites << E::DynamicCallSite.new(0, [result], [:i32], [:i32])
+    source.uses_eh = true
+    source.uses_store = true
+    source.uses_dynamic_calls = true
+    semantic = E::IR.new([source])
+    fingerprint = MIRGenerationDigest.ir(semantic)
+
+    output = E::Optimizer.new(E::Configuration.new([])).optimize(semantic)
+    E::Lowerer.new.compile(output)
+    assert_equal fingerprint, MIRGenerationDigest.ir(semantic)
+    optimized = output.functions.fetch(0)
+    optimized.instructions.first[1] = 0
+    optimized.initial_registers[result] = 7
+    optimized.register_types[result] = :i64
+    optimized.constant_registers.clear
+    optimized.handlers.first.clauses.first.payload_registers[0] = result
+    optimized.throw_sites.first.payload_registers.clear
+    optimized.memory_sites.first.sources[0] = result
+    optimized.dynamic_sites.first.arguments.clear
+    optimized.dynamic_sites.first.parameter_types.clear
+    output.entries.first.parameter_types.clear
+    assert_equal fingerprint, MIRGenerationDigest.ir(semantic)
   end
 
   test "dispatch labels are integer literals synchronized with opcode definitions" do

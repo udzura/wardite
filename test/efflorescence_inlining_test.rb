@@ -129,6 +129,108 @@ class EfflorescenceInliningTest < Test::Unit::TestCase
     end
   end
 
+  test "only pre-rewrite leaves are copied regardless of pool order and imports" do
+    # Module indices 0 and 3 are imports. Defined functions are stored in a
+    # different order to exercise both module-index lookup and snapshot timing.
+    leaf_index = 1
+    code = {
+      1 => [[OP::I32_ADD_IMM, 0, 0, 1], [OP::RETURN, 0]],
+      2 => [[OP::CALL, 0, leaf_index, 0], [OP::RETURN, 0]],
+      4 => [[OP::CALL, 0, 2, 0], [OP::RETURN, 0]],
+      5 => [[OP::CALL, 0, leaf_index, 0], [OP::RETURN, 0]]
+    }
+    [[1, 2, 4, 5], [5, 4, 2, 1]].each do |order|
+      functions = order.each_with_index.map do |index, pool|
+        E::Function.new(index, [:i32], [:i32], 0, pool_index: pool).tap do |function|
+          function.replace_instructions(code.fetch(index).map { |operands| E::Instruction.new(operands) })
+        end
+      end
+      entries = (0..5).map do |index|
+        pool = order.index(index)
+        pool ? E::FunctionEntry.new(:defined, [:i32], [:i32], pool, -1) :
+          E::FunctionEntry.new(:host, [:i32], [:i32], -1, index == 0 ? 0 : 1)
+      end
+      ir = E::IR.new(functions, entries: entries)
+      copied = []
+      trace = TracePoint.new(:call) do |event|
+        copied << event.self.index if event.defined_class == E::Function && event.method_id == :copy
+      end
+      changed = trace.enable { E::Passes::Inlining.new.run(ir) }
+      assert_equal order & [2, 5], changed
+      assert_equal [leaf_index], copied
+      assert_equal code.fetch(1), instructions(ir.function_at(1))
+      assert_equal code.fetch(4), instructions(ir.function_at(4))
+      assert_equal [[OP::COPY, 1, 0], [OP::I32_ADD_IMM, 1, 1, 1],
+                    [OP::COPY, 0, 1], [OP::RETURN, 0]], instructions(ir.function_at(2))
+      assert_equal instructions(ir.function_at(2)), instructions(ir.function_at(5))
+    end
+  end
+
+  test "unchanged callers keep their original instruction objects" do
+    leaf = E::Function.new(0, [], [], 0)
+    leaf.replace_instructions([E::Instruction.new([OP::TRAP])])
+    caller = E::Function.new(1, [], [], 0)
+    caller.replace_instructions([[OP::BR, 1], [OP::CALL, -1, 0], [OP::RETURN, -1]].map { |operands| E::Instruction.new(operands) })
+    ir = E::IR.new([leaf, caller])
+    original = ir.functions.map(&:instructions)
+    copies = original.map(&:dup)
+    rewrites = 0
+    trace = TracePoint.new(:call) do |event|
+      rewrites += 1 if event.defined_class == E::Rewrite && event.method_id == :initialize
+    end
+    assert_empty trace.enable { E::Passes::Inlining.new.run(ir) }
+    assert_equal 0, rewrites
+    ir.functions.each_with_index do |function, index|
+      assert_same original.fetch(index), function.instructions
+      function.instructions.each_with_index do |instruction, pc|
+        assert_same copies.fetch(index).fetch(pc), instruction
+      end
+    end
+  end
+
+  test "skipping rewrites still rejects invalid direct calls with no snapshots" do
+    caller = E::Function.new(1, [], [], 0, pool_index: 0)
+    entries = [E::FunctionEntry.new(:host, [], [], -1, 0), E::FunctionEntry.new(:defined, [], [], 0, -1)]
+    ir = E::IR.new([caller], entries: entries)
+    { -1 => "invalid MIR function index -1", 2 => "invalid MIR function index 2", 0 => "MIR function 0 is not defined" }.each do |index, message|
+      caller.replace_instructions([E::Instruction.new([OP::CALL, -1, index]), E::Instruction.new([OP::RETURN, -1])])
+      error = assert_raise(Wardite::EvalError) { E::Passes::Inlining.new.run(ir) }
+      assert_equal message, error.message
+    end
+  end
+
+  test "an eligible call above the available budget leaves its caller intact" do
+    leaf = E::Function.new(0, [], [], 0)
+    leaf.replace_instructions([E::Instruction.new([OP::RETURN, -1])])
+    caller = E::Function.new(1, [], [], 0)
+    call = E::Instruction.new([OP::CALL, -1, 0])
+    original = [call, E::Instruction.new([OP::RETURN, -1])]
+    caller.replace_instructions(original)
+    pass = E::Passes::Inlining.new
+    # Real eligible leaves fit an empty budget. Override the estimate to
+    # exercise the pre-scan's budget rejection independently of eligibility.
+    pass.define_singleton_method(:instruction_growth) { |_, _| E::Passes::Inlining::MAX_ADDED_INSTRUCTIONS + 1 }
+    assert_empty pass.run(E::IR.new([leaf, caller]))
+    assert_same original, caller.instructions
+    assert_same call, caller.instructions.first
+  end
+
+  test "the last expansion may use exactly the instruction or register budget" do
+    [[7, 1, 64, 8], [0, 32, 8, 256], [7, 32, 64, 256]].each do |body_size, registers, growth, added_registers|
+      leaf = E::Function.new(0, [:i32], [:i32], 0)
+      (registers - 1).times { leaf.allocate_register(0) }
+      body = Array.new(body_size) { E::Instruction.new([OP::I32_ADD_IMM, 0, 0, 1]) }
+      leaf.replace_instructions(body + [E::Instruction.new([OP::RETURN, 0])])
+      caller = E::Function.new(1, [:i32], [:i32], 0)
+      caller.replace_instructions(Array.new(9) { E::Instruction.new([OP::CALL, 0, 0, 0]) } + [E::Instruction.new([OP::RETURN, 0])])
+      assert_equal [1], E::Passes::Inlining.new.run(E::IR.new([leaf, caller]))
+      assert_equal 1, caller.instructions.count { |instruction| instruction[0] == OP::CALL }
+      assert_equal 10 + growth, caller.instructions.size
+      assert_equal 1 + added_registers, caller.register_count
+      E::RegisterValidation.new.validate(caller)
+    end
+  end
+
   test "copy liveness removes overwritten initializers while retaining edge and snapshot uses" do
     fn = E::Function.new(0, [:i32, :i32], [:i32], 0)
     temp = fn.allocate_register(0)
