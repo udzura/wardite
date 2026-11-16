@@ -1,12 +1,18 @@
 # ADR 0016: 世代番号によるcopy propagationのalias無効化
 
-- **状態** 提案（実装仕様）
+- **状態** 取り下げ
 - **日付** 2026-11-16
 - **基準** 本体 `1de771d`、[性能調査](../efflorescence-mir-generation-performance.md)
 - **必読** [実装担当向け入口・共通検証条件](../efflorescence-mir-generation-implementation.md)
 - **変更対象** [CopyPropagation#propagate](../../lib/wardite/efflorescence/optimizer.rb)
 
-## 背景と決定
+## 取り下げ理由
+
+試作では、大きな人工i32関数で `propagate` が短縮した。採用判断に使った手元の比較では、世代管理のオーバーヘッドが走査削減の効果を上回ったため、この局所最適化は取り下げる。 [試作と計測結果（PR #49）](https://github.com/udzura/wardite/pull/49)
+
+以下に当初の設計と検証条件を残す。
+
+## 背景と提案
 
 現行propagateは、destinationへ書くたび全registerのaliasを走査し、そのdestinationを参照するaliasを無効化する。block leaderでも全alias配列を作り直す。I命令、R registerでO(I×R)になり得る。
 
