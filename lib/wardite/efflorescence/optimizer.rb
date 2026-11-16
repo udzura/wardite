@@ -353,6 +353,54 @@ module Wardite
         end
       end
 
+      # Each alias records the already-resolved source. If that source is
+      # overwritten, the destination still holds the value it copied.
+      class CopyAliases
+        # @rbs register_count: Integer
+        def initialize(register_count)
+          @write_version = Array.new(register_count, 0) #: Array[Integer]
+          @alias_root = Array.new(register_count, 0) #: Array[Integer]
+          @alias_source_version = Array.new(register_count, 0) #: Array[Integer]
+          @alias_epoch = Array.new(register_count, 0) #: Array[Integer]
+          @epoch = 1
+        end
+
+        # @rbs register: Integer
+        # @rbs return: Integer
+        def resolve(register)
+          if @alias_epoch[register] == @epoch
+            root = @alias_root[register]
+            return root if @alias_source_version[register] == @write_version[root]
+          end
+          # Preserve the old array lookup's negative indexing on hand-built MIR.
+          register >= 0 ? register : register + @alias_epoch.size
+        end
+
+        # @rbs destination: Integer
+        # @rbs return: void
+        def write(destination)
+          @write_version[destination] += 1
+          @alias_epoch[destination] = 0
+        end
+
+        # The source comes from resolve, and the caller has already written d.
+        # @rbs destination: Integer
+        # @rbs source: Integer
+        # @rbs return: void
+        def bind(destination, source)
+          return if destination == source
+
+          @alias_root[destination] = source
+          @alias_source_version[destination] = @write_version[source]
+          @alias_epoch[destination] = @epoch
+        end
+
+        # @rbs return: void
+        def next_block
+          @epoch += 1
+        end
+      end
+
       class CopyPropagation
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
@@ -395,23 +443,24 @@ module Wardite
         # @rbs return: void
         def propagate(function)
           analysis = Analysis.new(function)
-          aliases = (0...function.register_count).to_a
+          aliases = CopyAliases.new(function.register_count)
           rewrite = Rewrite.new(function)
           function.instructions.each_with_index do |original, pc|
             rewrite.mark(pc)
-            aliases = (0...function.register_count).to_a if analysis.leaders[pc] == 1
+            aliases.next_block if analysis.leaders[pc] == 1
             instruction = original.copy
-            Opcode.read_positions(instruction).each do |position|
-              instruction[position] = aliases.fetch(instruction[position])
+            read_count = Opcode.read_count(instruction)
+            operands = instruction.operands
+            ordinal = 0
+            while ordinal < read_count
+              position = Opcode.read_position(instruction, ordinal)
+              operands[position] = aliases.resolve(operands.fetch(position))
+              ordinal += 1
             end
             destination = Opcode.destination(instruction)
             if destination >= 0
-              aliases.each_with_index do |source, register|
-                aliases[register] = register if source == destination || register == destination
-              end
-              if instruction[0] == Opcode::COPY && instruction[2] != destination
-                aliases[destination] = instruction[2]
-              end
+              aliases.write(destination)
+              aliases.bind(destination, instruction[2]) if instruction[0] == Opcode::COPY
             end
             rewrite.emit(instruction)
           end

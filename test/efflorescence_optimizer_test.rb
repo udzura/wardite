@@ -2,6 +2,7 @@
 
 require "test_helper"
 require_relative "support/efflorescence_helper"
+require_relative "support/legacy_copy_propagation"
 require_relative "support/mir_generation_digest"
 require "wardite/cli/cli"
 
@@ -12,6 +13,193 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
 
   def configurations
     [[], [:all], *E::Configuration::FEATURES.map { |feature| [feature] }]
+  end
+
+  def propagated_copies(function)
+    before = function.copy
+    after = function.copy
+    LegacyCopyPropagation.propagate(before)
+    E::Passes::CopyPropagation.new.send(:propagate, after)
+    assert_equal before.instructions.map(&:operands), after.instructions.map(&:operands)
+    [before, after]
+  end
+
+  test "copy propagation resolves all reads before invalidating the destination" do
+    function = E::Function.new(0, [:i32, :i32], [:i32], 2)
+    3.times { function.allocate_register(0) }
+    constant = function.allocate_constant(17)
+    code = [
+      [[OP::COPY, 2, 0], [OP::COPY, 2, 0]],
+      [[OP::COPY, 3, 2], [OP::COPY, 3, 0]],
+      [[OP::COPY, 2, 1], [OP::COPY, 2, 1]], # Rebinding an alias leaves other aliases of its old root intact.
+      [[OP::COPY, 4, 3], [OP::COPY, 4, 0]],
+      [[OP::I32_ADD, 0, 3, 4], [OP::I32_ADD, 0, 0, 0]],
+      [[OP::COPY, 5, 3], [OP::COPY, 5, 3]], # r3 and r4 still hold the old r0.
+      [[OP::COPY, 6, 4], [OP::COPY, 6, 4]],
+      [[OP::I32_ADD, 3, 5, 5], [OP::I32_ADD, 3, 3, 3]],
+      [[OP::CALL, -1, 2, 2, 5, 6, constant, 4, 2], [OP::CALL, -1, 2, 1, 5, 4, constant, 4, 1]],
+      [[OP::CALL, 4, 1, 6, 4, 5, constant, 2], [OP::CALL, 4, 1, 4, 4, 5, constant, 1]],
+      [[OP::COPY, 0, 6], [OP::COPY, 0, 6]],
+      [[OP::COPY, 6, 0], [OP::COPY, 6, 6]], # Source resolves to destination before this write.
+      [[OP::COPY, 1, 1], [OP::COPY, 1, 1]],
+      [[OP::COPY, 2, constant], [OP::COPY, 2, constant]],
+      [[OP::MEMORY_SIZE, 2, 0], [OP::MEMORY_SIZE, 2, 0]], # Write with no register reads.
+      [[OP::I32_ADD_IMM, 2, 2, 6], [OP::I32_ADD_IMM, 2, 2, 6]],
+      [[OP::RETURN, 2], [OP::RETURN, 2]]
+    ]
+    function.replace_instructions(code.map { |original, _| E::Instruction.new(original) })
+    pass = E::Passes::CopyPropagation.new
+    2.times do
+      _, rewritten = propagated_copies(function)
+      assert_equal code.map(&:last), rewritten.instructions.map(&:operands)
+      independent = function.copy
+      pass.send(:propagate, independent)
+      assert_equal code.map(&:last), independent.instructions.map(&:operands)
+    end
+    assert_equal code.map(&:first), function.instructions.map(&:operands)
+  end
+
+  test "aliases expire at every leader through joins backedges and unreachable blocks" do
+    function = E::Function.new(0, [:i32, :i32], [:i32], 2)
+    code = [
+      [OP::COPY, 2, 0],
+      [OP::BR_IF, 2, 4],                         # Split with an alias live.
+      [OP::COPY, 2, 1],
+      [OP::BR, 5],
+      [OP::COPY, 3, 2],                          # Taken edge must read r2.
+      [OP::I32_EQZ, 3, 0],                       # Join.
+      [OP::BR_IF, 3, 10],
+      [OP::COPY, 2, 0],
+      [OP::I32_SUB_IMM, 0, 0, 1],
+      [OP::BR, 5],
+      [OP::RETURN, 2],
+      [OP::COPY, 2, 1],                          # Unreachable block.
+      [OP::BR_IF, 2, 14],
+      [OP::RETURN, 2],
+      [OP::RETURN, 2]
+    ]
+    function.replace_instructions(code.map { |operands| E::Instruction.new(operands.dup) })
+    _, rewritten = propagated_copies(function)
+    expected = code.map(&:dup)
+    expected[1][1] = 0
+    expected[12][1] = 1
+    assert_equal expected, rewritten.instructions.map(&:operands)
+    E::RegisterValidation.new.validate(rewritten)
+  end
+
+  test "generation aliases match eager invalidation at every register across one million transitions" do
+    rng = Random.new(20261115)
+    10_000.times do |sequence|
+      count = rng.rand(1..32)
+      eager = Array.new(count) { |register| register }
+      tagged = E::Passes::CopyAliases.new(count)
+      100.times do |step|
+        destination = rng.rand(count)
+        case rng.rand(4)
+        when 0
+          source = rng.rand(count)
+          resolved = eager.fetch(source)
+          actual = tagged.resolve(source)
+          LegacyCopyPropagation.invalidate(eager, destination)
+          eager[destination] = resolved if destination != resolved
+          tagged.write(destination)
+          tagged.bind(destination, actual)
+        when 1
+          LegacyCopyPropagation.invalidate(eager, destination)
+          tagged.write(destination)
+        when 2
+          eager.replace(Array.new(count) { |register| register })
+          tagged.next_block
+        end
+        actual = Array.new(count) { |register| tagged.resolve(register) }
+        flunk "sequence #{sequence}, step #{step}: expected #{eager}, got #{actual}" unless eager == actual
+      end
+    end
+  end
+
+  def random_mir_arm(rng, writable_count, register_count)
+    Array.new(rng.rand(1..10)) do
+      destination = rng.rand(writable_count)
+      source = rng.rand(register_count)
+      case rng.rand(4)
+      when 0 then [OP::COPY, destination, source]
+      when 1 then [OP::I32_ADD, destination, source, rng.rand(register_count)]
+      when 2 then [OP::I32_ADD_IMM, destination, source, rng.rand(-99..99)]
+      when 3 then [OP::I32_EQZ, destination, source]
+      end
+    end
+  end
+
+  test "generated MIR validates and executes identically before and after propagation" do
+    rng = Random.new(20261115)
+    template = load_efflorescence('(module (func (export "run") (param i32 i32) (result i32) local.get 0))')
+    1_000.times do
+      function = E::Function.new(0, [:i32, :i32], [:i32], 2)
+      (4...rng.rand(5..32)).each { function.allocate_register(0) }
+      constant = function.allocate_constant(rng.rand(100))
+      code = (4...constant).map { |register| [OP::COPY, register, rng.rand(4)] }
+      # All temporaries are defined before the first diamond regardless of input.
+      rng.rand(1..4).times do
+        choose = [OP::BR_IF, rng.rand(function.register_count), 0]
+        join = [OP::BR, 0]
+        code << choose
+        code.concat(random_mir_arm(rng, constant, function.register_count))
+        code << join
+        choose[2] = code.size
+        code.concat(random_mir_arm(rng, constant, function.register_count))
+        join[1] = code.size
+      end
+      code << [OP::RETURN, rng.rand(function.register_count)]
+      function.replace_instructions(code.map { |operands| E::Instruction.new(operands) })
+      before, after = propagated_copies(function)
+      vms = [function, before, after].map do |variant|
+        E::RegisterValidation.new.validate(variant)
+        E::Lowerer.new.compile(E::IR.new([variant]))
+        E::VM.new(template, cached_functions: [variant], cache_checked: true)
+      end
+      [[0, 0], [1, 77], [0xffffffff, 0x80000000]].each do |args|
+        original, legacy, current = vms.map { |vm| vm.call_unboxed("run", args) }
+        assert_equal [original, original], [legacy, current]
+      end
+    end
+  end
+
+  test "hand-built negative source operands retain the old array lookup behavior" do
+    function = E::Function.new(0, [:i32], [:i32], 2)
+    function.replace_instructions([
+      E::Instruction.new([OP::COPY, 1, -3]),
+      E::Instruction.new([OP::COPY, 2, -2]),
+      E::Instruction.new([OP::RETURN, 2])
+    ])
+    _, rewritten = propagated_copies(function)
+    assert_equal [[OP::COPY, 1, 0], [OP::COPY, 2, 0], [OP::RETURN, 0]], rewritten.instructions.map(&:operands)
+  end
+
+  test "propagation preserves invalid targets and register diagnostics" do
+    invalid = [
+      [[OP::BR, -1]],
+      [[OP::COPY, 1, 10], [OP::RETURN, 1]],
+      [[OP::COPY, 0, 1], [OP::RETURN, 0]]
+    ]
+    invalid.each do |code|
+      function = E::Function.new(0, [:i32], [:i32], 0)
+      function.allocate_register(0)
+      function.replace_instructions(code.map { |operands| E::Instruction.new(operands) })
+      errors = [
+        LegacyCopyPropagation.method(:propagate),
+        E::Passes::CopyPropagation.new.method(:propagate)
+      ].map do |propagate|
+        input = function.copy
+        begin
+          propagate.call(input)
+          E::RegisterValidation.new.validate(input)
+          flunk "accepted invalid MIR: #{code.inspect}"
+        rescue E::TranslationError, IndexError, NoMethodError => error
+          [error.class, error.message.lines.first]
+        end
+      end
+      assert_equal errors.first, errors.last
+    end
   end
 
   test "function copy uses actual constant membership and rebuilds parameter and local slots" do

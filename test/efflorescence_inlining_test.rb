@@ -2,6 +2,7 @@
 
 require "test_helper"
 require_relative "support/efflorescence_helper"
+require_relative "support/legacy_copy_propagation"
 
 class EfflorescenceInliningTest < Test::Unit::TestCase
   include EfflorescenceHelper
@@ -10,6 +11,31 @@ class EfflorescenceInliningTest < Test::Unit::TestCase
 
   def instructions(function)
     function.instructions.map { |instruction| instruction.operands.dup }
+  end
+
+  test "propagation matches the old pass on callers submitted for reoptimization after inlining" do
+    instance = load_efflorescence(INLINE_WAT, disabled_optimizations: [:inline])
+    inlined = instance.runtime.optimized_ir.copy
+    changed = E::Passes::Inlining.new.run(inlined)
+    assert_not_empty changed
+    variants = [inlined, inlined.copy, inlined.copy]
+    changed.each do |index|
+      source, before, after = variants.map { |ir| ir.function_at(index) }
+      assert source.instructions.none? { |instruction| instruction[0] == OP::CALL }
+      LegacyCopyPropagation.propagate(before)
+      E::Passes::CopyPropagation.new.send(:propagate, after)
+      assert_equal instructions(before), instructions(after)
+    end
+    vms = variants.map do |ir|
+      ir.functions.each { |function| E::RegisterValidation.new.validate(function, ir) }
+      E::Lowerer.new.compile(ir)
+      E::VM.new(instance, cached_functions: ir.functions, cache_checked: true)
+    end
+    [["snapshot", [0xffffffff]], ["void", [123]], ["constant", []],
+     ["loop", [10, 123]], ["branch", [0, 456]], ["branch", [1, 456]]].each do |name, args|
+      original, legacy, current = vms.map { |vm| vm.call_unboxed(name, args) }
+      assert_equal [original, original], [legacy, current]
+    end
   end
 
   test "small leaf calls disappear without changing the semantic MIR or exports" do

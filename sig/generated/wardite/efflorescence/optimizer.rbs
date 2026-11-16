@@ -134,6 +134,30 @@ module Wardite
         def expand: (Wardite::Efflorescence::Function caller, Wardite::Efflorescence::Function callee, Wardite::Efflorescence::Instruction call, Wardite::Efflorescence::Rewrite rewrite) -> void
       end
 
+      # Each alias records the already-resolved source. If that source is
+      # overwritten, the destination still holds the value it copied.
+      class CopyAliases
+        # @rbs register_count: Integer
+        def initialize: (Integer register_count) -> untyped
+
+        # @rbs register: Integer
+        # @rbs return: Integer
+        def resolve: (Integer register) -> Integer
+
+        # @rbs destination: Integer
+        # @rbs return: void
+        def write: (Integer destination) -> void
+
+        # The source comes from resolve, and the caller has already written d.
+        # @rbs destination: Integer
+        # @rbs source: Integer
+        # @rbs return: void
+        def bind: (Integer destination, Integer source) -> void
+
+        # @rbs return: void
+        def next_block: () -> void
+      end
+
       class CopyPropagation
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
