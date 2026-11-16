@@ -13,6 +13,40 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     [[], [:all], *E::Configuration::FEATURES.map { |feature| [feature] }]
   end
 
+  test "function copy uses actual constant membership and rebuilds parameter and local slots" do
+    source = E::Function.new(4, [:i64], [:f64], 1, local_types: [:f32], pool_index: 2)
+    source.initial_registers[0] = -7
+    source.initial_registers[1] = 0xff800123
+    temporary = source.allocate_register(-42, type: :i64)
+    bits = source.allocate_constant(-4503599627370205, type: :f64)
+    source.allocate_constant(0xff800123, type: :f32)
+    130.times { |n| source.allocate_constant(n) }
+    source.replace_instructions([E::Instruction.new([OP::RETURN, bits])])
+    source.constant_registers.reverse!
+    source.constant_registers.concat([bits, -1, source.register_count + 2, 0, 1])
+
+    legacy_constants = (2...source.register_count).select { |register| source.constant_registers.include?(register) }
+    probes = 0
+    trace = TracePoint.new(:c_call) do |event|
+      probes += 1 if event.method_id == :include? && event.self.equal?(source.constant_registers)
+    end
+    copy = trace.enable { source.copy }
+    assert_equal 0, probes
+    assert_equal [4, 2, 1], [copy.index, copy.pool_index, copy.local_count]
+    assert_equal legacy_constants, copy.constant_registers
+    assert_equal [0, 0, *source.initial_registers.drop(2)], copy.initial_registers
+    assert_equal source.register_types, copy.register_types
+    assert_equal [:i64], copy.parameter_types
+    assert_equal [:f64], copy.result_types
+    assert_true copy.uses_i64
+    assert_true copy.uses_float
+    copy.instructions.first[1] = temporary
+    assert_equal bits, source.instructions.first[1]
+
+    source.constant_registers.clear
+    assert_empty source.copy.constant_registers
+  end
+
   test "dispatch labels are integer literals synchronized with opcode definitions" do
     source = File.read(File.expand_path("../lib/wardite/efflorescence/vm.rb", __dir__))
     methods = source.split(/^      def execute_flat\(frame, pools, active_frames, metrics\)$/).drop(1)

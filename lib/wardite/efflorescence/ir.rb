@@ -960,9 +960,14 @@ module Wardite
         @memory_sites.each { |site| result.memory_sites << site.copy }
         @handlers.each { |handler| result.handlers << handler.copy }
         @throw_sites.each { |site| result.throw_sites << site.copy }
+        count = register_count
+        constant = Array.new(count, 0)
+        @constant_registers.each do |register|
+          constant[register] = 1 if register >= 0 && register < count
+        end
         index = @parameter_types.size + @local_count
-        while index < register_count
-          if @constant_registers.include?(index)
+        while index < count
+          if constant[index] == 1
             result.allocate_constant(initial_value(index), type: @register_types.fetch(index))
           else
             result.allocate_register(initial_value(index), type: @register_types.fetch(index))
