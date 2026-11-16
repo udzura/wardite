@@ -129,6 +129,43 @@ class EfflorescenceInliningTest < Test::Unit::TestCase
     end
   end
 
+  test "only pre-rewrite leaves are copied regardless of pool order and imports" do
+    # Module indices 0 and 3 are imports. Defined functions are stored in a
+    # different order to exercise both module-index lookup and snapshot timing.
+    leaf_index = 1
+    code = {
+      1 => [[OP::I32_ADD_IMM, 0, 0, 1], [OP::RETURN, 0]],
+      2 => [[OP::CALL, 0, leaf_index, 0], [OP::RETURN, 0]],
+      4 => [[OP::CALL, 0, 2, 0], [OP::RETURN, 0]],
+      5 => [[OP::CALL, 0, leaf_index, 0], [OP::RETURN, 0]]
+    }
+    [[1, 2, 4, 5], [5, 4, 2, 1]].each do |order|
+      functions = order.each_with_index.map do |index, pool|
+        E::Function.new(index, [:i32], [:i32], 0, pool_index: pool).tap do |function|
+          function.replace_instructions(code.fetch(index).map { |operands| E::Instruction.new(operands) })
+        end
+      end
+      entries = (0..5).map do |index|
+        pool = order.index(index)
+        pool ? E::FunctionEntry.new(:defined, [:i32], [:i32], pool, -1) :
+          E::FunctionEntry.new(:host, [:i32], [:i32], -1, index == 0 ? 0 : 1)
+      end
+      ir = E::IR.new(functions, entries: entries)
+      copied = []
+      trace = TracePoint.new(:call) do |event|
+        copied << event.self.index if event.defined_class == E::Function && event.method_id == :copy
+      end
+      changed = trace.enable { E::Passes::Inlining.new.run(ir) }
+      assert_equal order & [2, 5], changed
+      assert_equal [leaf_index], copied
+      assert_equal code.fetch(1), instructions(ir.function_at(1))
+      assert_equal code.fetch(4), instructions(ir.function_at(4))
+      assert_equal [[OP::COPY, 1, 0], [OP::I32_ADD_IMM, 1, 1, 1],
+                    [OP::COPY, 0, 1], [OP::RETURN, 0]], instructions(ir.function_at(2))
+      assert_equal instructions(ir.function_at(2)), instructions(ir.function_at(5))
+    end
+  end
+
   test "copy liveness removes overwritten initializers while retaining edge and snapshot uses" do
     fn = E::Function.new(0, [:i32, :i32], [:i32], 0)
     temp = fn.allocate_register(0)

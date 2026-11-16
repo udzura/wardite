@@ -181,7 +181,7 @@ module Wardite
     end
 
     module Passes
-      # Expand only small, straight-line leaves from a snapshot of the IR.
+      # Expand only small, straight-line leaves from pre-rewrite snapshots.
       # One round avoids transitive/exponential expansion and keeps recursion
       # on the ordinary CALL path. Existing local passes clean up the copies.
       class Inlining
@@ -193,12 +193,15 @@ module Wardite
         # @rbs ir: Wardite::Efflorescence::IR
         # @rbs return: Array[Integer]
         def run(ir)
-          callees = ir.copy
+          callees = {} #: Hash[Integer, Wardite::Efflorescence::Function]
+          ir.functions.each do |function|
+            callees[function.index] = function.copy if eligible?(function)
+          end
           changed = [] #: Array[Integer]
           index = 0
           while index < ir.functions.size
             function = ir.defined_at(index)
-            changed << function.index if !function.uses_i64 && !function.uses_float && !function.uses_eh && !function.uses_store && !function.uses_dynamic_calls && expand_calls(function, callees)
+            changed << function.index if !function.uses_i64 && !function.uses_float && !function.uses_eh && !function.uses_store && !function.uses_dynamic_calls && expand_calls(function, ir, callees)
             index += 1
           end
           changed
@@ -227,23 +230,23 @@ module Wardite
         end
 
         # @rbs function: Wardite::Efflorescence::Function
-        # @rbs callees: Wardite::Efflorescence::IR
+        # @rbs ir: Wardite::Efflorescence::IR
+        # @rbs callees: Hash[Integer, Wardite::Efflorescence::Function]
         # @rbs return: bool
-        def expand_calls(function, callees)
+        def expand_calls(function, ir, callees)
           rewrite = Rewrite.new(function)
           added_instructions = 0
           added_registers = 0
           changed = false
           function.instructions.each_with_index do |instruction, pc|
             rewrite.mark(pc)
-            if instruction[0] == Opcode::CALL
-              callee = callees.function_at(instruction[2])
+            if instruction[0] == Opcode::CALL && (callee = callee_for(ir, callees, instruction))
               # Count the expansion before copy cleanup, conservatively.
               growth = callee.parameter_count + callee.local_count + callee.instructions.size - 2
               growth += 1 if instruction[1] >= 0
               growth = 0 if growth < 0
               registers = callee.register_count + (callee.local_count > 0 ? 1 : 0)
-              if eligible?(callee) && added_instructions + growth <= MAX_ADDED_INSTRUCTIONS &&
+              if added_instructions + growth <= MAX_ADDED_INSTRUCTIONS &&
                   added_registers + registers <= MAX_ADDED_REGISTERS
                 expand(function, callee, instruction, rewrite)
                 added_instructions += growth
@@ -256,6 +259,17 @@ module Wardite
           end
           rewrite.finish
           changed
+        end
+
+        # Check the module index even when there are no inline candidates.
+        # @rbs ir: Wardite::Efflorescence::IR
+        # @rbs callees: Hash[Integer, Wardite::Efflorescence::Function]
+        # @rbs call: Wardite::Efflorescence::Instruction
+        # @rbs return: Wardite::Efflorescence::Function?
+        def callee_for(ir, callees, call)
+          index = call[2]
+          ir.function_at(index)
+          callees[index]
         end
 
         # @rbs caller: Wardite::Efflorescence::Function
