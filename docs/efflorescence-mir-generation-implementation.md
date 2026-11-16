@@ -1,12 +1,12 @@
 # キャッシュ前MIR生成の改修: 実装担当向け入口
 
-2026-11-16。[性能調査](efflorescence-mir-generation-performance.md)に基づく3件の実装仕様。各ADRは提案状態で、実装済みを意味しない。この文書と該当ADR、参照コードがあれば会話履歴なしで着手できる。
+2026-11-16。[性能調査](efflorescence-mir-generation-performance.md)に基づくADRと共通の検証条件。実装状況と計測結果は各ADRを参照。
 
 | 調査の結論 | 実装仕様 | 主な決定 |
 |---|---|---|
 | 検証・デコードが大入力のload時間の約71% | [ADR 0014](adr/0014-efflorescence-mir-build-validation-and-decoding.md) | 非EHのブロックCFG、配列を作らないread参照、byte読み出し、デコード結果のfeature情報 |
 | 最適化時間の約99%が2回の全IRコピー | [ADR 0015](adr/0015-efflorescence-selective-inline-snapshots.md) | 最初の独立コピーを維持して線形化、callee snapshotだけ選別、無変更callerのrewriteを回避 |
-| 大きなi32関数のpropagateが超線形 | [ADR 0016](adr/0016-efflorescence-generation-tagged-copy-propagation.md) | rootの更新世代とblock epochでaliasを遅延無効化 |
+| 大きなi32関数のpropagateが超線形 | [ADR 0016（取り下げ）](adr/0016-efflorescence-generation-tagged-copy-propagation.md) | rootの更新世代とblock epochでaliasを遅延無効化する案 |
 
 ## 基準と実装範囲
 
@@ -20,10 +20,9 @@
 
 1. baselineを保存し、比較用のIR正規化と診断カウンターを用意する。
 2. ADR 0015を実装する。変更範囲が小さく、semantic IRの所有関係を変えずに2回目の全コピーを除去できる。
-3. ADR 0016を実装する。対象を `CopyPropagation#propagate` に限定する。
-4. ADR 0014をread API → 非EH検証 → byte読み出し → feature情報の順に実装する。各段階で計測する。
+3. ADR 0014をread API → 非EH検証 → byte読み出し → feature情報の順に実装する。各段階で計測する。
 
-性能上の最大対象は0014だが、上の順序はレビューと原因切り分けを容易にするため。3件にアルゴリズム上の依存はない。0014のread APIを先に入れた場合のみ0016のoperand列挙を新APIへ合わせる。`ir.rb` と `optimizer.rb` が重なるので、並行した実装を無検証でまとめない。
+上の順序はレビューと原因切り分けを容易にするため。0014と0015にアルゴリズム上の依存はない。`ir.rb` と `optimizer.rb` が重なるので、並行した実装を無検証でまとめない。
 
 各ADRの実装段階を個別コミットにする。コミット1行目を簡潔にし、詳細は必要最小限、`Co-authored-by: Codex <codex@openai.com>` を付ける。既存の未コミット成果物を取り消さない。
 
