@@ -27,11 +27,22 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     source.constant_registers.concat([bits, -1, source.register_count + 2, 0, 1])
 
     legacy_constants = (2...source.register_count).select { |register| source.constant_registers.include?(register) }
+    constants_visited = 0
+    source.constant_registers.define_singleton_method(:each) do |&visit|
+      super() do |register|
+        constants_visited += 1
+        visit.call(register)
+      end
+    end
+    registers_rebuilt = 0
     probes = 0
-    trace = TracePoint.new(:c_call) do |event|
+    trace = TracePoint.new(:call, :c_call) do |event|
       probes += 1 if event.method_id == :include? && event.self.equal?(source.constant_registers)
+      registers_rebuilt += 1 if event.defined_class == E::Function && event.method_id == :allocate_register
     end
     copy = trace.enable { source.copy }
+    assert_equal source.constant_registers.size, constants_visited
+    assert_equal source.register_count - source.parameter_count - source.local_count, registers_rebuilt
     assert_equal 0, probes
     assert_equal [4, 2, 1], [copy.index, copy.pool_index, copy.local_count]
     assert_equal legacy_constants, copy.constant_registers

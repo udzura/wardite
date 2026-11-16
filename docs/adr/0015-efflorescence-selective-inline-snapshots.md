@@ -1,9 +1,10 @@
 # ADR 0015: IRコピーの線形化とinline用snapshotの選別
 
-- **状態** 提案（実装仕様）
+- **状態** 実装済み
 - **日付** 2026-11-16
 - **基準** 本体 `1de771d`、[性能調査](../efflorescence-mir-generation-performance.md)
 - **必読** [実装担当向け入口・共通検証条件](../efflorescence-mir-generation-implementation.md)
+- **実装計測** [前後比較と回帰検証](../efflorescence-selective-inline-snapshots-results.md)
 - **関連** [inliningの実装記録](../efflorescence-inlining.md)
 
 ## 背景と決定
