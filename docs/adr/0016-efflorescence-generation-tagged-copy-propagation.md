@@ -1,9 +1,10 @@
 # ADR 0016: 世代番号によるcopy propagationのalias無効化
 
-- **状態** 提案（実装仕様）
+- **状態** 実装済み
 - **日付** 2026-11-16
 - **基準** 本体 `1de771d`、[性能調査](../efflorescence-mir-generation-performance.md)
 - **必読** [実装担当向け入口・共通検証条件](../efflorescence-mir-generation-implementation.md)
+- **実装計測** [前後比較と回帰検証](../efflorescence-generation-tagged-copy-propagation-results.md)
 - **変更対象** [CopyPropagation#propagate](../../lib/wardite/efflorescence/optimizer.rb)
 
 ## 背景と決定
