@@ -418,7 +418,22 @@ module Wardite
 
       EXTENDED_GLOBAL_SET_TYPES: Hash[Integer, Symbol]
 
-      # These are semantic register accesses, excluding frame initialization.
+      # Semantic register operand positions, excluding frame initialization.
+      READ_POSITIONS: Array[Array[Integer]?]
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Integer
+      def self.read_count: (Wardite::Efflorescence::Instruction instruction) -> Integer
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs ordinal: Integer
+      # @rbs return: Integer
+      def self.read_position: (Wardite::Efflorescence::Instruction instruction, Integer ordinal) -> Integer
+
+      # @rbs opcode: Integer
+      # @rbs return: Array[Integer]
+      def self.fixed_read_positions: (Integer opcode) -> Array[Integer]
+
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Array[Integer]
       def self.read_positions: (Wardite::Efflorescence::Instruction instruction) -> Array[Integer]
@@ -702,6 +717,19 @@ module Wardite
       # @rbs mapping: Array[Integer]
       # @rbs return: void
       def replace_register_references!: (Array[Integer] mapping) -> void
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Integer
+      def read_count: (Wardite::Efflorescence::Instruction instruction) -> Integer
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs ordinal: Integer
+      # @rbs return: Integer
+      def read_at: (Wardite::Efflorescence::Instruction instruction, Integer ordinal) -> Integer
+
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs return: Array[Integer]?
+      def side_reads: (Wardite::Efflorescence::Instruction instruction) -> Array[Integer]?
 
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Array[Integer]

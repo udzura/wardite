@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "tempfile"
 
 class WarditeLeb128Test < Test::Unit::TestCase
   test "signed LEB128 decodes 64-bit boundaries and extended encodings" do
@@ -22,6 +23,32 @@ class WarditeLeb128Test < Test::Unit::TestCase
     %w[80808080808080808001 ffffffffffffffffff7e 8080808080808080808000 8080].each do |hex|
       assert_raise(Wardite::LoadError) do
         Wardite::Leb128Helper.fetch_sleb128(StringIO.new([hex].pack("H*")), width: 64)
+      end
+    end
+  end
+
+  test "File and StringIO agree on zero, unsigned limits and EOF" do
+    cases = [
+      ["00", 0, nil],
+      ["ffffffff0f", 0xffffffff, nil],
+      ["8080808010", nil, "unsigned LEB128 exceeds width"],
+      ["8080808080", nil, "unsigned LEB128 exceeds width"],
+      ["80", nil, "invalid or truncated unsigned LEB128"],
+      ["", nil, "invalid or truncated unsigned LEB128"]
+    ]
+    cases.each do |hex, expected, error|
+      bytes = [hex].pack("H*")
+      Tempfile.create("leb128", binmode: true) do |file|
+        file.write(bytes)
+        file.rewind
+        [file, StringIO.new(bytes)].each do |input|
+          if error
+            assert_raise_message(error) { Wardite::Leb128Helper.fetch_uleb128(input) }
+          else
+            assert_equal expected, Wardite::Leb128Helper.fetch_uleb128(input)
+          end
+        end
+        assert_equal bytes.bytesize, file.pos
       end
     end
   end

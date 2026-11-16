@@ -67,22 +67,103 @@ module Wardite
         instructions = function.instructions
         raise TranslationError, "Efflorescence: empty MIR function" if instructions.empty?
         validate_types(function, ir, tags)
+        if !function.uses_eh && function.handlers.empty? && function.throw_sites.empty? &&
+            !function.register_types.include?(:exnref)
+          leaders = plain_leaders(instructions)
+          if leaders
+            validate_plain(function, leaders)
+            return
+          end
+        end
+
         analysis = Analysis.new(function)
         flow = analysis.flow
-        register_count = function.register_count
+        blocks, block_for_pc = build_blocks(analysis.leaders)
+        order = reverse_postorder(blocks, block_for_pc, flow)
+        validate_blocks(function, blocks, order, block_for_pc, flow)
+      end
+
+      private
+
+      # @rbs instructions: Array[Wardite::Efflorescence::Instruction]
+      # @rbs return: Array[Integer]?
+      def plain_leaders(instructions)
+        count = instructions.size
+        leaders = Array.new(count, 0)
+        leaders[0] = 1
+        pc = 0
+        while pc < count
+          instruction = instructions.fetch(pc)
+          opcode = instruction[0]
+          case opcode
+          when Opcode::EH_ENTER, Opcode::EH_TRIM, Opcode::THROW, Opcode::THROW_REF, Opcode::COPY_REF
+            return nil
+          end
+          position = Opcode.target_position(instruction)
+          if position >= 0
+            target = instruction[position]
+            raise TranslationError, "invalid MIR branch target #{target}" unless target >= 0 && target < count
+            leaders[target] = 1
+          end
+          pc += 1
+          leaders[pc] = 1 if pc < count && (position >= 0 || Opcode.terminal?(opcode))
+        end
+        leaders
+      end
+
+      # @rbs leaders: Array[Integer]
+      # @rbs return: [Array[Wardite::Efflorescence::RegisterValidation::Block], Array[Integer]]
+      def build_blocks(leaders)
         blocks = [] #: Array[Wardite::Efflorescence::RegisterValidation::Block]
-        block_for_pc = [] #: Array[Integer]
+        block_for_pc = Array.new(leaders.size, 0)
         first = 0
-        instructions.size.times do |pc|
-          if pc > 0 && analysis.leaders[pc] == 1
+        pc = 0
+        while pc < leaders.size
+          if pc > 0 && leaders.fetch(pc) == 1
             blocks << Block.new(first, pc)
             first = pc
           end
-          block_for_pc << blocks.size
+          block_for_pc[pc] = blocks.size
+          pc += 1
         end
-        blocks << Block.new(first, instructions.size)
-        order = reverse_postorder(blocks, block_for_pc, flow)
+        blocks << Block.new(first, leaders.size)
+        [blocks, block_for_pc]
+      end
 
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs leaders: Array[Integer]
+      # @rbs return: void
+      def validate_plain(function, leaders)
+        instructions = function.instructions
+        blocks, block_for_pc = build_blocks(leaders)
+        blocks.each do |block|
+          instruction = instructions.fetch(block.limit - 1)
+          position = Opcode.target_position(instruction)
+          block.successors << block_for_pc.fetch(instruction[position]) if position >= 0
+          if block.limit < instructions.size && !Opcode.terminal?(instruction[0])
+            block.successors << block_for_pc.fetch(block.limit)
+          end
+        end
+
+        order = block_reverse_postorder(blocks)
+        order.each do |index|
+          block = blocks.fetch(index)
+          if block.successors.empty? && !Opcode.terminal?(instructions.fetch(block.limit - 1)[0])
+            raise TranslationError, "MIR falls through without RETURN"
+          end
+        end
+        validate_blocks(function, blocks, order, block_for_pc, nil)
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
+      # @rbs order: Array[Integer]
+      # @rbs block_for_pc: Array[Integer]
+      # @rbs flow: Wardite::Efflorescence::FlowGraph?
+      # @rbs return: void
+      def validate_blocks(function, blocks, order, block_for_pc, flow)
+        instructions = function.instructions
+        register_count = function.register_count
         word_count = (register_count + WORD_MASK) >> WORD_SHIFT
         constants = Array.new(word_count, 0)
         defined = Array.new(word_count, 0)
@@ -105,17 +186,23 @@ module Wardite
             pc = block.first
             while pc < block.limit
               instruction = instructions.fetch(pc)
-              function.reads(instruction).each do |register|
+              read_count = function.read_count(instruction)
+              ordinal = 0
+              while ordinal < read_count
+                register = function.read_at(instruction, ordinal)
                 unless register >= 0 && register < register_count && marked?(defined, register)
                   raise TranslationError, "Efflorescence: function #{function.index}, MIR PC #{pc}: r#{register} read before definition"
                 end
+                ordinal += 1
               end
               # A CALL result exists only on its normal successor.
-              flow.exceptional.fetch(pc).each do |clause|
-                edge_defined = defined.dup
-                clause.destinations.each { |register| mark(edge_defined, register) }
-                target = block_for_pc.fetch(clause.target_pc)
-                pending += 1 if blocks.fetch(target).merge(edge_defined)
+              if flow
+                flow.exceptional.fetch(pc).each do |clause|
+                  edge_defined = defined.dup
+                  clause.destinations.each { |register| mark(edge_defined, register) }
+                  target = block_for_pc.fetch(clause.target_pc)
+                  pending += 1 if blocks.fetch(target).merge(edge_defined)
+                end
               end
               destination = Opcode.destination(instruction)
               if destination >= 0
@@ -126,17 +213,20 @@ module Wardite
               end
               pc += 1
             end
-            flow.normal.fetch(block.limit - 1).each do |target_pc|
-              target = block_for_pc.fetch(target_pc)
-              pending += 1 if blocks.fetch(target).merge(defined)
+            if flow
+              flow.normal.fetch(block.limit - 1).each do |target_pc|
+                target = block_for_pc.fetch(target_pc)
+                pending += 1 if blocks.fetch(target).merge(defined)
+              end
+            else
+              block.successors.each do |target|
+                pending += 1 if blocks.fetch(target).merge(defined)
+              end
             end
           end
         end
       end
-      private
 
-      # Visit predecessors before joins where possible, then revisit changed
-      # states across backedges until the worklist is empty.
       # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
       # @rbs block_for_pc: Array[Integer]
       # @rbs flow: Wardite::Efflorescence::FlowGraph
@@ -149,6 +239,14 @@ module Wardite
           end
         end
 
+        block_reverse_postorder(blocks)
+      end
+
+      # Visit predecessors before joins where possible, then revisit changed
+      # states across backedges until the worklist is empty.
+      # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
+      # @rbs return: Array[Integer]
+      def block_reverse_postorder(blocks)
         seen = Array.new(blocks.size, false)
         next_edge = Array.new(blocks.size, 0)
         seen[0] = true
@@ -231,22 +329,26 @@ module Wardite
                 raise TranslationError, "MIR host call signature mismatch"
               end
             end
-            check_register(function, instruction[3], :i32) if opcode == Opcode::CALL_INDIRECT
-            site.arguments.each_with_index { |register, i| check_register(function, register, site.parameter_types.fetch(i)) }
+            ordinal = 0
+            if opcode == Opcode::CALL_INDIRECT
+              check_register(function, function.read_at(instruction, ordinal), :i32)
+              ordinal += 1
+            end
+            check_reads(function, instruction, site.parameter_types, ordinal, function.read_count(instruction))
             check_result(function, destination, site.result_types)
             next
           end
-          reads = function.reads(instruction)
+          read_count = function.read_count(instruction)
           destination = Opcode.destination(instruction)
           if opcode > Opcode::CALL_INDIRECT
-            validate_extended_instruction(function, instruction, reads, destination)
+            validate_extended_instruction(function, instruction, read_count, destination)
             next
           end
           case opcode
           when Opcode::THROW
             site = function.throw_sites.fetch(instruction[1])
-            types = payload_types(tags, site.tag_index, reads.size)
-            reads.each_with_index { |register, i| check_register(function, register, types.fetch(i)) }
+            types = payload_types(tags, site.tag_index, read_count)
+            check_reads(function, instruction, types, 0, read_count)
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
             unless type && FunctionEntry.numeric_type?(type)
@@ -258,18 +360,18 @@ module Wardite
           when Opcode::CALL
             if ir
               entry = ir.entry_at(instruction[2])
-              unless entry.kind == :defined && reads.size == entry.parameter_types.size
+              unless entry.kind == :defined && read_count == entry.parameter_types.size
                 raise TranslationError, "invalid MIR direct call signature"
               end
-              reads.each_with_index { |register, i| check_register(function, register, entry.parameter_types.fetch(i)) }
+              check_reads(function, instruction, entry.parameter_types, 0, read_count)
               check_result(function, destination, entry.result_types)
             else
-              reads.each { |register| check_register(function, register, :i32) }
+              check_reads_of_type(function, instruction, :i32, read_count)
               check_register(function, destination, :i32) if destination >= 0
             end
           else
             expected = opcode == Opcode::COPY_REF || opcode == Opcode::THROW_REF ? :exnref : :i32
-            reads.each { |register| check_register(function, register, expected) }
+            check_reads_of_type(function, instruction, expected, read_count)
             check_register(function, destination, expected) if destination >= 0
           end
         end
@@ -286,15 +388,15 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs instruction: Wardite::Efflorescence::Instruction
-      # @rbs reads: Array[Integer]
+      # @rbs read_count: Integer
       # @rbs destination: Integer
       # @rbs return: void
-      def validate_extended_instruction(function, instruction, reads, destination)
+      def validate_extended_instruction(function, instruction, read_count, destination)
         opcode = instruction[0]
         types = Opcode.extended_alu_types(opcode)
         if types
           check_register(function, destination, types.fetch(0))
-          reads.each_with_index { |register, i| check_register(function, register, types.fetch(i + 1)) }
+          check_reads(function, instruction, types, 0, read_count, 1)
         elsif (type = Opcode::EXTENDED_LOAD_TYPES[opcode])
           check_register(function, destination, type)
           check_register(function, instruction[2], :i32)
@@ -307,6 +409,34 @@ module Wardite
           check_register(function, instruction[2], type)
         else
           raise TranslationError, "unknown extended MIR opcode #{opcode}"
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs types: Array[Symbol]
+      # @rbs first: Integer
+      # @rbs limit: Integer
+      # @rbs type_offset: Integer
+      # @rbs return: void
+      def check_reads(function, instruction, types, first, limit, type_offset = 0)
+        ordinal = first
+        while ordinal < limit
+          check_register(function, function.read_at(instruction, ordinal), types.fetch(ordinal - first + type_offset))
+          ordinal += 1
+        end
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs type: Symbol
+      # @rbs limit: Integer
+      # @rbs return: void
+      def check_reads_of_type(function, instruction, type, limit)
+        ordinal = 0
+        while ordinal < limit
+          check_register(function, function.read_at(instruction, ordinal), type)
+          ordinal += 1
         end
       end
 

@@ -37,8 +37,12 @@ module GenerationAllocations
 end
 
 eff = Wardite::Efflorescence
+decode_method = Wardite::BinaryLoader.respond_to?(:decode_body) ? :decode_body : :code_body
+revision = ENV.fetch("MIR_GENERATION_REVISION") { IO.popen(["git", "rev-parse", "HEAD"], &:read).strip }
 [
   [Wardite::BinaryLoader.singleton_class, :sections, :sections],
+  [Wardite::BinaryLoader.singleton_class, decode_method, :code_body],
+
   [Wardite::CodeSection::CodeBody, :check_features, :features],
   [eff::Translator, :translate, :translate],
   [eff::Optimizer, :optimize, :optimize],
@@ -59,7 +63,7 @@ after = GC.stat
 File.write(ARGV.fetch(1), JSON.pretty_generate(
   ruby: RUBY_DESCRIPTION, vernier: Vernier::VERSION,
   fixture: {path: fixture, sha256: Digest::SHA256.file(fixture).hexdigest},
-  revision: IO.popen(["git", "rev-parse", "HEAD"], &:read).strip,
+  revision: revision,
   phases_inclusive: GenerationAllocations::TOTALS,
   gc_delta: before.keys.to_h { |key| [key, after[key] - before[key]] },
   slowest_validation: GenerationAllocations::FUNCTIONS.sort_by { |row| -row[:seconds] }.take(20),

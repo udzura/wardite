@@ -91,13 +91,25 @@ module Wardite
     def initialize: () -> void
   end
 
+  # The loader owns this result until a CodeBody exposes its mutable instructions.
+  class DecodedBody
+    attr_reader instructions: Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+
+    attr_reader blocks: Array[Block]
+
+    attr_reader has_eh_instructions: bool
+
+    # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    # @rbs blocks: Array[Block]
+    # @rbs has_eh_instructions: bool
+    def initialize: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions, Array[Block] blocks, bool has_eh_instructions) -> untyped
+  end
+
   class CodeSection < Section
     class CodeBody
       attr_accessor locals_count: Array[Integer]
 
       attr_accessor locals_type: Array[Symbol]
-
-      attr_writer instruction_bytes: String?
 
       attr_writer type_section: TypeSection?
 
@@ -112,6 +124,14 @@ module Wardite
       # @rbs return: void
       def body=: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions) -> void
 
+      # @rbs bytes: String?
+      # @rbs return: void
+      def instruction_bytes=: (String? bytes) -> void
+
+      # @rbs buf: File|StringIO
+      # @rbs return: void
+      def decode_from: (File | StringIO buf) -> void
+
       # @rbs types: TypeSection?
       # @rbs stack: bool
       # @rbs return: void
@@ -119,11 +139,27 @@ module Wardite
 
       private
 
+      # @rbs decoded: DecodedBody
+      # @rbs return: void
+      def install_decoded: (DecodedBody decoded) -> void
+
+      # @rbs decoded: DecodedBody
+      # @rbs types: TypeSection?
+      # @rbs stack: bool
+      # @rbs return: void
+      def check_decoded: (DecodedBody decoded, TypeSection? types, bool stack) -> void
+
       # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       # @rbs types: TypeSection?
       # @rbs stack: bool
       # @rbs return: void
       def check_instructions: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions, TypeSection? types, bool stack) -> void
+
+      # @rbs block: Block
+      # @rbs types: TypeSection?
+      # @rbs stack: bool
+      # @rbs return: void
+      def check_block: (Block block, TypeSection? types, bool stack) -> void
     end
 
     attr_accessor func_codes: Array[CodeBody]
@@ -259,19 +295,32 @@ module Wardite
     # @rbs return: CodeSection::CodeBody
     def self.read_function_body: (StringIO sbuf, ?bool defer_code) -> CodeSection::CodeBody
 
-    # @rbs buf: StringIO
+    # @rbs buf: File|StringIO
     # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
-    def self.code_body: (StringIO buf) -> Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+    def self.code_body: (File | StringIO buf) -> Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+
+    # @rbs buf: File|StringIO
+    # @rbs return: DecodedBody
+    def self.decode_body: (File | StringIO buf) -> DecodedBody
+
+    # @rbs code: Symbol
+    # @rbs return: bool
+    def self.eh_instruction?: (Symbol code) -> bool
 
     # Decode s33, distinguishing the one-byte value/void forms from indices.
-    # @rbs buf: StringIO
+    # @rbs buf: File|StringIO
     # @rbs return: Block
-    def self.read_blocktype: (StringIO buf) -> Block
+    def self.read_blocktype: (File | StringIO buf) -> Block
 
     # @rbs c: String
-    # @rbs buf: StringIO
+    # @rbs buf: File|StringIO
     # @rbs return: [Symbol, Symbol, Array[Symbol]]
-    def self.resolve_code: (String c, StringIO buf) -> [ Symbol, Symbol, Array[Symbol] ]
+    def self.resolve_code: (String c, File | StringIO buf) -> [ Symbol, Symbol, Array[Symbol] ]
+
+    # @rbs opcode: Integer
+    # @rbs buf: File|StringIO
+    # @rbs return: Op::DecodeSpec
+    def self.resolve_spec: (Integer opcode, File | StringIO buf) -> Op::DecodeSpec
 
     # @rbs return: DataSection
     def self.data_section: () -> DataSection
@@ -297,6 +346,10 @@ module Wardite
     # @rbs code: Integer
     # @rbs return: nil
     def self.unimplemented_skip_section: (Integer code) -> nil
+
+    # @rbs sbuf: File|StringIO
+    # @rbs return: Integer
+    def self.assert_byte: (File | StringIO sbuf) -> Integer
 
     # @rbs sbuf: File|StringIO
     # @rbs n: Integer

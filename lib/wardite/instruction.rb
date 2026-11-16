@@ -522,7 +522,7 @@ module Wardite
 
     # @rbs code: Symbol
     # @rbs return: Array[Symbol]
-    def self.operand_of(code)
+    def self.build_operand_types(code)
       case code
       when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if, :throw, :data_drop
         [:u32]
@@ -553,6 +553,47 @@ module Wardite
       else
         []
       end
+    end
+
+    private_class_method :build_operand_types
+
+    class DecodeSpec
+      attr_reader :namespace #: Symbol
+      attr_reader :code #: Symbol
+      attr_reader :operand_types #: Array[Symbol]
+
+      # @rbs namespace: Symbol
+      # @rbs code: Symbol
+      # @rbs operand_types: Array[Symbol]
+      def initialize(namespace, code, operand_types)
+        @namespace = namespace
+        @code = code
+        @operand_types = operand_types.freeze
+        freeze
+      end
+    end
+
+    OPERAND_TYPES_BY_CODE = {} #: Hash[Symbol, Array[Symbol]]
+    OPCODE_SPECS = NAMESPACES.each_with_index.map do |namespace, opcode|
+      code = SYMS.fetch(opcode)
+      types = build_operand_types(code).freeze
+      OPERAND_TYPES_BY_CODE[code] = types
+      DecodeSpec.new(namespace, code, types)
+    end.freeze #: Array[DecodeSpec]
+
+    FC_SPECS = FC_SYMS.each_with_index.map do |code, opcode|
+      types = build_operand_types(code).freeze
+      OPERAND_TYPES_BY_CODE[code] = types
+      DecodeSpec.new(FC_OPERANDS[opcode] || :default, code, types)
+    end.freeze #: Array[DecodeSpec]
+    OPERAND_TYPES_BY_CODE.freeze
+    private_constant :OPERAND_TYPES_BY_CODE
+
+    # @rbs code: Symbol
+    # @rbs return: Array[Symbol]
+    def self.operand_of(code)
+      types = OPERAND_TYPES_BY_CODE[code]
+      types ? types.dup : []
     end
 
     # @see https://www.w3.org/TR/wasm-core-1/#value-types%E2%91%A2

@@ -43,13 +43,38 @@ module Wardite
 
       private
 
-      # Visit predecessors before joins where possible, then revisit changed
-      # states across backedges until the worklist is empty.
+      # @rbs instructions: Array[Wardite::Efflorescence::Instruction]
+      # @rbs return: Array[Integer]?
+      def plain_leaders: (Array[Wardite::Efflorescence::Instruction] instructions) -> Array[Integer]?
+
+      # @rbs leaders: Array[Integer]
+      # @rbs return: [Array[Wardite::Efflorescence::RegisterValidation::Block], Array[Integer]]
+      def build_blocks: (Array[Integer] leaders) -> [ Array[Wardite::Efflorescence::RegisterValidation::Block], Array[Integer] ]
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs leaders: Array[Integer]
+      # @rbs return: void
+      def validate_plain: (Wardite::Efflorescence::Function function, Array[Integer] leaders) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
+      # @rbs order: Array[Integer]
+      # @rbs block_for_pc: Array[Integer]
+      # @rbs flow: Wardite::Efflorescence::FlowGraph?
+      # @rbs return: void
+      def validate_blocks: (Wardite::Efflorescence::Function function, Array[Wardite::Efflorescence::RegisterValidation::Block] blocks, Array[Integer] order, Array[Integer] block_for_pc, Wardite::Efflorescence::FlowGraph? flow) -> void
+
       # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
       # @rbs block_for_pc: Array[Integer]
       # @rbs flow: Wardite::Efflorescence::FlowGraph
       # @rbs return: Array[Integer]
       def reverse_postorder: (Array[Wardite::Efflorescence::RegisterValidation::Block] blocks, Array[Integer] block_for_pc, Wardite::Efflorescence::FlowGraph flow) -> Array[Integer]
+
+      # Visit predecessors before joins where possible, then revisit changed
+      # states across backedges until the worklist is empty.
+      # @rbs blocks: Array[Wardite::Efflorescence::RegisterValidation::Block]
+      # @rbs return: Array[Integer]
+      def block_reverse_postorder: (Array[Wardite::Efflorescence::RegisterValidation::Block] blocks) -> Array[Integer]
 
       # @rbs words: Array[Integer]
       # @rbs register: Integer
@@ -71,10 +96,26 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs instruction: Wardite::Efflorescence::Instruction
-      # @rbs reads: Array[Integer]
+      # @rbs read_count: Integer
       # @rbs destination: Integer
       # @rbs return: void
-      def validate_extended_instruction: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Array[Integer] reads, Integer destination) -> void
+      def validate_extended_instruction: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Integer read_count, Integer destination) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs types: Array[Symbol]
+      # @rbs first: Integer
+      # @rbs limit: Integer
+      # @rbs type_offset: Integer
+      # @rbs return: void
+      def check_reads: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Array[Symbol] types, Integer first, Integer limit, ?Integer type_offset) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs instruction: Wardite::Efflorescence::Instruction
+      # @rbs type: Symbol
+      # @rbs limit: Integer
+      # @rbs return: void
+      def check_reads_of_type: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::Instruction instruction, Symbol type, Integer limit) -> void
 
       # @rbs tags: Array[Wardite::Efflorescence::Tag]?
       # @rbs index: Integer

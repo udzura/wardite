@@ -100,7 +100,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     assert_false miss.mir_cache_hit
     decoded = 0
     trace = TracePoint.new(:call) do |event|
-      decoded += 1 if event.self.equal?(Wardite::BinaryLoader) && event.method_id == :code_body
+      decoded += 1 if event.self.equal?(Wardite::BinaryLoader) && event.method_id == :decode_body
     end
 
     trace.enable do
@@ -250,7 +250,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
       File.binwrite(file, corrupt)
       steps = []
       trace = TracePoint.new(:call) do |event|
-        steps << :decode if event.self.equal?(Wardite::BinaryLoader) && event.method_id == :code_body
+        steps << :decode if event.self.equal?(Wardite::BinaryLoader) && event.method_id == :decode_body
         steps << :store if event.defined_class == Wardite::Store && event.method_id == :initialize
       end
       rebuilt = trace.enable { load_bytes(wasm, mir_cache_verify: mode, mir_cache_eager: true) }
