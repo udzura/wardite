@@ -2,5 +2,5 @@
 # rbs_inline: enabled
 
 module Wardite
-  VERSION = "1.2.1" #: String
+  VERSION = "1.2.2" #: String
 end
