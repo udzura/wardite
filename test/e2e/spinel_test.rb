@@ -469,9 +469,11 @@ class WarditeSpinelTest < Test::Unit::TestCase
         wasm = File.join(dir, "test.wasm")
         output, status = Open3.capture2e("wasm-tools", "parse", "-", "-o", wasm, stdin_data: code)
         assert status.success?, output
-        _out, err, status = Open3.capture3(@binary, "--no-wasi", "--invoke", "div", "--", wasm)
-        assert_false status.success?
-        assert_include err, "integer overflow"
+        [[], ["--stack-engine"]].each do |options|
+          _out, err, status = Open3.capture3(@binary, *options, "--no-wasi", "--invoke", "div", "--", wasm)
+          assert_false status.success?
+          assert_include err, "Wardite::IntegerOverflow"
+        end
       end
     end
   end
