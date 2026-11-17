@@ -92,6 +92,29 @@ class WarditeSpinelM2Test < Test::Unit::TestCase
     end
   end
 
+  test 'scalar loads see memory grown by a host that can reenter the guest' do
+    with_wasm(<<~WAT) do |file|
+      (module (import "env" "grow" (func $grow (param i32)))
+        (memory 1 4)
+        (data (i32.const 0) "\\fe")
+        (func (export "read") (param i32) (result i64) local.get 0 i64.load8_u)
+        (func (export "run") (param i32) (result i64)
+          i32.const 0 i64.load8_u
+          local.get 0 call $grow
+          local.get 0 i64.load8_u i64.add))
+    WAT
+      Dir.mktmpdir do |dir|
+        worker = File.join(dir, 'm2-host-grow')
+        output, status = Open3.capture2e(ENV.fetch('SPINEL', 'spinel'), '--strict-require', '-O2',
+          "-I#{ROOT}/lib", File.join(ROOT, 'test/spinel/efflorescence_m2_host_grow.rb'), '-o', worker)
+        assert status.success?, output
+        output, status = Open3.capture2e(worker, file)
+        assert status.success?, output
+        assert_equal "M2 host grow passed\n", output
+      end
+    end
+  end
+
   test 'active binary data segments overwrite earlier bytes across a memory page boundary' do
     with_wasm(<<~WAT) do |file|
       (module (memory 2)
