@@ -90,6 +90,6 @@ Dir.mktmpdir("wardite-m4-reference") do |dir|
   WAT
   compare(dir, "indirect", indirect, [["indirect", 0, MIN, MIN + 1], ["indirect", 1, MIN, "type"],
     ["legacy_wrapper", 1, MIN + 1]])
-  stack = Wardite.new(path: File.join(dir, "indirect.wasm"), enable_wasi: false).runtime
+  stack = Wardite.new(path: File.join(dir, "indirect.wasm"), enable_wasi: false, engine: :stack).runtime
   abort "legacy wrapper mismatch" unless stack.call("legacy_wrapper", [1]).value_s == MIN + 1
 end

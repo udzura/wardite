@@ -60,18 +60,19 @@ $ wardite examples/test.wasm
 #=> Test!
 ```
 
-### Efflorescence register VM (experimental)
+### Efflorescence register VM
 
-Use `--new-engine` to select the MIR-based register engine. The stack VM is the
-default. The same option is available in Spinel builds.
+The CLI and Ruby API default to the MIR-based Efflorescence register VM. The
+CRuby and Spinel CLIs still accept `--new-engine` for compatibility. Use
+`--stack-engine` to select the legacy stack VM.
 
 ```sh
-wardite --new-engine --no-wasi --invoke add test/add.wasm 100 200
+wardite --no-wasi --invoke add test/add.wasm 100 200
 # return value: I32(300)
 ```
 
-In Ruby, pass `engine: :efflorescence` to `Wardite.new` or
-`BinaryLoader.load_from_buffer`. Unsupported instructions raise an explicit
+To select the legacy stack VM in Ruby, pass `engine: :stack` to `Wardite.new` or
+`BinaryLoader.load_from_buffer`. Efflorescence reports unsupported instructions with an explicit
 exception. See the [design, supported subset and tests](docs/efflorescence.md)
 and [engine comparison benchmark](benchmark/README.md).
 
@@ -82,11 +83,11 @@ Use `--mir-disable NAME` to compare
 individual features, `--mir-dump` to inspect MIR and `--mir-profile` for counters.
 See [Phase 2](docs/efflorescence-phase2.md) ([日本語](docs/efflorescence-phase2-ja.md)).
 
-On CRuby and Spinel, pass `--mir-cache DIR` with `--new-engine` to reuse lowered
+On CRuby and Spinel, pass `--mir-cache DIR` to reuse lowered
 MIR across processes. Use a local directory you control. Each run still decodes
 the Wasm, links imports, and initializes a fresh instance. `--mir-dump` and
-`--mir-profile` build MIR normally. Ruby callers can pass `mir_cache: dir` with
-`engine: :efflorescence`. CRuby and Spinel use different cache keys.
+`--mir-profile` build MIR normally. Ruby callers can pass `mir_cache: dir`.
+CRuby and Spinel use different cache keys.
 
 The default `--mir-cache-verify checksum` checks the payload size and samples
 blocks. Use `--mir-cache-verify sha256` or Ruby's `mir_cache_verify: :sha256`
@@ -99,7 +100,7 @@ can go undetected in checksum mode, including changes that leave the MIR
 structurally valid.
 [MIR2 cache measurements](docs/efflorescence-mir2-cache.md)
 
-For WASI commands, `--snapshot DIR` (with `--new-engine --mir-cache DIR`) saves
+For WASI commands, `--snapshot DIR` (with `--mir-cache DIR`) saves
 the guest state just before its first WASI call that reads files or writes output,
 and later runs with the same Wasm, arguments, environment, preopens and stdio
 kinds resume from there. Clock values and random bytes read before that point
@@ -159,7 +160,7 @@ $ make spinel-test
 
 The executable enables the shared WASI Preview 1 host by default. Use
 `--no-wasi` to disable it. To boot a Ruby 4.0.9 WASI binary, run
-`build/wardite --new-engine -- "$ruby_wasm" --disable-gems -e 'puts 6*7'`.
+`build/wardite -- "$ruby_wasm" --disable-gems -e 'puts 6*7'`.
 See the [ruby.wasm verification record](docs/efflorescence-ruby-wasm-phase1.md)
 for the build and file-loading commands. Vernier profiling is available in the
 CRuby build. Ruby's dynamic export helpers (`instance.add(...)` and

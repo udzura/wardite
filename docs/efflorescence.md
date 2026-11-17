@@ -10,16 +10,17 @@ The Phase 1 limitations below are historical.
 
 This document records Phase 1 (`67fbfae`). Current Efflorescence enables the
 [Phase 2 optimizations](efflorescence-phase2.md) by default; `--mir-disable all`
-selects unoptimized MIR lowered to the same flat bytecode executor. Wardite's default is still the stack VM.
+selects unoptimized MIR lowered to the same flat bytecode executor.
 
-Efflorescence is Wardite's opt-in, pure Ruby register interpreter. The default
-remains `Wardite::Runtime`, the stack interpreter. Both engines share the binary
-loader, decoded Wasm instructions, store and exports; execution is independent.
+Efflorescence is Wardite's default pure Ruby register interpreter. Select the
+legacy stack VM with `--stack-engine` in the CLI or `engine: :stack` in Ruby.
+Both engines share the binary loader, decoded Wasm instructions, store and
+exports. Each engine executes independently.
 
 ```sh
 wasm-tools parse benchmark/i32_mix.wat -o build/i32_mix.wasm
-ruby -Ilib exe/wardite --new-engine --no-wasi --invoke inline_mix build/i32_mix.wasm 100000 123
-ruby -Ilib exe/wardite --new-engine --no-wasi --invoke call_mix build/i32_mix.wasm 100000 123
+ruby -Ilib exe/wardite --no-wasi --invoke inline_mix build/i32_mix.wasm 100000 123
+ruby -Ilib exe/wardite --no-wasi --invoke call_mix build/i32_mix.wasm 100000 123
 # Both: return value: I32(-424175775)
 ```
 
@@ -27,7 +28,7 @@ The equivalent Ruby API is:
 
 ```ruby
 require "wardite"
-instance = Wardite.new(path: "build/i32_mix.wasm", enable_wasi: false, engine: :efflorescence)
+instance = Wardite.new(path: "build/i32_mix.wasm", enable_wasi: false)
 instance.runtime.call("call_mix", [100000, 123]) # Wardite::I32, same as Runtime
 instance.runtime.call_unboxed("call_mix", [100000, 123]) # 3870791521 (Integer)
 ```

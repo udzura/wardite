@@ -74,7 +74,7 @@ module SnapshotFixture
   # @rbs *guest_args: String
   # @rbs return: [String, String, Process::Status]
   def run_snapshot(command, directory, wasm, *guest_args)
-    args = [*command, "--new-engine", "--mir-cache", File.join(directory, "cache"),
+    args = [*command, "--mir-cache", File.join(directory, "cache"),
       "--snapshot", File.join(directory, "snapshot"), "--", wasm, *guest_args]
     Open3.capture3({"WARDITE_TRACE" => "1"}, *args)
   end

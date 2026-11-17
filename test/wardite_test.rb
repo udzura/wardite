@@ -15,13 +15,17 @@ class WarditeBinaryLoaderTest < Test::Unit::TestCase
   test "Wardite::BinaryLoader" do
     bytes = IO.read(File.expand_path("../add.wasm", __FILE__))
     wasm = ::StringIO.new(bytes)
-    assert do
-      ::Wardite::BinaryLoader.load_from_buffer(wasm)
-    end
+    assert_instance_of Wardite::Efflorescence::VM, Wardite::BinaryLoader.load_from_buffer(wasm).runtime
   end
 end
 
 class WarditeInstanceTest < Test::Unit::TestCase
+  test "Wardite.new defaults to Efflorescence and accepts the stack engine" do
+    path = File.expand_path("add.wasm", __dir__)
+    assert_instance_of Wardite::Efflorescence::VM, Wardite.new(path: path).runtime
+    assert_instance_of Wardite::Runtime, Wardite.new(path: path, engine: :stack).runtime
+  end
+
   test "respond_to? accepts the private visibility flag" do
     bytes = File.binread(File.expand_path("add.wasm", __dir__))
     instance = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)

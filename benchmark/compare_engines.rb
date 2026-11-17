@@ -44,7 +44,7 @@ runtimes["CRuby + YJIT"] = [RbConfig.ruby, "--yjit", "-Ilib"] if yjit.success?
 def cli_command(runner, engine, export, wasm, rounds, seed)
   command = runner.dup
   command << "exe/wardite" unless runner.first == "./build/wardite"
-  command << "--new-engine" if engine == "efflorescence"
+  command << "--stack-engine" if engine == "stack"
   command + ["--no-wasi", "--invoke", export, "--", wasm, rounds.to_s, seed.to_s]
 end
 

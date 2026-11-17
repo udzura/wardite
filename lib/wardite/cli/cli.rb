@@ -37,7 +37,7 @@ module Wardite
         @invoke = @mapdir = nil
         @wasi = true
         @yjit = false
-        @new_engine = false
+        @new_engine = true
         @disabled_optimizations = []
         @mir_dump = false
         @mir_profile = false
@@ -61,8 +61,11 @@ module Wardite
           opts.on("--no-wasi", "Disable WASI feature") {|_v|
             @wasi = false
           }
-          opts.on("--new-engine", "Use the Efflorescence register VM") {|_v|
+          opts.on("--new-engine", "Use Efflorescence (default; kept for compatibility)") {|_v|
             @new_engine = true
+          }
+          opts.on("--stack-engine", "Use the legacy stack VM") {|_v|
+            @new_engine = false
           }
           opts.on("--mir-disable NAME", "Disable copy, immediate, branch, superinstruction, inline, frames, or all (repeatable)") {|v|
             @disabled_optimizations << v.to_sym
@@ -88,10 +91,10 @@ module Wardite
         end
         options.parse!(args)
         if !new_engine && (!disabled_optimizations.empty? || mir_dump || mir_profile || mir_cache)
-          raise "MIR options require --new-engine"
+          raise "MIR options require Efflorescence"
         end
         if snapshot && (!new_engine || !mir_cache || mir_dump || mir_profile)
-          raise "--snapshot requires --new-engine and --mir-cache, without --mir-dump or --mir-profile"
+          raise "--snapshot requires --mir-cache and Efflorescence, without --mir-dump or --mir-profile"
         end
         @file = args[0] || raise("require file argument")
         @args = (args[1..-1] || [])

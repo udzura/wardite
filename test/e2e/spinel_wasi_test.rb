@@ -35,14 +35,14 @@ class WarditeSpinelWasiTest < Test::Unit::TestCase
     Dir.mktmpdir do |dir|
       file = File.join(dir, "wasi.wasm")
       File.binwrite(file, compile_efflorescence_wat(wat))
-      [[], ["--new-engine"]].each do |options|
+      [[], ["--new-engine"], ["--stack-engine"]].each do |options|
         stdout, stderr, status = Open3.capture3(@binary, *options, "--", file)
         assert_equal 7, status.exitstatus, stderr
         assert_equal "42\n", stdout
       end
       %w[miss hit].each do |cache_state|
         stdout, stderr, status = Open3.capture3({"WARDITE_TRACE" => "1"}, @binary,
-          "--new-engine", "--mir-cache", File.join(dir, "cache"), "--", file)
+          "--mir-cache", File.join(dir, "cache"), "--", file)
         assert_equal 7, status.exitstatus, stderr
         assert_equal "42\n", stdout
         assert_include stderr, "MIR2 cache #{cache_state}:"

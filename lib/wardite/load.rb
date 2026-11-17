@@ -395,7 +395,7 @@ module Wardite
     # @rbs mir_cache_verify: Symbol
     # @rbs mir_cache_eager: bool
     # @rbs return: Instance
-    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :stack, disabled_optimizations: [], mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false)
+    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :efflorescence, disabled_optimizations: [], mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false)
       start = Time.now.to_f #: Float
       unless mir_cache_verify == :checksum || mir_cache_verify == :sha256
         raise ArgumentError, "MIR cache verification must be checksum or sha256"

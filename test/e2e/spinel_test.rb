@@ -126,9 +126,9 @@ class WarditeSpinelTest < Test::Unit::TestCase
       MIX_CASES.each do |rounds, seed|
         expected = reference_mix(rounds, seed)
         expected -= 2**32 if expected >= 2**31
-        engine_options = [[], ["--new-engine"], ["--new-engine", "--mir-disable", "all"]]
+        engine_options = [[], ["--stack-engine"], ["--mir-disable", "all"]]
         Wardite::Efflorescence::Configuration::FEATURES.each do |feature|
-          engine_options << ["--new-engine", "--mir-disable", feature.to_s]
+          engine_options << ["--mir-disable", feature.to_s]
         end
         engine_options.each do |engine|
           %w[inline_mix call_mix].each do |export|
