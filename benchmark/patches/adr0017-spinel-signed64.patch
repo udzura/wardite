@@ -1,0 +1,190 @@
+From 1d6433c70c0f8f8160726a8253d229f913bcbc3c Mon Sep 17 00:00:00 2001
+From: Uchio Kondo <udzura@udzura.jp>
+Date: Tue, 17 Nov 2026 16:55:05 +0900
+Subject: [PATCH] Lower signed 64-bit buffer reads to integers
+
+Use the typed accessor when the target can hold every signed value.
+Keep the boxed path for unsigned 64-bit and on narrow targets.
+
+Co-authored-by: Codex <codex@openai.com>
+
+diff --git a/lib/sp_iobuffer.h b/lib/sp_iobuffer.h
+index b52af70fd..a811278ac 100644
+--- a/lib/sp_iobuffer.h
++++ b/lib/sp_iobuffer.h
+@@ -79,8 +79,8 @@ SP_COLD double sp_IOBuffer_get_f(sp_IOBuffer *b, sp_int ty, sp_int off);
+    header when it uses IO::Buffer). `ty` is a literal at every call site, so
+    the width, byte order and sign fold away and a read is a bounds check and
+    a load. An in-range offset on an owned buffer or a valid slice takes that
+-   path. Invalid views and offsets take the checked read. The 64-bit
+-   integers read boxed through sp_IOBuffer_get_x.
++   path. Invalid views and offsets take the checked read. Integer types
++   that can exceed sp_int read boxed through sp_IOBuffer_get_x.
+    Width, order and sign follow iob_types in sp_iobuffer.c: the integers
+    after U8/S8 come in (u, s, U, S) groups, the floats are (f32, f64, F32,
+    F64), and an odd integer code is a signed type. */
+diff --git a/src/analyze_infer_recv.c b/src/analyze_infer_recv.c
+index cc838e9f7..89e8b9bc7 100644
+--- a/src/analyze_infer_recv.c
++++ b/src/analyze_infer_recv.c
+@@ -1338,8 +1338,8 @@ int infer_object_call(Compiler *c, int id, TyKind rt, TyKind *out) {
+       int cid = ncid;
+       /* IO::Buffer#get_value with a LITERAL type symbol lowers to a typed
+          accessor (the codegen fold); the site's type follows the symbol:
+-         floats are Float, u64 stays boxed (a value above 2^63-1 is a
+-         Bignum), every other integer type is a machine int. The offset may
++         floats are Float, integer types that can exceed the target's
++         machine integer stay boxed, and the rest are Integer. The offset may
+          be boxed (the fold unboxes it), which is what every int local is
+          under --int-overflow=promote. The conditions mirror the fold's
+          exactly (a literal the fold declines keeps the generic binding's
+@@ -1360,7 +1360,7 @@ int infer_object_call(Compiler *c, int id, TyKind rt, TyKind *out) {
+         if (it >= 0 && ot == TY_UNKNOWN && g_infer_optimistic) { *out = TY_UNKNOWN; return 1; }
+         if (it >= 0 && (ot == TY_INT || ot == TY_POLY)) {
+           *out = comp_iob_ty_is_float(it) ? TY_FLOAT
+-               : comp_iob_ty_is_64(it) ? TY_POLY : TY_INT;
++               : comp_iob_ty_boxes_read(it) ? TY_POLY : TY_INT;
+           return 1;
+         }
+       }
+diff --git a/src/codegen_call_recv.c b/src/codegen_call_recv.c
+index 1615be548..fa3605707 100644
+--- a/src/codegen_call_recv.c
++++ b/src/codegen_call_recv.c
+@@ -12713,7 +12713,7 @@ static int emit_native_binding_call(Compiler *c, int id, int cid, const char *na
+       (comp_ntype(c, argv[1]) == TY_INT || comp_ntype(c, argv[1]) == TY_POLY)) {
+     int it = comp_iob_sym_type(nt_str(nt, argv[0], "value"));
+     if (it >= 0 && sp_streq(name, "get_value") && argc == 2) {
+-      if (comp_iob_ty_is_64(it)) {
++      if (comp_iob_ty_boxes_read(it)) {
+         buf_puts(b, "sp_IOBuffer_get_x(");
+         emit_expr(c, recv, b);
+         buf_printf(b, ", %d, ", it);
+diff --git a/src/codegen_stmt.c b/src/codegen_stmt.c
+index 4b7702833..7fbee382e 100644
+--- a/src/codegen_stmt.c
++++ b/src/codegen_stmt.c
+@@ -12537,8 +12537,8 @@ static int hc_iob_binding(Compiler *c, TyKind t, const char *nm, int argc) {
+   return comp_native_method_find(c, cid, nm, argc, 0) >= 0 && comp_method_in_chain(c, cid, nm, NULL) < 0;
+ }
+ /* `buf.get_value(:U8, i)`: a read emit_native_binding_call lowers inline --
+-   a literal type symbol of 32 bits or fewer, or a float (the 64-bit
+-   integers read boxed) -- at an Integer offset */
++   a literal float or integer type whose values fit the typed accessor,
++   at an Integer offset */
+ int hc_iob_read(Compiler *c, int id) {
+   const NodeTable *nt = c->nt;
+   const char *nm = nt_str(nt, id, "name");
+@@ -12549,7 +12549,7 @@ int hc_iob_read(Compiler *c, int id) {
+       nt_kind(nt, av[0]) != NK_SymbolNode || !hc_iob_binding(c, comp_ntype(c, recv), nm, 2))
+     return 0;
+   int it = comp_iob_sym_type(nt_str(nt, av[0], "value"));
+-  return it >= 0 && !comp_iob_ty_is_64(it) && (comp_ntype(c, av[1]) == TY_INT || hc_promoted_int(c, av[1]));
++  return it >= 0 && !comp_iob_ty_boxes_read(it) && (comp_ntype(c, av[1]) == TY_INT || hc_promoted_int(c, av[1]));
+ }
+ /* `buf.set_value(:U8, i, v)`: a write emit_native_binding_call lowers
+    inline -- a literal type symbol at an Integer offset, with an Integer
+diff --git a/src/compiler.c b/src/compiler.c
+index d6c5db252..0bc10cdc9 100644
+--- a/src/compiler.c
++++ b/src/compiler.c
+@@ -3620,14 +3620,15 @@ int comp_iob_ty_is_float(int t) { return t >= 14 && t <= 17; }
+ int comp_iob_ty_width(int t) { return t >= 14 ? (t == 14 || t == 16 ? 4 : 8) : t <= 1 ? 1 : t <= 5 ? 2 : t <= 9 ? 4 : 8; }
+ int comp_iob_ty_be(int t) { return t >= 14 ? t >= 16 : t >= 2 && ((t - 2) & 2); }
+ int comp_iob_ty_signed(int t) { return t < 14 && (t & 1); }
+-/* the 64-bit integer types stay BOXED through the fold: u64 values above
+-   2^63-1 are Bignums, and the signed ones take the same path */
+-int comp_iob_ty_is_64(int t) {
++/* A signed 64-bit value fits a 64-bit sp_int. Unsigned 64-bit values
++   can require a Bignum, as can either 64-bit type on a 32-bit target. */
++int comp_iob_ty_boxes_read(int t) {
+   extern int sp_target_int_bits;
+   /* on a 32-bit target the 32-bit types are in the same position: a U32
+      above 2**31-1 is a Bignum there (#4647) */
+   if (sp_target_int_bits == 32 && t >= 6 && t <= 9) return 1;   /* u32/s32/U32/S32 */
+-  return t >= 10 && t <= 13;    /* u64/s64/U64/S64 */
++  return comp_iob_ty_width(t) == 8 && !comp_iob_ty_is_float(t) &&
++         (sp_target_int_bits == 32 || !comp_iob_ty_signed(t));
+ }
+
+ /* Type-keyed variant: among same-name same-arity bindings, prefer one whose
+diff --git a/src/compiler.h b/src/compiler.h
+index 5e5765043..cd2dfa9af 100644
+--- a/src/compiler.h
++++ b/src/compiler.h
+@@ -2311,7 +2311,7 @@ int comp_iob_ty_is_float(int t);
+ int comp_iob_ty_width(int t);
+ int comp_iob_ty_be(int t);
+ int comp_iob_ty_signed(int t);
+-int comp_iob_ty_is_64(int t);
++int comp_iob_ty_boxes_read(int t);
+
+ /* Global variables and top-level constants. *_intern finds or creates. */
+ LocalVar *comp_gvar(Compiler *c, const char *name);
+diff --git a/test/io_buffer_signed64_inline.rb b/test/io_buffer_signed64_inline.rb
+new file mode 100644
+index 000000000..78d378dfc
+--- /dev/null
++++ b/test/io_buffer_signed64_inline.rb
+@@ -0,0 +1,45 @@
++# Literal signed 64-bit reads must keep all bits on both native and narrow targets.
++def signed_words(buffer)
++  puts buffer.get_value(:s64, 3)
++  puts buffer.get_value(:S64, 11)
++  puts buffer.get_value(:s64, 19)
++  puts buffer.get_value(:u64, 3)
++end
++
++def sum_signed_words(buffer)
++  sum = 0
++  i = 0
++  while i < 3
++    sum += buffer.get_value(:s64, i * 8)
++    i += 1
++  end
++  sum
++end
++
++buffer = IO::Buffer.new(27)
++buffer.set_string("\x00\x00\x00\x00\x00\x00\x00\x80", 3)
++buffer.set_string("\x7f\xff\xff\xff\xff\xff\xff\xff", 11)
++buffer.set_string("\xff\xff\xff\xff\xff\xff\xff\xff", 19)
++signed_words(buffer)
++
++view = buffer.slice(1, 26)
++puts view.get_value(:s64, 2)
++puts view.get_value(:S64, 10)
++puts view.get_value(:s64, 18)
++# Min + 1 + -1 is representable after each addition.
++buffer.set_string("\x01\0\0\0\0\0\0\0", 11)
++puts sum_signed_words(buffer.slice(3, 24))
++
++begin
++  view.get_value(:s64, 19)
++  raise "accepted a read beyond the slice"
++rescue ArgumentError => error
++  puts error.class
++end
++buffer.free
++begin
++  view.get_value(:s64, 2)
++  raise "read an invalidated slice"
++rescue IO::Buffer::InvalidatedError => error
++  puts error.class
++end
+diff --git a/test/io_buffer_signed64_inline.rb.expected b/test/io_buffer_signed64_inline.rb.expected
+new file mode 100644
+index 000000000..4be9c2de2
+--- /dev/null
++++ b/test/io_buffer_signed64_inline.rb.expected
+@@ -0,0 +1,10 @@
++-9223372036854775808
++9223372036854775807
++-1
++9223372036854775808
++-9223372036854775808
++9223372036854775807
++-1
++-9223372036854775808
++ArgumentError
++IO::Buffer::InvalidatedError

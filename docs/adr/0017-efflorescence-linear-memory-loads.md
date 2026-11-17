@@ -1,9 +1,11 @@
 # ADR 0017: Spinel版Efflorescenceの線形メモリloadを短縮する
 
-- **状態** 提案
+- **状態** Aを採用、Bは計測後に見送り
 - **日付** 2026-11-17
 - **基準** Wardite 1.2.2 `6c6348d`、Spinel `01a5d1bea`、`-O2`、既定の整数overflow検査
 - **関連** [Spinel版の線形メモリ](../efflorescence-spinel-linear-memory.md)、[ADR 0008](0008-efflorescence-ruby-wasm-phase2.md)、[wardite-benchesのWASIサンプル](https://github.com/udzura/wardite-benches/tree/286de8be5226a4b41dc8e1b597b6717d761e9156#readme)
+
+[実装結果と計測](../efflorescence-linear-memory-loads.md)に採否、生成Cの確認内容、生値を記録した。
 
 ## 背景
 

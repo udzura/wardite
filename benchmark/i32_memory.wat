@@ -4,7 +4,7 @@
   (data $pattern "0123456789abcdef")
 
   ;; Initialize 256 words, then scan each complete array once per round.
-  (func (export "array_scan") (param $rounds i32) (param $seed i32) (result i32)
+  (func $array_scan (export "array_scan") (param $rounds i32) (param $seed i32) (result i32)
     (local $index i32) (local $sum i32)
     loop $initialize
       local.get $index i32.const 2 i32.shl
@@ -23,6 +23,10 @@
       local.get $rounds i32.const 1 i32.sub local.set $rounds br $round
     end end
     local.get $sum)
+
+  (func (export "array_scan_grown") (param $rounds i32) (param $seed i32) (result i32)
+    i32.const 1 memory.grow drop
+    local.get $rounds local.get $seed call $array_scan)
 
   ;; Both a complete fill and an overlapping copy run every iteration.
   (func (export "copy_fill") (param $rounds i32) (param $seed i32) (result i32)
