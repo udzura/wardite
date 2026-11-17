@@ -150,7 +150,7 @@ validation_worker = "#{output}/validate.rb"
 File.write(validation_worker, <<~RUBY)
   require "wardite"
   wasm, rounds, seed = ARGV
-  instance = File.open(wasm, "rb") { |file| Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false) }
+  instance = File.open(wasm, "rb") { |file| Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: :stack) }
   #{exports.inspect}.each { |name| puts "\#{name},\#{instance.runtime.call(name, [rounds.to_i, seed.to_i]).value}" }
 RUBY
 validation.each do |count, initial|

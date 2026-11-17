@@ -10,17 +10,16 @@
 [Phase 2の最適化](efflorescence-phase2-ja.md)がデフォルトで有効になります。
 `--mir-disable all` で、最適化していないMIRをflatへ変換して実行します。
 実行器はflatに統一され、flatを切り替える最適化フラグはありません。
-Wardite全体のデフォルトは、引き続き既存のスタックVMです。
 
-Efflorescenceは、明示的に選択して使う、Pure Ruby製のレジスタ型インタプリタです。
-デフォルトは引き続き、スタック型インタプリタの `Wardite::Runtime` です。
+Efflorescenceは、Warditeの既定のPure Ruby製レジスタ型インタプリタです。
+従来のスタックVMは、CLIでは `--stack-engine`、Rubyでは `engine: :stack` で選択できます。
 両エンジンはバイナリローダー、デコード済みのWasm命令、ストア、エクスポート情報を共有しますが、
 実行処理は独立しています。
 
 ```sh
 wasm-tools parse benchmark/i32_mix.wat -o build/i32_mix.wasm
-ruby -Ilib exe/wardite --new-engine --no-wasi --invoke inline_mix build/i32_mix.wasm 100000 123
-ruby -Ilib exe/wardite --new-engine --no-wasi --invoke call_mix build/i32_mix.wasm 100000 123
+ruby -Ilib exe/wardite --no-wasi --invoke inline_mix build/i32_mix.wasm 100000 123
+ruby -Ilib exe/wardite --no-wasi --invoke call_mix build/i32_mix.wasm 100000 123
 # どちらも: return value: I32(-424175775)
 ```
 
@@ -28,7 +27,7 @@ Ruby APIで同じ処理を行う場合は、次のように呼び出します。
 
 ```ruby
 require "wardite"
-instance = Wardite.new(path: "build/i32_mix.wasm", enable_wasi: false, engine: :efflorescence)
+instance = Wardite.new(path: "build/i32_mix.wasm", enable_wasi: false)
 instance.runtime.call("call_mix", [100000, 123]) # Runtimeと同じくWardite::I32を返す
 instance.runtime.call_unboxed("call_mix", [100000, 123]) # 3870791521 (Integer)
 ```

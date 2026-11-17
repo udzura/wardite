@@ -12,7 +12,7 @@ rounds = ARGV.fetch(3).to_i
 seed = ARGV.fetch(4).to_i
 started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 instance = File.open(wasm, "rb") do |file|
-  Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false)
+  Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: :stack)
 end
 loaded = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 if engine == "efflorescence"

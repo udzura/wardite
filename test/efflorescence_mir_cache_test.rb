@@ -447,9 +447,10 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     assert_cli("MIR2 cache hit")
     assert_equal 1, cache_files.size
 
-    _stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-Ilib", "exe/wardite", "--mir-cache", @cache, add_wasm)
+    _stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-Ilib", "exe/wardite",
+      "--stack-engine", "--mir-cache", @cache, add_wasm)
     assert_false status.success?
-    assert_include stderr, "require --new-engine"
+    assert_include stderr, "require Efflorescence"
   end
 
   test "two processes can publish the same cache entry concurrently" do
@@ -520,7 +521,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
 
   def assert_cli(message, *options, bypass: false)
     stdout, stderr, status = Open3.capture3({"WARDITE_TRACE" => "1"}, RbConfig.ruby, "-Ilib", "exe/wardite",
-      "--new-engine", "--mir-cache", @cache, "--no-wasi", "--invoke", "add", *options, "--", add_wasm, "20", "22")
+      "--mir-cache", @cache, "--no-wasi", "--invoke", "add", *options, "--", add_wasm, "20", "22")
     assert_true status.success?, stderr
     assert_empty stdout
     assert_include stderr, "return value: I32(42)"

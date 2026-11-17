@@ -50,7 +50,7 @@ module Wardite
     # @rbs mir_profile: bool
     # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
-    def initialize(import_object, engine: :stack, disabled_optimizations: [], mir_profile: false, mir_cache: nil, &blk)
+    def initialize(import_object, engine: :efflorescence, disabled_optimizations: [], mir_profile: false, mir_cache: nil, &blk)
       @wasi = nil
 
       blk.call(self)

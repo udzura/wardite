@@ -13,7 +13,7 @@ disabled = ARGV.fetch(4, "").split(",").map { |name| name.to_sym }
 profile = ARGV.fetch(5, "time") == "metrics"
 started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 instance = File.open(wasm, "rb") do |file|
-  Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false)
+  Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: :stack)
 end
 loaded = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 vm = Wardite::Efflorescence::VM.new(instance, disabled_optimizations: disabled, profile: profile)

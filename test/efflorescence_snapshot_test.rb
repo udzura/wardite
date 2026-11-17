@@ -59,8 +59,8 @@ class EfflorescenceSnapshotTest < Test::Unit::TestCase
 
   test "snapshot requires the MIR2 cache" do
     wasm = write_snapshot_fixture(@directory, :direct)
-    _out, err, status = Open3.capture3(*WARDITE, "--new-engine", "--snapshot", @directory, "--", wasm)
+    _out, err, status = Open3.capture3(*WARDITE, "--snapshot", @directory, "--", wasm)
     assert_false status.success?
-    assert_include err, "--snapshot requires --new-engine and --mir-cache"
+    assert_include err, "--snapshot requires --mir-cache"
   end
 end

@@ -184,7 +184,7 @@ The report `build/benchmark/optimizations.json` contains raw samples, phase and
 whole-process means, CRuby execution allocations and per-opcode counters.
 Time measurement does not enable MIR counters. Both phase and CLI measurements
 include the same Ruby-facing boxed return boundary. Spinel allocations are `n/a`.
-The shared phase loader creates the default runtime, then the selected MIR VM is
+The shared phase loader creates the stack VM, then the selected MIR VM is
 constructed in the MIR phase; the fixture has no start function. Phase timing
 uses a separate executable, whose Spinel inference can differ from the CLI.
 `SPINEL` and `SPINELFLAGS` choose the compiler/flags (default `-O2`).
@@ -323,11 +323,11 @@ Results include whole CLI process time and separate load, MIR translation and
 execution times from `engine_phases.rb`, compiled unchanged by Spinel. Phase
 timings come from a separate process per sample, with one call per process;
 they include frame setup and the final Ruby-facing result box. The loader phase
-creates the shared instance with the default runtime; the fixture has no start
+creates the shared instance with the stack VM; the fixture has no start
 function, so it executes no guest instructions. For Efflorescence, the next
 phase constructs the selected VM from that instance (including a second, empty
 Runtime setup for stack samples). End-to-end samples use the real
-CLI with `--new-engine` and therefore include normal engine selection, startup,
+CLI and include engine selection, startup,
 load, translation, execution and output. Warmups are separate processes, so YJIT
 compiles anew for each sample. Native compilation is outside measurement.
 Phase values are diagnostic and do not sum to the CLI time: they use a separate
@@ -409,8 +409,8 @@ YJIT support is required only when its runner is enabled.
 
 | Engine | Execution configurations |
 | --- | --- |
-| Old VM (`Wardite::Runtime`) | CRuby (YJIT disabled), CRuby + YJIT, Spinel |
-| New VM (`Wardite::Efflorescence::VM`) | CRuby (YJIT disabled), CRuby + YJIT, Spinel; `--new-engine`, default optimizations |
+| Old VM (`Wardite::Runtime`) | CRuby (YJIT disabled), CRuby + YJIT, Spinel; `--stack-engine` |
+| New VM (`Wardite::Efflorescence::VM`) | CRuby (YJIT disabled), CRuby + YJIT, Spinel; default engine and optimizations |
 | iwasm / WAMR | Explicit interpreter mode (`--interp`) |
 | Wasmtime (Pulley) | `--target pulley64 -C cache=n` |
 | Wasmtime | Native compilation, `-C cache=n` |
