@@ -100,17 +100,19 @@ module EfflorescenceManifestRun
       compare_reference(fixtures, binaries) if reference
       runtimes.each do |runtime|
         command = EfflorescenceParity.worker(directory, runtime)
-        rows = EfflorescenceParity.observe(command, directory, :efflorescence, fixtures, binaries, [:all])
-        EfflorescenceParity.check_rows(:efflorescence, fixtures, rows)
-        puts "#{runtime}: #{fixtures.size} fixtures, 188 M0 opcodes + 3 EH"
-        if ENV["WARDITE_VERIFY_MIR_CACHE_PARITY"] == "1"
-          cache = File.join(directory, "#{runtime}-mir2")
-          [false, true].each do |hit|
-            cached = EfflorescenceParity.observe(command, directory, :efflorescence, fixtures, binaries, [:all],
-              cache: cache, hit: hit)
-            EfflorescenceParity.check_rows(:efflorescence, fixtures, cached, check_dispatch: false)
+        { "disabled" => [:all], "default" => [] }.each do |mode, disabled|
+          rows = EfflorescenceParity.observe(command, directory, :efflorescence, fixtures, binaries, disabled)
+          EfflorescenceParity.check_rows(:efflorescence, fixtures, rows, check_dispatch: disabled.include?(:all))
+          puts "#{runtime} (#{mode}): #{fixtures.size} fixtures, 188 M0 opcodes + 3 EH"
+          if ENV["WARDITE_VERIFY_MIR_CACHE_PARITY"] == "1"
+            cache = File.join(directory, "#{runtime}-#{mode}-mir2")
+            [false, true].each do |hit|
+              cached = EfflorescenceParity.observe(command, directory, :efflorescence, fixtures, binaries, disabled,
+                cache: cache, hit: hit)
+              EfflorescenceParity.check_rows(:efflorescence, fixtures, cached, check_dispatch: false)
+            end
+            puts "#{runtime} (#{mode}): #{fixtures.size} MIR2 cache fixtures built and restored"
           end
-          puts "#{runtime}: #{fixtures.size} MIR2 cache fixtures built and restored"
         end
         compare_stack(command, directory, runtime, fixtures, binaries)
       end
