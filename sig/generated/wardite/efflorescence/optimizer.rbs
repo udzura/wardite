@@ -15,9 +15,9 @@ module Wardite
       def enabled?: (Symbol feature) -> bool
     end
 
-    # Bound the preparation cost of running the local passes on store functions.
+    # Bound the preparation cost of running the local passes on newly eligible functions.
     class OptimizationScope
-      MAX_STORE_INSTRUCTIONS: ::Integer
+      MAX_INSTRUCTIONS: ::Integer
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: bool
