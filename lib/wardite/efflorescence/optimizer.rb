@@ -436,7 +436,12 @@ module Wardite
               removed[pc] = 1
             else
               live[destination] = 0 if destination >= 0
-              Opcode.read_positions(instruction).each { |position| live[instruction[position]] = 1 }
+              read_count = function.read_count(instruction)
+              ordinal = 0
+              while ordinal < read_count
+                live[function.read_at(instruction, ordinal)] = 1
+                ordinal += 1
+              end
             end
             pc -= 1
           end

@@ -265,6 +265,26 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     end
   end
 
+  %i[MEMORY_INIT MEMORY_COPY MEMORY_FILL CALL_HOST].each do |name|
+    test "copy remains live across a side-table read by #{name}" do
+      opcode = OP.const_get(name)
+      function = E::Function.new(0, [:i32, :i32], [:i32], 1)
+      local = 2
+      if opcode == OP::CALL_HOST
+        function.dynamic_sites << E::DynamicCallSite.new(0, [local], [:i32], [])
+        reader = [opcode, -1, 0]
+      else
+        function.memory_sites << E::MemorySite.new([0, local, 1], data_index: 0)
+        reader = [opcode, 0]
+      end
+      program = [[OP::COPY, local, 0], reader, [OP::COPY, local, 1], [OP::RETURN, local]]
+      function.replace_instructions(program.map { |operands| E::Instruction.new(operands) })
+      E::Passes::CopyPropagation.new.run(function)
+      assert_equal [OP::COPY, local, 0], function.instructions.first.operands
+      assert_equal reader, function.instructions.fetch(1).operands
+    end
+  end
+
   test "peepholes cannot absorb an instruction with an incoming edge" do
     function = E::Function.new(0, [:i32, :i32], [:i32], 0)
     temporary = function.allocate_register(42)
