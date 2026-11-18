@@ -5,8 +5,7 @@ module Wardite
     class VM
       attr_reader instance: Wardite::Instance
 
-      attr_reader ir: Wardite::Efflorescence::IR
-
+      # @rbs @preparer: FunctionPreparer?
       attr_reader metrics: Wardite::Efflorescence::Metrics
 
       attr_reader mir_cache_hit: bool
@@ -30,8 +29,17 @@ module Wardite
       # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
       # @rbs cached_functions: Array[Function]?
       # @rbs source_code: String?
+      # @rbs eager_mir: bool
       # @rbs cache_checked: bool
-      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?, ?cached_functions: Array[Function]?, ?cache_checked: bool, ?source_code: String?) -> untyped
+      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?, ?cached_functions: Array[Function]?, ?cache_checked: bool, ?source_code: String?, ?eager_mir: bool) -> untyped
+
+      # Inspecting the executable IR requests every uncached function body.
+      # MIR2 consumers can still inspect pending cache slots individually.
+      # @rbs return: Wardite::Efflorescence::IR
+      def ir: () -> Wardite::Efflorescence::IR
+
+      # @rbs return: void
+      def prepare_all: () -> void
 
       # Build both inspection views on first access. Execution keeps its own IR.
       # @rbs return: Wardite::Efflorescence::IR

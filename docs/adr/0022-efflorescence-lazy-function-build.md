@@ -1,6 +1,6 @@
 # ADR 0022: 関数のMIRを初回の呼び出しで仕上げる
 
-- **状態** 提案
+- **状態** 段階Aを実装・レビュー中。段階Bは再翻訳のコスト評価を保留（[計測結果](../efflorescence-real-workloads.md#adr-0022とadr-0021を併用した結果)）
 - **日付** 2026-11-17
 - **基準** Wardite 1.2.2 `5baaf38`
 - **関連** [ADR 0010](0010-efflorescence-mir2-cache-function-restore.md)（関数単位の復元）、[ADR 0012](0012-efflorescence-startup-snapshot.md)、[ADR 0015](0015-efflorescence-selective-inline-snapshots.md)、[ADR 0018](0018-efflorescence-real-workload-measurement.md)（計測の基準）、[ADR 0019](0019-efflorescence-startup-quick-wins.md)、[ADR 0021](0021-efflorescence-optimize-real-functions.md)

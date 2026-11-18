@@ -1,0 +1,25 @@
+# Generated from lib/wardite/efflorescence/function_preparer.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class FunctionPreparer
+      # @rbs ir: IR
+      # @rbs configuration: Configuration
+      # @rbs tags: Array[Tag]
+      # @rbs profile: bool
+      # @rbs cache: MIRCache?
+      def initialize: (IR ir, Configuration configuration, Array[Tag] tags, bool profile, MIRCache? cache) -> untyped
+
+      # @rbs function: Function
+      # @rbs return: void
+      def prepare: (Function function) -> void
+
+      private
+
+      # Preserve the pre-inlining leaf even if its own invocation happens first.
+      # @rbs function: Function
+      # @rbs return: Function
+      def optimize_local: (Function function) -> Function
+    end
+  end
+end

@@ -440,7 +440,7 @@ module Wardite
       end
 
       return Instance.new(import_object, engine: engine, disabled_optimizations: disabled_optimizations,
-        mir_profile: mir_profile, mir_cache: cache) do |i|
+        mir_profile: mir_profile, mir_cache: cache, eager_mir: mir_cache_eager) do |i|
         i.version = version
         i.sections = sections_
         i.wasi = wasi_env

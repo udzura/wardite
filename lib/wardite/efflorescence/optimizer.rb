@@ -242,16 +242,22 @@ module Wardite
           changed
         end
 
-        private
+        # These bounds cannot improve during local optimization.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: bool
+        def candidate?(function)
+          function.register_count <= MAX_REGISTERS &&
+            !(function.uses_i64 || function.uses_float || function.uses_eh || function.uses_store || function.uses_dynamic_calls)
+        end
 
         # Explicit whitelist: new opcodes must opt into inlining. In particular,
         # traps, profiling records, control flow and nested calls stay intact.
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: bool
         def eligible?(function)
-          return false if function.uses_i64 || function.uses_float || function.uses_eh || function.uses_store || function.uses_dynamic_calls
+          return false unless candidate?(function)
           instructions = function.instructions
-          return false if instructions.empty? || instructions.size > MAX_INSTRUCTIONS || function.register_count > MAX_REGISTERS
+          return false if instructions.empty? || instructions.size > MAX_INSTRUCTIONS
           return false unless instructions.last[0] == Opcode::RETURN
           index = 0
           while index < instructions.size - 1
@@ -294,6 +300,8 @@ module Wardite
           rewrite.finish
           changed
         end
+
+        private
 
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs ir: Wardite::Efflorescence::IR
@@ -647,8 +655,6 @@ module Wardite
         output
       end
 
-      private
-
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       def optimize_function(function)
@@ -669,40 +675,42 @@ module Wardite
       # @rbs ir: Wardite::Efflorescence::IR
       # @rbs return: void
       def compile(ir)
-        function_index = 0
-        while function_index < ir.functions.size
-          function = ir.defined_at(function_index)
-          code = [] #: Array[Integer]
-          calls = [] #: Array[Wardite::Efflorescence::CallSite]
-          function.instructions.each do |instruction|
-            opcode = instruction[0]
-            a = instruction.size > 1 ? instruction[1] : 0
-            b = instruction.size > 2 ? instruction[2] : 0
-            c = instruction.size > 3 ? instruction[3] : 0
-            if opcode == Opcode::CALL
-              callee = ir.function_at(instruction[2])
-              arguments = [] #: Array[Integer]
-              index = 3
-              while index < instruction.size
-                arguments << instruction[index]
-                index += 1
-              end
-              b = calls.size
-              # The fourth slot is already decoded on every dispatch. A single
-              # argument can name its source here, bypassing the argument table
-              # and loop; -1 selects the generic zero/multiple-argument path.
-              c = arguments.size == 1 ? arguments.fetch(0) : -1
-              calls << CallSite.new(callee, arguments)
+        ir.functions.each { |function| compile_function(function, ir) }
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs ir: Wardite::Efflorescence::IR
+      # @rbs return: void
+      def compile_function(function, ir)
+        code = [] #: Array[Integer]
+        calls = [] #: Array[Wardite::Efflorescence::CallSite]
+        function.instructions.each do |instruction|
+          opcode = instruction[0]
+          a = instruction.size > 1 ? instruction[1] : 0
+          b = instruction.size > 2 ? instruction[2] : 0
+          c = instruction.size > 3 ? instruction[3] : 0
+          if opcode == Opcode::CALL
+            callee = ir.function_at(instruction[2])
+            arguments = [] #: Array[Integer]
+            index = 3
+            while index < instruction.size
+              arguments << instruction[index]
+              index += 1
             end
-            target_position = Opcode.target_position(instruction)
-            a *= WIDTH if target_position == 1
-            b *= WIDTH if target_position == 2
-            code << opcode << a << b << c
+            b = calls.size
+            # The fourth slot is already decoded on every dispatch. A single
+            # argument can name its source here, bypassing the argument table
+            # and loop; -1 selects the generic zero/multiple-argument path.
+            c = arguments.size == 1 ? arguments.fetch(0) : -1
+            calls << CallSite.new(callee, arguments)
           end
-          function.lower_handlers
-          function.install_code(code, calls)
-          function_index += 1
+          target_position = Opcode.target_position(instruction)
+          a *= WIDTH if target_position == 1
+          b *= WIDTH if target_position == 2
+          code << opcode << a << b << c
         end
+        function.lower_handlers
+        function.install_code(code, calls)
       end
     end
   end
