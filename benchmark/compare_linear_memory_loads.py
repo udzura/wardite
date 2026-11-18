@@ -67,6 +67,15 @@ def measure(binaries, cache_root, writer, case, wasm, args, expected, *,
                     writer.writerow((case, name, index + 1, *timings))
 
 
+def measure_crc8(binaries, root, writer, wasm, rounds):
+    for grow in (0, 1):
+        params = [256, grow]
+        reference = run(["wasmtime", "run", "--invoke", "crc8_stream", wasm, *map(str, params)])
+        case = "crc8_grown" if grow else "crc8_owned"
+        measure(binaries, root, writer, case, wasm, params, int(reference.stdout),
+                rounds=rounds, invoke="crc8_stream")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Compare Spinel Wardite memory load timings")
     parser.add_argument("benches", type=Path, help="wardite-benches checkout with built examples and fixtures")
@@ -74,6 +83,7 @@ def main():
     parser.add_argument("binaries", nargs="+", metavar="NAME=BINARY")
     parser.add_argument("--rounds", type=int, default=11)
     parser.add_argument("--png", action="store_true", help="also benchmark PNG to grayscale PGM")
+    parser.add_argument("--crc8", type=Path, help="also benchmark the compiled crc8_stream example")
     args = parser.parse_args()
 
     binaries = [entry.split("=", 1) for entry in args.binaries]
@@ -110,6 +120,9 @@ def main():
                 case = "png_hit" if cache else "png_off"
                 measure(binaries, root, writer, case, wasm, [], expected,
                         rounds=args.rounds, stdin=png, cache=cache)
+
+        if args.crc8:
+            measure_crc8(binaries, root, writer, args.crc8, args.rounds)
 
         for source, exports in (
             ("linear_memory_loads", ("lookup8", "unaligned64", "mixed_width")),

@@ -42,6 +42,30 @@ python3 benchmark/compare_linear_memory_loads.py --png ../wardite-benches "$time
   old-base="$old_base" new-base="$new_base" old-pr="$old_pr" new-pr="$new_pr"
 ```
 
+## 使用例：ストリームの CRC-8
+
+隣の `wardite-benches/rust/examples/crc8_stream.rs`は、4 KiBの固定チャンクを256回続けて読み、合計1 MiBのCRC-8（多項式 `0x07`）を計算する。各バイトについて入力を1回読み、直前のCRCと入力のXORを添字にして256バイトの表を1回読む。このビルドでは両方とも `i32.load8_u` になり、合計2,097,152回実行される。第2引数を1にすると走査前にメモリを1ページ拡張する。Warditeが公開するスライスを通して同じ入力と表を読むので、growの有無を直接比較できる。
+
+```sh
+cargo build --manifest-path ../wardite-benches/rust/Cargo.toml --locked --release \
+  --target wasm32-unknown-unknown --target-dir ../wardite-benches/build/rust --example crc8_stream
+wasm=../wardite-benches/build/rust/wasm32-unknown-unknown/release/examples/crc8_stream.wasm
+wasmtime run --invoke crc8_stream "$wasm" 256 1
+make spinel
+build/wardite --no-wasi --invoke crc8_stream -- "$wasm" 256 1
+```
+
+期待値は `228`（`0xe4`）。growの有無・全4構成で毎回Wasmtimeと照合し、表を使わずに各ビットを処理する参照計算でも同じ値を得た。入力・表の作成はコンパイル時。下の値は前節と同じ4構成でのプロセス実時間からロードトレースを引いた中央値（ms）で、growありの値には拡張自体の時間も含む。
+
+| 条件 | 旧base | 旧PR | 新base | 新PR | 旧base → 新PR |
+|---|---:|---:|---:|---:|---:|
+| growなし | 31.03 | 29.57 | 31.51 | 29.64 | −4.5% |
+| growあり | 42.64 | 40.73 | 42.33 | 36.30 | −14.9% |
+| growなし・再計測 | 29.68 | 28.61 | 29.99 | 28.64 | −3.5% |
+| growあり・再計測 | 40.90 | 39.49 | 40.22 | 35.10 | −14.2% |
+
+各構成2回ウォームアップ後、順序を交互に反転させて各11回計測した。再計測では最初の順序も逆にした。新Spinelだけに絞っても、grow後はWarditeのload変更で14.3%・12.7%短縮し、両セットとも11組すべてで短かった。前節の比較コマンドに `--crc8 "$wasm"` を追加して再現できる。[初回の生値](../benchmark/results/crc8-stream.csv)・[逆順の生値](../benchmark/results/crc8-stream-repeat.csv)
+
 ## 試作時の比較
 
 Bは試作に留めた。64ビットターゲットで `:s64` と `:S64` を型付き整数として推論すると、既存の `i64.load` および `f64.load` が使う `:s64` は `sp_IOBuffer_get_x` から `sp_IOBuffer_load_i` に変わる。生成Cの定数型に対して `memcpy` と必要なbyte swapが使われる。非整列のload単体は所有バッファで18.41 → 17.59 ms、スライスで18.79 → 18.06 msだった。MIRカウンター別ビルドでは全幅の `I64_LOAD` はencodeで43,704回、decodeで15回だった。encodeの変換区間はキャッシュヒット時に37.62 → 37.13 msだったが、AとBだけの再計測では36.80 → 36.80 msだった。decodeで見えた小差は全幅loadの回数から説明できない。Wardite側でも全幅用のメソッドを分ける案を試したところ、grow後の `load8_u` 単体が約1%遅くなった。
