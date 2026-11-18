@@ -9,7 +9,7 @@ module Wardite
       include Opcode
       LENGTH = 4
       # Indexed in the same order as Opcode::SEQUENCE_HEADS.
-      FORWARDED_READS = [2, 3].freeze #: Array[Integer]
+      FORWARDED_READS = [2, 3, 3].freeze #: Array[Integer]
 
       # @rbs function: Function
       # @rbs return: void
@@ -49,6 +49,11 @@ module Wardite
             second[2] == first[1] && third[3] == second[1] && fourth[2] == third[1] &&
             second[3] == 0 && fourth[3] == 0
           return I64_BYTE_LOOKUP
+        end
+        if head == I32_ADD_IMM && second[0] == I32_LOAD8_U && third[0] == I32_MUL_IMM && fourth[0] == I32_ADD &&
+            second[2] == first[1] && third[2] == second[1] && fourth[3] == third[1] && second[3] == 0 &&
+            third[3].between?(0, 0xffffffff)
+          return I32_BYTE_MUL_ADD
         end
         -1
       end

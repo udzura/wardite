@@ -67,6 +67,12 @@ class EfflorescenceByteSequencesTest < Test::Unit::TestCase
     WAT
   end
 
+  test "weighted bytes preserve the low word of the product and sum" do
+    check_sequence(<<~WAT, OP::I32_BYTE_MUL_ADD, [6, 90, 0], 9, forwarded_reads: 3)
+      local.get 1 local.get 0 i32.const 2 i32.add i32.load8_u i32.const -1 i32.mul i32.add
+    WAT
+  end
+
   test "a branch into the sequence keeps individual dispatches" do
     fn = E::Function.new(0, [], [], 0)
     fn.replace_instructions([

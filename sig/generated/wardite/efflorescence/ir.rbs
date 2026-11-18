@@ -403,6 +403,8 @@ module Wardite
 
       I64_BYTE_LOOKUP: ::Integer
 
+      I32_BYTE_MUL_ADD: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 

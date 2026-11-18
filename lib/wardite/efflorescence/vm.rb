@@ -711,6 +711,16 @@ module Wardite
             registers[instructions.fetch(pc + 9)] = table_address
             registers[instructions.fetch(pc + 13)] = @store_access.load8_u(table_address, 0)
             pc += 3 * Lowerer::WIDTH
+          when 197 # Opcode::I32_BYTE_MUL_ADD
+            address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
+            registers[a] = address
+            byte = @store_access.load8_u(address, 0)
+            registers[instructions.fetch(pc + 5)] = byte
+            # An unsigned byte times an unsigned i32 fits in Spinel's signed word.
+            product = (byte * instructions.fetch(pc + 11)) & 0xffffffff
+            registers[instructions.fetch(pc + 9)] = product
+            registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + product) & 0xffffffff
+            pc += 3 * Lowerer::WIDTH
           when 0 # Opcode::COPY
             b = instructions.fetch(pc + 2)
             registers[a] = registers[b]
