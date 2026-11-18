@@ -48,15 +48,26 @@ end
 
     before = memory.buffer
     before_view = before.slice(65536, 1)
+    # Ten bytes straddle the page boundary in the grown public slice.
+    memory.write_bytes(65533, "\xff\xff\xff\xff\xff\xff\xff\xff\x00\x80".b)
+    raise 'i64 byte load must zero-extend' unless M2Probe.call(vm, 'load64_8u', [65534]) == 255
+    raise 'unaligned i64 crossed a page incorrectly' unless M2Probe.call(vm, 'load64', [65533]) == -1
+    min = -9223372036854775807 - 1
+    memory.write_bytes(131064, "\x00\x00\x00\x00\x00\x00\x00\x80".b)
+    raise 'i64 minimum at public endpoint' unless M2Probe.call(vm, 'load64', [131064]) == min
+    raise 'f64 negative zero lost its sign' unless M2Probe.call(vm, 'float_bits', [131064]) == min
+    memory.write_bytes(65535, "\x23\x01\x00\x00\x00\x00\xf8\x7f".b)
+    raise 'f64 NaN lost its payload' unless M2Probe.call(vm, 'float_bits', [65535]) == 0x7ff8000000000123
     before_view.set_value(:U8, 0, 42)
     raise 'spare capacity exposed through buffer size' unless before.size == 131072
-    trapped = false
-    begin
-      M2Probe.call(vm, 'load', [131072])
-    rescue Wardite::EvalError
-      trapped = true
+    [['load', 131072], ['load64_8u', 131072], ['load64', 131065], ['float_bits', 131065]].each do |name, address|
+      begin
+        M2Probe.call(vm, name, [address])
+        raise 'guest read spare capacity'
+      rescue Wardite::EvalError => error
+        raise error unless error.message == 'out of bounds memory access'
+      end
     end
-    raise 'guest read spare capacity' unless trapped
     trapped = false
     begin
       before.set_value(:U8, 131072, 99)

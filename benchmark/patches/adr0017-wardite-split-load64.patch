@@ -1,0 +1,70 @@
+diff --git a/lib/wardite/efflorescence/store_access.rb b/lib/wardite/efflorescence/store_access.rb
+--- a/lib/wardite/efflorescence/store_access.rb
++++ b/lib/wardite/efflorescence/store_access.rb
+@@ -158,12 +158,12 @@
+       # @rbs signed: bool
+       # @rbs return: Integer
+       def load_i64(address, offset, width, signed)
++        return load64(address, offset) if width == 8
++
+         start = address + offset
+         if RUBY_ENGINE == "spinel"
+           source = memory.buffer
+           StoreAccess.check_range(start, width, source.size)
+-          return Integer(source.get_value(:s64, start)) if width == 8
+-
+           value = case width
+           when 1 then Integer(source.get_value(:U8, start))
+           when 2 then Integer(source.get_value(:u16, start))
+@@ -173,12 +173,25 @@
+         end
+         data = memory.data
+         StoreAccess.check_range(start, width, data.bytesize)
+-        if width == 8
+-          I64Arithmetic.join(read_word(data, start, 4), read_word(data, start + 4, 4))
+-        else
+-          value = read_word(data, start, width)
+-          signed ? I64Arithmetic.extend(value, width * 8) : value
++        value = read_word(data, start, width)
++        signed ? I64Arithmetic.extend(value, width * 8) : value
++      end
++
++      # @rbs address: Integer
++      # @rbs offset: Integer
++      # @rbs return: Integer
++      def load64(address, offset)
++        start = address + offset
++        value = if RUBY_ENGINE == "spinel"
++          source = memory.buffer
++          StoreAccess.check_range(start, 8, source.size)
++          source.get_value(:s64, start)
++        else
++          data = memory.data
++          StoreAccess.check_range(start, 8, data.bytesize)
++          I64Arithmetic.join(read_word(data, start, 4), read_word(data, start + 4, 4))
+         end
++        Integer(value)
+       end
+
+       # Check the whole access before the first write. Effective addresses are
+diff --git a/lib/wardite/efflorescence/vm.rb b/lib/wardite/efflorescence/vm.rb
+--- a/lib/wardite/efflorescence/vm.rb
++++ b/lib/wardite/efflorescence/vm.rb
+@@ -629,7 +629,7 @@
+             registers[a] = @store_access.load(registers[b], offset, 4, false)
+           when Opcode::F64_LOAD
+             offset = instructions.fetch(pc + 3)
+-            registers[a] = @store_access.load_i64(registers[b], offset, 8, false)
++            registers[a] = @store_access.load64(registers[b], offset)
+           when Opcode::F32_STORE
+             offset = instructions.fetch(pc + 3)
+             @store_access.store(registers[b], offset, 4, registers[a])
+@@ -1095,7 +1095,7 @@
+           when 104 # Opcode::I64_LOAD
+             b = instructions.fetch(pc + 2)
+             c = instructions.fetch(pc + 3)
+-            registers[a] = @store_access.load_i64(registers[b], c, 8, false)
++            registers[a] = @store_access.load64(registers[b], c)
+           when 105 # Opcode::I64_LOAD8_S
+             b = instructions.fetch(pc + 2)
+             c = instructions.fetch(pc + 3)

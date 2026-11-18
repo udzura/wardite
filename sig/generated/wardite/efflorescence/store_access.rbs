@@ -66,6 +66,11 @@ module Wardite
 
       # @rbs address: Integer
       # @rbs offset: Integer
+      # @rbs return: Integer
+      def load8_u: (Integer address, Integer offset) -> Integer
+
+      # @rbs address: Integer
+      # @rbs offset: Integer
       # @rbs width: Integer
       # @rbs signed: bool
       # @rbs return: Integer

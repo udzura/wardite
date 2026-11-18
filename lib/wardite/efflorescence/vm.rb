@@ -736,19 +736,20 @@ module Wardite
             c = instructions.fetch(pc + 3)
             value = registers[b]
             registers[a] = (value ^ (value << c)) & 0xffffffff
+          # Spinel infers nullable operands. Keep branch targets and the loop PC integers.
           when 8 # Opcode::BR
-            pc = a
+            pc = Integer(a)
             next
           when 9 # Opcode::BR_IF
             b = instructions.fetch(pc + 2)
             if registers[a] != 0
-              pc = b
+              pc = Integer(b)
               next
             end
           when 19 # Opcode::BR_IF_ZERO
             b = instructions.fetch(pc + 2)
             if registers[a] == 0
-              pc = b
+              pc = Integer(b)
               next
             end
           when 10 # Opcode::CALL
@@ -930,7 +931,7 @@ module Wardite
           when 56 # Opcode::I32_LOAD8_U
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
-            registers[a] = @store_access.load(registers[b], c, 1, false)
+            registers[a] = @store_access.load8_u(registers[b], c)
           when 57 # Opcode::I32_LOAD16_S
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
@@ -1103,7 +1104,7 @@ module Wardite
           when 106 # Opcode::I64_LOAD8_U
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
-            registers[a] = @store_access.load_i64(registers[b], c, 1, false)
+            registers[a] = @store_access.load8_u(registers[b], c)
           when 107 # Opcode::I64_LOAD16_S
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
