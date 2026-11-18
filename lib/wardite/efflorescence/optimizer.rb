@@ -21,15 +21,38 @@ module Wardite
       end
     end
 
-    # Bound the preparation cost of running the local passes on newly eligible functions.
+    # Keep setup bounded for mixed functions. A larger call-free loop can
+    # amortize preparation over repeated arithmetic and memory operations.
     class OptimizationScope
-      MAX_INSTRUCTIONS = 128
+      SMALL_FUNCTION = 16
+      SHORT_LOOP_FUNCTION = 128
+      MAX_LOOP_FUNCTION = 1536
+      LONG_LOOP = 64
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: bool
       def self.caller?(function)
-        return false if function.uses_i64 || function.uses_float || function.uses_eh
-        (!function.uses_store && !function.uses_dynamic_calls) || function.instructions.size <= MAX_INSTRUCTIONS
+        return false if function.uses_float || function.uses_eh
+        return true unless function.uses_i64 || function.uses_store || function.uses_dynamic_calls
+
+        instructions = function.instructions
+        return true if instructions.size <= SMALL_FUNCTION
+        return false if instructions.size > MAX_LOOP_FUNCTION
+        minimum = instructions.size <= SHORT_LOOP_FUNCTION ? 1 : LONG_LOOP
+        after_call = 0
+        instructions.each_with_index do |instruction, pc|
+          opcode = instruction[0]
+          if opcode == Opcode::CALL || Opcode.dynamic_call?(opcode)
+            after_call = pc + 1
+          else
+            position = Opcode.target_position(instruction)
+            if position >= 0
+              target = instruction[position]
+              return true if target >= after_call && pc - target + 1 >= minimum
+            end
+          end
+        end
+        false
       end
     end
 
@@ -368,8 +391,11 @@ module Wardite
       class CopyPropagation
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
-        def run(function)
+        # @rbs coalesce_only: bool
+        def run(function, coalesce_only: false)
           coalesce_results(function)
+          return if coalesce_only
+
           propagate(function)
           remove_overwritten_copies(function)
           remove_dead_copies(function)
@@ -383,6 +409,16 @@ module Wardite
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
         def coalesce_results(function)
+          instructions = function.instructions
+          first_temp = function.parameter_count + function.local_count
+          pc = 1
+          while pc < instructions.size
+            copy = instructions.fetch(pc)
+            break if copy[0] == Opcode::COPY && copy[2] >= first_temp && Opcode.destination(instructions.fetch(pc - 1)) == copy[2]
+            pc += 1
+          end
+          return if pc == instructions.size || instructions.empty?
+
           analysis = Analysis.new(function)
           rewrite = Rewrite.new(function)
           pc = 0
@@ -513,6 +549,15 @@ module Wardite
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
         def run(function)
+          instructions = function.instructions
+          pc = 0
+          while pc + 1 < instructions.size
+            candidate = instructions.fetch(pc)
+            break if candidate[0] == Opcode::I32_EQZ && instructions.fetch(pc + 1)[0] == Opcode::BR_IF
+            pc += 1
+          end
+          return if pc + 1 >= instructions.size
+
           analysis = Analysis.new(function)
           rewrite = Rewrite.new(function)
           pc = 0
@@ -539,6 +584,15 @@ module Wardite
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
         def run(function)
+          instructions = function.instructions
+          pc = 0
+          while pc + 1 < instructions.size
+            candidate = instructions.fetch(pc)
+            break if (candidate[0] == Opcode::I32_SHR_U_IMM || candidate[0] == Opcode::I32_SHL_IMM) && instructions.fetch(pc + 1)[0] == Opcode::I32_XOR
+            pc += 1
+          end
+          return if pc + 1 >= instructions.size
+
           analysis = Analysis.new(function)
           rewrite = Rewrite.new(function)
           pc = 0
@@ -599,7 +653,10 @@ module Wardite
       # @rbs return: void
       def optimize_function(function)
         return unless OptimizationScope.caller?(function)
-        Passes::CopyPropagation.new.run(function) if @configuration.enabled?(:copy)
+        if @configuration.enabled?(:copy)
+          mixed = function.uses_i64 || function.uses_float || function.uses_store || function.uses_dynamic_calls
+          Passes::CopyPropagation.new.run(function, coalesce_only: mixed && function.instructions.size > OptimizationScope::SMALL_FUNCTION)
+        end
         Passes::ImmediateSpecialization.new.run(function) if @configuration.enabled?(:immediate)
         Passes::BranchFusion.new.run(function) if @configuration.enabled?(:branch)
         Passes::Superinstructions.new.run(function) if @configuration.enabled?(:superinstruction)

@@ -15,9 +15,16 @@ module Wardite
       def enabled?: (Symbol feature) -> bool
     end
 
-    # Bound the preparation cost of running the local passes on newly eligible functions.
+    # Keep setup bounded for mixed functions. A larger call-free loop can
+    # amortize preparation over repeated arithmetic and memory operations.
     class OptimizationScope
-      MAX_INSTRUCTIONS: ::Integer
+      SMALL_FUNCTION: ::Integer
+
+      SHORT_LOOP_FUNCTION: ::Integer
+
+      MAX_LOOP_FUNCTION: ::Integer
+
+      LONG_LOOP: ::Integer
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: bool
@@ -146,7 +153,8 @@ module Wardite
       class CopyPropagation
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
-        def run: (Wardite::Efflorescence::Function function) -> void
+        # @rbs coalesce_only: bool
+        def run: (Wardite::Efflorescence::Function function, ?coalesce_only: bool) -> void
 
         private
 
