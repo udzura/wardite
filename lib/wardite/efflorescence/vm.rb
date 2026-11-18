@@ -184,7 +184,10 @@ module Wardite
       def build_mir(semantic, profile, inspect)
         optimizer = Optimizer.new(@configuration)
         optimized = inspect ? optimizer.optimize(semantic) : optimizer.optimize_in_place(semantic)
-        optimized.functions.each { |function| RegisterValidation.new.validate(function, optimized, tags: @module_source.tags) }
+        optimized.functions.each do |function|
+          RegisterValidation.new.validate(function, optimized, tags: @module_source.tags)
+          optimizer.fuse_byte_sequences(function)
+        end
         ir = profile ? Instrumentation.new.instrument(optimized) : optimized
         Lowerer.new.compile(ir)
         if inspect
@@ -691,6 +694,14 @@ module Wardite
           # Integer literal labels let Spinel emit a C switch. Keep the
           # Opcode comments in sync; the dispatch contract test checks them.
           case opcode
+          when 195 # Opcode::I32_TABLE_STORE8
+            address = (registers[instructions.fetch(pc + 2)] + registers[instructions.fetch(pc + 3)]) & 0xffffffff
+            registers[a] = address
+            byte = @store_access.load8_u(address, instructions.fetch(pc + 7))
+            registers[instructions.fetch(pc + 5)] = byte
+            @store_access.store(registers[instructions.fetch(pc + 10)], instructions.fetch(pc + 11), 1, byte)
+            registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
+            pc += 3 * Lowerer::WIDTH
           when 0 # Opcode::COPY
             b = instructions.fetch(pc + 2)
             registers[a] = registers[b]

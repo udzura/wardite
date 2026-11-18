@@ -657,6 +657,12 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
+      def fuse_byte_sequences(function)
+        ByteSequences.fuse(function) if function.uses_store && @configuration.enabled?(:superinstruction)
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
       def optimize_function(function)
         return unless OptimizationScope.caller?(function)
         if @configuration.enabled?(:copy)

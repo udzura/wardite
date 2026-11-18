@@ -223,6 +223,10 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
+      def fuse_byte_sequences: (Wardite::Efflorescence::Function function) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
       def optimize_function: (Wardite::Efflorescence::Function function) -> void
     end
 
