@@ -39,6 +39,13 @@ module Wardite
         return true if instructions.size <= SMALL_FUNCTION
         return false if instructions.size > MAX_LOOP_FUNCTION
         minimum = instructions.size <= SHORT_LOOP_FUNCTION ? 1 : LONG_LOOP
+        call_free_loop?(instructions, minimum)
+      end
+
+      # @rbs instructions: Array[Instruction]
+      # @rbs minimum: Integer
+      # @rbs return: bool
+      def self.call_free_loop?(instructions, minimum)
         after_call = 0
         instructions.each_with_index do |instruction, pc|
           opcode = instruction[0]
@@ -664,7 +671,16 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       def optimize_function(function)
-        return unless OptimizationScope.caller?(function)
+        unless OptimizationScope.caller?(function)
+          # The adjacent producer/COPY pass is linear and does not propagate
+          # aliases across blocks. Keep the other passes under their size cap.
+          if @configuration.enabled?(:copy) && !function.uses_eh &&
+              function.instructions.size > OptimizationScope::MAX_LOOP_FUNCTION &&
+              OptimizationScope.call_free_loop?(function.instructions, OptimizationScope::LONG_LOOP)
+            Passes::CopyPropagation.new.run(function, coalesce_only: true)
+          end
+          return
+        end
         if @configuration.enabled?(:copy)
           mixed = function.uses_i64 || function.uses_float || function.uses_store || function.uses_dynamic_calls
           Passes::CopyPropagation.new.run(function, coalesce_only: mixed && function.instructions.size > OptimizationScope::SMALL_FUNCTION)

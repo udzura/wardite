@@ -29,6 +29,11 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: bool
       def self.caller?: (Wardite::Efflorescence::Function function) -> bool
+
+      # @rbs instructions: Array[Instruction]
+      # @rbs minimum: Integer
+      # @rbs return: bool
+      def self.call_free_loop?: (Array[Instruction] instructions, Integer minimum) -> bool
     end
 
     # All transformations use instruction ordinals. Only the final lowering

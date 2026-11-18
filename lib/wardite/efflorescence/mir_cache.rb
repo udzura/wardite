@@ -13,7 +13,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 7
+      CODE_VERSION = 8
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE

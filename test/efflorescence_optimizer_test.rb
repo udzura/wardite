@@ -14,6 +14,20 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     [[], [:all], *E::Configuration::FEATURES.map { |feature| [feature] }]
   end
 
+  test "large mixed loops coalesce single-use producer copies with the copy pass" do
+    fn = E::Function.new(0, [:i32], [], 1)
+    fn.uses_store = true
+    tmp = fn.allocate_register(0)
+    padding = Array.new(E::OptimizationScope::MAX_LOOP_FUNCTION) { E::Instruction.new([OP::I32_ADD, 1, 1, 0]) }
+    fn.replace_instructions(padding + [[OP::I32_ADD, tmp, 1, 0], [OP::COPY, 1, tmp],
+      [OP::BR_IF, 0, 0], [OP::RETURN, -1]].map { |words| E::Instruction.new(words) })
+    E::Optimizer.new(E::Configuration.new([:copy])).optimize_function(fn)
+    assert_equal OP::COPY, fn.instructions[-3][0]
+    E::Optimizer.new(E::Configuration.new([])).optimize_function(fn)
+    assert_equal [OP::I32_ADD, 1, 1, 0], fn.instructions[-3].operands
+    assert_equal padding.size + 3, fn.instructions.size
+  end
+
   test "function copy uses actual constant membership and rebuilds parameter and local slots" do
     source = E::Function.new(4, [:i64], [:f64], 1, local_types: [:f32], pool_index: 2)
     source.initial_registers[0] = -7
