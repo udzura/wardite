@@ -4,9 +4,9 @@ module EfflorescenceM4ALUCases
   MODULUS = 2**64
   MIN = -2**63
   MAX = 2**63 - 1
-  BOUNDS = [0, 1, -1, 2**31 - 1, 2**31, 2**31 + 1, 2**32 - 1, 2**32, 2**32 + 1,
+  BOUNDS = [0, 1, -1, -(2**31), 2**31 - 1, 2**31, 2**31 + 1, 2**32 - 1, 2**32, 2**32 + 1,
             MAX - 1, MAX, MIN, MIN + 1, 0x5555555555555555, -0x5555555555555556].freeze
-  SHIFTS = [0, 1, 31, 32, 33, 63, 64, 65, -1].freeze
+  SHIFTS = ((0..65).to_a + [-1]).freeze
   SIGNED_COMPARISONS = %w[eq ne lt_s gt_s le_s ge_s].zip(%i[== != < > <= >=]).to_h.freeze
   UNSIGNED_COMPARISONS = %w[lt_u gt_u le_u ge_u].zip(%i[< > <= >=]).to_h.freeze
   SHIFT_OPS = %w[shl shr_s shr_u rotl rotr].freeze
@@ -68,6 +68,17 @@ module EfflorescenceM4ALUCases
     i32_words = words.map { |a| [a % 2**32] }.uniq
     add.call("i64.extend_i32_s", [:i32], :i64, i32_words) { |a| signed_field(a, 32) }
     add.call("i64.extend_i32_u", [:i32], :i64, i32_words) { |a| a }
+
+    # Both the CRuby and Spinel VM tests consume these same vectors. Check
+    # their independent expected values against the original dispatch as well.
+    operations.each do |operation, (_, rows)|
+      constant = operation.upcase.tr(".", "_").sub(/(LT|GT|LE|GE)_([SU])$/, '\1\2')
+      opcode = Wardite::Efflorescence::Opcode.const_get(constant)
+      rows.each do |_, *arguments, expected|
+        result = Wardite::Efflorescence::I64Arithmetic.calculate(opcode, arguments.first, arguments.fetch(1, 0))
+        raise "#{operation} #{arguments.inspect}: expected #{expected}, got #{result}" unless result == expected
+      end
+    end
 
     { "add" => :+, "sub" => :-, "mul" => :* }.each do |op, calculate|
       add.call("i64.#{op}", [:i64, :i64], :i64, pairs) { |a, b| signed_field(a.public_send(calculate, b), 64) }

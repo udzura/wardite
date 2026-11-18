@@ -7,6 +7,37 @@ module Wardite
       MASK = 0xffffffff
       MIN = -9223372036854775807 - 1 #: Integer
 
+      MAX = 0x7fffffffffffffff
+
+      # Keep the sign bit out of the left shift so its result fits in an i64.
+      # Counts passed by the VM are already reduced modulo 64.
+      # @rbs value: Integer
+      # @rbs count: Integer
+      # @rbs return: Integer
+      def self.flat_shl(value, count)
+        return value if count == 0
+
+        magnitude = (value & (MAX >> count)) << count
+        sign = ((value >> (63 - count)) & 1) == 0 ? 0 : MIN
+        magnitude | sign
+      end
+
+      # @rbs value: Integer
+      # @rbs count: Integer
+      # @rbs return: Integer
+      def self.flat_shr_u(value, count)
+        count == 0 ? value : (value >> count) & (MAX >> (count - 1))
+      end
+
+      # @rbs value: Integer
+      # @rbs count: Integer
+      # @rbs return: Integer
+      def self.flat_rotl(value, count)
+        return value if count == 0
+
+        flat_shl(value, count) | flat_shr_u(value, 64 - count)
+      end
+
       # @rbs value: Integer
       # @rbs return: Integer
       def self.low(value)
