@@ -21,15 +21,15 @@ module Wardite
       end
     end
 
-    # Bound the preparation cost of running the local passes on store functions.
+    # Bound the preparation cost of running the local passes on newly eligible functions.
     class OptimizationScope
-      MAX_STORE_INSTRUCTIONS = 128
+      MAX_INSTRUCTIONS = 128
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: bool
       def self.caller?(function)
-        return false if function.uses_i64 || function.uses_float || function.uses_eh || function.uses_dynamic_calls
-        !function.uses_store || function.instructions.size <= MAX_STORE_INSTRUCTIONS
+        return false if function.uses_i64 || function.uses_float || function.uses_eh
+        (!function.uses_store && !function.uses_dynamic_calls) || function.instructions.size <= MAX_INSTRUCTIONS
       end
     end
 
