@@ -405,6 +405,8 @@ module Wardite
 
       I32_BYTE_MUL_ADD: ::Integer
 
+      I32_BYTE_ADD_STORE: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 

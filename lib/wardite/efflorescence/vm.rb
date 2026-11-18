@@ -721,6 +721,14 @@ module Wardite
             registers[instructions.fetch(pc + 9)] = product
             registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + product) & 0xffffffff
             pc += 3 * Lowerer::WIDTH
+          when 198 # Opcode::I32_BYTE_ADD_STORE
+            byte = @store_access.load8_u(registers[instructions.fetch(pc + 2)], 0)
+            registers[a] = byte
+            sum = (byte + registers[instructions.fetch(pc + 7)]) & 0xffffffff
+            registers[instructions.fetch(pc + 5)] = sum
+            @store_access.store(registers[instructions.fetch(pc + 10)], 0, 1, sum)
+            registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
+            pc += 3 * Lowerer::WIDTH
           when 0 # Opcode::COPY
             b = instructions.fetch(pc + 2)
             registers[a] = registers[b]

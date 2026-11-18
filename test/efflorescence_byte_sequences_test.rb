@@ -73,6 +73,15 @@ class EfflorescenceByteSequencesTest < Test::Unit::TestCase
     WAT
   end
 
+  test "byte reconstruction truncates the stored sum and preserves address advancement" do
+    check_sequence(<<~WAT, OP::I32_BYTE_ADD_STORE, [8, 200, 20], 21) do |vm|
+      local.get 2 local.get 0 i32.load8_u local.get 1 i32.add i32.store8
+      local.get 2 i32.const 1 i32.add
+    WAT
+      assert_equal 25, vm.call_unboxed(:read, [20])
+    end
+  end
+
   test "a branch into the sequence keeps individual dispatches" do
     fn = E::Function.new(0, [], [], 0)
     fn.replace_instructions([
