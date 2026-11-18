@@ -401,6 +401,8 @@ module Wardite
 
       I32_TABLE_STORE8: ::Integer
 
+      I64_BYTE_LOOKUP: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 

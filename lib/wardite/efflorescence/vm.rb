@@ -702,6 +702,15 @@ module Wardite
             @store_access.store(registers[instructions.fetch(pc + 10)], instructions.fetch(pc + 11), 1, byte)
             registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
             pc += 3 * Lowerer::WIDTH
+          when 196 # Opcode::I64_BYTE_LOOKUP
+            address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
+            registers[a] = address
+            byte = @store_access.load8_u(address, 0)
+            registers[instructions.fetch(pc + 5)] = byte
+            table_address = (registers[instructions.fetch(pc + 10)] + byte) & 0xffffffff
+            registers[instructions.fetch(pc + 9)] = table_address
+            registers[instructions.fetch(pc + 13)] = @store_access.load8_u(table_address, 0)
+            pc += 3 * Lowerer::WIDTH
           when 0 # Opcode::COPY
             b = instructions.fetch(pc + 2)
             registers[a] = registers[b]

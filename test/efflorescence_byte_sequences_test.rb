@@ -61,6 +61,12 @@ class EfflorescenceByteSequencesTest < Test::Unit::TestCase
     end
   end
 
+  test "byte lookup forwards the unsigned byte and wraps the table address" do
+    check_sequence(<<~WAT, OP::I64_BYTE_LOOKUP, [6, 0xffffffb7, 0], 81, forwarded_reads: 3)
+      local.get 1 local.get 0 i32.const 2 i32.add i32.load8_u i32.add i64.load8_u i32.wrap_i64
+    WAT
+  end
+
   test "a branch into the sequence keeps individual dispatches" do
     fn = E::Function.new(0, [], [], 0)
     fn.replace_instructions([
