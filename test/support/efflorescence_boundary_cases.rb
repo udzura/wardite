@@ -121,14 +121,15 @@ module EfflorescenceBoundaryCases
       binary = File.join(directory, "cli.wasm")
       File.write(source, CLI_WAT)
       EfflorescenceParity.capture("wasm-tools", "parse", source, "-o", binary)
-      [[[], "started"], [["--new-engine"], "started"], [["--new-engine", "--mir-profile"], "mixed"],
-       [["--new-engine", "--mir-profile"], "pure"], [["--new-engine", "--mir-profile", "--mir-disable", "inline"], "pure"]].each do |options, name|
+      profile = ["--new-engine", "--mir-profile"]
+      no_inline = [*profile, "--mir-disable", "inline"]
+      [[[], "started", nil], [["--new-engine"], "started", nil],
+       [profile, "mixed", 2], [no_inline, "mixed", 3],
+       [profile, "pure", 1], [no_inline, "pure", 2]].each do |options, name, entries|
         stdout, stderr = EfflorescenceParity.capture(*command, *options, "--no-wasi", "--invoke", name, binary)
         test.assert_equal "", stdout
         test.assert_include stderr, "return value: I32(42)"
-        next unless options.include?("--mir-profile")
-        entries = name == "mixed" ? 3 : options.include?("--mir-disable") ? 2 : 1
-        test.assert_include stderr, "function_entries=#{entries} "
+        test.assert_include stderr, "function_entries=#{entries} " if entries
       end
       stdout, stderr = EfflorescenceParity.capture(*command, "--new-engine", "--mir-dump", "--mir-profile",
         "--no-wasi", "--invoke", "f32", binary, "1.25")

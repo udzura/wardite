@@ -8,6 +8,20 @@ class EfflorescenceM5Test < Test::Unit::TestCase
   include EfflorescenceHelper
   include EfflorescenceM5Cases
 
+  test "float callers preserve negative zero when inlining a pure i32 leaf" do
+    wat = <<~WAT
+      (module
+        (func $inc (param i32) (result i32) local.get 0 i32.const 1 i32.add)
+        (func (export "run") (result i32) f32.const -0.0 i32.reinterpret_f32 call $inc))
+    WAT
+    [[], [:all]].each do |disabled|
+      vm = load_efflorescence(wat, disabled_optimizations: disabled).runtime
+      assert_equal 0x80000001, vm.call_unboxed("run", [])
+      calls = vm.optimized_ir.function_at(1).instructions.count { |i| i[0] == Wardite::Efflorescence::Opcode::CALL }
+      assert_equal disabled.empty? ? 0 : 1, calls
+    end
+  end
+
   test "mixed float host and indirect calls" do
     Dir.mktmpdir("wardite-m5-host") do |dir|
       wat = File.read(File.expand_path("./fixtures/efflorescence/m5_host.wat", __dir__))
