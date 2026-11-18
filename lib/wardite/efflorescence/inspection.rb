@@ -67,6 +67,16 @@ module Wardite
         end
         counters
       end
+
+      # One "opcode NAME COUNT" line per executed opcode, in opcode order.
+      # @rbs return: String
+      def opcode_report
+        lines = [] #: Array[String]
+        @opcode_counts.each_with_index do |count, opcode|
+          lines << "opcode #{Opcode::NAMES[opcode]} #{count}" if count > 0
+        end
+        lines.join("\n")
+      end
     end
 
     # Profiling is compiled into a separate instrumented MIR. The ordinary

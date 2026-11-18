@@ -156,6 +156,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
       assert_include err, "Optimized MIR (instructions=23 copies=2 registers=49)"
       assert_include err, "I32_XOR_SHR_U_IMM"
       assert_include err, "dispatches=73 copies=1 register_reads=63 register_writes=51 function_entries=1 frames_created=1"
+      assert_match(/^opcode I32_XOR_SHR_U_IMM \d+$/, err)
       assert_include err, "return value: I32(483678737)"
     end
   end

@@ -322,6 +322,22 @@ class WarditeE2EWasiTest < Test::Unit::TestCase
     end
   end
 
+  test "Efflorescence --mir-profile reports WASI commands that return or call proc_exit" do
+    [["i32.const 1 drop", 0], ["i32.const 29 call $exit unreachable", 29]].each do |body, code|
+      with_wasm(<<~WAT) do |file|
+        (module
+          (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))
+          (func (export "_start") #{body}))
+      WAT
+        stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-I#{ROOT}/lib", "#{ROOT}/exe/wardite", "--mir-profile", file)
+        assert_equal code, status.exitstatus, stderr
+        assert_equal "", stdout
+        assert_match(/^dispatches=\d+ /, stderr)
+        assert_match(code == 0 ? /^opcode RETURN 1$/ : /^opcode CALL_HOST 1$/, stderr)
+      end
+    end
+  end
+
   test "ordinary imports do not load WASI with default options" do
     with_wasm('(module (import "env" "f" (func $f)) (export "f" (func $f)))') do |file|
       script = <<~RUBY

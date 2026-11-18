@@ -56,6 +56,10 @@ module Wardite
       # @rbs return: void
       def invoke_function: () -> void
 
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      # @rbs return: void
+      def print_mir_profile: (Wardite::Efflorescence::Metrics metrics) -> void
+
       # @rbs return: void
       def invoke_wasi: () -> void
 
