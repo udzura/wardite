@@ -21,6 +21,18 @@ module Wardite
       end
     end
 
+    # Bound the preparation cost of running the local passes on store functions.
+    class OptimizationScope
+      MAX_STORE_INSTRUCTIONS = 128
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: bool
+      def self.caller?(function)
+        return false if function.uses_i64 || function.uses_float || function.uses_eh || function.uses_dynamic_calls
+        !function.uses_store || function.instructions.size <= MAX_STORE_INSTRUCTIONS
+      end
+    end
+
     # All transformations use instruction ordinals. Only the final lowering
     # changes PCs to integer-array offsets. Every rewrite repairs branch edges.
     class Rewrite
@@ -201,7 +213,7 @@ module Wardite
           index = 0
           while index < ir.functions.size
             function = ir.defined_at(index)
-            changed << function.index if !function.uses_i64 && !function.uses_float && !function.uses_eh && !function.uses_store && !function.uses_dynamic_calls && expand_calls(function, ir, callees)
+            changed << function.index if OptimizationScope.caller?(function) && expand_calls(function, ir, callees)
             index += 1
           end
           changed
@@ -586,7 +598,7 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       def optimize_function(function)
-        return if function.uses_i64 || function.uses_float || function.uses_eh || function.uses_store || function.uses_dynamic_calls
+        return unless OptimizationScope.caller?(function)
         Passes::CopyPropagation.new.run(function) if @configuration.enabled?(:copy)
         Passes::ImmediateSpecialization.new.run(function) if @configuration.enabled?(:immediate)
         Passes::BranchFusion.new.run(function) if @configuration.enabled?(:branch)

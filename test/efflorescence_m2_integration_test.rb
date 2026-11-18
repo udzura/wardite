@@ -40,7 +40,7 @@ class EfflorescenceM2IntegrationTest < Test::Unit::TestCase
         assert_equal 42, vm.call_unboxed('pure',[])
       end
       vm.semantic_ir.functions.each_with_index do |fn,i|
-        next unless fn.uses_store || fn.uses_eh
+        next unless fn.uses_eh
         assert_equal fn.instructions.map(&:operands), vm.optimized_ir.function_at(i).instructions.map(&:operands)
       end
       if mode != {disabled_optimizations: [:all]}

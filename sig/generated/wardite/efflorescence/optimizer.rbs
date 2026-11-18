@@ -15,6 +15,15 @@ module Wardite
       def enabled?: (Symbol feature) -> bool
     end
 
+    # Bound the preparation cost of running the local passes on store functions.
+    class OptimizationScope
+      MAX_STORE_INSTRUCTIONS: ::Integer
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: bool
+      def self.caller?: (Wardite::Efflorescence::Function function) -> bool
+    end
+
     # All transformations use instruction ordinals. Only the final lowering
     # changes PCs to integer-array offsets. Every rewrite repairs branch edges.
     class Rewrite
