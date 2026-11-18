@@ -32,8 +32,8 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: bool
       def self.caller?(function)
-        return false if function.uses_float || function.uses_eh
-        return true unless function.uses_i64 || function.uses_store || function.uses_dynamic_calls
+        return false if function.uses_eh
+        return true unless function.uses_float || function.uses_i64 || function.uses_store || function.uses_dynamic_calls
 
         instructions = function.instructions
         return true if instructions.size <= SMALL_FUNCTION

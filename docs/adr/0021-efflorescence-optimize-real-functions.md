@@ -1,6 +1,6 @@
 # ADR 0021: 線形メモリ・i64・floatを使う関数にも最適化パスを適用する
 
-- **状態** 提案
+- **状態** 実装・レビュー中（[全6段階の結果と公開時点の速度判定](../efflorescence-real-workloads.md#adr-0021-の段階別比較2026-11-18)）
 - **日付** 2026-11-17
 - **基準** Wardite 1.2.2 `5baaf38`
 - **関連** [ADR 0001](0001-efflorescence-m1-control-and-eh.md)、[ADR 0002](0002-efflorescence-m2-memory-and-globals.md)、[ADR 0004](0004-efflorescence-m4-i64.md)、[ADR 0005](0005-efflorescence-m5-floating-point.md)、[ADR 0006](0006-efflorescence-m6-coverage-parity.md)、[ADR 0018](0018-efflorescence-real-workload-measurement.md)（計測の基準）
