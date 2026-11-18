@@ -240,6 +240,29 @@ class EfflorescenceTest < Test::Unit::TestCase
     end
   end
 
+  test "CLI selects preparation on first call, eager preparation, or automatic disk caching" do
+    Dir.mktmpdir do |dir|
+      file = File.join(dir, "mix.wasm")
+      File.binwrite(file, compile_efflorescence_wat(File.read(MIX_WAT)))
+      load_cli = ->(*flags) { Wardite::Cli::Cli.new([*flags, "--no-wasi", file]).new_instance.runtime }
+      bodies = ->(vm) { vm.instance_variable_get(:@ir).functions }
+      assert bodies.call(load_cli.call).all? { |fn| fn.bytecode.empty? }
+      %w[--mir-eager --mir-cache-eager].each do |flag|
+        assert bodies.call(load_cli.call(flag)).all? { |fn| !fn.bytecode.empty? }
+      end
+      cache = File.join(dir, "cache")
+      miss = load_cli.call("--mir-cache", cache)
+      assert_false miss.mir_cache_hit
+      assert bodies.call(miss).all? { |fn| !fn.bytecode.empty? }
+      hit = load_cli.call("--mir-cache", cache)
+      assert_true hit.mir_cache_hit
+      assert bodies.call(hit).all?(&:cache_pending)
+      eager = load_cli.call("--mir-cache", cache, "--mir-eager")
+      assert_true eager.mir_cache_hit
+      assert bodies.call(eager).none?(&:cache_pending)
+    end
+  end
+
   test "CLI defaults to Efflorescence and accepts explicit engine flags" do
     Dir.mktmpdir("wardite-efflorescence-cli") do |dir|
       file = File.join(dir, "mix.wasm")

@@ -43,7 +43,7 @@ module Wardite
         @mir_profile = false
         @mir_cache = nil
         @mir_cache_verify = :checksum
-        @mir_cache_eager = false
+        @mir_eager = false
         @snapshot = nil
         @memsize = 1
         parser = RUBY_ENGINE == "spinel" ? SpinelOptions : OptionParser
@@ -72,8 +72,8 @@ module Wardite
           }
           opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }
           opts.on("--mir-profile", "Instrument MIR execution (do not use for timing)") { @mir_profile = true }
-          opts.on("--mir-cache DIR", "Reuse MIR2 in a local directory") { |dir| @mir_cache = dir }
-          opts.on("--mir-cache-eager", "Restore and check every cached MIR2 function at load time") { @mir_cache_eager = true }
+          opts.on("--mir-cache DIR", "Build all functions on a miss; restore on first call on a hit") { |dir| @mir_cache = dir }
+          opts.on("--mir-eager", "--mir-cache-eager", "Prepare all MIR at load time (default: on first call)") { @mir_eager = true }
           opts.on("--mir-cache-verify MODE", "Verify the MIR2 cache with checksum (default) or sha256") do |mode|
             unless mode == "checksum" || mode == "sha256"
               raise Wardite::ArgumentError, "--mir-cache-verify expects checksum or sha256"
@@ -90,7 +90,7 @@ module Wardite
           opts.on("FILE.wasm") { }
         end
         options.parse!(args)
-        if !new_engine && (!disabled_optimizations.empty? || mir_dump || mir_profile || mir_cache)
+        if !new_engine && (!disabled_optimizations.empty? || mir_dump || mir_profile || mir_cache || @mir_eager)
           raise "MIR options require Efflorescence"
         end
         if snapshot && (!new_engine || !mir_cache || mir_dump || mir_profile)
@@ -129,7 +129,7 @@ module Wardite
         ins = File.open(file, "rb") do |f|
           Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi, engine: new_engine ? :efflorescence : :stack,
             disabled_optimizations: disabled_optimizations, mir_profile: mir_profile,
-            mir_cache: mir_dump ? nil : mir_cache, mir_cache_verify: @mir_cache_verify, mir_cache_eager: @mir_cache_eager || !!mir_dump)
+            mir_cache: mir_dump ? nil : mir_cache, mir_cache_verify: @mir_cache_verify, mir_cache_eager: @mir_eager || !!mir_dump)
         end
         if memsize > 1
           ins.store.memories[0].grow(memsize)

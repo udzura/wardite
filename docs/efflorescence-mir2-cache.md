@@ -2,6 +2,13 @@
 
 [ADR 0008のフェーズ5](adr/0008-efflorescence-ruby-wasm-phase2.md#5-mir2ビルドキャッシュ)を実装した。CRubyとSpinelで `--new-engine --mir-cache DIR` を指定すると、同じWasmとMIR設定で別プロセスからlowering済みのコードを再利用する。
 
+| 使い方 | 初回 | 次回以降 |
+|---|---|---|
+| オプションなし | 呼ばれた関数からMIRを仕上げる | 毎回同じ |
+| `--mir-cache DIR` | ミス時は全関数を仕上げて保存する | ヒット時は呼ばれた関数だけ復元する |
+| `--mir-eager` | 全関数をロード時に仕上げる | 毎回同じ |
+| `--mir-cache DIR --mir-eager` | ミス時は全関数を仕上げて保存する | ヒット時も全関数をロード時に復元・検査する |
+
 ```sh
 WARDITE_TRACE=1 bundle exec ruby -Ilib exe/wardite --new-engine --yjit \
   --mir-cache "$HOME/.cache/wardite" -- "$ruby_wasm" --disable-gems \

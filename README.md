@@ -83,8 +83,10 @@ Use `--mir-disable NAME` to compare
 individual features, `--mir-dump` to inspect MIR and `--mir-profile` for counters.
 See [Phase 2](docs/efflorescence-phase2.md) ([日本語](docs/efflorescence-phase2-ja.md)).
 
-On CRuby and Spinel, pass `--mir-cache DIR` to reuse lowered
-MIR across processes. Use a local directory you control. Each run still decodes
+On CRuby and Spinel, the default is to validate the whole module at load time
+and prepare MIR on the first call to each function. For repeated runs, pass
+`--mir-cache DIR`: the first run prepares all functions and writes the cache,
+and later runs restore only the functions they call. Use a local directory you control. Each run still decodes
 the Wasm, links imports, and initializes a fresh instance. `--mir-dump` and
 `--mir-profile` build MIR normally. Ruby callers can pass `mir_cache: dir`.
 CRuby and Spinel use different cache keys.
@@ -93,8 +95,8 @@ The default `--mir-cache-verify checksum` checks the payload size and samples
 blocks. Use `--mir-cache-verify sha256` or Ruby's `mir_cache_verify: :sha256`
 to check the whole payload. Both modes use the same cache file. By default,
 each function is restored and structurally checked before its first execution.
-Use `--mir-cache-eager` or Ruby's `mir_cache_eager: true` to check every
-function at load time. If a lazy check fails, Wardite stops and reports the
+Use `--mir-eager` (also spelled `--mir-cache-eager`) or Ruby's
+`mir_cache_eager: true` to prepare or restore every function at load time. If a lazy check fails, Wardite stops and reports the
 cache path. Delete that file and rerun. Corruption outside the sampled blocks
 can go undetected in checksum mode, including changes that leave the MIR
 structurally valid.

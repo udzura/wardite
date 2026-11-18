@@ -17,6 +17,7 @@ class WarditeSpinelMIRCacheTest < Test::Unit::TestCase
     assert status.success?, stderr
     assert_include stdout, "--mir-cache DIR"
     assert_include stdout, "--mir-cache-verify MODE"
+    assert_include stdout, "--mir-eager"
     assert_include stdout, "--mir-cache-eager"
   end
 
