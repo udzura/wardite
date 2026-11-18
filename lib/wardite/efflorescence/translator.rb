@@ -193,6 +193,7 @@ module Wardite
                          f64_load: Opcode::F64_LOAD, f64_store: Opcode::F64_STORE }.freeze
       STORE_CODES = (MEMORY_WIDTHS.keys + %i[global_get global_set memory_size memory_grow memory_init memory_copy memory_fill]).freeze
 
+      # @rbs @source: Wardite::Efflorescence::Translator::ModuleSource
       # @rbs @instance: Wardite::Instance
       # @rbs @entries: Array[Wardite::Efflorescence::FunctionEntry]
       # @rbs @stack: Array[Integer]
@@ -207,7 +208,9 @@ module Wardite
       # @rbs @handler_depth: Integer
 
       # @rbs instance: Wardite::Instance
-      def initialize(instance)
+      # @rbs source: ModuleSource
+      def initialize(instance, source = ModuleSource.new(instance))
+        @source = source
         @instance = instance
         @entries = []
         @stack, @controls = [], []
@@ -259,6 +262,26 @@ module Wardite
           end
         end
         IR.new(functions, entries: @entries, hosts: linked.hosts)
+      end
+
+      # Replay the original declarations without re-linking host functions,
+      # executing start, or consulting live global/memory/table slots.
+      # @rbs linked: IR
+      # @rbs bytes: String
+      # @rbs return: IR
+      def translate_source(linked, bytes)
+        @entries = linked.entries
+        bodies = BinaryLoader.decode_code_section(bytes).func_codes
+        types = @source.block_types
+        functions = [] #: Array[Wardite::Efflorescence::Function]
+        linked.entries.each_with_index do |entry, index|
+          next unless entry.kind == :defined
+          body = bodies.fetch(entry.defined_index)
+          body.check_features(types, false)
+          wasm = Wardite::WasmFunction.new(entry.parameter_types, entry.result_types, body)
+          functions << translate_function(wasm, index, functions.size)
+        end
+        IR.new(functions, entries: linked.entries, hosts: linked.hosts)
       end
 
       # @rbs wasm: Wardite::WasmFunction
@@ -367,7 +390,7 @@ module Wardite
             @stack << dst
           when :global_get, :global_set
             index = integer_operand(operands[0])
-            type = @instance.store.globals.fetch(index).type
+            type = @source.globals.fetch(index).type
             @function.uses_i64 = true if type == :i64
             @function.uses_float = true if FloatBits.float_type?(type)
             if code == :global_get
@@ -497,9 +520,8 @@ module Wardite
             type_index = integer_operand(operands[0])
             table_index = integer_operand(operands[1])
             raise UnsupportedFeature, context("only call_indirect through table 0 is supported") unless table_index == 0
-            table = @instance.store.tables[0]
-            fail_translation("call_indirect requires funcref table 0") unless table && table.type == :funcref
-            type = @instance.types[type_index] if type_index >= 0
+            fail_translation("call_indirect requires funcref table 0") unless @source.funcref_table
+            type = @source.types[type_index] if type_index >= 0
             fail_translation("invalid indirect call type index #{type_index}") unless type
             FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}")
             @function.uses_dynamic_calls = true
@@ -566,7 +588,7 @@ module Wardite
         @function.uses_store = true
         if code == :global_get || code == :global_set
           index = integer_operand(operands[0])
-          global = index >= 0 ? @instance.store.globals[index] : nil
+          global = index >= 0 ? @source.globals[index] : nil
           fail_translation("invalid global index #{index}") unless global
           case global.type
           when :i32
@@ -583,7 +605,7 @@ module Wardite
           fail_translation("global.set on immutable global #{index}") if code == :global_set && !global.mutable
           return
         end
-        fail_translation("memory instruction requires memory 0") if @instance.store.memories.empty?
+        fail_translation("memory instruction requires memory 0") unless @source.has_memory
         alignment = MEMORY_WIDTHS[code]
         if alignment
           hint = integer_operand(operands[0])
@@ -592,8 +614,8 @@ module Wardite
           fail_translation("invalid memory offset") unless offset >= 0 && offset <= 0xffffffff
         elsif code == :memory_init
           data_index = integer_operand(operands[0])
-          fail_translation("memory.init requires data count") unless @instance.data_count_section
-          count = @instance.data_section&.segments&.size || 0
+          fail_translation("memory.init requires data count") unless @source.has_data_count
+          count = @source.data_segments
           fail_translation("invalid data index #{data_index}") unless data_index >= 0 && data_index < count
           check_memory_index(integer_operand(operands[1]))
         elsif code == :memory_copy
@@ -776,7 +798,7 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::Tag
       def tag_at(index)
         fail_translation("invalid tag index #{index}") if index < 0
-        @instance.tags[index] || raise(TranslationError, context("invalid tag index #{index}"))
+        @source.tags[index] || raise(TranslationError, context("invalid tag index #{index}"))
       end
 
       # Catch labels resolve before pushing the try_table's own label.

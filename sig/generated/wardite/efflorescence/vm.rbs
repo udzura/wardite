@@ -22,16 +22,18 @@ module Wardite
 
       @semantic_ir: Wardite::Efflorescence::IR?
 
+      @inspection_links: Wardite::Efflorescence::IR?
+
       # @rbs instance: Wardite::Instance
       # @rbs disabled_optimizations: Array[Symbol]
       # @rbs profile: bool
       # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
       # @rbs cached_functions: Array[Function]?
+      # @rbs source_code: String?
       # @rbs cache_checked: bool
-      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?, ?cached_functions: Array[Function]?, ?cache_checked: bool) -> untyped
+      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?, ?cached_functions: Array[Function]?, ?cache_checked: bool, ?source_code: String?) -> untyped
 
-      # A caller explicitly inspecting a cache hit can still request the
-      # intermediate forms. Execution continues to use the restored MIR2.
+      # Build both inspection views on first access. Execution keeps its own IR.
       # @rbs return: Wardite::Efflorescence::IR
       def semantic_ir: () -> Wardite::Efflorescence::IR
 
@@ -75,11 +77,11 @@ module Wardite
 
       private
 
-      # @rbs translator: Wardite::Efflorescence::Translator
-      # @rbs linked: Wardite::Efflorescence::IR
+      # @rbs semantic: Wardite::Efflorescence::IR
       # @rbs profile: bool
+      # @rbs inspect: bool
       # @rbs return: Wardite::Efflorescence::IR
-      def build_mir: (Wardite::Efflorescence::Translator translator, Wardite::Efflorescence::IR linked, bool profile) -> Wardite::Efflorescence::IR
+      def build_mir: (Wardite::Efflorescence::IR semantic, bool profile, bool inspect) -> Wardite::Efflorescence::IR
 
       # @rbs return: void
       def restore_inspection_ir: () -> void

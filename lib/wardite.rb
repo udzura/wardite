@@ -92,7 +92,12 @@ module Wardite
       @runtime = case engine
       when :stack then Runtime.new(self)
       when :efflorescence
-        Efflorescence::VM.new(self, disabled_optimizations: disabled_optimizations, profile: mir_profile,
+        # A cache hit can decode its own pending bodies on inspection. A cold
+        # build replays the original bytes even if the host edits Store later.
+        code = code_section
+        source_code = code.source_bytes if code && !cached_functions
+        code.source_bytes = nil if code
+        Efflorescence::VM.new(self, source_code: source_code, disabled_optimizations: disabled_optimizations, profile: mir_profile,
           mir_cache: mir_cache, cached_functions: cached_functions, cache_checked: true)
       else raise LoadError, "unknown engine: #{engine}"
       end

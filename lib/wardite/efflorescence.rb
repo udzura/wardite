@@ -9,6 +9,7 @@ require_relative "efflorescence/optimizer"
 require_relative "efflorescence/register_validation"
 require_relative "efflorescence/inspection"
 require_relative "efflorescence/vm"
+require_relative "efflorescence/translation_source"
 
 # Spinel initializes the cache tables at startup, after Opcode is defined.
 if RUBY_ENGINE == "spinel"

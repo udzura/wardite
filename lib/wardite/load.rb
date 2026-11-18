@@ -273,6 +273,9 @@ module Wardite
       end
     end
 
+    # Keep the code section for on-demand MIR inspection after the host has
+    # accessed the mutable decoded bodies or edited the store.
+    attr_accessor :source_bytes #: String?
     attr_accessor :func_codes #:Array[CodeBody]
 
     # @rbs return: void
@@ -280,6 +283,7 @@ module Wardite
       self.name = "Code"
       self.code = 0xa
 
+      @source_bytes = nil
       @func_codes = []
     end
   end
@@ -416,7 +420,7 @@ module Wardite
       end
 
       version = preamble
-      sections_ = sections(!cache.nil?)
+      sections_ = sections(!cache.nil?, engine == :efflorescence)
       @buf = buf if cache
 
       wasi_env = nil
@@ -467,8 +471,9 @@ module Wardite
     end
 
     # @rbs defer_code: bool
+    # @rbs keep_code: bool
     # @rbs return: Array[Section]
-    def self.sections(defer_code = false)
+    def self.sections(defer_code = false, keep_code = false)
       sections = [] #: Array[Section]
 
       loop do
@@ -497,7 +502,7 @@ module Wardite
           when Wardite::SectionElement
             elem_section
           when Wardite::SectionCode
-            code_section(defer_code)
+            code_section(defer_code, keep_code)
           when Wardite::SectionData
             data_section
           when Wardite::Const::SectionDataCount
@@ -765,12 +770,23 @@ module Wardite
     end
 
     # @rbs defer_code: bool
+    # @rbs keep_code: bool
     # @rbs return: CodeSection
-    def self.code_section(defer_code = false)
-      dest = CodeSection.new
+    def self.code_section(defer_code = false, keep_code = false)
       size = fetch_uleb128(@buf)
-      dest.size = size
-      sbuf = StringIO.new(assert_read(@buf, size))
+      bytes = assert_read(@buf, size)
+      section = decode_code_section(bytes, defer_code)
+      section.source_bytes = bytes.freeze if keep_code
+      section
+    end
+
+    # @rbs bytes: String
+    # @rbs defer_code: bool
+    # @rbs return: CodeSection
+    def self.decode_code_section(bytes, defer_code = false)
+      dest = CodeSection.new
+      dest.size = bytes.bytesize
+      sbuf = StringIO.new(bytes)
 
       len = fetch_uleb128(sbuf)
       len.times { dest.func_codes << read_function_body(sbuf, defer_code) }

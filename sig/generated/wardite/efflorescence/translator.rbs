@@ -59,6 +59,8 @@ module Wardite
 
       STORE_CODES: untyped
 
+      @source: Wardite::Efflorescence::Translator::ModuleSource
+
       @instance: Wardite::Instance
 
       @entries: Array[Wardite::Efflorescence::FunctionEntry]
@@ -84,7 +86,8 @@ module Wardite
       @handler_depth: Integer
 
       # @rbs instance: Wardite::Instance
-      def initialize: (Wardite::Instance instance) -> untyped
+      # @rbs source: ModuleSource
+      def initialize: (Wardite::Instance instance, ?ModuleSource source) -> untyped
 
       # @rbs return: Wardite::Efflorescence::IR
       def link: () -> Wardite::Efflorescence::IR
@@ -92,6 +95,13 @@ module Wardite
       # @rbs linked: Wardite::Efflorescence::IR
       # @rbs return: Wardite::Efflorescence::IR
       def translate: (?Wardite::Efflorescence::IR linked) -> Wardite::Efflorescence::IR
+
+      # Replay the original declarations without re-linking host functions,
+      # executing start, or consulting live global/memory/table slots.
+      # @rbs linked: IR
+      # @rbs bytes: String
+      # @rbs return: IR
+      def translate_source: (IR linked, String bytes) -> IR
 
       # @rbs wasm: Wardite::WasmFunction
       # @rbs index: Integer

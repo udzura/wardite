@@ -77,3 +77,84 @@ script/baseline.sh build/results/after
 ```
 
 前後を比べるときは、`build/wardite` を別名でコピーしてから、もう一方をビルドする。そのうえで、2つのバイナリを1回のhyperfineに並べ、順序を入れ替えてもう1回測る（[ADR 0018](adr/0018-efflorescence-real-workload-measurement.md)）。
+
+## ADR 0019 の再計測（2026-11-18）
+
+Wardite `c48e371` と最終候補 `0710c91` を、Apple M3 Pro、macOS 27.2.1、Spinel `a2aa05227` の `-O2` と既定のoverflow検査で比較した。wardite-benches は `f07c454`。上のベースラインと同じ15ケースを使った。Rust製Wasm 7本は上の表とSHA-256が異なるため、今回の比較では変更前後で同一のWasmと入力を使い、変更前の値も取り直した。
+
+### 変更を分けた計測
+
+同じmainから、(1) store命令の判定だけをHashにしたもの、(2) semantic IRの複製を初回の検査まで遅らせたもの、(3) 両方を組み合わせたものをビルドした。表は各実験の順方向での中央値。RSSはプロセスごとの最大RSSの中央値。逆順の値と各回の生値も [計測JSON](../benchmark/results/adr0019-startup.json) に残した。
+
+| 変更 | Base64 encode 256 KiB ロード | 同 RSS | PNG 256×256 ロード | 同 RSS |
+|---|---:|---:|---:|---:|
+| 表引きのみ | 21.70 → 20.67 ms | 58.75 → 58.95 MiB | 46.59 → 44.12 ms | 103.78 → 103.81 MiB |
+| IR複製の遅延のみ（試作） | 23.01 → 20.78 ms | 58.75 → 54.33 MiB | 45.76 → 44.35 ms | 103.81 → 95.00 MiB |
+| 両方（試作） | 21.52 → 19.88 ms | 58.75 → 54.42 MiB | 44.53 → 41.05 ms | 103.78 → 95.08 MiB |
+
+表引きは `MEMORY_WIDTHS.merge(...)` でstore系の全opcodeを含むHashを作り、`STORE_CODES.include?(code)` を `key?(code)` に置き換えて測った。Base64とPNGでRSSの改善条件を満たさず、逆順ではロード時間の短縮も変更前の標準偏差の2倍を下回ったため見送った。
+
+### Spinelビルドで見つかった数値ベンチの回帰
+
+初版 `4561231` は、両順で `splitmix64` のプロセス全体が6.0〜6.6%遅くなった。正順のハードウェア命令数の中央値は287.50億 → 287.68億、CPUサイクルは43.50億 → 46.15億だった。arm64の逆アセンブルでは `execute_flat` が9,200命令から9,920命令に増え、変更前にあった `FramePool#acquire` への直接呼び出しが消えていた。
+
+保存する宣言を定義する `Translator::ModuleSource` を専用ファイルに分け、VM定義の後で読み込んだ。Rubyの処理は同じだが、このSpinelビルドでは `execute_flat` が9,200命令に戻り、`FramePool#acquire` の直接呼び出しも戻った。この候補について全15ケースを再計測した。JSONの `before_file_split` が初版、`final` が分割後である。
+
+### 最終版の比較方法
+
+検査用IRの遅延再生成を実装した。cold loadでは、元のコードセクションと翻訳に必要な宣言を保存し、semantic IRをその場で最適化する。`semantic_ir`、`optimized_ir`、`dump_mir` の初回呼び出しでは、この入力から検査用IRを再構成する。ロード後にホストがStoreや関数本体を変更してもロード時のMIRを表示し、start関数を再実行しない。MIR2ヒットでは従来の関数単位の復元を使う。
+
+全15ケースで、2つのバイナリをhyperfine 2.0.0の同じ呼び出しに並べ、各2回ウォームアップ後に9回計測した。順序を逆にして同じ手順を繰り返した。WASIのロードは別プロセスで `WARDITE_TRACE=1` の `load_from_buffer` を同じ順序・回数で測った。数値のケースではプロセス全体の時間、WASIでは全体の時間・ロード・RSSを比較する。以下の表の矢印は変更前から変更後への変化を表す。
+
+たとえば、Base64 encode の比較は wardite-benches のルートで次のように再現できる。`BEFORE` と `AFTER` には各チェックアウトを同じSpinelでビルドしたバイナリの絶対パスを指定する。
+
+```sh
+guest=build/rust/wasm32-wasip1/release/examples/base64_codec.wasm
+for order in forward reverse; do
+  first=$BEFORE second=$AFTER
+  if [ "$order" = reverse ]; then first=$AFTER second=$BEFORE; fi
+  hyperfine -N --warmup 2 --runs 9 --input build/fixtures/data.bin \
+    --export-json "encode-$order.json" \
+    "$first --new-engine -- $guest encode" "$second --new-engine -- $guest encode"
+done
+```
+
+| WASIケース | ロード 正順 (ms) | ロード 逆順 (ms) | RSS 正順 (MiB) | RSS 逆順 (MiB) |
+|---|---:|---:|---:|---:|
+| base64-encode-empty | 20.73 → 19.66 | 20.63 → 19.80 | 50.52 → 46.05 | 50.50 → 46.05 |
+| base64-encode | 20.61 → 19.55 | 20.47 → 19.87 | 58.75 → 54.42 | 58.75 → 54.44 |
+| base64-encode-4m | 20.53 → 19.64 | 20.48 → 19.71 | 114.88 → 109.38 | 114.89 → 109.38 |
+| base64-decode | 20.21 → 19.57 | 20.27 → 19.47 | 56.20 → 51.98 | 56.22 → 51.97 |
+| base64-decode-4m | 20.48 → 19.92 | 20.65 → 19.56 | 93.09 → 88.73 | 93.08 → 88.73 |
+| png | 42.32 → 40.04 | 42.56 → 40.12 | 103.80 → 95.11 | 103.78 → 95.11 |
+| png-1024 | 42.91 → 40.57 | 42.74 → 40.63 | 112.05 → 103.34 | 112.03 → 103.34 |
+
+| ケース | プロセス全体 正順 (ms) | プロセス全体 逆順 (ms) |
+|---|---:|---:|
+| xorshift-wat | 1776.69 → 1773.93 | 1774.05 → 1774.76 |
+| xorshift | 1181.62 → 1183.44 | 1181.25 → 1183.76 |
+| splitmix64 | 1153.41 → 1150.77 | 1159.77 → 1146.68 |
+| mandelbrot-f32 | 1642.62 → 1668.09 | 1643.04 → 1668.18 |
+| mandelbrot-f64 | 1663.57 → 1665.91 | 1661.49 → 1662.35 |
+| monte-carlo-pi | 1756.38 → 1744.17 | 1759.31 → 1743.40 |
+| crc8-stream | 389.26 → 389.75 | 388.38 → 388.89 |
+| crc8-stream-grown | 485.17 → 485.04 | 488.22 → 490.12 |
+| base64-encode-empty | 24.41 → 23.55 | 24.47 → 23.51 |
+| base64-encode | 63.57 → 61.55 | 63.67 → 61.46 |
+| base64-encode-4m | 635.21 → 631.43 | 634.88 → 630.39 |
+| base64-decode | 58.83 → 56.75 | 58.51 → 57.16 |
+| base64-decode-4m | 558.82 → 558.69 | 559.19 → 558.83 |
+| png | 65.39 → 62.73 | 64.99 → 62.46 |
+| png-1024 | 306.26 → 305.56 | 305.81 → 304.49 |
+
+### 判定
+
+WASI全7ケースで両順ともロード時間の中央値が短くなり、RSSの差は全ケースで変更前の標準偏差の2倍を超えた。ロード時間の短縮幅が2標準偏差に届かなかったのは既定サイズのBase64 encodeの逆順だけだった。
+
+全体時間が回帰閾値を超えたのは `mandelbrot-f32` で、正順は1.6%、逆順は1.5%遅くなった。今回はWASIのロード時間とRSSの改善を優先し、この回帰を許容してレビューに進める。初版にあった `splitmix64` の回帰は解消した。
+
+### 正しさの検証
+
+- wardite-benchesの全15ケースで `script/compare --iwasm` が一致した。WASI全7ケースの `--mir-profile` は合計と全opcodeの内訳が同じWasmを使った変更前と一致した。
+- Base64、PNG、Ruby 3.4.2の `ruby.wasm`（SHA-256 `1ac460e944a54c17529aa05e6cad4575aab6d3d2466745f935237f7a46351e98`）で、既存の `mir_generation_digest.rb` による変更前後のダイジェストが一致した。プロファイル有効・無効の両方でsemantic IR、検査用optimized IR、実行用IRのbytecodeと副表を照合した。
+- `bundle exec rake test` は316件、うちネイティブ用87件は `make spinel-test RUBY="bundle exec ruby"` で別途全件成功した。`bundle exec rake check` は型エラーなし。`WARDITE_VERIFY_MIR_CACHE_PARITY=1 bundle exec rake parity` はCRuby・Spinelともに436 fixtureの実行とMIR2復元を確認した。

@@ -113,6 +113,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     WAT
     miss = load_bytes(wasm)
     assert_false miss.mir_cache_hit
+    expected_dump = miss.dump_mir
     decoded = 0
     trace = TracePoint.new(:call) do |event|
       decoded += 1 if event.self.equal?(Wardite::BinaryLoader) && event.method_id == :decode_body
@@ -134,7 +135,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
       assert_same body, function.body
       assert_equal 1, decoded
 
-      assert_equal miss.dump_mir, hit.dump_mir
+      assert_equal expected_dump, hit.dump_mir
       assert_equal 2, decoded
     end
   end
