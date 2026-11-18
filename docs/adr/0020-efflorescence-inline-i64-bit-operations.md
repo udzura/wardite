@@ -1,6 +1,6 @@
 # ADR 0020: i64のビット演算・シフト・比較をexecute_flatで直接計算する
 
-- **状態** 提案
+- **状態** 実装・計測済み、レビュー中（[全15ケースの比較と判定](../efflorescence-real-workloads.md#adr-0020-の再計測2026-11-18)）
 - **日付** 2026-11-17
 - **基準** Wardite 1.2.2 `5baaf38`、Spinel `58ee636`（CIの `SPINEL_REF`）、`-O2`、既定の整数overflow検査
 - **関連** [ADR 0004](0004-efflorescence-m4-i64.md)（i64の表現）、[ADR 0018](0018-efflorescence-real-workload-measurement.md)（計測の基準）
