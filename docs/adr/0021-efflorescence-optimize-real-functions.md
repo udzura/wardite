@@ -95,7 +95,7 @@ ImmediateSpecialization、BranchFusion、Superinstructionsがi64・float・メ�
 
 ## 段階
 
-各段階を別のPRにし、段階ごとに[計測](#計測と受け入れ条件)を行う。lowering後のコードが変わる段階では `MIRCache::CODE_VERSION`（[mir_cache.rb](../../lib/wardite/efflorescence/mir_cache.rb#L16)）を上げ、既存のMIR2キャッシュを使わせない。起動スナップショットのキーはキャッシュのキーを含むので、同時に無効になる。
+各段階を別のPRにし、段階1・2は既存の除外条件下で生成コードの一致とテストの成功を合格条件にする。命令数と実行時間の改善判定は、除外を解除する段階3以降に適用する（[計測と受け入れ条件](#計測と受け入れ条件)）。lowering後のコードが変わる段階では `MIRCache::CODE_VERSION`（[mir_cache.rb](../../lib/wardite/efflorescence/mir_cache.rb#L16)）を上げ、既存のMIR2キャッシュを使わせない。起動スナップショットのキーはキャッシュのキーを含むので、同時に無効になる。
 
 1. 生存解析の修正：`remove_overwritten_copies` で `Function#read_count` と `Function#read_at` を使う。上の再現手順を、`MEMORY_INIT`・`MEMORY_COPY`・`MEMORY_FILL`・`CALL_HOST` の単体テストにする。今の除外の下では生成されるコードは変わらない。
 2. parityを既定の構成でも実行する：`run_efflorescence_manifest.rb` で、`[:all]` に加えて既定の構成でも結果を照合する。
@@ -128,6 +128,6 @@ ImmediateSpecialization、BranchFusion、Superinstructionsがi64・float・メ�
 
 ## 計測と受け入れ条件
 
-[ADR 0018](0018-efflorescence-real-workload-measurement.md) の手順と条件に従う。一次指標は2つある。1つはwardite-benchesのWASIサンプルで実行したMIR命令の総数で、各段階で `COPY` と定数との `I32_ADD` が減ることを確かめる。もう1つは16倍の入力でのプロセス全体の時間である。
+[ADR 0018](0018-efflorescence-real-workload-measurement.md) の手順と条件に従う。一次指標は2つある。1つはwardite-benchesのWASIサンプルで実行したMIR命令の総数で、段階3以降で総数と `COPY`・定数との `I32_ADD` の変化を測る。もう1つは16倍の入力でのプロセス全体の時間である。
 
-最適化の対象が増えるので、ロードとMIR準備の時間は増える。CopyPropagationの `propagate` は命令数×レジスタ数に比例し、大きな関数で時間がかかる（[ADR 0016](0016-efflorescence-generation-tagged-copy-propagation.md)）。各段階で、既定サイズの入力のプロセス全体の時間が悪化しないことを、採用の条件にする。悪化する場合は、関数の大きさで最適化を打ち切る閾値を同じPRで検討する。
+最適化の対象が増えるので、ロードとMIR準備の時間は増える。CopyPropagationの `propagate` は命令数×レジスタ数に比例し、大きな関数で時間がかかる（[ADR 0016](0016-efflorescence-generation-tagged-copy-propagation.md)）。段階3以降では、既定サイズの入力のプロセス全体の時間が悪化しないことを、採用の条件にする。悪化する場合は、関数の大きさで最適化を打ち切る閾値を同じPRで検討する。
