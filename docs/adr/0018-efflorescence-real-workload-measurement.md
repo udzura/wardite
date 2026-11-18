@@ -1,6 +1,6 @@
 # ADR 0018: 現実のワークロードで高速化を計測する手順を定める
 
-- **状態** 提案
+- **状態** 採用。実装し、ベースラインを記録した。[実装とベースラインの記録](../efflorescence-real-workloads.md)を参照。
 - **日付** 2026-11-17
 - **基準** Wardite 1.2.2 `5baaf38`、Spinel `58ee636`（CIの `SPINEL_REF`）、`-O2`、既定の整数overflow検査、[wardite-benches](https://github.com/udzura/wardite-benches/tree/286de8be5226a4b41dc8e1b597b6717d761e9156) `286de8b`
 - **関連** [ADR 0017](0017-efflorescence-linear-memory-loads.md)、[ADR 0019](0019-efflorescence-startup-quick-wins.md)、[ADR 0020](0020-efflorescence-inline-i64-bit-operations.md)、[ADR 0021](0021-efflorescence-optimize-real-functions.md)、[ADR 0022](0022-efflorescence-lazy-function-build.md)

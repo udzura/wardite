@@ -177,9 +177,16 @@ module Wardite
         runtime = instance.runtime
         if runtime.is_a?(Wardite::Efflorescence::VM)
           $stderr.puts runtime.dump_mir if mir_dump
-          $stderr.puts runtime.metrics.report if mir_profile
+          print_mir_profile(runtime.metrics) if mir_profile
         end
         $stderr.puts "return value: #{ret.inspect}"
+      end
+
+      # @rbs metrics: Wardite::Efflorescence::Metrics
+      # @rbs return: void
+      def print_mir_profile(metrics)
+        $stderr.puts metrics.report
+        $stderr.puts metrics.opcode_report
       end
 
       # @rbs return: void
@@ -225,7 +232,12 @@ module Wardite
             runtime.snapshot = recorder
           end
         end
-        runtime.call(:_start, [])
+        begin
+          runtime.call(:_start, [])
+        ensure
+          # proc_exit leaves through exit, which runs this on CRuby and Spinel.
+          print_mir_profile(runtime.metrics) if mir_profile && runtime.is_a?(Wardite::Efflorescence::VM)
+        end
       end
 
       # @rbs return: String?

@@ -54,6 +54,24 @@ class WarditeSpinelWasiTest < Test::Unit::TestCase
     end
   end
 
+  test "Spinel --mir-profile reports WASI commands that return or call proc_exit" do
+    [["i32.const 1 drop", 0], ["i32.const 29 call $exit unreachable", 29]].each do |body, code|
+      Dir.mktmpdir do |dir|
+        file = File.join(dir, "profile.wasm")
+        File.binwrite(file, compile_efflorescence_wat(<<~WAT))
+          (module
+            (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))
+            (func (export "_start") #{body}))
+        WAT
+        stdout, stderr, status = Open3.capture3(@binary, "--mir-profile", "--", file)
+        assert_equal code, status.exitstatus, stderr
+        assert_equal "", stdout
+        assert_match(/^dispatches=\d+ /, stderr)
+        assert_match(code == 0 ? /^opcode RETURN 1$/ : /^opcode CALL_HOST 1$/, stderr)
+      end
+    end
+  end
+
   test "Spinel WASI reads a preopened file and translates readlink errors" do
     wat = <<~WAT
       (module

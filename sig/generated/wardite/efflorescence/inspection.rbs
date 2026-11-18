@@ -41,6 +41,10 @@ module Wardite
 
       # @rbs return: String
       def report: () -> String
+
+      # One "opcode NAME COUNT" line per executed opcode, in opcode order.
+      # @rbs return: String
+      def opcode_report: () -> String
     end
 
     # Profiling is compiled into a separate instrumented MIR. The ordinary

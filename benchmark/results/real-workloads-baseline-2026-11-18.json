@@ -1,0 +1,1741 @@
+{
+ "environment": {
+  "wardite": "v1.2.2-10-g5c96407-dirty",
+  "spinel": "spinel 2026.10.25+6092 (a2aa05227) [apple clang 21.0.0 (cc)]",
+  "wardite-benches": "1155333-dirty",
+  "cpu": "Apple M3 Pro",
+  "os": "26.6.2",
+  "wasmtime": "wasmtime 28.0.0 (2e584e841 2024-12-20)",
+  "iwasm": "iwasm 2.4.5",
+  "hyperfine": "hyperfine 2.0.0",
+  "wasm_sha256": {
+   "build/wat/xorshift.wasm": "12e7c3aef0c4ea02faf75bec03d23698c232f6b0a23029a24bf8db0d04e46333",
+   "build/rust/wasm32-unknown-unknown/release/examples/xorshift.wasm": "ad29759e3632351bbf900909098821a8f0083ce86c428db12b2e8ce6cada75f5",
+   "build/rust/wasm32-unknown-unknown/release/examples/splitmix64.wasm": "58767f49d4166e304a1ad7725e527bc5db0a10221929eb88813c2d1f68a16b80",
+   "build/rust/wasm32-unknown-unknown/release/examples/mandelbrot.wasm": "eac9fe6f1cf40b3aa598a228c95ae0b53efa7d1a1786f9e5d6d371ff897c0636",
+   "build/rust/wasm32-unknown-unknown/release/examples/monte_carlo_pi.wasm": "cc7c9b62a01efb9f5fab54685561efb944fd58ae7a28508e49a6307d54e3976f",
+   "build/rust/wasm32-unknown-unknown/release/examples/crc8_stream.wasm": "dc53c667cc969828d6b7f0b9cc9d2e5853b64ec31dc009939f4c3c9f7c3fb808",
+   "build/rust/wasm32-wasip1/release/examples/base64_codec.wasm": "59e0f3fe21bdde9d4c4e23d945433e07d00e5e4de4e7edcd993e7de88fca2083",
+   "build/rust/wasm32-wasip1/release/examples/png_grayscale.wasm": "c64581670926d8b271919ca8a5ef38fa09ef79d0f5c52cb36ceb68c520a37e71"
+  }
+ },
+ "warmup": 2,
+ "cases": [
+  {
+   "name": "xorshift-wat",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine --no-wasi --invoke xorshift -- build/wat/xorshift.wasm 100000000 1",
+     "wall_seconds": [
+      2.385844958,
+      2.392083333,
+      2.383877375,
+      2.381992667,
+      2.382742792,
+      2.3874165,
+      2.389715125,
+      2.398634833,
+      2.382201458
+     ],
+     "peak_rss_bytes": [
+      6356992.0,
+      6340608.0,
+      6356992.0,
+      6356992.0,
+      6340608.0,
+      6340608.0,
+      6356992.0,
+      6356992.0,
+      6356992.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run --invoke xorshift -- build/wat/xorshift.wasm 100000000 1",
+     "wall_seconds": [
+      0.26703587500000003,
+      0.26725350000000003,
+      0.268101875,
+      0.268112833,
+      0.268572542,
+      0.269722209,
+      0.267744709,
+      0.27228625,
+      0.382307334
+     ],
+     "peak_rss_bytes": [
+      12845056.0,
+      12877824.0,
+      12812288.0,
+      12861440.0,
+      12861440.0,
+      12894208.0,
+      12910592.0,
+      12943360.0,
+      12926976.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp -f xorshift build/wat/xorshift.wasm 100000000 1",
+     "wall_seconds": [
+      0.9050914590000001,
+      0.9106624160000001,
+      0.9024855420000001,
+      0.915397666,
+      0.927169,
+      0.9361496250000001,
+      0.903587542,
+      0.949153541,
+      0.922219208
+     ],
+     "peak_rss_bytes": [
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0
+     ]
+    }
+   },
+   "match": "Match"
+  },
+  {
+   "name": "xorshift",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine --no-wasi --invoke xorshift -- build/rust/wasm32-unknown-unknown/release/examples/xorshift.wasm 100000000 1",
+     "wall_seconds": [
+      1.6073778330000001,
+      1.5926150410000002,
+      1.6808251250000001,
+      1.638990916,
+      1.592949417,
+      1.596817208,
+      1.5970322920000002,
+      1.596759333,
+      1.600018334
+     ],
+     "peak_rss_bytes": [
+      6455296.0,
+      6455296.0,
+      6455296.0,
+      6455296.0,
+      6455296.0,
+      6438912.0,
+      6455296.0,
+      6455296.0,
+      6455296.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run --invoke xorshift -- build/rust/wasm32-unknown-unknown/release/examples/xorshift.wasm 100000000 1",
+     "wall_seconds": [
+      0.44508141700000003,
+      0.44428825000000005,
+      0.445689708,
+      0.44831995900000005,
+      0.465334167,
+      0.44627770800000005,
+      0.44701570900000004,
+      0.446606041,
+      0.44943770800000005
+     ],
+     "peak_rss_bytes": [
+      12812288.0,
+      12845056.0,
+      12812288.0,
+      12861440.0,
+      12910592.0,
+      12861440.0,
+      12976128.0,
+      12910592.0,
+      12959744.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp -f xorshift build/rust/wasm32-unknown-unknown/release/examples/xorshift.wasm 100000000 1",
+     "wall_seconds": [
+      1.257242584,
+      1.259673667,
+      1.261077917,
+      1.28576025,
+      1.305449958,
+      1.312404667,
+      1.258483,
+      1.326364167,
+      1.285188458
+     ],
+     "peak_rss_bytes": [
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0
+     ]
+    }
+   },
+   "match": "Match"
+  },
+  {
+   "name": "splitmix64",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine --no-wasi --invoke splitmix64 -- build/rust/wasm32-unknown-unknown/release/examples/splitmix64.wasm 10000000 1",
+     "wall_seconds": [
+      1.570111875,
+      1.5788044170000002,
+      1.559501041,
+      1.7769834580000001,
+      1.564764459,
+      1.55620025,
+      1.556899542,
+      1.561287667,
+      1.549442167
+     ],
+     "peak_rss_bytes": [
+      6373376.0,
+      6389760.0,
+      6389760.0,
+      6373376.0,
+      6389760.0,
+      6389760.0,
+      6389760.0,
+      6389760.0,
+      6389760.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run --invoke splitmix64 -- build/rust/wasm32-unknown-unknown/release/examples/splitmix64.wasm 10000000 1",
+     "wall_seconds": [
+      0.021506917,
+      0.021939375,
+      0.021980417000000002,
+      0.021614125,
+      0.022301,
+      0.022167708,
+      0.027226542000000003,
+      0.023698042000000002,
+      0.022352375
+     ],
+     "peak_rss_bytes": [
+      12861440.0,
+      12877824.0,
+      12861440.0,
+      12926976.0,
+      12845056.0,
+      12877824.0,
+      12861440.0,
+      12894208.0,
+      12828672.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp -f splitmix64 build/rust/wasm32-unknown-unknown/release/examples/splitmix64.wasm 10000000 1",
+     "wall_seconds": [
+      0.12371725,
+      0.122399084,
+      0.12418020800000001,
+      0.12129575000000001,
+      0.121493417,
+      0.12235933300000001,
+      0.158094708,
+      0.123117708,
+      0.12940004200000002
+     ],
+     "peak_rss_bytes": [
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0
+     ]
+    }
+   },
+   "match": "Match"
+  },
+  {
+   "name": "mandelbrot-f32",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine --no-wasi --invoke mandelbrot_f32 -- build/rust/wasm32-unknown-unknown/release/examples/mandelbrot.wasm 200 150 100",
+     "wall_seconds": [
+      2.3156005840000002,
+      2.317783,
+      2.2714895,
+      2.344528375,
+      2.321355292,
+      2.329134125,
+      2.382968708,
+      2.341221958,
+      2.319313708
+     ],
+     "peak_rss_bytes": [
+      8224768.0,
+      8224768.0,
+      8208384.0,
+      8208384.0,
+      8224768.0,
+      8208384.0,
+      8208384.0,
+      8208384.0,
+      8224768.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run --invoke mandelbrot_f32 -- build/rust/wasm32-unknown-unknown/release/examples/mandelbrot.wasm 200 150 100",
+     "wall_seconds": [
+      0.015257875,
+      0.015346917000000002,
+      0.015562667,
+      0.015411083,
+      0.015853583,
+      0.015785625,
+      0.015611417,
+      0.015508000000000001,
+      0.016025333000000003
+     ],
+     "peak_rss_bytes": [
+      12926976.0,
+      12877824.0,
+      12894208.0,
+      12861440.0,
+      12926976.0,
+      12861440.0,
+      12926976.0,
+      12845056.0,
+      12877824.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp -f mandelbrot_f32 build/rust/wasm32-unknown-unknown/release/examples/mandelbrot.wasm 200 150 100",
+     "wall_seconds": [
+      0.02438575,
+      0.023706208000000003,
+      0.024520208,
+      0.023483,
+      0.024330833000000003,
+      0.023366625000000002,
+      0.023603292,
+      0.02392775,
+      0.02390925
+     ],
+     "peak_rss_bytes": [
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0
+     ]
+    }
+   },
+   "match": "Match"
+  },
+  {
+   "name": "mandelbrot-f64",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine --no-wasi --invoke mandelbrot_f64 -- build/rust/wasm32-unknown-unknown/release/examples/mandelbrot.wasm 200 150 100",
+     "wall_seconds": [
+      2.344854375,
+      2.397242167,
+      2.322938292,
+      2.3804614170000002,
+      2.359649,
+      2.366647542,
+      2.407136958,
+      2.350791333,
+      2.407118042
+     ],
+     "peak_rss_bytes": [
+      8224768.0,
+      8224768.0,
+      8224768.0,
+      8257536.0,
+      8224768.0,
+      8241152.0,
+      8241152.0,
+      8241152.0,
+      8241152.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run --invoke mandelbrot_f64 -- build/rust/wasm32-unknown-unknown/release/examples/mandelbrot.wasm 200 150 100",
+     "wall_seconds": [
+      0.014187375,
+      0.014037458000000001,
+      0.014248125,
+      0.014659625,
+      0.014649459,
+      0.014606625000000002,
+      0.015384875000000001,
+      0.014596833000000002,
+      0.01485
+     ],
+     "peak_rss_bytes": [
+      12926976.0,
+      12845056.0,
+      12861440.0,
+      12877824.0,
+      12845056.0,
+      12861440.0,
+      12877824.0,
+      12894208.0,
+      12861440.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp -f mandelbrot_f64 build/rust/wasm32-unknown-unknown/release/examples/mandelbrot.wasm 200 150 100",
+     "wall_seconds": [
+      0.022116959000000002,
+      0.022335625,
+      0.022106542,
+      0.02225925,
+      0.022331625,
+      0.022361709,
+      0.022232750000000003,
+      0.022359208000000002,
+      0.021838125
+     ],
+     "peak_rss_bytes": [
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0,
+      10092544.0
+     ]
+    }
+   },
+   "match": "Match"
+  },
+  {
+   "name": "monte-carlo-pi",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine --no-wasi --invoke monte_carlo_pi -- build/rust/wasm32-unknown-unknown/release/examples/monte_carlo_pi.wasm 1000000 1",
+     "wall_seconds": [
+      2.44721125,
+      2.435109,
+      2.433202583,
+      2.472564958,
+      2.5175280410000003,
+      2.4719807080000002,
+      2.458311958,
+      2.4461507080000002,
+      2.476552666
+     ],
+     "peak_rss_bytes": [
+      7995392.0,
+      7979008.0,
+      7995392.0,
+      7995392.0,
+      7995392.0,
+      7995392.0,
+      7995392.0,
+      7995392.0,
+      7979008.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run --invoke monte_carlo_pi -- build/rust/wasm32-unknown-unknown/release/examples/monte_carlo_pi.wasm 1000000 1",
+     "wall_seconds": [
+      0.014007167000000001,
+      0.014781500000000001,
+      0.014803292000000001,
+      0.014060041,
+      0.014602333,
+      0.014440291000000001,
+      0.015254541000000002,
+      0.014660042000000002,
+      0.014490208000000001
+     ],
+     "peak_rss_bytes": [
+      12959744.0,
+      12877824.0,
+      12910592.0,
+      12861440.0,
+      12926976.0,
+      12894208.0,
+      12976128.0,
+      12877824.0,
+      12894208.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp -f monte_carlo_pi build/rust/wasm32-unknown-unknown/release/examples/monte_carlo_pi.wasm 1000000 1",
+     "wall_seconds": [
+      0.055443791000000006,
+      0.055379458000000006,
+      0.056186958,
+      0.055178000000000005,
+      0.055646125000000005,
+      0.054669791,
+      0.059251750000000006,
+      0.057118291,
+      0.05493975
+     ],
+     "peak_rss_bytes": [
+      10108928.0,
+      10108928.0,
+      10108928.0,
+      10108928.0,
+      10108928.0,
+      10108928.0,
+      10108928.0,
+      10108928.0,
+      10108928.0
+     ]
+    }
+   },
+   "match": "Match (iwasm floats compared at 7 significant digits)"
+  },
+  {
+   "name": "crc8-stream",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine --no-wasi --invoke crc8_stream -- build/rust/wasm32-unknown-unknown/release/examples/crc8_stream.wasm 4096 0",
+     "wall_seconds": [
+      0.524075375,
+      0.528347125,
+      0.532278875,
+      0.532240583,
+      0.5315556250000001,
+      0.531701792,
+      0.5303973750000001,
+      0.533668125,
+      0.5608167500000001
+     ],
+     "peak_rss_bytes": [
+      6340608.0,
+      6324224.0,
+      6307840.0,
+      6340608.0,
+      6340608.0,
+      6340608.0,
+      6307840.0,
+      6340608.0,
+      6340608.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run --invoke crc8_stream -- build/rust/wasm32-unknown-unknown/release/examples/crc8_stream.wasm 4096 0",
+     "wall_seconds": [
+      0.048760625,
+      0.048657125,
+      0.048532875,
+      0.048763583000000006,
+      0.048532541000000005,
+      0.048670750000000006,
+      0.050247666,
+      0.050587417,
+      0.049862625
+     ],
+     "peak_rss_bytes": [
+      12976128.0,
+      12992512.0,
+      12877824.0,
+      12959744.0,
+      12926976.0,
+      12894208.0,
+      12943360.0,
+      12959744.0,
+      12992512.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp -f crc8_stream build/rust/wasm32-unknown-unknown/release/examples/crc8_stream.wasm 4096 0",
+     "wall_seconds": [
+      0.08306325,
+      0.08347,
+      0.08288287500000001,
+      0.08237404200000001,
+      0.082870417,
+      0.082468125,
+      0.082739667,
+      0.136092875,
+      0.08300875
+     ],
+     "peak_rss_bytes": [
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0
+     ]
+    }
+   },
+   "match": "Match"
+  },
+  {
+   "name": "crc8-stream-grown",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine --no-wasi --invoke crc8_stream -- build/rust/wasm32-unknown-unknown/release/examples/crc8_stream.wasm 4096 1",
+     "wall_seconds": [
+      0.667669625,
+      0.663263,
+      0.6535159580000001,
+      0.653537,
+      0.661174208,
+      0.657250792,
+      0.6622145420000001,
+      0.656702333,
+      0.655396167
+     ],
+     "peak_rss_bytes": [
+      8552448.0,
+      8552448.0,
+      8519680.0,
+      8552448.0,
+      8552448.0,
+      8552448.0,
+      8552448.0,
+      8552448.0,
+      8519680.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run --invoke crc8_stream -- build/rust/wasm32-unknown-unknown/release/examples/crc8_stream.wasm 4096 1",
+     "wall_seconds": [
+      0.048235958,
+      0.0480345,
+      0.048397958000000005,
+      0.048463375,
+      0.047685000000000005,
+      0.047675416000000005,
+      0.048925500000000004,
+      0.049566291000000005,
+      0.048986791
+     ],
+     "peak_rss_bytes": [
+      12926976.0,
+      12926976.0,
+      12926976.0,
+      12959744.0,
+      12976128.0,
+      12992512.0,
+      12959744.0,
+      12910592.0,
+      12976128.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp -f crc8_stream build/rust/wasm32-unknown-unknown/release/examples/crc8_stream.wasm 4096 1",
+     "wall_seconds": [
+      0.08373245800000001,
+      0.137322208,
+      0.082743709,
+      0.08277000000000001,
+      0.08243829100000001,
+      0.136333958,
+      0.083159917,
+      0.11532625,
+      0.101569959
+     ],
+     "peak_rss_bytes": [
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0,
+      10141696.0
+     ]
+    }
+   },
+   "match": "Match"
+  },
+  {
+   "name": "base64-encode-empty",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm encode",
+     "wall_seconds": [
+      0.043317084000000006,
+      0.041209542,
+      0.041497417,
+      0.040937625000000005,
+      0.041269667,
+      0.040936875000000005,
+      0.040789042000000005,
+      0.042613750000000006,
+      0.041539917
+     ],
+     "peak_rss_bytes": [
+      55132160.0,
+      55132160.0,
+      55132160.0,
+      55115776.0,
+      55132160.0,
+      55132160.0,
+      55115776.0,
+      55164928.0,
+      55115776.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm encode",
+     "wall_seconds": [
+      0.013592792000000001,
+      0.013937708,
+      0.013344792000000001,
+      0.014010209000000001,
+      0.014744666000000002,
+      0.014873,
+      0.015394667,
+      0.014987167000000001,
+      0.014354041000000001
+     ],
+     "peak_rss_bytes": [
+      14925824.0,
+      14876672.0,
+      14958592.0,
+      14909440.0,
+      14925824.0,
+      14893056.0,
+      14909440.0,
+      14958592.0,
+      14974976.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp build/rust/wasm32-wasip1/release/examples/base64_codec.wasm encode",
+     "wall_seconds": [
+      0.012205208,
+      0.011966541,
+      0.013333250000000001,
+      0.014511667,
+      0.013445709,
+      0.011897541000000001,
+      0.012333833,
+      0.012044583000000001,
+      0.013264000000000001
+     ],
+     "peak_rss_bytes": [
+      11042816.0,
+      11042816.0,
+      11026432.0,
+      11059200.0,
+      11042816.0,
+      11042816.0,
+      11026432.0,
+      11042816.0,
+      11026432.0
+     ]
+    }
+   },
+   "match": "Match",
+   "wardite_load_seconds": [
+    0.033370018005371094,
+    0.03349113464355469,
+    0.030360937118530273,
+    0.03333926200866699,
+    0.03493094444274902,
+    0.03194999694824219,
+    0.03323698043823242,
+    0.03399920463562012,
+    0.03351616859436035
+   ],
+   "mir_report": "dispatches=2731 copies=540 register_reads=3768 register_writes=1953 function_entries=120 frames_created=50 host_calls=4 indirect_calls=3",
+   "mir_opcode_counts": {
+    "COPY": 540,
+    "I32_ADD": 332,
+    "I32_SUB": 83,
+    "I32_MUL": 4,
+    "I32_XOR": 4,
+    "I32_SHL": 11,
+    "I32_SHR_U": 22,
+    "I32_EQZ": 79,
+    "BR": 48,
+    "BR_IF": 324,
+    "CALL": 112,
+    "RETURN": 116,
+    "BR_IF_ZERO": 19,
+    "I32_EQ": 38,
+    "I32_NE": 35,
+    "I32_LTS": 17,
+    "I32_LTU": 25,
+    "I32_GTU": 35,
+    "I32_LEU": 22,
+    "I32_GES": 1,
+    "I32_GEU": 12,
+    "I32_DIV_U": 2,
+    "I32_REM_U": 1,
+    "I32_AND": 89,
+    "I32_OR": 37,
+    "I32_ROTL": 5,
+    "I32_EXTEND8_S": 2,
+    "GLOBAL_GET": 45,
+    "GLOBAL_SET": 86,
+    "I32_LOAD": 182,
+    "I32_LOAD8_S": 13,
+    "I32_LOAD8_U": 30,
+    "I32_LOAD16_U": 3,
+    "I32_STORE": 252,
+    "I32_STORE8": 32,
+    "I32_STORE16": 3,
+    "MEMORY_COPY": 2,
+    "CALL_HOST": 4,
+    "CALL_INDIRECT": 3,
+    "I32_WRAP_I64": 5,
+    "I64_EQ": 5,
+    "I64_NE": 4,
+    "I64_AND": 2,
+    "I64_SHR_U": 3,
+    "I64_ADD": 1,
+    "I64_LOAD": 16,
+    "I64_STORE": 25
+   }
+  },
+  {
+   "name": "base64-encode",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm encode",
+     "wall_seconds": [
+      0.09416450000000001,
+      0.09327162500000001,
+      0.09472125,
+      0.09409025,
+      0.09365358400000001,
+      0.094387541,
+      0.09381708400000001,
+      0.093722833,
+      0.09302995800000001
+     ],
+     "peak_rss_bytes": [
+      63733760.0,
+      63782912.0,
+      63733760.0,
+      63717376.0,
+      63700992.0,
+      63750144.0,
+      63733760.0,
+      63733760.0,
+      63782912.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm encode",
+     "wall_seconds": [
+      0.015562458000000001,
+      0.01517825,
+      0.015305750000000002,
+      0.016432667,
+      0.015545459000000001,
+      0.015088750000000001,
+      0.015955167,
+      0.016192333,
+      0.015946667
+     ],
+     "peak_rss_bytes": [
+      16154624.0,
+      16121856.0,
+      16089088.0,
+      16187392.0,
+      16171008.0,
+      16138240.0,
+      16138240.0,
+      16154624.0,
+      16138240.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp build/rust/wasm32-wasip1/release/examples/base64_codec.wasm encode",
+     "wall_seconds": [
+      0.016013541000000003,
+      0.016597,
+      0.01644,
+      0.016299417,
+      0.017101292,
+      0.016285125,
+      0.016899291,
+      0.017191625000000002,
+      0.017232375
+     ],
+     "peak_rss_bytes": [
+      12140544.0,
+      12156928.0,
+      12156928.0,
+      12173312.0,
+      12156928.0,
+      12173312.0,
+      12156928.0,
+      12173312.0,
+      12189696.0
+     ]
+    }
+   },
+   "match": "Match",
+   "wardite_load_seconds": [
+    0.03017592430114746,
+    0.029963016510009766,
+    0.029618024826049805,
+    0.02977919578552246,
+    0.029896974563598633,
+    0.030118942260742188,
+    0.028999805450439453,
+    0.030073165893554688,
+    0.029356718063354492
+   ],
+   "mir_report": "dispatches=4322082 copies=460627 register_reads=7274183 register_writes=3850622 function_entries=252 frames_created=59 host_calls=19 indirect_calls=3",
+   "mir_opcode_counts": {
+    "COPY": 460627,
+    "I32_ADD": 907330,
+    "I32_SUB": 249,
+    "I32_MUL": 28,
+    "I32_XOR": 11,
+    "I32_SHL": 86,
+    "I32_SHR_U": 87443,
+    "I32_EQZ": 212,
+    "BR": 131,
+    "BR_IF": 121122,
+    "CALL": 229,
+    "RETURN": 233,
+    "BR_IF_ZERO": 134,
+    "I32_EQ": 62,
+    "I32_NE": 122,
+    "I32_LTS": 18,
+    "I32_LTU": 43856,
+    "I32_GTU": 21983,
+    "I32_LES": 5,
+    "I32_LEU": 11008,
+    "I32_GES": 1,
+    "I32_GEU": 37,
+    "I32_CLZ": 13,
+    "I32_CTZ": 2,
+    "I32_DIV_U": 7,
+    "I32_REM_U": 1,
+    "I32_AND": 306138,
+    "I32_OR": 43819,
+    "I32_ROTL": 12,
+    "I32_EXTEND8_S": 3,
+    "GLOBAL_GET": 84,
+    "GLOBAL_SET": 164,
+    "I32_LOAD": 87916,
+    "I32_LOAD8_S": 13,
+    "I32_LOAD8_U": 349581,
+    "I32_LOAD16_U": 3,
+    "I32_STORE": 555,
+    "I32_STORE8": 349560,
+    "I32_STORE16": 3,
+    "MEMORY_GROW": 5,
+    "MEMORY_COPY": 9,
+    "MEMORY_FILL": 1,
+    "CALL_HOST": 19,
+    "CALL_INDIRECT": 3,
+    "I32_WRAP_I64": 305853,
+    "I64_EQ": 5,
+    "I64_NE": 4,
+    "I64_EXTEND_I32_U": 32,
+    "I64_AND": 262130,
+    "I64_OR": 305816,
+    "I64_SHL": 174752,
+    "I64_SHR_U": 436899,
+    "I64_ADD": 1,
+    "I64_MUL": 16,
+    "I64_LOAD": 43704,
+    "I64_STORE": 32
+   }
+  },
+  {
+   "name": "base64-encode-4m",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm encode",
+     "wall_seconds": [
+      0.837818166,
+      0.838472875,
+      0.838267583,
+      0.838827333,
+      0.83996775,
+      0.8378565,
+      0.8371979580000001,
+      0.8421717500000001,
+      0.8347342090000001
+     ],
+     "peak_rss_bytes": [
+      122699776.0,
+      122617856.0,
+      122634240.0,
+      122634240.0,
+      122667008.0,
+      122617856.0,
+      122650624.0,
+      122650624.0,
+      122683392.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm encode",
+     "wall_seconds": [
+      0.045602834,
+      0.046334209,
+      0.047550834,
+      0.046296333,
+      0.044552042,
+      0.044452709,
+      0.043953000000000006,
+      0.043928083,
+      0.044554416
+     ],
+     "peak_rss_bytes": [
+      33177600.0,
+      33226752.0,
+      33193984.0,
+      33177600.0,
+      33144832.0,
+      33210368.0,
+      33226752.0,
+      33193984.0,
+      33177600.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp build/rust/wasm32-wasip1/release/examples/base64_codec.wasm encode",
+     "wall_seconds": [
+      0.07472125,
+      0.074871333,
+      0.07512062500000001,
+      0.075254333,
+      0.074599917,
+      0.074992709,
+      0.07571504200000001,
+      0.075499334,
+      0.07545937500000001
+     ],
+     "peak_rss_bytes": [
+      29179904.0,
+      29212672.0,
+      29196288.0,
+      29212672.0,
+      29179904.0,
+      29212672.0,
+      29179904.0,
+      29229056.0,
+      29212672.0
+     ]
+    }
+   },
+   "match": "Match",
+   "wardite_load_seconds": [
+    0.028334856033325195,
+    0.028348922729492188,
+    0.029688119888305664,
+    0.02851700782775879,
+    0.028161048889160156,
+    0.02974390983581543,
+    0.029610872268676758,
+    0.028951644897460938,
+    0.02884697914123535
+   ],
+   "mir_report": "dispatches=69041163 copies=7342454 register_reads=116231022 register_writes=61524100 function_entries=292 frames_created=59 host_calls=23 indirect_calls=3",
+   "mir_opcode_counts": {
+    "COPY": 7342454,
+    "I32_ADD": 14506256,
+    "I32_SUB": 321,
+    "I32_MUL": 40,
+    "I32_XOR": 15,
+    "I32_SHL": 112,
+    "I32_SHR_U": 1398178,
+    "I32_EQZ": 276,
+    "BR": 169,
+    "BR_IF": 1923651,
+    "CALL": 265,
+    "RETURN": 269,
+    "BR_IF_ZERO": 170,
+    "I32_EQ": 78,
+    "I32_NE": 154,
+    "I32_LTS": 22,
+    "I32_LTU": 699269,
+    "I32_GTU": 349706,
+    "I32_LES": 9,
+    "I32_LEU": 174870,
+    "I32_GES": 1,
+    "I32_GEU": 42,
+    "I32_CLZ": 21,
+    "I32_CTZ": 2,
+    "I32_DIV_U": 11,
+    "I32_REM_U": 1,
+    "I32_AND": 4893768,
+    "I32_OR": 699207,
+    "I32_ROTL": 16,
+    "I32_EXTEND8_S": 3,
+    "GLOBAL_GET": 96,
+    "GLOBAL_SET": 188,
+    "I32_LOAD": 1398820,
+    "I32_LOAD8_S": 17,
+    "I32_LOAD8_U": 5592476,
+    "I32_LOAD16_U": 3,
+    "I32_STORE": 683,
+    "I32_STORE8": 5592460,
+    "I32_STORE16": 3,
+    "MEMORY_GROW": 9,
+    "MEMORY_COPY": 13,
+    "MEMORY_FILL": 1,
+    "CALL_HOST": 23,
+    "CALL_INDIRECT": 3,
+    "I32_WRAP_I64": 4893409,
+    "I64_EQ": 5,
+    "I64_NE": 4,
+    "I64_EXTEND_I32_U": 40,
+    "I64_AND": 4194314,
+    "I64_OR": 4893364,
+    "I64_SHL": 2796208,
+    "I64_SHR_U": 6990543,
+    "I64_ADD": 1,
+    "I64_MUL": 20,
+    "I64_LOAD": 699068,
+    "I64_STORE": 36
+   }
+  },
+  {
+   "name": "base64-decode",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm decode",
+     "wall_seconds": [
+      0.093108041,
+      0.090788667,
+      0.08829300000000001,
+      0.090298708,
+      0.08848175000000001,
+      0.128221167,
+      0.091055042,
+      0.08894787500000001,
+      0.089202583
+     ],
+     "peak_rss_bytes": [
+      61095936.0,
+      61128704.0,
+      61128704.0,
+      61145088.0,
+      61177856.0,
+      61554688.0,
+      61128704.0,
+      61112320.0,
+      61095936.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm decode",
+     "wall_seconds": [
+      0.017448917,
+      0.017743458,
+      0.018110042,
+      0.017625250000000002,
+      0.018590042,
+      0.01881275,
+      0.018776792,
+      0.019330166000000003,
+      0.018549333
+     ],
+     "peak_rss_bytes": [
+      15892480.0,
+      15859712.0,
+      15843328.0,
+      15843328.0,
+      15859712.0,
+      15892480.0,
+      15876096.0,
+      15859712.0,
+      15794176.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp build/rust/wasm32-wasip1/release/examples/base64_codec.wasm decode",
+     "wall_seconds": [
+      0.017341708,
+      0.016998583,
+      0.017912625,
+      0.016924334000000003,
+      0.016585625,
+      0.016573208000000002,
+      0.016552125,
+      0.017535250000000002,
+      0.016044667000000002
+     ],
+     "peak_rss_bytes": [
+      11845632.0,
+      11862016.0,
+      11878400.0,
+      11878400.0,
+      11862016.0,
+      11878400.0,
+      11845632.0,
+      11894784.0,
+      11878400.0
+     ]
+    }
+   },
+   "match": "Match",
+   "wardite_load_seconds": [
+    0.030969858169555664,
+    0.03266000747680664,
+    0.030169248580932617,
+    0.030066967010498047,
+    0.030098915100097656,
+    0.029597043991088867,
+    0.032610177993774414,
+    0.032028913497924805,
+    0.03126883506774902
+   ],
+   "mir_report": "dispatches=4934288 copies=1236240 register_reads=7559086 register_writes=4473730 function_entries=247 frames_created=58 host_calls=20 indirect_calls=3",
+   "mir_opcode_counts": {
+    "COPY": 1236240,
+    "I32_ADD": 809108,
+    "I32_SUB": 299,
+    "I32_MUL": 31,
+    "I32_XOR": 85,
+    "I32_SHL": 94,
+    "I32_SHR_U": 64,
+    "I32_EQZ": 206,
+    "BR": 127,
+    "BR_IF": 372381,
+    "CALL": 223,
+    "RETURN": 227,
+    "BR_IF_ZERO": 135,
+    "I32_EQ": 116,
+    "I32_NE": 21988,
+    "I32_LTS": 16,
+    "I32_LTU": 158,
+    "I32_GTU": 138,
+    "I32_LES": 4,
+    "I32_LEU": 109,
+    "I32_GEU": 25,
+    "I32_CLZ": 12,
+    "I32_CTZ": 2,
+    "I32_DIV_U": 6,
+    "I32_AND": 349,
+    "I32_OR": 192,
+    "I32_ROTL": 12,
+    "I32_ROTR": 10,
+    "I32_EXTEND8_S": 2,
+    "GLOBAL_GET": 82,
+    "GLOBAL_SET": 160,
+    "I32_LOAD": 576,
+    "I32_LOAD8_S": 13,
+    "I32_LOAD8_U": 349595,
+    "I32_LOAD16_U": 4,
+    "I32_STORE": 540,
+    "I32_STORE8": 40,
+    "I32_STORE16": 8,
+    "MEMORY_GROW": 4,
+    "MEMORY_COPY": 9,
+    "MEMORY_FILL": 1,
+    "CALL_HOST": 20,
+    "CALL_INDIRECT": 3,
+    "I32_WRAP_I64": 37,
+    "I64_EQ": 305821,
+    "I64_NE": 43692,
+    "I64_EXTEND_I32_U": 32,
+    "I64_AND": 218442,
+    "I64_OR": 480568,
+    "I64_SHL": 436880,
+    "I64_SHR_U": 218459,
+    "I64_ADD": 1,
+    "I64_MUL": 16,
+    "I64_LOAD": 15,
+    "I64_LOAD8_U": 349504,
+    "I64_STORE": 31,
+    "I64_STORE16": 43688,
+    "I64_STORE32": 43688
+   }
+  },
+  {
+   "name": "base64-decode-4m",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm decode",
+     "wall_seconds": [
+      0.7561171250000001,
+      0.758386875,
+      0.75900325,
+      0.759412583,
+      0.760716417,
+      0.7624704590000001,
+      0.7657419160000001,
+      0.758293667,
+      0.759624166
+     ],
+     "peak_rss_bytes": [
+      99794944.0,
+      99778560.0,
+      99811328.0,
+      99811328.0,
+      99762176.0,
+      99762176.0,
+      99745792.0,
+      99762176.0,
+      99745792.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run -- build/rust/wasm32-wasip1/release/examples/base64_codec.wasm decode",
+     "wall_seconds": [
+      0.051826042,
+      0.052776959000000005,
+      0.052952375,
+      0.052587292,
+      0.052167458,
+      0.053190042,
+      0.052764167,
+      0.053297834,
+      0.053343666000000005
+     ],
+     "peak_rss_bytes": [
+      28999680.0,
+      28934144.0,
+      28983296.0,
+      28950528.0,
+      28966912.0,
+      28983296.0,
+      28950528.0,
+      28999680.0,
+      28966912.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp build/rust/wasm32-wasip1/release/examples/base64_codec.wasm decode",
+     "wall_seconds": [
+      0.078541917,
+      0.07831175,
+      0.08310100000000001,
+      0.078202083,
+      0.082496334,
+      0.07763325,
+      0.07739775,
+      0.07736712500000001,
+      0.077724333
+     ],
+     "peak_rss_bytes": [
+      24985600.0,
+      24952832.0,
+      25001984.0,
+      24969216.0,
+      25001984.0,
+      24969216.0,
+      24985600.0,
+      24952832.0,
+      24969216.0
+     ]
+    }
+   },
+   "match": "Match",
+   "wardite_load_seconds": [
+    0.028710126876831055,
+    0.028512001037597656,
+    0.02852487564086914,
+    0.02852487564086914,
+    0.028618335723876953,
+    0.028778076171875,
+    0.028567075729370117,
+    0.028509855270385742,
+    0.028524160385131836
+   ],
+   "mir_report": "dispatches=78828412 copies=19750757 register_reads=120775723 register_writes=71486099 function_entries=287 frames_created=58 host_calls=24 indirect_calls=3",
+   "mir_opcode_counts": {
+    "COPY": 19750757,
+    "I32_ADD": 12933464,
+    "I32_SUB": 370,
+    "I32_MUL": 43,
+    "I32_XOR": 83,
+    "I32_SHL": 114,
+    "I32_SHR_U": 74,
+    "I32_EQZ": 270,
+    "BR": 164,
+    "BR_IF": 5943241,
+    "CALL": 259,
+    "RETURN": 263,
+    "BR_IF_ZERO": 171,
+    "I32_EQ": 122,
+    "I32_NE": 349693,
+    "I32_LTS": 16,
+    "I32_LTU": 210,
+    "I32_GTU": 179,
+    "I32_LES": 8,
+    "I32_LEU": 133,
+    "I32_GEU": 33,
+    "I32_CLZ": 20,
+    "I32_CTZ": 2,
+    "I32_DIV_U": 10,
+    "I32_AND": 441,
+    "I32_OR": 215,
+    "I32_ROTL": 16,
+    "I32_ROTR": 4,
+    "I32_EXTEND8_S": 2,
+    "GLOBAL_GET": 94,
+    "GLOBAL_SET": 184,
+    "I32_LOAD": 756,
+    "I32_LOAD8_S": 13,
+    "I32_LOAD8_U": 5592487,
+    "I32_LOAD16_U": 4,
+    "I32_STORE": 668,
+    "I32_STORE8": 37,
+    "I32_STORE16": 5,
+    "MEMORY_GROW": 8,
+    "MEMORY_COPY": 13,
+    "MEMORY_FILL": 1,
+    "CALL_HOST": 24,
+    "CALL_INDIRECT": 3,
+    "I32_WRAP_I64": 45,
+    "I64_EQ": 4893369,
+    "I64_NE": 699056,
+    "I64_EXTEND_I32_U": 40,
+    "I64_AND": 3495262,
+    "I64_OR": 7689572,
+    "I64_SHL": 6990520,
+    "I64_SHR_U": 3495283,
+    "I64_ADD": 1,
+    "I64_MUL": 20,
+    "I64_LOAD": 15,
+    "I64_LOAD8_U": 5592416,
+    "I64_STORE": 35,
+    "I64_STORE16": 699052,
+    "I64_STORE32": 699052
+   }
+  },
+  {
+   "name": "png",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine -- build/rust/wasm32-wasip1/release/examples/png_grayscale.wasm ",
+     "wall_seconds": [
+      0.09908125000000001,
+      0.09806466700000001,
+      0.09824579100000001,
+      0.098850584,
+      0.0989125,
+      0.0991235,
+      0.09804104200000001,
+      0.09902229200000001,
+      0.09880975
+     ],
+     "peak_rss_bytes": [
+      111525888.0,
+      111493120.0,
+      111476736.0,
+      111476736.0,
+      111476736.0,
+      111460352.0,
+      111493120.0,
+      111493120.0,
+      111509504.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run -- build/rust/wasm32-wasip1/release/examples/png_grayscale.wasm ",
+     "wall_seconds": [
+      0.015358042,
+      0.015538417,
+      0.015432875,
+      0.015477917,
+      0.015158084,
+      0.015462792000000001,
+      0.014880625000000001,
+      0.014953208,
+      0.016895333000000002
+     ],
+     "peak_rss_bytes": [
+      16826368.0,
+      16842752.0,
+      16744448.0,
+      16777216.0,
+      16728064.0,
+      16777216.0,
+      16744448.0,
+      16760832.0,
+      16744448.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp build/rust/wasm32-wasip1/release/examples/png_grayscale.wasm ",
+     "wall_seconds": [
+      0.017850209000000002,
+      0.018913125000000003,
+      0.018189375,
+      0.0179455,
+      0.017830500000000003,
+      0.018584709,
+      0.018738791,
+      0.01812925,
+      0.018574
+     ],
+     "peak_rss_bytes": [
+      12140544.0,
+      12124160.0,
+      12140544.0,
+      12124160.0,
+      12124160.0,
+      12140544.0,
+      12140544.0,
+      12124160.0,
+      12124160.0
+     ]
+    }
+   },
+   "match": "Match",
+   "wardite_load_seconds": [
+    0.06400609016418457,
+    0.0699770450592041,
+    0.06199789047241211,
+    0.06153392791748047,
+    0.06057095527648926,
+    0.06199312210083008,
+    0.06152606010437012,
+    0.061189889907836914,
+    0.06154990196228027
+   ],
+   "mir_report": "dispatches=3779456 copies=869964 register_reads=5892543 register_writes=3207788 function_entries=1933 frames_created=88 host_calls=14 indirect_calls=266",
+   "mir_opcode_counts": {
+    "COPY": 869964,
+    "I32_ADD": 1143845,
+    "I32_SUB": 98531,
+    "I32_MUL": 198053,
+    "I32_XOR": 20971,
+    "I32_SHL": 14151,
+    "I32_SHR_U": 13313,
+    "I32_EQZ": 18601,
+    "BR": 20161,
+    "BR_IF": 229588,
+    "CALL": 1652,
+    "RETURN": 1919,
+    "BR_IF_ZERO": 7032,
+    "I32_EQ": 17405,
+    "I32_NE": 4809,
+    "I32_LTS": 780,
+    "I32_LTU": 12617,
+    "I32_GTS": 5,
+    "I32_GTU": 39468,
+    "I32_LES": 5,
+    "I32_LEU": 89551,
+    "I32_GEU": 9980,
+    "I32_CLZ": 316,
+    "I32_CTZ": 9,
+    "I32_DIV_U": 67215,
+    "I32_REM_U": 262,
+    "I32_AND": 36381,
+    "I32_OR": 19960,
+    "I32_ROTL": 10,
+    "I32_ROTR": 24,
+    "I32_EXTEND8_S": 6,
+    "GLOBAL_GET": 699,
+    "GLOBAL_SET": 1394,
+    "I32_LOAD": 37263,
+    "I32_LOAD8_U": 405062,
+    "I32_LOAD16_U": 79,
+    "I32_STORE": 6455,
+    "I32_STORE8": 274528,
+    "I32_STORE16": 387,
+    "MEMORY_GROW": 4,
+    "MEMORY_COPY": 318,
+    "MEMORY_FILL": 32,
+    "CALL_HOST": 14,
+    "CALL_INDIRECT": 266,
+    "I64_EQZ": 26,
+    "I32_WRAP_I64": 9158,
+    "I64_EQ": 6,
+    "I64_NE": 30,
+    "I64_LTU": 31,
+    "I64_GTU": 30,
+    "I64_GEU": 1,
+    "I64_EXTEND_I32_U": 13195,
+    "I64_AND": 3510,
+    "I64_OR": 2348,
+    "I64_XOR": 3457,
+    "I64_SHL": 5801,
+    "I64_SHR_U": 9040,
+    "I64_ADD": 63,
+    "I64_SUB": 25,
+    "I64_MUL": 28,
+    "I64_LOAD": 33786,
+    "I64_LOAD8_U": 11,
+    "I64_LOAD32_U": 7,
+    "I64_STORE": 35818
+   }
+  },
+  {
+   "name": "png-1024",
+   "engines": {
+    "wardite": {
+     "command": "build/wardite --new-engine -- build/rust/wasm32-wasip1/release/examples/png_grayscale.wasm ",
+     "wall_seconds": [
+      0.419772042,
+      0.41392916700000004,
+      0.426964791,
+      0.472408166,
+      0.41722370900000005,
+      0.417194375,
+      0.41512008300000003,
+      0.41596387500000004,
+      0.41911975
+     ],
+     "peak_rss_bytes": [
+      120111104.0,
+      120094720.0,
+      120111104.0,
+      120160256.0,
+      120094720.0,
+      120078336.0,
+      120111104.0,
+      120111104.0,
+      120111104.0
+     ]
+    },
+    "wasmtime": {
+     "command": "wasmtime run -- build/rust/wasm32-wasip1/release/examples/png_grayscale.wasm ",
+     "wall_seconds": [
+      0.019159041,
+      0.0192065,
+      0.019002583,
+      0.019820958,
+      0.018176458,
+      0.018543042000000003,
+      0.019260291000000002,
+      0.019219708000000002,
+      0.020338250000000002
+     ],
+     "peak_rss_bytes": [
+      20840448.0,
+      20840448.0,
+      20807680.0,
+      20791296.0,
+      20840448.0,
+      20840448.0,
+      20840448.0,
+      20873216.0,
+      20856832.0
+     ]
+    },
+    "iwasm": {
+     "command": "iwasm --interp build/rust/wasm32-wasip1/release/examples/png_grayscale.wasm ",
+     "wall_seconds": [
+      0.064111583,
+      0.062399292,
+      0.061948541,
+      0.06254425000000001,
+      0.063310875,
+      0.06284925000000001,
+      0.06294975,
+      0.063052625,
+      0.063202375
+     ],
+     "peak_rss_bytes": [
+      16203776.0,
+      16236544.0,
+      16220160.0,
+      16203776.0,
+      16203776.0,
+      16203776.0,
+      16203776.0,
+      16203776.0,
+      16220160.0
+     ]
+    }
+   },
+   "match": "Match",
+   "wardite_load_seconds": [
+    0.058985233306884766,
+    0.05749773979187012,
+    0.05907392501831055,
+    0.057341814041137695,
+    0.05694293975830078,
+    0.05681800842285156,
+    0.05750393867492676,
+    0.05655503273010254,
+    0.09833908081054688
+   ],
+   "mir_report": "dispatches=54437427 copies=12560841 register_reads=85146158 register_writes=46194964 function_entries=8287 frames_created=88 host_calls=16 indirect_calls=1034",
+   "mir_opcode_counts": {
+    "COPY": 12560841,
+    "I32_ADD": 17541467,
+    "I32_SUB": 1257756,
+    "I32_MUL": 3159947,
+    "I32_XOR": 95254,
+    "I32_SHL": 88750,
+    "I32_SHR_U": 104787,
+    "I32_EQZ": 241463,
+    "BR": 250748,
+    "BR_IF": 3088804,
+    "CALL": 7236,
+    "RETURN": 8271,
+    "BR_IF_ZERO": 50209,
+    "I32_EQ": 141533,
+    "I32_NE": 36159,
+    "I32_LTS": 3084,
+    "I32_LTU": 97794,
+    "I32_GTS": 5,
+    "I32_GTU": 532350,
+    "I32_LES": 6,
+    "I32_LEU": 1313552,
+    "I32_GEU": 117497,
+    "I32_CLZ": 587,
+    "I32_CTZ": 11,
+    "I32_DIV_U": 1063793,
+    "I32_REM_U": 1030,
+    "I32_AND": 220148,
+    "I32_OR": 87107,
+    "I32_ROTL": 8,
+    "I32_ROTR": 24,
+    "I32_EXTEND8_S": 6,
+    "GLOBAL_GET": 3352,
+    "GLOBAL_SET": 6700,
+    "I32_LOAD": 185741,
+    "I32_LOAD8_U": 6416838,
+    "I32_LOAD16_U": 814,
+    "I32_STORE": 27216,
+    "I32_STORE8": 4334896,
+    "I32_STORE16": 1382,
+    "MEMORY_GROW": 5,
+    "MEMORY_COPY": 1292,
+    "MEMORY_FILL": 38,
+    "CALL_HOST": 16,
+    "CALL_INDIRECT": 1034,
+    "I64_EQZ": 387,
+    "I32_WRAP_I64": 77423,
+    "I64_EQ": 6,
+    "I64_NE": 390,
+    "I64_LTU": 391,
+    "I64_GTU": 390,
+    "I64_GEU": 1,
+    "I64_EXTEND_I32_U": 112326,
+    "I64_AND": 32624,
+    "I64_OR": 18854,
+    "I64_XOR": 32239,
+    "I64_SHL": 51086,
+    "I64_SHR_U": 75857,
+    "I64_ADD": 783,
+    "I64_SUB": 385,
+    "I64_MUL": 30,
+    "I64_LOAD": 483843,
+    "I64_LOAD8_U": 11,
+    "I64_LOAD32_U": 7,
+    "I64_STORE": 500843
+   }
+  }
+ ]
+}
