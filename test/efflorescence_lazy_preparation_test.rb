@@ -36,6 +36,26 @@ class EfflorescenceLazyPreparationTest < Test::Unit::TestCase
     functions.zip(code) { |fn, original| assert_same original, fn.bytecode }
   end
 
+  test "resume prepares a pending frame before using its saved program counter" do
+    require "wardite/efflorescence/snapshot"
+    wasm = compile_efflorescence_wat(<<~WAT)
+      (module
+        (global $g (mut i32) (i32.const 0))
+        (func (param i32) local.get 0 global.set $g)
+        (func (export "value") (result i32) global.get $g))
+    WAT
+    eager = load_vm(wasm, mir_cache_eager: true).ir.functions.first
+    registers = eager.initial_registers.dup
+    registers[0] = 73
+    saved = Wardite::Efflorescence::SavedFrame.new(eager.pool_index, 0, -1, registers, [])
+    vm = load_vm(wasm)
+    functions = vm.instance_variable_get(:@ir).functions
+    vm.resume([saved])
+    assert_equal eager.bytecode, functions.first.bytecode
+    assert_empty functions.last.bytecode
+    assert_equal 73, vm.call_unboxed(:value, [])
+  end
+
   test "inlining and profiling produce eager MIR in either first-call order" do
     wasm = compile_efflorescence_wat(File.read(MIX_WAT))
     [false, true].each do |profile|
