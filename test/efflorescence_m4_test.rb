@@ -46,6 +46,20 @@ class EfflorescenceM4Test < Test::Unit::TestCase
     end
   end
 
+  test "i64 callers inline i32 leaves while preserving wrapped bits" do
+    wat = <<~WAT
+      (module
+        (func $inc (param i32) (result i32) local.get 0 i32.const 1 i32.add)
+        (func (export "run") (param i64) (result i32) local.get 0 i32.wrap_i64 call $inc))
+    WAT
+    [[], [:all]].each do |disabled|
+      vm = load_efflorescence(wat, disabled_optimizations: disabled).runtime
+      assert_equal 0, vm.call_unboxed("run", [-1])
+      calls = vm.optimized_ir.function_at(1).instructions.count { |i| i[0] == Wardite::Efflorescence::Opcode::CALL }
+      assert_equal disabled.empty? ? 0 : 1, calls
+    end
+  end
+
   test "comparison feeds an i32 condition and rejects i64 shift type errors" do
     vm = load_efflorescence(<<~WAT).runtime
       (module (func (export "run") (result i64)
