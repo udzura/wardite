@@ -41,11 +41,20 @@ class EfflorescenceM2GlobalsTest < Test::Unit::TestCase
       assert_equal 7, independent.runtime.call_unboxed('get', [])
       assert_not_same independent.store.globals[0], fresh.store.globals[0]
       assert_instance_of Wardite::I32, fresh.store.globals[0].value
-      # Store functions stay out of every local pass and both directions of inlining.
-      vm.semantic_ir.functions.each_with_index do |fn, i|
-        next unless fn.uses_store
-        assert_equal fn.instructions.map(&:operands), vm.optimized_ir.function_at(i).instructions.map(&:operands)
-      end
+    end
+  end
+
+  test 'a store caller can inline a pure i32 leaf with the same global result' do
+    wat = <<~WAT
+      (module (global $g i32 (i32.const 41))
+        (func $inc (param i32) (result i32) local.get 0 i32.const 1 i32.add)
+        (func (export "run") (result i32) global.get $g call $inc))
+    WAT
+    [[], [:all]].each do |disabled|
+      vm = load_efflorescence(wat, disabled_optimizations: disabled).runtime
+      assert_equal 42, vm.call_unboxed('run', [])
+      calls = vm.optimized_ir.function_at(1).instructions.count { |i| i[0] == E::Opcode::CALL }
+      assert_equal disabled.empty? ? 0 : 1, calls
     end
   end
 
