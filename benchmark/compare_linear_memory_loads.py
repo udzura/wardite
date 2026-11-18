@@ -73,6 +73,7 @@ def main():
     parser.add_argument("timed_base64", type=Path, help="base64_codec.wasm instrumented with base64_transform_ns")
     parser.add_argument("binaries", nargs="+", metavar="NAME=BINARY")
     parser.add_argument("--rounds", type=int, default=11)
+    parser.add_argument("--png", action="store_true", help="also benchmark PNG to grayscale PGM")
     args = parser.parse_args()
 
     binaries = [entry.split("=", 1) for entry in args.binaries]
@@ -100,6 +101,15 @@ def main():
                     case = f"{mode}_{'hit' if cache else 'off'}{'_timed' if timed else ''}"
                     measure(binaries, root, writer, case, wasm, [mode], expected,
                             rounds=args.rounds, stdin=stdin, cache=cache, timed=timed)
+
+        if args.png:
+            wasm = codec.with_name("png_grayscale.wasm")
+            png = fixtures / "rgb.png"
+            expected = run(["wasmtime", "run", wasm], input=png.read_bytes()).stdout
+            for cache in (False, True):
+                case = "png_hit" if cache else "png_off"
+                measure(binaries, root, writer, case, wasm, [], expected,
+                        rounds=args.rounds, stdin=png, cache=cache)
 
         for source, exports in (
             ("linear_memory_loads", ("lookup8", "unaligned64", "mixed_width")),

@@ -210,7 +210,8 @@ module Wardite
       def initialize(instance)
         @instance = instance
         @entries = []
-        @stack, @controls, @constants = [], [], {}
+        @stack, @controls = [], []
+        @constants = {}
         @i64_constants = nil
         @f32_constants = nil
         @f64_constants = nil
@@ -272,7 +273,8 @@ module Wardite
         locals = [] #: Array[Symbol]
         wasm.locals_type.each_with_index { |type, i| wasm.locals_count.fetch(i).times { locals << type } }
         @function = Function.new(index, wasm.callsig, wasm.retsig, locals.size, local_types: locals, pool_index: pool_index)
-        @stack, @controls, @constants = [], [], {}
+        @stack, @controls = [], []
+        @constants = {}
         @i64_constants = nil
         @f32_constants = nil
         @f64_constants = nil
