@@ -1,6 +1,6 @@
 # ADR 0019: ロード時のstore命令の判定と、semantic IRの複製を減らす
 
-- **状態** 実装・計測済み、採用保留（[全15ケースの比較と判定](../efflorescence-real-workloads.md#adr-0019-の再計測2026-11-18)）
+- **状態** 実装・計測済み、レビュー中（[全15ケースの比較と判定](../efflorescence-real-workloads.md#adr-0019-の再計測2026-11-18)）
 - **日付** 2026-11-17
 - **基準** Wardite 1.2.2 `5baaf38`、Spinel `58ee636`（CIの `SPINEL_REF`）、`-O2`、既定の整数overflow検査
 - **関連** [ADR 0010](0010-efflorescence-mir2-cache-function-restore.md)、[ADR 0014](0014-efflorescence-mir-build-validation-and-decoding.md)、[ADR 0015](0015-efflorescence-selective-inline-snapshots.md)、[ADR 0018](0018-efflorescence-real-workload-measurement.md)（計測の基準）、[ADR 0022](0022-efflorescence-lazy-function-build.md)
