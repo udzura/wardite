@@ -559,7 +559,12 @@ module Wardite
       # @rbs ir: Wardite::Efflorescence::IR
       # @rbs return: Wardite::Efflorescence::IR
       def optimize(ir)
-        output = ir.copy
+        optimize_in_place(ir.copy)
+      end
+
+      # @rbs output: Wardite::Efflorescence::IR
+      # @rbs return: Wardite::Efflorescence::IR
+      def optimize_in_place(output)
         output.functions.each do |function|
           optimize_function(function)
         end

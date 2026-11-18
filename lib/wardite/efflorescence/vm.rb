@@ -12,6 +12,7 @@ module Wardite
       # Records a startup snapshot before the first WASI call outside its allowlist.
       attr_accessor :snapshot #: Wardite::Efflorescence::Snapshot?
 
+      # @rbs @inspection_links: Wardite::Efflorescence::IR?
       # @rbs @semantic_ir: Wardite::Efflorescence::IR?
       # @rbs @optimized_ir: Wardite::Efflorescence::IR?
       # @rbs @global_bits: Array[Integer]
@@ -21,8 +22,9 @@ module Wardite
       # @rbs profile: bool
       # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
       # @rbs cached_functions: Array[Function]?
+      # @rbs source_code: String?
       # @rbs cache_checked: bool
-      def initialize(instance, disabled_optimizations: [], profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false)
+      def initialize(instance, disabled_optimizations: [], profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false, source_code: nil)
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
         @global_bits = []
@@ -44,8 +46,10 @@ module Wardite
         @snapshot = nil
         @active_frames = [] #: Array[Wardite::Efflorescence::Frame]
         @depth = 0
-        translator = Translator.new(instance)
+        @module_source = Translator::ModuleSource.new(instance, source_code)
+        translator = Translator.new(instance, @module_source)
         linked = translator.link
+        @inspection_links = source_code ? linked.copy : nil
         if mir_cache && !profile && !cache_checked
           cached_functions = mir_cache.read_functions(instance)
         end
@@ -53,7 +57,7 @@ module Wardite
         @ir = if cached_functions
           IR.new(cached_functions, entries: linked.entries, hosts: linked.hosts)
         else
-          build_mir(translator, linked, profile)
+          build_mir(translator.translate(linked), profile, @module_source.code.nil?)
         end
         if mir_cache && !profile && !@mir_cache_hit
           mir_cache.write_ir(instance, @ir)
@@ -68,8 +72,7 @@ module Wardite
         end
       end
 
-      # A caller explicitly inspecting a cache hit can still request the
-      # intermediate forms. Execution continues to use the restored MIR2.
+      # Build both inspection views on first access. Execution keeps its own IR.
       # @rbs return: Wardite::Efflorescence::IR
       def semantic_ir
         restore_inspection_ir unless @semantic_ir
@@ -153,26 +156,31 @@ module Wardite
 
       private
 
-      # @rbs translator: Wardite::Efflorescence::Translator
-      # @rbs linked: Wardite::Efflorescence::IR
+      # @rbs semantic: Wardite::Efflorescence::IR
       # @rbs profile: bool
+      # @rbs inspect: bool
       # @rbs return: Wardite::Efflorescence::IR
-      def build_mir(translator, linked, profile)
-        semantic = translator.translate(linked)
-        optimized = Optimizer.new(@configuration).optimize(semantic)
-        optimized.functions.each { |function| RegisterValidation.new.validate(function, optimized, tags: @instance.tags) }
+      def build_mir(semantic, profile, inspect)
+        optimizer = Optimizer.new(@configuration)
+        optimized = inspect ? optimizer.optimize(semantic) : optimizer.optimize_in_place(semantic)
+        optimized.functions.each { |function| RegisterValidation.new.validate(function, optimized, tags: @module_source.tags) }
         ir = profile ? Instrumentation.new.instrument(optimized) : optimized
         Lowerer.new.compile(ir)
-        @semantic_ir = semantic
-        @optimized_ir = optimized
+        if inspect
+          @semantic_ir = semantic
+          @optimized_ir = optimized
+        end
         ir
       end
 
       # @rbs return: void
       def restore_inspection_ir
         @mir_cache&.restore_all
-        linked = IR.new([], entries: @ir.entries, hosts: @ir.hosts)
-        build_mir(Translator.new(@instance), linked, false)
+        linked = @inspection_links || IR.new([], entries: @ir.entries, hosts: @ir.hosts).copy
+        translator = Translator.new(@instance, @module_source)
+        bytes = @module_source.code
+        semantic = bytes ? translator.translate_source(linked, bytes) : translator.translate(linked)
+        build_mir(semantic, @profiling, true)
       end
 
       # @rbs name: String|Symbol

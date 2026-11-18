@@ -162,6 +162,10 @@ module Wardite
       def check_block: (Block block, TypeSection? types, bool stack) -> void
     end
 
+    # Keep the code section for on-demand MIR inspection after the host has
+    # accessed the mutable decoded bodies or edited the store.
+    attr_accessor source_bytes: String?
+
     attr_accessor func_codes: Array[CodeBody]
 
     # @rbs return: void
@@ -256,8 +260,9 @@ module Wardite
     def self.preamble: () -> Integer
 
     # @rbs defer_code: bool
+    # @rbs keep_code: bool
     # @rbs return: Array[Section]
-    def self.sections: (?bool defer_code) -> Array[Section]
+    def self.sections: (?bool defer_code, ?bool keep_code) -> Array[Section]
 
     # @rbs return: TypeSection
     def self.type_section: () -> TypeSection
@@ -287,8 +292,14 @@ module Wardite
     def self.table_section: () -> TableSection
 
     # @rbs defer_code: bool
+    # @rbs keep_code: bool
     # @rbs return: CodeSection
-    def self.code_section: (?bool defer_code) -> CodeSection
+    def self.code_section: (?bool defer_code, ?bool keep_code) -> CodeSection
+
+    # @rbs bytes: String
+    # @rbs defer_code: bool
+    # @rbs return: CodeSection
+    def self.decode_code_section: (String bytes, ?bool defer_code) -> CodeSection
 
     # @rbs sbuf: StringIO
     # @rbs defer_code: bool

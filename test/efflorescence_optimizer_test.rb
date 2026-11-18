@@ -90,6 +90,47 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     assert_equal fingerprint, MIRGenerationDigest.ir(semantic)
   end
 
+  test "a cold load copies the full IR only on the first inspection" do
+    bytes = compile_efflorescence_wat('(module (func (export "answer") (result i32) i32.const 42))')
+    copies = 0
+    trace = TracePoint.new(:call) do |event|
+      if event.defined_class == E::IR && event.method_id == :copy && !event.self.functions.empty?
+        copies += 1
+      end
+    end
+    trace.enable do
+      vm = Wardite.new(buffer: StringIO.new(bytes), enable_wasi: false).runtime
+      assert_equal 42, vm.call_unboxed(:answer, [])
+      assert_equal 0, copies
+      vm.optimized_ir
+      vm.semantic_ir
+      vm.dump_mir
+      assert_equal 1, copies
+    end
+  end
+
+  test "first MIR inspection uses load-time declarations and leaves execution intact" do
+    bytes = compile_efflorescence_wat(<<~WAT)
+      (module (memory 1) (global (mut i32) (i32.const 3))
+        (func (export "value") (result i32) global.get 0 memory.size i32.add))
+    WAT
+    [false, true].each do |profile|
+      instance = Wardite.new(buffer: StringIO.new(bytes), enable_wasi: false, mir_profile: profile)
+      vm = instance.runtime
+      reference = Wardite.new(buffer: StringIO.new(bytes), enable_wasi: false, mir_profile: profile).runtime
+      assert_equal 4, vm.call_unboxed(:value, [])
+      vm.ir.entries.first.result_types.clear
+      instance.store.funcs.first.body.clear
+      instance.store.funcs.clear
+      instance.store.globals.clear
+      instance.store.memories.clear
+      assert_equal reference.dump_mir, vm.dump_mir
+      assert_equal MIRGenerationDigest.ir(reference.optimized_ir), MIRGenerationDigest.ir(vm.optimized_ir)
+      assert_same vm.semantic_ir, vm.semantic_ir
+      assert_not_same vm.ir.functions.first, vm.semantic_ir.functions.first
+    end
+  end
+
   test "dispatch labels are integer literals synchronized with opcode definitions" do
     source = File.read(File.expand_path("../lib/wardite/efflorescence/vm.rb", __dir__))
     methods = source.split(/^      def execute_flat\(frame, pools, active_frames, metrics\)$/).drop(1)

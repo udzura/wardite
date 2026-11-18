@@ -5,6 +5,33 @@ module Wardite
     # The operand/control stacks exist only during translation. Execution uses
     # typed register banks, absolute PCs and explicit per-frame handler stacks.
     class Translator
+      # Declaration data used by translation, independent of mutable runtime
+      # slots. Keep only encoded code and declaration shapes for inspection.
+      class ModuleSource
+        attr_reader code: String?
+
+        attr_reader globals: Array[Wardite::Global]
+
+        attr_reader types: Array[Wardite::Type]
+
+        attr_reader tags: Array[Wardite::Efflorescence::Tag]
+
+        attr_reader has_memory: bool
+
+        attr_reader funcref_table: bool
+
+        attr_reader has_data_count: bool
+
+        attr_reader data_segments: Integer
+
+        # @rbs instance: Wardite::Instance
+        # @rbs code: String?
+        def initialize: (Wardite::Instance instance, ?String? code) -> untyped
+
+        # @rbs return: Wardite::TypeSection
+        def block_types: () -> Wardite::TypeSection
+      end
+
       class Control
         attr_reader kind: Symbol
 
@@ -59,6 +86,8 @@ module Wardite
 
       STORE_CODES: untyped
 
+      @source: Wardite::Efflorescence::Translator::ModuleSource
+
       @instance: Wardite::Instance
 
       @entries: Array[Wardite::Efflorescence::FunctionEntry]
@@ -84,7 +113,8 @@ module Wardite
       @handler_depth: Integer
 
       # @rbs instance: Wardite::Instance
-      def initialize: (Wardite::Instance instance) -> untyped
+      # @rbs source: ModuleSource
+      def initialize: (Wardite::Instance instance, ?ModuleSource source) -> untyped
 
       # @rbs return: Wardite::Efflorescence::IR
       def link: () -> Wardite::Efflorescence::IR
@@ -92,6 +122,13 @@ module Wardite
       # @rbs linked: Wardite::Efflorescence::IR
       # @rbs return: Wardite::Efflorescence::IR
       def translate: (?Wardite::Efflorescence::IR linked) -> Wardite::Efflorescence::IR
+
+      # Replay the original declarations without re-linking host functions,
+      # executing start, or consulting live global/memory/table slots.
+      # @rbs linked: IR
+      # @rbs bytes: String
+      # @rbs return: IR
+      def translate_source: (IR linked, String bytes) -> IR
 
       # @rbs wasm: Wardite::WasmFunction
       # @rbs index: Integer
