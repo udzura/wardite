@@ -5,7 +5,7 @@ module Wardite
   module Efflorescence
     class VM
       attr_reader :instance #: Wardite::Instance
-      attr_reader :ir #: Wardite::Efflorescence::IR
+      # @rbs @preparer: FunctionPreparer?
       attr_reader :metrics #: Wardite::Efflorescence::Metrics
       attr_reader :mir_cache_hit #: bool
       attr_reader :mir_cache #: Wardite::Efflorescence::MIRCache?
@@ -23,8 +23,9 @@ module Wardite
       # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
       # @rbs cached_functions: Array[Function]?
       # @rbs source_code: String?
+      # @rbs eager_mir: bool
       # @rbs cache_checked: bool
-      def initialize(instance, disabled_optimizations: [], profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false, source_code: nil)
+      def initialize(instance, disabled_optimizations: [], profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false, source_code: nil, eager_mir: false)
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
         @global_bits = []
@@ -54,10 +55,16 @@ module Wardite
           cached_functions = mir_cache.read_functions(instance)
         end
         @mir_cache_hit = !cached_functions.nil?
+        @preparer = nil
         @ir = if cached_functions
           IR.new(cached_functions, entries: linked.entries, hosts: linked.hosts)
-        else
+        elsif eager_mir || mir_cache || @module_source.code.nil?
           build_mir(translator.translate(linked), profile, @module_source.code.nil?)
+        else
+          translator.translate(linked)
+        end
+        if cached_functions || (!eager_mir && !mir_cache && @module_source.code)
+          @preparer = FunctionPreparer.new(@ir, @configuration, @module_source.tags, profile, mir_cache)
         end
         if mir_cache && !profile && !@mir_cache_hit
           mir_cache.write_ir(instance, @ir)
@@ -70,6 +77,20 @@ module Wardite
           end
           execute(entry, [])
         end
+      end
+
+      # Inspecting the executable IR requests every uncached function body.
+      # MIR2 consumers can still inspect pending cache slots individually.
+      # @rbs return: Wardite::Efflorescence::IR
+      def ir
+        prepare_all unless @mir_cache_hit
+        @ir
+      end
+
+      # @rbs return: void
+      def prepare_all
+        preparer = @preparer
+        @ir.functions.each { |function| preparer.prepare(function) } if preparer
       end
 
       # Build both inspection views on first access. Execution keeps its own IR.
@@ -494,7 +515,7 @@ module Wardite
       # @rbs return: Array[Wardite::Efflorescence::FramePool]
       def new_pools
         pools = [] #: Array[Wardite::Efflorescence::FramePool]
-        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames, @mir_cache) }
+        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames, @preparer) }
         pools
       end
 

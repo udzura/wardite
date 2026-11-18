@@ -948,6 +948,23 @@ module Wardite
         Array.new(read_count(instruction)) { |ordinal| read_at(instruction, ordinal) }
       end
 
+      # Publish a complete body on the existing CallSite / FramePool target.
+      # @rbs body: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def install_prepared(body)
+        @instructions = body.instructions
+        @register_types = body.register_types
+        @initial_registers = body.initial_registers
+        @constant_registers = body.constant_registers
+        @handlers = body.handlers
+        @flat_handlers = body.flat_handlers
+        @throw_sites = body.throw_sites
+        @memory_sites = body.memory_sites
+        @dynamic_sites = body.dynamic_sites
+        @bytecode = body.bytecode
+        @calls = body.calls
+      end
+
       # @rbs return: Wardite::Efflorescence::Function
       def copy
         result = Function.new(@index, @parameter_types, @result_types, @local_count, local_types: @register_types[@parameter_types.size, @local_count], pool_index: @pool_index)
@@ -1215,11 +1232,11 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs reuse: bool
-      # @rbs cache: Wardite::Efflorescence::MIRCache?
-      def initialize(function, reuse, cache = nil)
+      # @rbs preparer: Wardite::Efflorescence::FunctionPreparer?
+      def initialize(function, reuse, preparer = nil)
         @function = function
         @reuse = reuse
-        @cache = cache
+        @preparer = preparer
         @clear_references = false
         @free = [] #: Array[Wardite::Efflorescence::Frame]
         @created = 0
@@ -1235,10 +1252,7 @@ module Wardite
             return frame
           end
         end
-        if @function.cache_pending
-          cache = @cache || raise(Wardite::EvalError, "missing MIR2 cache for pending function")
-          cache.restore_function(@function)
-        end
+        @preparer.prepare(@function) if @preparer && (@function.bytecode.empty? || @function.cache_pending)
         @clear_references = @function.uses_eh
         @created += 1
         Frame.new(@function, destination)

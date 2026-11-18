@@ -129,7 +129,7 @@ module Wardite
         ins = File.open(file, "rb") do |f|
           Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi, engine: new_engine ? :efflorescence : :stack,
             disabled_optimizations: disabled_optimizations, mir_profile: mir_profile,
-            mir_cache: mir_dump ? nil : mir_cache, mir_cache_verify: @mir_cache_verify, mir_cache_eager: @mir_cache_eager)
+            mir_cache: mir_dump ? nil : mir_cache, mir_cache_verify: @mir_cache_verify, mir_cache_eager: @mir_cache_eager || !!mir_dump)
         end
         if memsize > 1
           ins.store.memories[0].grow(memsize)

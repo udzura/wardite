@@ -53,6 +53,10 @@ module Wardite
       # @rbs ir: Wardite::Efflorescence::IR
       # @rbs return: Wardite::Efflorescence::IR
       def instrument: (Wardite::Efflorescence::IR ir) -> Wardite::Efflorescence::IR
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def instrument_function: (Wardite::Efflorescence::Function function) -> void
     end
 
     class Inspection

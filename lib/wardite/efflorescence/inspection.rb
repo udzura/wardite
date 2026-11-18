@@ -86,21 +86,25 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::IR
       def instrument(ir)
         output = ir.copy
-        output.functions.each do |function|
-          rewrite = Rewrite.new(function)
-          function.instructions.each_with_index do |instruction, pc|
-            rewrite.mark(pc)
-            reads = function.reads(instruction).size
-            writes = Opcode.destination(instruction) >= 0 ? 1 : 0
-            # Parameter copies and the eventual return destination write count
-            # at CALL; callee RETURN accounts for reading the returned value.
-            writes += instruction.size - 3 if instruction[0] == Opcode::CALL
-            rewrite.emit(Instruction.new([Opcode::PROFILE, instruction[0], reads, writes]))
-            rewrite.emit(instruction.copy)
-          end
-          rewrite.finish
-        end
+        output.functions.each { |function| instrument_function(function) }
         output
+      end
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def instrument_function(function)
+        rewrite = Rewrite.new(function)
+        function.instructions.each_with_index do |instruction, pc|
+          rewrite.mark(pc)
+          reads = function.reads(instruction).size
+          writes = Opcode.destination(instruction) >= 0 ? 1 : 0
+          # Parameter copies and the eventual return destination write count
+          # at CALL; callee RETURN accounts for reading the returned value.
+          writes += instruction.size - 3 if instruction[0] == Opcode::CALL
+          rewrite.emit(Instruction.new([Opcode::PROFILE, instruction[0], reads, writes]))
+          rewrite.emit(instruction.copy)
+        end
+        rewrite.finish
       end
     end
 

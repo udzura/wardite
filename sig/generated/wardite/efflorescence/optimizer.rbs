@@ -105,7 +105,10 @@ module Wardite
         # @rbs return: Array[Integer]
         def run: (Wardite::Efflorescence::IR ir) -> Array[Integer]
 
-        private
+        # These bounds cannot improve during local optimization.
+        # @rbs function: Wardite::Efflorescence::Function
+        # @rbs return: bool
+        def candidate?: (Wardite::Efflorescence::Function function) -> bool
 
         # Explicit whitelist: new opcodes must opt into inlining. In particular,
         # traps, profiling records, control flow and nested calls stay intact.
@@ -118,6 +121,8 @@ module Wardite
         # @rbs callees: Hash[Integer, Wardite::Efflorescence::Function]
         # @rbs return: bool
         def expand_calls: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR ir, Hash[Integer, Wardite::Efflorescence::Function] callees) -> bool
+
+        private
 
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs ir: Wardite::Efflorescence::IR
@@ -216,8 +221,6 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::IR
       def optimize_in_place: (Wardite::Efflorescence::IR output) -> Wardite::Efflorescence::IR
 
-      private
-
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       def optimize_function: (Wardite::Efflorescence::Function function) -> void
@@ -229,6 +232,11 @@ module Wardite
       # @rbs ir: Wardite::Efflorescence::IR
       # @rbs return: void
       def compile: (Wardite::Efflorescence::IR ir) -> void
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs ir: Wardite::Efflorescence::IR
+      # @rbs return: void
+      def compile_function: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR ir) -> void
     end
   end
 end

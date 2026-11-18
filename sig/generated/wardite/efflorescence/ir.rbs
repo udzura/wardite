@@ -735,6 +735,11 @@ module Wardite
       # @rbs return: Array[Integer]
       def reads: (Wardite::Efflorescence::Instruction instruction) -> Array[Integer]
 
+      # Publish a complete body on the existing CallSite / FramePool target.
+      # @rbs body: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def install_prepared: (Wardite::Efflorescence::Function body) -> void
+
       # @rbs return: Wardite::Efflorescence::Function
       def copy: () -> Wardite::Efflorescence::Function
     end
@@ -904,8 +909,8 @@ module Wardite
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs reuse: bool
-      # @rbs cache: Wardite::Efflorescence::MIRCache?
-      def initialize: (Wardite::Efflorescence::Function function, bool reuse, ?Wardite::Efflorescence::MIRCache? cache) -> untyped
+      # @rbs preparer: Wardite::Efflorescence::FunctionPreparer?
+      def initialize: (Wardite::Efflorescence::Function function, bool reuse, ?Wardite::Efflorescence::FunctionPreparer? preparer) -> untyped
 
       # @rbs destination: Integer
       # @rbs return: Wardite::Efflorescence::Frame
