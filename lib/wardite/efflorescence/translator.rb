@@ -633,7 +633,13 @@ module Wardite
                     when :f64 then @f64_constants ||= {} #: Hash[Integer, Integer]
                     else @constants
                     end
-        constants[value] ||= @function.allocate_constant(value, type: type)
+        # Keep the lookup on the original integer-keyed table in Spinel.
+        bits = Integer(value)
+        cached = constants[bits]
+        return cached if cached
+        slot = @function.allocate_constant(bits, type: type)
+        constants[bits] = slot
+        slot
       end
 
       # @rbs kind: Symbol
