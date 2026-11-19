@@ -94,15 +94,33 @@ module Wardite
       # @rbs return: void
       def instrument_function(function)
         rewrite = Rewrite.new(function)
-        function.instructions.each_with_index do |instruction, pc|
+        pc = 0
+        instructions = function.instructions
+        while pc < instructions.size
+          instruction = instructions.fetch(pc)
           rewrite.mark(pc)
-          reads = function.reads(instruction).size
+          reads = function.read_count(instruction)
           writes = Opcode.destination(instruction) >= 0 ? 1 : 0
-          # Parameter copies and the eventual return destination write count
-          # at CALL; callee RETURN accounts for reading the returned value.
           writes += instruction.size - 3 if instruction[0] == Opcode::CALL
+          limit = pc + (instruction[0] >= Opcode::I32_TABLE_STORE8 ? ByteSequences::LENGTH : 1)
+          # The fused handler forwards intermediate values without reading
+          # their register slots again. Its destination writes are retained.
+          if limit > pc + 1
+            reads -= ByteSequences::FORWARDED_READS.fetch(instruction[0] - Opcode::I32_TABLE_STORE8)
+          end
+          (pc + 1...limit).each do |i|
+            member = instructions.fetch(i)
+            reads += function.read_count(member)
+            writes += 1 if Opcode.destination(member) >= 0
+          end
           rewrite.emit(Instruction.new([Opcode::PROFILE, instruction[0], reads, writes]))
           rewrite.emit(instruction.copy)
+          pc += 1
+          while pc < limit
+            rewrite.mark(pc)
+            rewrite.emit(instructions.fetch(pc).copy)
+            pc += 1
+          end
         end
         rewrite.finish
       end

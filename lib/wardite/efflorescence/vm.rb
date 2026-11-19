@@ -184,7 +184,10 @@ module Wardite
       def build_mir(semantic, profile, inspect)
         optimizer = Optimizer.new(@configuration)
         optimized = inspect ? optimizer.optimize(semantic) : optimizer.optimize_in_place(semantic)
-        optimized.functions.each { |function| RegisterValidation.new.validate(function, optimized, tags: @module_source.tags) }
+        optimized.functions.each do |function|
+          RegisterValidation.new.validate(function, optimized, tags: @module_source.tags)
+          optimizer.fuse_byte_sequences(function)
+        end
         ir = profile ? Instrumentation.new.instrument(optimized) : optimized
         Lowerer.new.compile(ir)
         if inspect
@@ -691,6 +694,41 @@ module Wardite
           # Integer literal labels let Spinel emit a C switch. Keep the
           # Opcode comments in sync; the dispatch contract test checks them.
           case opcode
+          when 195 # Opcode::I32_TABLE_STORE8
+            address = (registers[instructions.fetch(pc + 2)] + registers[instructions.fetch(pc + 3)]) & 0xffffffff
+            registers[a] = address
+            byte = @store_access.load8_u(address, instructions.fetch(pc + 7))
+            registers[instructions.fetch(pc + 5)] = byte
+            @store_access.store(registers[instructions.fetch(pc + 10)], instructions.fetch(pc + 11), 1, byte)
+            registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
+            pc += 3 * Lowerer::WIDTH
+          when 196 # Opcode::I64_BYTE_LOOKUP
+            address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
+            registers[a] = address
+            byte = @store_access.load8_u(address, 0)
+            registers[instructions.fetch(pc + 5)] = byte
+            table_address = (registers[instructions.fetch(pc + 10)] + byte) & 0xffffffff
+            registers[instructions.fetch(pc + 9)] = table_address
+            registers[instructions.fetch(pc + 13)] = @store_access.load8_u(table_address, 0)
+            pc += 3 * Lowerer::WIDTH
+          when 197 # Opcode::I32_BYTE_MUL_ADD
+            address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
+            registers[a] = address
+            byte = @store_access.load8_u(address, 0)
+            registers[instructions.fetch(pc + 5)] = byte
+            # An unsigned byte times an unsigned i32 fits in Spinel's signed word.
+            product = (byte * instructions.fetch(pc + 11)) & 0xffffffff
+            registers[instructions.fetch(pc + 9)] = product
+            registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + product) & 0xffffffff
+            pc += 3 * Lowerer::WIDTH
+          when 198 # Opcode::I32_BYTE_ADD_STORE
+            byte = @store_access.load8_u(registers[instructions.fetch(pc + 2)], 0)
+            registers[a] = byte
+            sum = (byte + registers[instructions.fetch(pc + 7)]) & 0xffffffff
+            registers[instructions.fetch(pc + 5)] = sum
+            @store_access.store(registers[instructions.fetch(pc + 10)], 0, 1, sum)
+            registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
+            pc += 3 * Lowerer::WIDTH
           when 0 # Opcode::COPY
             b = instructions.fetch(pc + 2)
             registers[a] = registers[b]

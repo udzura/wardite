@@ -28,9 +28,9 @@ class WarditeSpinelTest < Test::Unit::TestCase
       opcodes = Wardite::Efflorescence::Opcode
       global_get = [opcodes::GLOBAL_GET, opcodes::I64_GLOBAL_GET, opcodes::F32_GLOBAL_GET, opcodes::F64_GLOBAL_GET]
       global_set = [opcodes::GLOBAL_SET, opcodes::I64_GLOBAL_SET, opcodes::F32_GLOBAL_SET, opcodes::F64_GLOBAL_SET]
-      assert_equal (0..opcodes::I64_GLOBAL_SET).to_a + (opcodes::F32_GLOBAL_GET..opcodes::F64_GLOBAL_SET).to_a,
+      assert_equal (0..opcodes::I64_GLOBAL_SET).to_a + (opcodes::F32_GLOBAL_GET...opcodes::NAMES.size).to_a,
         body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
-        "execute_flat should dispatch integer, control and global opcodes through the literal switch"
+        "execute_flat should dispatch integer, control, global and fused opcodes through the literal switch"
       assert_match(/sp_IntArray \* lv_global_bits\b/, body)
       (global_get + global_set).each do |opcode|
         branch = body[/^\s*case #{opcode}LL:.*?(?=^\s*case \d+LL:|^\s*default:)/m]

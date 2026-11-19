@@ -29,6 +29,11 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: bool
       def self.caller?: (Wardite::Efflorescence::Function function) -> bool
+
+      # @rbs instructions: Array[Instruction]
+      # @rbs minimum: Integer
+      # @rbs return: bool
+      def self.call_free_loop?: (Array[Instruction] instructions, Integer minimum) -> bool
     end
 
     # All transformations use instruction ordinals. Only the final lowering
@@ -220,6 +225,10 @@ module Wardite
       # @rbs output: Wardite::Efflorescence::IR
       # @rbs return: Wardite::Efflorescence::IR
       def optimize_in_place: (Wardite::Efflorescence::IR output) -> Wardite::Efflorescence::IR
+
+      # @rbs function: Wardite::Efflorescence::Function
+      # @rbs return: void
+      def fuse_byte_sequences: (Wardite::Efflorescence::Function function) -> void
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void

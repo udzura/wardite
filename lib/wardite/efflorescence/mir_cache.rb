@@ -13,7 +13,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 5
+      CODE_VERSION = 10
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -459,6 +459,15 @@ module Wardite
           while pc < code.size
             opcode, a, b, c = code[pc], code[pc + 1], code[pc + 2], code[pc + 3]
             raise Invalid unless opcode.between?(0, REGISTER_MASKS.size - 1) && opcode != PROFILE
+            if opcode >= I32_TABLE_STORE8
+              raise Invalid unless pc + ByteSequences::LENGTH * Lowerer::WIDTH <= code.size
+              head = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8)
+              members = Array.new(ByteSequences::LENGTH) do |i|
+                Instruction.new(code[pc + i * Lowerer::WIDTH, Lowerer::WIDTH] || raise(Invalid))
+              end
+              raise Invalid unless ByteSequences.match(head, members[0], members[1], members[2], members[3]) == opcode
+              opcode = head
+            end
             mask = REGISTER_MASKS.fetch(opcode)
             raise Invalid if (mask[0] == 1 && !a.between?(0, register_count - 1)) ||
               (mask[1] == 1 && !b.between?(0, register_count - 1)) ||

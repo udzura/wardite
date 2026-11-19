@@ -399,6 +399,17 @@ module Wardite
 
       F64_GLOBAL_SET: ::Integer
 
+      I32_TABLE_STORE8: ::Integer
+
+      I64_BYTE_LOOKUP: ::Integer
+
+      I32_BYTE_MUL_ADD: ::Integer
+
+      I32_BYTE_ADD_STORE: ::Integer
+
+      # The remaining three instructions retain their ordinary four-word slots.
+      SEQUENCE_HEADS: Array[Integer]
+
       NAMES: untyped
 
       # Each signature lists the destination type followed by the source types.

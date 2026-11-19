@@ -5,6 +5,8 @@ module LegacyMIRReads
 
   def self.positions(instruction)
     opcode = instruction[0]
+    # A sequence header has the operand roles of the first instruction.
+    opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode >= I32_TABLE_STORE8
     case opcode
     when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
          COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,

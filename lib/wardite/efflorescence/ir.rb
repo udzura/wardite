@@ -211,6 +211,13 @@ module Wardite
       F32_GLOBAL_SET = 193
       F64_GLOBAL_SET = 194
 
+      I32_TABLE_STORE8 = 195
+      I64_BYTE_LOOKUP = 196
+      I32_BYTE_MUL_ADD = 197
+      I32_BYTE_ADD_STORE = 198
+      # The remaining three instructions retain their ordinary four-word slots.
+      SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U].freeze #: Array[Integer]
+
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
                  I32_XOR_IMM I32_SHL_IMM I32_SHR_U_IMM BR_IF_ZERO
@@ -239,7 +246,8 @@ module Wardite
                  F32_DEMOTE_F64 F64_PROMOTE_F32 I32_REINTERPRET_F32 I64_REINTERPRET_F64
                  F32_REINTERPRET_I32 F64_REINTERPRET_I64
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
-                 F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET].freeze
+                 F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
+                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -393,7 +401,8 @@ module Wardite
       }.freeze #: Hash[Integer, Symbol]
 
       # Semantic register operand positions, excluding frame initialization.
-      READ_POSITIONS = Array.new(F64_GLOBAL_SET + 1) do |opcode|
+      READ_POSITIONS = NAMES.each_index.map do |opcode|
+        opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode >= I32_TABLE_STORE8
         positions = case opcode
           when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
                COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
@@ -478,7 +487,7 @@ module Wardite
       # @rbs return: Integer
       def self.destination(instruction)
         opcode = instruction[0]
-        if opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
+        if opcode >= I32_TABLE_STORE8 || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
             (opcode >= I32_ADD_IMM && opcode <= I32_SHR_U_IMM) ||
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
