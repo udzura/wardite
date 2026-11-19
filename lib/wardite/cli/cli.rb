@@ -22,7 +22,6 @@ module Wardite
       attr_reader :memsize #: Integer
       attr_reader :wasi    #: bool
       attr_reader :yjit    #: bool
-      attr_reader :new_engine #: bool
       attr_reader :disabled_optimizations #: Array[Symbol]
       attr_reader :mir_dump #: bool
       attr_reader :mir_profile #: bool
@@ -37,7 +36,6 @@ module Wardite
         @invoke = @mapdir = nil
         @wasi = true
         @yjit = false
-        @new_engine = true
         @disabled_optimizations = []
         @mir_dump = false
         @mir_profile = false
@@ -61,12 +59,7 @@ module Wardite
           opts.on("--no-wasi", "Disable WASI feature") {|_v|
             @wasi = false
           }
-          opts.on("--new-engine", "Use Efflorescence (default; kept for compatibility)") {|_v|
-            @new_engine = true
-          }
-          opts.on("--stack-engine", "Use the legacy stack VM") {|_v|
-            @new_engine = false
-          }
+          opts.on("--new-engine", "Use Efflorescence (kept for compatibility)") { }
           opts.on("--mir-disable NAME", "Disable copy, immediate, branch, superinstruction, inline, frames, or all (repeatable)") {|v|
             @disabled_optimizations << v.to_sym
           }
@@ -90,11 +83,8 @@ module Wardite
           opts.on("FILE.wasm") { }
         end
         options.parse!(args)
-        if !new_engine && (!disabled_optimizations.empty? || mir_dump || mir_profile || mir_cache || @mir_eager)
-          raise "MIR options require Efflorescence"
-        end
-        if snapshot && (!new_engine || !mir_cache || mir_dump || mir_profile)
-          raise "--snapshot requires --mir-cache and Efflorescence, without --mir-dump or --mir-profile"
+        if snapshot && (!mir_cache || mir_dump || mir_profile)
+          raise "--snapshot requires --mir-cache, without --mir-dump or --mir-profile"
         end
         @file = args[0] || raise("require file argument")
         @args = (args[1..-1] || [])
@@ -127,7 +117,7 @@ module Wardite
       # @rbs return: ::Wardite::Instance
       def new_instance
         ins = File.open(file, "rb") do |f|
-          Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi, engine: new_engine ? :efflorescence : :stack,
+          Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi,
             disabled_optimizations: disabled_optimizations, mir_profile: mir_profile,
             mir_cache: mir_dump ? nil : mir_cache, mir_cache_verify: @mir_cache_verify, mir_cache_eager: @mir_eager || !!mir_dump)
         end
@@ -175,10 +165,8 @@ module Wardite
         instance = new_instance
         ret = instance.runtime.call(invoke, args)
         runtime = instance.runtime
-        if runtime.is_a?(Wardite::Efflorescence::VM)
-          $stderr.puts runtime.dump_mir if mir_dump
-          print_mir_profile(runtime.metrics) if mir_profile
-        end
+        $stderr.puts runtime.dump_mir if mir_dump
+        print_mir_profile(runtime.metrics) if mir_profile
         $stderr.puts "return value: #{ret.inspect}"
       end
 
@@ -219,7 +207,7 @@ module Wardite
       def start_wasi(instance)
         runtime = instance.runtime
         directory = snapshot
-        if directory && runtime.is_a?(Wardite::Efflorescence::VM)
+        if directory
           cache = runtime.mir_cache
           if cache && instance.wasi && !instance.start_section
             require "wardite/efflorescence/snapshot" unless RUBY_ENGINE == "spinel"
@@ -236,7 +224,7 @@ module Wardite
           runtime.call(:_start, [])
         ensure
           # proc_exit leaves through exit, which runs this on CRuby and Spinel.
-          print_mir_profile(runtime.metrics) if mir_profile && runtime.is_a?(Wardite::Efflorescence::VM)
+          print_mir_profile(runtime.metrics) if mir_profile
         end
       end
 

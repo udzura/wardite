@@ -61,7 +61,7 @@ module EfflorescenceBoundaryCases
       dispatch: %w[I64_GLOBAL_GET I64_GLOBAL_SET CALL])
     fresh = Observation.new(result: "i32:1", memory: "1:65536:00000000", globals: "i64:-7",
       dispatch: %w[MEMORY_SIZE])
-    [Fixture.new(id: "grow_passive_overlap", wat: wat, windows: "65532:8", legacy: false,
+    [Fixture.new(id: "grow_passive_overlap", wat: wat, windows: "65532:8",
        steps: [["grow", grow], ["transfer", copy], ["snapshot", snapshot]]),
      Fixture.new(id: "fresh_instance", wat: wat, windows: "65532:8", steps: [["size", fresh]])]
   end
@@ -70,7 +70,7 @@ module EfflorescenceBoundaryCases
     fixture = EfflorescenceParity.state_fixture
     recovery = Observation.new(result: "i32:17", memory: "1:65536:2a61626311000000", globals: "i32:10",
       host: "1,2,3", dispatch: %w[I32_LOAD8_U RETURN])
-    fixture.with(id: "recover_after_trap", legacy: false, steps: fixture.steps + [["recover", recovery]])
+    fixture.with(id: "recover_after_trap", steps: fixture.steps + [["recover", recovery]])
   end
 
   def failure_fixtures
@@ -78,26 +78,26 @@ module EfflorescenceBoundaryCases
     start = '(func $start i32.const 7 call $record) (start $start)'
     [
       ["data_before_start", "#{start} (memory 1) (data (i32.const 65535) \"ab\")",
-        "load:active data segment out of bounds", "", false],
+        "load:active data segment out of bounds", ""],
       ["element_before_start", "#{start} (table 1 funcref) (elem (i32.const 1) func $start)",
-        "load:active element segment out of bounds", "", true],
+        "load:active element segment out of bounds", ""],
       ["signature_before_start", "(func $start (param i32) i32.const 7 call $record) (start $start)",
-        "load:start function must have no parameters or results", "", false],
+        "load:start function must have no parameters or results", ""],
       ["dead_instruction_before_start", "#{start} (func unreachable i32.const 1 i32.const 2 i32.const 0 select (result i32) drop)",
-        "load:Efflorescence: function 2, Wasm PC 4: unsupported instruction select_t", "", false],
+        "load:Efflorescence: function 2, Wasm PC 4: unsupported instruction select_t", ""],
       ["dead_type_before_start", "#{start} (func unreachable f64.const 1 i32.eqz drop)",
-        "load:Efflorescence: function 2, Wasm PC 2: expected i32, got f64", "", false],
+        "load:Efflorescence: function 2, Wasm PC 2: expected i32, got f64", ""],
       ["dead_index_before_start", "#{start} (func unreachable call 99)",
-        "load:Efflorescence: function 2, Wasm PC 1: invalid call target 99", "", false],
+        "load:Efflorescence: function 2, Wasm PC 1: invalid call target 99", ""],
       ["multi_value_before_start", "#{start} (func (result i32 f64) unreachable)",
-        "load:Efflorescence: function 2 requires a numeric signature with at most one result (i32/i64/f32/f64)", "", false],
+        "load:Efflorescence: function 2 requires a numeric signature with at most one result (i32/i64/f32/f64)", ""],
       ["link_before_start", %((import "env" "absent" (func)) #{start}),
-        "link:function absent not found", "", [["-", Observation.new(result: "load:success", host: "7")]]],
+        "link:function absent not found", ""],
       ["start_trap_order", "(func $start i32.const 7 call $record unreachable i32.const 8 call $record) (start $start)",
-        "trap:unreachable", "7", true]
-    ].map do |id, contents, result, host, legacy|
+        "trap:unreachable", "7"]
+    ].map do |id, contents, result, host|
       step = Observation.new(result: result, host: host)
-      Fixture.new(id: id, wat: "(module #{import} #{contents})", steps: [["-", step]], legacy: legacy)
+      Fixture.new(id: id, wat: "(module #{import} #{contents})", steps: [["-", step]])
     end
   end
 

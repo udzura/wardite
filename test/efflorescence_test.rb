@@ -8,19 +8,15 @@ require "rbconfig"
 class EfflorescenceTest < Test::Unit::TestCase
   include EfflorescenceHelper
 
-  test "complete acceptance module agrees with both engines and independent reference" do
+  test "complete acceptance module agrees with the independent reference" do
     bytes = compile_efflorescence_wat(File.read(MIX_WAT))
-    old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: :stack)
-    new = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: :efflorescence)
-    assert_instance_of Wardite::Runtime, old.runtime
-    assert_instance_of Wardite::Efflorescence::VM, new.runtime
+    instance = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: :efflorescence)
+    assert_instance_of Wardite::Efflorescence::VM, instance.runtime
     MIX_CASES.each do |rounds, seed|
       expected = reference_mix(rounds, seed)
-      [old, new].each do |instance|
-        %w[inline_mix call_mix].each do |export|
-          assert_equal expected, instance.runtime.call(export, [rounds, seed]).value,
-            "#{instance.runtime.class} #{export}(#{rounds}, #{seed})"
-        end
+      %w[inline_mix call_mix].each do |export|
+        assert_equal expected, instance.runtime.call(export, [rounds, seed]).value,
+          "#{instance.runtime.class} #{export}(#{rounds}, #{seed})"
       end
     end
     random = Random.new(123)
@@ -28,7 +24,7 @@ class EfflorescenceTest < Test::Unit::TestCase
       rounds = random.rand(0..50)
       seed = random.rand(0..0xffffffff)
       %w[inline_mix call_mix].each do |export|
-        assert_equal reference_mix(rounds, seed), new.runtime.call_unboxed(export, [rounds, seed])
+        assert_equal reference_mix(rounds, seed), instance.runtime.call_unboxed(export, [rounds, seed])
       end
     end
   end
@@ -167,15 +163,13 @@ class EfflorescenceTest < Test::Unit::TestCase
     [-1, 0x100000001, -(2**80)].each { |value| assert_equal value & 0xffffffff, identity.id(value).value }
   end
 
-  test "only Ruby return boundary boxes i32 and Runtime never executes" do
+  test "only Ruby return boundary boxes i32" do
     [[], [:inline]].each do |disabled|
       instance = load_efflorescence(File.read(MIX_WAT), disabled_optimizations: disabled)
       boxes = 0
-      runtime_calls = 0
       frames = 0
       trace = TracePoint.new(:call) do |event|
         boxes += 1 if event.defined_class == Wardite::I32 && event.method_id == :initialize
-        runtime_calls += 1 if event.defined_class == Wardite::Runtime
         if event.defined_class == Wardite::Efflorescence::Frame && event.method_id == :initialize
           frames += 1
         end
@@ -183,22 +177,16 @@ class EfflorescenceTest < Test::Unit::TestCase
       result = trace.enable { instance.runtime.call("call_mix", [1000, 123]) }
       assert_equal reference_mix(1000, 123), result.value
       assert_equal 1, boxes
-      assert_equal 0, runtime_calls
       assert_equal disabled.empty? ? 1 : 2, frames
       assert instance.runtime.ir.functions.all? { |fn| fn.initial_registers.all? { |v| v.is_a?(Integer) } }
     end
   end
 
-  test "start function is run by selected engine" do
+  test "a trapping start function fails during loading" do
     bytes = compile_efflorescence_wat('(module (func $start unreachable) (start $start))')
-    calls = 0
-    trace = TracePoint.new(:call) { |event| calls += 1 if event.defined_class == Wardite::Runtime }
     assert_raise(Wardite::Unreachable) do
-      trace.enable do
-        Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: :efflorescence)
-      end
+      Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: :efflorescence)
     end
-    assert_equal 0, calls
   end
 
   test "public argument export and void return behavior" do
@@ -225,7 +213,7 @@ class EfflorescenceTest < Test::Unit::TestCase
     end
   end
 
-  test "unsupported CLI instructions never fall back to stack VM" do
+  test "CLI reports unsupported instructions" do
     Dir.mktmpdir("wardite-efflorescence-unsupported") do |dir|
       file = File.join(dir, "unsupported.wasm")
       File.binwrite(file, compile_efflorescence_wat(<<~WAT))
@@ -267,10 +255,9 @@ class EfflorescenceTest < Test::Unit::TestCase
     Dir.mktmpdir("wardite-efflorescence-cli") do |dir|
       file = File.join(dir, "mix.wasm")
       File.binwrite(file, compile_efflorescence_wat(File.read(MIX_WAT)))
-      { [] => Wardite::Efflorescence::VM, ["--new-engine"] => Wardite::Efflorescence::VM,
-        ["--stack-engine"] => Wardite::Runtime }.each do |options, runtime|
+      [[], ["--new-engine"]].each do |options|
         instance = Wardite::Cli::Cli.new([*options, "--no-wasi", file]).new_instance
-        assert_instance_of runtime, instance.runtime
+        assert_instance_of Wardite::Efflorescence::VM, instance.runtime
         stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-I#{File.expand_path('../lib', __dir__)}",
           File.expand_path("../exe/wardite", __dir__), *options,
           "--no-wasi", "--invoke", "call_mix", "--", file, "1", "123")

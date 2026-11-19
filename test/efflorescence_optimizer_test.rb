@@ -384,13 +384,22 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
               i32.const #{constant} local.get 0 i32.#{operation}))
         WAT
         bytes = compile_efflorescence_wat(wat)
-        old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: :stack).runtime
         configurations.each do |disabled|
           vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
             engine: :efflorescence, disabled_optimizations: disabled).runtime
           %w[left right].each do |export|
             [0, 0xffffffff, 0x80000000, 0x10001].each do |value|
-              assert_equal old.call(export, [value]).value, vm.call_unboxed(export, [value]),
+              a, b = export == "left" ? [constant, value] : [value, constant]
+              a &= 0xffffffff
+              expected = case operation
+              when "add" then a + b
+              when "sub" then a - b
+              when "mul" then a * b
+              when "xor" then a ^ b
+              when "shl" then a << (b & 31)
+              when "shr_u" then a >> (b & 31)
+              end
+              assert_equal expected & 0xffffffff, vm.call_unboxed(export, [value]),
                 "#{disabled.inspect} #{operation}/#{export}(#{constant}, #{value})"
             end
           end
@@ -401,7 +410,7 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
 
   test "CLI flags select inspection profiling and unoptimized MIR" do
     assert_raise(Wardite::ArgumentError) { E::Configuration.new([:unknown]) }
-    assert_raise(RuntimeError) { Wardite::Cli::Cli.new(["--stack-engine", "--mir-disable", "copy", "test.wasm"]) }
+    assert_raise(OptionParser::InvalidOption) { Wardite::Cli::Cli.new(["--stack-engine", "--mir-disable", "copy", "test.wasm"]) }
     cli = Wardite::Cli::Cli.new(["--mir-disable", "copy", "--mir-disable", "frames",
       "--mir-dump", "--mir-profile", "test.wasm"])
     assert_equal [:copy, :frames], cli.disabled_optimizations

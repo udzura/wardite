@@ -84,10 +84,8 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
   test 'shared limits reject unsupported flags and invalid page bounds before allocation' do
     [[1, 3, 0, 1], [1, 2, 0, 1], [1, 4, 0], [1, 8, 0], [1, 1, 1, 0], [1, 0, 0x81, 0x80, 4]].each do |payload|
       bytes = "\0asm\x01\0\0\0".b + [5, payload.size, *payload].pack('C*')
-      [:stack, :efflorescence].each do |engine|
-        assert_raise(Wardite::LoadError) do
-          Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: engine)
-        end
+      assert_raise(Wardite::LoadError) do
+        Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
       end
     end
     assert_nothing_raised { load_efflorescence('(module (memory 0 0))') }
@@ -95,14 +93,12 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
 
   test 'shared initialization uses binary bytes and decodes end-valued LEB operands correctly' do
     bytes = compile_efflorescence_wat('(module (memory (export "memory") 1) (data (i32.const 11) "\ff\c3\a9") (global (export "g") i32 (i32.const 11)))')
-    [:stack, :efflorescence].each do |engine|
-      instance = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: engine)
-      memory = instance.store.memories[0]
-      assert_equal Encoding::BINARY, memory.data.encoding
-      assert_equal 65536, memory.data.bytesize
-      assert_equal [255, 195, 169], memory.data.byteslice(11, 3).bytes
-      assert_equal 11, instance.store.globals[0].value.value
-    end
+    instance = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
+    memory = instance.store.memories[0]
+    assert_equal Encoding::BINARY, memory.data.encoding
+    assert_equal 65536, memory.data.bytesize
+    assert_equal [255, 195, 169], memory.data.byteslice(11, 3).bytes
+    assert_equal 11, instance.store.globals[0].value.value
     ['(module (data (i32.const 0) "x"))',
      '(module (memory 1) (data (i32.const -1) "x"))',
      '(module (memory 1) (data (i32.const 65536) "x"))'].each do |wat|

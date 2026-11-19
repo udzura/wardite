@@ -1,18 +1,12 @@
 # Generated from lib/wardite.rb with RBS::Inline
 
 module Wardite
-  module Evaluator
-    extend Wardite::ValueHelper
-  end
-end
-
-module Wardite
   class Instance
     attr_accessor version: Integer
 
     attr_accessor sections: Array[Section]
 
-    attr_accessor runtime: Runtime | Efflorescence::VM
+    attr_accessor runtime: Efflorescence::VM
 
     attr_accessor types: Array[Type]
 
@@ -36,9 +30,8 @@ module Wardite
     def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?mir_profile: bool, ?mir_cache: Efflorescence::MIRCache?, ?eager_mir: bool) { (Instance) -> void } -> untyped
 
     # Run before allocating Store/Exports or executing a start function.
-    # @rbs engine: Symbol
     # @rbs return: void
-    def check_module_features: (Symbol engine) -> void
+    def check_module_features: () -> void
 
     # @rbs &block: (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void
     # @rbs return: void
@@ -93,90 +86,6 @@ module Wardite
     def method_missing: (Symbol name, *untyped args) -> untyped
   end
 
-  class Runtime
-    include ValueHelper
-
-    # TODO: add types of class that the stack accomodates
-    attr_accessor stack: Array[wasmValue]
-
-    attr_accessor call_stack: Array[Frame]
-
-    attr_reader instance: Instance
-
-    # @rbs inst: Instance
-    def initialize: (Instance inst) -> untyped
-
-    # @rbs return: void
-    def invoke_start_section: () -> void
-
-    # @rbs name: String|Symbol
-    # @rbs return: bool
-    def callable?: (String | Symbol name) -> bool
-
-    # @rbs name: String|Symbol
-    # @rbs args: Array[Object]
-    # @rbs return: Object|nil
-    def call: (String | Symbol name, Array[Object] args) -> (Object | nil)
-
-    # @rbs idx: Integer
-    # @rbs return: void
-    def call_by_index: (Integer idx) -> void
-
-    # @rbs wasm_function: WasmFunction
-    # @rbs return: void
-    def push_frame: (WasmFunction wasm_function) -> void
-
-    # @rbs wasm_function: WasmFunction
-    # @rbs return: Object|nil
-    def invoke_internal: (WasmFunction wasm_function) -> (Object | nil)
-
-    $GLOBAL_EXTERNAL_ELAP: Float
-
-    $GLOBAL_EXTERNAL_TIMES: Integer
-
-    # @rbs external_function: ExternalFunction
-    # @rbs return: wasmValue|nil
-    def invoke_external: (ExternalFunction external_function) -> (wasmValue | nil)
-
-    # @rbs return: void
-    def execute!: () -> void
-
-    # @rbs frame: Frame
-    # @rbs insn: [Symbol, Symbol, Array[operandItem], Integer?, Integer?]
-    # @rbs return: void
-    def eval_insn: (Frame frame, [ Symbol, Symbol, Array[operandItem], Integer?, Integer? ] insn) -> void
-
-    # @rbs labels: Array[Label]
-    # @rbs stack: Array[wasmValue]
-    # @rbs level: Integer
-    # @rbs return: Integer
-    def do_branch: (Array[Label] labels, Array[wasmValue] stack, Integer level) -> Integer
-
-    # unwind the stack and put return value if exists
-    # @rbs sp: Integer
-    # @rbs arity: Integer
-    # @rbs return: void
-    def stack_unwind: (Integer sp, Integer arity) -> void
-
-    # @rbs finish: Integer
-    # @rbs return: Array[wasmValue]
-    def drained_stack: (Integer finish) -> Array[wasmValue]
-
-    # @rbs name: Symbol
-    # @rbs args: Array[Object]
-    # @rbs return: untyped
-    def method_missing: (Symbol name, *untyped args) -> untyped
-
-    # @rbs name: String|Symbol
-    # @rbs include_private: bool
-    # @rbs return: bool
-    def respond_to?: (String | Symbol name, ?bool include_private) -> bool
-
-    # @rbs args: Array[Object]
-    # @rbs return: Object?
-    def _start: (*untyped args) -> Object?
-  end
-
   class Type
     attr_accessor callsig: Array[Symbol]
 
@@ -186,50 +95,6 @@ module Wardite
     # @rbs retsig: Array[Symbol]
     # @rbs return: void
     def initialize: (Array[Symbol] callsig, Array[Symbol] retsig) -> void
-  end
-
-  class Frame
-    attr_accessor pc: Integer
-
-    attr_accessor sp: Integer
-
-    attr_accessor body: Array[[ Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer? ]]
-
-    attr_accessor arity: Integer
-
-    attr_accessor labels: Array[Label]
-
-    attr_accessor locals: Array[wasmValue]
-
-    attr_accessor findex: Integer
-
-    # @rbs pc: Integer
-    # @rbs sp: Integer
-    # @rbs body: Array[[Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer?]]
-    # @rbs arity: Integer
-    # @rbs locals: Array[wasmValue]
-    # @rbs return: void
-    def initialize: (Integer pc, Integer sp, Array[[ Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer? ]] body, Integer arity, Array[wasmValue] locals) -> void
-  end
-
-  class Label
-    attr_accessor kind: :if | :loop | :block
-
-    attr_accessor pc: Integer
-
-    attr_accessor sp: Integer
-
-    attr_accessor arity: Integer
-
-    attr_accessor start: Integer | nil
-
-    # @rbs kind: (:if|:loop|:block)
-    # @rbs pc: Integer
-    # @rbs sp: Integer
-    # @rbs arity: Integer
-    # @rbs start: Integer|nil
-    # @rbs return: void
-    def initialize: (:if | :loop | :block kind, Integer pc, Integer sp, Integer arity, ?Integer | nil start) -> void
   end
 
   class Store
@@ -408,12 +273,6 @@ module Wardite
     # @rbs results: Array[Symbol]
     # @rbs return: void
     def resolve: (Array[Symbol] params, Array[Symbol] results) -> void
-
-    # @rbs return: bool
-    def void?: () -> bool
-
-    # @rbs return: Integer
-    def result_size: () -> Integer
   end
 
   type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory
@@ -441,8 +300,6 @@ module Wardite
   # TODO: common interface btw. WasmFunction and ExternalFunction?
   #       may be _WasmCallable?
   class WasmFunction
-    include ValueHelper
-
     attr_accessor callsig: Array[Symbol]
 
     attr_accessor retsig: Array[Symbol]
@@ -450,8 +307,6 @@ module Wardite
     attr_accessor code_body: CodeSection::CodeBody
 
     attr_accessor findex: Integer
-
-    @default_locals: Array[wasmValue]?
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
@@ -467,13 +322,6 @@ module Wardite
 
     # @rbs return: Array[Integer]
     def locals_count: () -> Array[Integer]
-
-    # Stack-engine values are boxed lazily; Efflorescence uses type metadata.
-    # @rbs return: Array[wasmValue]
-    def default_locals: () -> Array[wasmValue]
-
-    # @rbs return: Array[wasmValue]
-    def construct_default_locals: () -> Array[wasmValue]
 
     # @rbs override_type: Type?
     # @rbs return: WasmFunction

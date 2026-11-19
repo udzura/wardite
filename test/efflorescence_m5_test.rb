@@ -74,7 +74,7 @@ class EfflorescenceM5Test < Test::Unit::TestCase
     end
   end
 
-  test "decoder retains NaN immediates and Stack VM can still read floats" do
+  test "decoder retains NaN immediates and preserves boxed float values" do
     wasm = compile_efflorescence_wat(<<~WAT)
       (module
         (func (export "f32") (result f32) f32.const -nan:0x123)

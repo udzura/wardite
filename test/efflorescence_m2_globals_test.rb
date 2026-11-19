@@ -23,20 +23,20 @@ class EfflorescenceM2GlobalsTest < Test::Unit::TestCase
     end
   end
 
-  test 'global snapshots calls recursion persistence and instance separation agree with the stack VM' do
+  test 'global snapshots calls recursion persistence and instance separation agree across execution modes' do
     bytes = compile_efflorescence_wat(GLOBAL_WAT)
     MODES.each do |mode|
       fresh = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: :efflorescence, **mode)
-      old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
+      baseline = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
       independent = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false, engine: :efflorescence, **mode)
       vm = fresh.runtime
       [['get', [], 7], ['direct', [40], 7], ['snapshot', [], 0xffffffff], ['get', [], 41],
        ['recursive', [3], 126], ['get', [], 44], ['fixed', [], 0xffffffff],
        ['set', [0xffffffff], nil], ['snapshot', [], 0xffffffff], ['get', [], 0]].each do |name, args, expected|
         assert_equal expected, vm.call_unboxed(name, args), "#{mode} #{name}"
-        boxed = old.runtime.call(name, args)
+        boxed = baseline.runtime.call(name, args)
         assert_equal expected, boxed&.value
-        assert_equal old.store.globals.map { |g| g.value.value }, fresh.store.globals.map { |g| g.value.value }
+        assert_equal baseline.store.globals.map { |g| g.value.value }, fresh.store.globals.map { |g| g.value.value }
       end
       assert_equal 7, independent.runtime.call_unboxed('get', [])
       assert_not_same independent.store.globals[0], fresh.store.globals[0]

@@ -140,15 +140,12 @@ module Wardite
   class DecodedBody
     attr_reader :instructions #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     attr_reader :blocks #: Array[Block]
-    attr_reader :has_eh_instructions #: bool
 
     # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs blocks: Array[Block]
-    # @rbs has_eh_instructions: bool
-    def initialize(instructions, blocks, has_eh_instructions)
+    def initialize(instructions, blocks)
       @instructions = instructions
       @blocks = blocks
-      @has_eh_instructions = has_eh_instructions
     end
   end
 
@@ -174,7 +171,7 @@ module Wardite
 
       # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       def body
-        check_features(@type_section, false) if @instruction_bytes
+        check_features(@type_section) if @instruction_bytes
         # The caller can mutate both the array and the Block objects in it.
         @decoded = nil
         @body
@@ -202,20 +199,16 @@ module Wardite
       end
 
       # @rbs types: TypeSection?
-      # @rbs stack: bool
       # @rbs return: void
-      def check_features(types, stack)
-        if stack && locals_type.include?(:exnref)
-          raise LoadError, "stack engine does not support exnref"
-        end
+      def check_features(types)
         if (bytes = @instruction_bytes)
           decoded = BinaryLoader.decode_body(StringIO.new(bytes))
-          check_decoded(decoded, types, stack)
+          check_decoded(decoded, types)
           install_decoded(decoded)
         elsif (decoded = @decoded)
-          check_decoded(decoded, types, stack)
+          check_decoded(decoded, types)
         else
-          check_instructions(@body, types, stack)
+          check_instructions(@body, types)
         end
       end
 
@@ -231,44 +224,32 @@ module Wardite
 
       # @rbs decoded: DecodedBody
       # @rbs types: TypeSection?
-      # @rbs stack: bool
       # @rbs return: void
-      def check_decoded(decoded, types, stack)
-        if stack && decoded.has_eh_instructions
-          raise LoadError, "stack engine does not support EH"
-        end
-        decoded.blocks.each { |block| check_block(block, types, stack) }
+      def check_decoded(decoded, types)
+        decoded.blocks.each { |block| check_block(block, types) }
       end
 
       # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       # @rbs types: TypeSection?
-      # @rbs stack: bool
       # @rbs return: void
-      def check_instructions(instructions, types, stack)
+      def check_instructions(instructions, types)
         instructions.each do |instruction|
-          if stack && BinaryLoader.eh_instruction?(instruction[1])
-            raise LoadError, "stack engine does not support EH"
-          end
           instruction[2].each do |operand|
-            check_block(operand, types, stack) if operand.is_a?(Block)
+            check_block(operand, types) if operand.is_a?(Block)
           end
         end
       end
 
       # @rbs block: Block
       # @rbs types: TypeSection?
-      # @rbs stack: bool
       # @rbs return: void
-      def check_block(block, types, stack)
+      def check_block(block, types)
         index = block.type_index
         if index >= 0
           params = types&.defined_types&.[](index)
           results = types&.defined_results&.[](index)
           raise LoadError, "invalid block type index #{index}" unless params && results
           block.resolve(params, results)
-        end
-        if stack && (index >= 0 || block.result_types.include?(:exnref))
-          raise LoadError, "stack engine does not support indexed/reference block signatures"
         end
       end
     end
@@ -404,23 +385,21 @@ module Wardite
       unless mir_cache_verify == :checksum || mir_cache_verify == :sha256
         raise ArgumentError, "MIR cache verification must be checksum or sha256"
       end
+      raise LoadError, "unknown engine: #{engine}" unless engine == :efflorescence
       @buf = buf
       cache = nil #: Efflorescence::MIRCache?
-      if mir_cache
-        raise ArgumentError, "MIR cache requires Efflorescence" unless engine == :efflorescence
-        unless mir_profile
-          require "wardite/efflorescence/mir_cache" unless RUBY_ENGINE == "spinel"
-          # Hash the same bytes that the decoder will see, even if the file changes.
-          bytes = buf.read || "".b
-          configuration = Efflorescence::Configuration.new(disabled_optimizations)
-          disabled_optimizations = configuration.disabled
-          cache = Efflorescence::MIRCache.new(mir_cache, bytes, configuration, verify: mir_cache_verify, eager: mir_cache_eager)
-          @buf = StringIO.new(bytes)
-        end
+      if mir_cache && !mir_profile
+        require "wardite/efflorescence/mir_cache" unless RUBY_ENGINE == "spinel"
+        # Hash the same bytes that the decoder will see, even if the file changes.
+        bytes = buf.read || "".b
+        configuration = Efflorescence::Configuration.new(disabled_optimizations)
+        disabled_optimizations = configuration.disabled
+        cache = Efflorescence::MIRCache.new(mir_cache, bytes, configuration, verify: mir_cache_verify, eager: mir_cache_eager)
+        @buf = StringIO.new(bytes)
       end
 
       version = preamble
-      sections_ = sections(!cache.nil?, engine == :efflorescence)
+      sections_ = sections(!cache.nil?, true)
       @buf = buf if cache
 
       wasi_env = nil
@@ -429,12 +408,9 @@ module Wardite
         wasi_env = if RUBY_ENGINE == "spinel"
           require "wardite/wasi"
           Wardite::WasiSnapshotPreview1.new
-        elsif engine == :efflorescence
+        else
           require "wardite/efflorescence/wasi"
           Wardite::Efflorescence::WasiSnapshotPreview1.new
-        else
-          require "wardite/wasi"
-          Wardite::WasiSnapshotPreview1.new
         end
         import_object[:wasi_snapshot_preview1] = wasi_env
       end
@@ -833,14 +809,12 @@ module Wardite
     def self.decode_body(buf)
       dest = [] #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       blocks = [] #: Array[Block]
-      has_eh_instructions = false
       # HINT: [symname, index of op, index of else, index of end]
       branching_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       fixed_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       while opcode = buf.getbyte
         spec = resolve_spec(opcode, buf)
         code = spec.code
-        has_eh_instructions ||= eh_instruction?(code)
         operand = [] #: Array[operandItem]
         spec.operand_types.each do |typ|
           case typ
@@ -925,19 +899,13 @@ module Wardite
           raise "[BUG] unknown sym #{sym.inspect}"
         end
       end
-      DecodedBody.new(dest, blocks, has_eh_instructions)
+      DecodedBody.new(dest, blocks)
     rescue => e
       require "pp"
       $stderr.puts "parsed:::"
       $stderr.puts "#{dest.pretty_inspect}"
       $stderr.puts "code = #{code}"
       raise e
-    end
-
-    # @rbs code: Symbol
-    # @rbs return: bool
-    def self.eh_instruction?(code)
-      code == :try_table || code == :throw || code == :throw_ref
     end
 
     # Decode s33, distinguishing the one-byte value/void forms from indices.

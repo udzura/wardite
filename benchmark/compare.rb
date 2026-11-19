@@ -37,8 +37,7 @@ wardite_runners = {
 }
 runners = {}
 wardite_runners.each do |runtime, command|
-  # runners["Old VM / #{runtime}"] = [:wardite, command + ["--stack-engine"]]
-  runners["New VM / #{runtime}"] = [:wardite, command]
+  runners["Efflorescence / #{runtime}"] = [:wardite, command]
 end
 runners["iwasm (WAMR interpreter)"] = [:iwasm, ["iwasm", "--interp"]]
 runners["Wasmtime (Pulley)"] = [:wasmtime, ["wasmtime", "run", "--target", "pulley64", "-C", "cache=n"]]

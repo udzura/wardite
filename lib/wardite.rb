@@ -11,17 +11,6 @@ require_relative "wardite/wasm_module"
 require_relative "wardite/load"
 require_relative "wardite/errors"
 
-module Wardite
-  module Evaluator
-    extend Wardite::ValueHelper
-  end
-end
-require_relative "wardite/alu_i32.generated"
-require_relative "wardite/alu_i64.generated"
-require_relative "wardite/alu_f32.generated"
-require_relative "wardite/alu_f64.generated"
-require_relative "wardite/convert.generated"
-
 require "stringio"
 
 module Wardite
@@ -30,7 +19,7 @@ module Wardite
 
     attr_accessor :sections #: Array[Section]
 
-    attr_accessor :runtime #: Runtime | Efflorescence::VM
+    attr_accessor :runtime #: Efflorescence::VM
 
     attr_accessor :types #: Array[Type]
 
@@ -52,6 +41,7 @@ module Wardite
     # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
     def initialize(import_object, engine: :efflorescence, disabled_optimizations: [], mir_profile: false, mir_cache: nil, eager_mir: false, &blk)
+      raise LoadError, "unknown engine: #{engine}" unless engine == :efflorescence
       @wasi = nil
 
       blk.call(self)
@@ -64,9 +54,9 @@ module Wardite
       @import_object = import_object #: Hash[Symbol, wasmModule]
 
       @tags = []
-      check_module_features(engine)
+      check_module_features
       cached_functions = nil #: Array[Efflorescence::Function]?
-      if engine == :efflorescence && mir_cache && !mir_profile
+      if mir_cache && !mir_profile
         cached_functions = mir_cache.read_functions(self)
       end
       types = type_section
@@ -74,7 +64,7 @@ module Wardite
         if cached_functions
           body.type_section = types
         else
-          body.check_features(types, engine == :stack)
+          body.check_features(types)
         end
       end
       check_data_count
@@ -90,37 +80,28 @@ module Wardite
         end
       end
 
-      @runtime = case engine
-      when :stack then Runtime.new(self)
-      when :efflorescence
-        # A cache hit can decode its own pending bodies on inspection. A cold
-        # build replays the original bytes even if the host edits Store later.
-        code = code_section
-        source_code = code.source_bytes if code && !cached_functions
-        code.source_bytes = nil if code
-        Efflorescence::VM.new(self, source_code: source_code, disabled_optimizations: disabled_optimizations, profile: mir_profile,
-          mir_cache: mir_cache, cached_functions: cached_functions, cache_checked: true, eager_mir: eager_mir)
-      else raise LoadError, "unknown engine: #{engine}"
-      end
+      # A cache hit can decode its own pending bodies on inspection. A cold
+      # build replays the original bytes even if the host edits Store later.
+      code = code_section
+      source_code = code.source_bytes if code && !cached_functions
+      code.source_bytes = nil if code
+      @runtime = Efflorescence::VM.new(self, source_code: source_code, disabled_optimizations: disabled_optimizations, profile: mir_profile,
+        mir_cache: mir_cache, cached_functions: cached_functions, cache_checked: true, eager_mir: eager_mir)
     end
 
     # Run before allocating Store/Exports or executing a start function.
-    # @rbs engine: Symbol
     # @rbs return: void
-    def check_module_features(engine)
-      check_memory_initialization if engine == :efflorescence
+    def check_module_features
+      check_memory_initialization
       types = type_section
-      if engine == :efflorescence
-        import_section.imports.each do |import|
-          params = types&.defined_types&.[](import.sig_index)
-          results = types&.defined_results&.[](import.sig_index)
-          raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
-          Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
-        end
+      import_section.imports.each do |import|
+        params = types&.defined_types&.[](import.sig_index)
+        results = types&.defined_results&.[](import.sig_index)
+        raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
+        Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
       end
       tag_section = @sections.find { |section| section.is_a?(TagSection) }
       if tag_section.is_a?(TagSection)
-        raise LoadError, "stack engine does not support tags/EH" unless engine == :efflorescence
         tag_section.type_indices.each do |index|
           params = types&.defined_types&.[](index)
           results = types&.defined_results&.[](index)
@@ -130,9 +111,6 @@ module Wardite
           end
           @tags << Efflorescence::Tag.new(params)
         end
-      end
-      if engine == :stack && types && (types.defined_types + types.defined_results).any? { |list| list.include?(:exnref) }
-        raise LoadError, "stack engine does not support exnref"
       end
     end
 
@@ -339,622 +317,6 @@ module Wardite
     end
   end
 
-  class Runtime
-    include ValueHelper
-
-    # TODO: add types of class that the stack accomodates
-    attr_accessor :stack #: Array[wasmValue]
-
-    attr_accessor :call_stack #: Array[Frame]
-
-    attr_reader :instance #: Instance
-
-    # @rbs inst: Instance
-    def initialize(inst)
-      @stack = []
-      @call_stack = []
-      @instance = inst
-
-      invoke_start_section
-    end
-
-    # @rbs return: void
-    def invoke_start_section
-      start_section = instance.start_section
-      if start_section
-        call_by_index(start_section.func_index)
-      end
-    end
-
-    # @rbs name: String|Symbol
-    # @rbs return: bool
-    def callable?(name)
-      !! @instance.exports[name.to_s]
-    end
-
-    # @rbs name: String|Symbol
-    # @rbs args: Array[Object]
-    # @rbs return: Object|nil
-    def call(name, args)
-      if !callable?(name)
-        raise ::NoMethodError, "function #{name} not found"
-      end
-      kind, fn = @instance.exports.mappings[name.to_s]
-      if kind != 0
-        raise ::NoMethodError, "#{name} is not a function"
-      end
-      if !fn.is_a?(WasmFunction) && !fn.is_a?(ExternalFunction)
-        raise ::NoMethodError, "#{name} is not a function"
-      end
-      if fn.callsig.size != args.size
-        raise ArgumentError, "unmatch arg size"
-      end
-      args.each_with_index do |arg, idx|
-        case fn.callsig[idx]
-        when :i32
-          raise "type mismatch: i32(#{arg})" unless arg.is_a?(Integer)
-          stack.push I32(arg)
-        else
-          raise "TODO: add me"
-        end
-      end
-
-      case fn
-      when WasmFunction
-        r = invoke_internal(fn)
-        r
-      when ExternalFunction
-        invoke_external(fn)
-      else
-        raise GenericError, "registered pointer is not to a function"
-      end
-    end
-
-    # @rbs idx: Integer
-    # @rbs return: void
-    def call_by_index(idx)
-      fn = @instance.store.funcs[idx]
-
-      case fn
-      when WasmFunction
-        invoke_internal(fn)
-      when ExternalFunction
-        invoke_external(fn)
-      else
-        raise GenericError, "registered pointer is not to a function"
-      end
-    end
-
-    # @rbs wasm_function: WasmFunction
-    # @rbs return: void
-    def push_frame(wasm_function)
-      local_start = stack.size - wasm_function.callsig.size
-      locals = stack[local_start..]
-      if !locals
-        raise LoadError, "stack too short"
-      end
-      self.stack = drained_stack(local_start)
-      locals.concat(wasm_function.default_locals)
-
-      arity = wasm_function.retsig.size
-      frame = Frame.new(-1, stack.size, wasm_function.body, arity, locals)
-      frame.findex = wasm_function.findex
-      self.call_stack.push(frame)
-    end
-
-    # @rbs wasm_function: WasmFunction
-    # @rbs return: Object|nil
-    def invoke_internal(wasm_function)
-      arity = wasm_function.retsig.size
-      push_frame(wasm_function)
-      execute!
-
-      if arity > 0
-        if arity > 1
-          raise ::NotImplementedError, "return artiy >= 2 not yet supported ;;"
-        end
-        if self.stack.empty?
-          raise "[BUG] stack empry"
-        end
-        v = self.stack.pop
-        return v
-      end
-
-      return nil
-    end
-
-    # @rbs!
-    #   $GLOBAL_EXTERNAL_ELAP:  Float
-    #   $GLOBAL_EXTERNAL_TIMES: Integer
-    $GLOBAL_EXTERNAL_ELAP = 0.0 #: Float
-    $GLOBAL_EXTERNAL_TIMES = 0  #: Integer
-    END {
-      if ENV["WARDITE_TRACE"] == "1"
-        $stderr.puts "external call count: #{$GLOBAL_EXTERNAL_TIMES}"
-        $stderr.puts "external call elapsed: #{$GLOBAL_EXTERNAL_ELAP}(s)"
-      end
-    }
-
-    # @rbs external_function: ExternalFunction
-    # @rbs return: wasmValue|nil
-    def invoke_external(external_function)
-      start = Time.now.to_f
-      $stderr.puts "[trace] call external function: #{external_function.name}" if ENV["WARDITE_TRACE"]
-      local_start = stack.size - external_function.callsig.size
-      args = stack[local_start..]
-      if !args
-        raise LoadError, "stack too short"
-      end
-      self.stack = drained_stack(local_start)
-
-      proc = external_function.callable
-      val = proc[self.instance.store, args]
-      if !val
-        return
-      end
-
-      case val
-      when I32, I64, F32, F64
-        return val
-      when Integer
-        case external_function.retsig[0]
-        when :i32
-          return I32(val)
-        when :i64
-          return I64(val)
-        end
-      when Float
-        case external_function.retsig[0]
-        when :f32
-          return F32(val)
-        when :f64
-          return F64(val)
-        end
-      end
-
-      raise "invalid type of value returned in proc. val: #{val.inspect}"
-    ensure
-      $GLOBAL_EXTERNAL_TIMES += 1
-      $GLOBAL_EXTERNAL_ELAP += (Time.now.to_f - start)
-    end
-
-    # @rbs return: void
-    def execute!
-      loop do
-        cur_frame = self.call_stack.last #: Frame
-        if !cur_frame
-          break
-        end
-        cur_frame.pc += 1
-        insn = cur_frame.body[cur_frame.pc]
-        if !insn
-          break
-        end
-        eval_insn(cur_frame, insn)
-      end
-    end
-
-    # @rbs frame: Frame
-    # @rbs insn: [Symbol, Symbol, Array[operandItem], Integer?, Integer?]
-    # @rbs return: void
-    def eval_insn(frame, insn)
-      namespace, code, operand, else_pos, end_pos = *insn
-      case namespace
-      when :convert
-        return Evaluator.convert_eval_insn(self, frame, code, operand)
-      when :i32
-        return Evaluator.i32_eval_insn(self, frame, code, operand)
-      when :i64
-        return Evaluator.i64_eval_insn(self, frame, code, operand)
-      when :f32
-        return Evaluator.f32_eval_insn(self, frame, code, operand)
-      when :f64
-        return Evaluator.f64_eval_insn(self, frame, code, operand)
-      end
-
-      # unmached namespace...
-      case code
-      when :unreachable
-        raise Unreachable, "unreachable op"
-      when :nop
-        return
-
-      when :br
-        level = operand[0]
-        raise EvalError, "br op without level" if !level.is_a?(Integer)
-        pc = do_branch(frame.labels, stack, level)
-        frame.pc = pc
-
-      when :br_if
-        level = operand[0]
-        raise EvalError, "br op without level" if !level.is_a?(Integer)
-        cond = stack.pop 
-        raise EvalError, "cond not found" if !cond.is_a?(I32)
-        if cond.value.zero?
-          return
-        end
-        pc = do_branch(frame.labels, stack, level)
-        frame.pc = pc
-
-      when :br_table
-        levels = operand[0]
-        raise EvalError, "no level vector" unless levels.is_a?(OperandVector)
-        level_vec = levels.entries
-        default = operand[1]
-        raise EvalError, "no default specified" if !default.is_a?(Integer)
-        idx = stack.pop 
-        raise EvalError, "idx not found" if !idx.is_a?(I32)
-        level = if idx.value_s < 0 || idx.value_s >= level_vec.size
-          default
-        else
-          level_vec[idx.value_s]
-        end
-        pc = do_branch(frame.labels, stack, level)
-        frame.pc = pc
-
-      when :block
-        block = operand[0]
-        raise EvalError, "block op without block" if !block.is_a?(Block)
-        next_pc = end_pos || -1
-        label = Label.new(:block, next_pc, stack.size, block.result_size)
-        frame.labels.push(label)
-
-      when :loop
-        block = operand[0]
-        raise EvalError, "loop op without block" if !block.is_a?(Block)
-        start = frame.pc
-        next_pc = end_pos || -1
-        label = Label.new(:loop, next_pc, stack.size, block.result_size, start)
-        frame.labels.push(label)
-
-      when :if
-        block = operand[0]
-        raise EvalError, "if op without block" if !block.is_a?(Block)
-        cond = stack.pop
-        raise EvalError, "cond not found" if !cond.is_a?(I32)
-        next_pc = end_pos || -1
-
-        if cond.value.zero?
-          frame.pc = else_pos || -1
-        end
-
-        if frame.pc == next_pc
-          # This means if block has no else instr.
-          return
-        end
-
-        label = Label.new(:if, next_pc, stack.size, block.result_size)
-        frame.labels.push(label)
-
-      when :else
-        if old_label = frame.labels.pop
-          frame.pc = old_label.pc
-          stack_unwind(old_label.sp, old_label.arity)
-        else
-          raise EvalError, "else should be in if block"
-        end
-
-      when :call
-        idx = operand[0]
-        raise EvalError, "[BUG] local operand not found" if !idx.is_a?(Integer)
-        fn = self.instance.store.funcs[idx]
-        case fn
-        when WasmFunction
-          push_frame(fn)
-        when ExternalFunction
-          ret = invoke_external(fn)
-          self.stack.push ret if ret
-        else
-          raise GenericError, "got a non-function pointer"
-        end
-
-      when :call_indirect
-        table = self.instance.store.tables[0]
-        raise EvalError, "table required but not found" if !table
-        type_idx = operand[0]
-        raise EvalError, "[BUG] index operand invalid" if !type_idx.is_a?(Integer)
-        nullbyte = operand[1]
-        raise EvalError, "[BUG] invalid bytearray of call_indirect" if nullbyte != 0x0
-        table_idx = stack.pop
-        raise EvalError, "[BUG] index stack invalid" if !table_idx.is_a?(I32)
-        fntype = self.instance.types[type_idx]
-        if !fntype
-          raise EvalError, "undefined type index: idx=#{type_idx}"          
-        end
-        refs = self.instance.store.tables[0]&.refs
-        if !refs
-           raise EvalError, "uninitialized element idx:#{table_idx}"
-        end
-
-        fn = refs[table_idx.value]
-        case fn
-        when WasmFunction
-          if table.type != :funcref
-            raise EvalError, "invalid type of elem; expected: #{table.type}"
-          end
-          fn = fn.clone(override_type: fntype)
-          push_frame(fn)
-        when ExternalFunction
-          if table.type != :externref
-            raise EvalError, "invalid type of elem; expected: #{table.type}"
-          end
-          fn = fn.clone(override_type: fntype)
-          ret = invoke_external(fn)
-          self.stack.push ret if ret
-        when nil
-          raise EvalError, "uninitialized element idx:#{table_idx.value}"
-        else
-          raise EvalError, "[BUG] unknwon function type #{fn}"
-        end
-
-      when :return
-        old_frame = call_stack.pop
-        if !old_frame
-          raise EvalError, "maybe empty call stack"
-        end
-
-        stack_unwind(old_frame.sp, old_frame.arity)
-
-      when :end
-        if old_label = frame.labels.pop
-          frame.pc = old_label.pc
-          stack_unwind(old_label.sp, old_label.arity)
-        else
-          old_frame = call_stack.pop
-          if !old_frame
-            raise EvalError, "maybe empty call stack"
-          end
-          stack_unwind(old_frame.sp, old_frame.arity)
-        end
-
-      when :drop
-        stack.pop
-
-      when :select
-        cond, right, left = stack.pop, stack.pop, stack.pop
-        if !cond.is_a?(I32)
-          raise EvalError, "invalid stack for select"
-        end
-        if !right || !left
-          raise EvalError, "stack too short"
-        end
-        stack.push(cond.value != 0 ? left : right)
-
-      when :local_get
-        idx = operand[0]
-        if !idx.is_a?(Integer)
-          raise EvalError, "[BUG] invalid type of operand"
-        end
-        local = frame.locals[idx]
-        if !local
-          # require "irb"; binding.irb
-          raise EvalError, "local not found, idx = #{idx}"
-        end
-        stack.push(local)
-
-      when :local_set
-        idx = operand[0]
-        if !idx.is_a?(Integer)
-          raise EvalError, "[BUG] invalid type of operand"
-        end
-        value = stack.pop
-        if !value
-          raise EvalError, "value should be pushed"
-        end
-        frame.locals[idx] = value
-
-      when :local_tee
-        idx = operand[0]
-        if !idx.is_a?(Integer)
-          raise EvalError, "[BUG] invalid type of operand"
-        end
-        value = stack.pop
-        if !value
-          raise EvalError, "value should be pushed"
-        end
-        frame.locals[idx] = value
-        stack.push value
-
-      when :global_get
-        idx = operand[0]
-        if !idx.is_a?(Integer)
-          raise EvalError, "[BUG] invalid type of operand"
-        end
-        global = instance.store.globals[idx]
-        if !global
-          raise EvalError, "global not found"
-        end
-        stack.push(global.value)
-
-      when :global_set
-        idx = operand[0]
-        if !idx.is_a?(Integer)
-          raise EvalError, "[BUG] invalid type of operand"
-        end
-        current_global = instance.store.globals[idx]
-        if !current_global
-          raise EvalError, "global index not valid"
-        end
-        if !current_global.mutable?
-          raise EvalError, "global not mutable"
-        end
-        value = stack.pop
-        if !value
-          raise EvalError, "value should be pushed"
-        end
-        current_global.value = value
-        instance.store.globals[idx] = current_global
-
-      when :memory_size
-        memory = instance.store.memories[0] || raise("[BUG] no memory")
-        stack.push(I32(memory.current))
-
-      when :memory_grow
-        delta = stack.pop
-        if !delta.is_a?(I32)
-          raise EvalError, "maybe stack too short"
-        end
-        memory = instance.store.memories[0] || raise("[BUG] no memory")
-        stack.push(I32(memory.grow(delta.value)))
-
-      when :memory_init
-        idx = operand[0]
-        if !idx.is_a?(Integer)
-          raise EvalError, "[BUG] invalid type of operand"
-        end
-        if operand[1] != 0x0
-          $stderr.puts "warning: :memory_init is not ending with 0x00"
-        end
-        data_sec = instance.data_section
-        if !data_sec
-          raise EvalError, "data segment out of range"
-        end
-        data_seg = data_sec.segments[idx]
-        if !data_seg
-          raise EvalError, "data segment out of range"
-        end
-
-        memory = instance.store.memories[0] || raise("[BUG] no memory")
-        length, src_offset, dest_offset = stack.pop, stack.pop, stack.pop
-        if !length.is_a?(I32) || !src_offset.is_a?(I32) || !dest_offset.is_a?(I32)
-          raise EvalError, "invalid stack values"
-        end
-        if RUBY_ENGINE == "spinel"
-          Efflorescence::StoreAccess.new(instance.store).init(idx, dest_offset.value, src_offset.value, length.value)
-        else
-          source = data_seg.data[src_offset.value...(src_offset.value+length.value)]
-          raise EvalError, "invalid source range" if !source
-          memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
-        end
-
-      when :memory_copy
-        if operand[0] != 0x0 || operand[1] != 0x0
-          $stderr.puts "warning: :memory_copy is not ending with 0x00"
-        end
-        length, src_offset, dest_offset = stack.pop, stack.pop, stack.pop
-        if !length.is_a?(I32) || !src_offset.is_a?(I32) || !dest_offset.is_a?(I32)
-          raise EvalError, "invalid stack values"
-        end
-        memory = instance.store.memories[0] || raise("[BUG] no memory")
-        if RUBY_ENGINE == "spinel"
-          Efflorescence::StoreAccess.new(instance.store).copy(dest_offset.value, src_offset.value, length.value)
-        else
-          source = memory.data[src_offset.value...(src_offset.value+length.value)]
-          raise EvalError, "invalid source range" if !source
-          memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
-        end
-
-      when :memory_fill
-        if operand[0] != 0x0
-          $stderr.puts "warning: :memory_fill is not ending with 0x00"
-        end
-        length, byte, dest_offset = stack.pop, stack.pop, stack.pop
-        if !length.is_a?(I32) || !byte.is_a?(I32) || !dest_offset.is_a?(I32)
-          raise EvalError, "invalid stack values"
-        end
-        memory = instance.store.memories[0] || raise("[BUG] no memory")
-        if RUBY_ENGINE == "spinel"
-          Efflorescence::StoreAccess.new(instance.store).fill(dest_offset.value, byte.value, length.value)
-        else
-          source = byte.value.chr * length.value
-          memory.data[dest_offset.value...(dest_offset.value+length.value)] = source
-        end
-
-      else
-        raise "TODO! unsupported #{insn.inspect}"
-      end
-
-    rescue => e
-      if ENV["DEBUG"]
-        require "pp"
-        $stderr.puts "instance:::\n#{self.instance.pretty_inspect}"
-        $stderr.puts "frame:::\n#{frame.pretty_inspect}"
-        $stderr.puts "stack:::\n#{stack.pretty_inspect}"
-      end
-      raise e
-    end
-
-    # @rbs labels: Array[Label]
-    # @rbs stack: Array[wasmValue]
-    # @rbs level: Integer
-    # @rbs return: Integer
-    def do_branch(labels, stack, level)
-      idx = labels.size - 1 - level
-      label = labels[idx]
-      pc = if label.kind == :loop
-        # keep the top of labels for loop again...
-        while labels.size > idx + 1
-          labels.pop
-        end
-        stack_unwind(label.sp, 0)
-        label.start || raise(EvalError, "loop withour start")
-      else
-        while labels.size > idx
-          labels.pop
-        end
-        stack_unwind(label.sp, label.arity)
-        label.pc
-      end
-
-      pc
-    end
-
-    # unwind the stack and put return value if exists
-    # @rbs sp: Integer
-    # @rbs arity: Integer
-    # @rbs return: void
-    def stack_unwind(sp, arity)
-      if arity > 0
-        if arity > 1
-          raise ::NotImplementedError, "return artiy >= 2 not yet supported ;;"
-        end
-        value = stack.pop
-        if !value
-          raise EvalError, "cannot obtain return value"
-        end
-        self.stack = drained_stack(sp)
-        stack.push value
-      else
-        self.stack = drained_stack(sp)
-      end
-    end
-
-    # @rbs finish: Integer
-    # @rbs return: Array[wasmValue]
-    def drained_stack(finish)
-      drained = stack[0...finish]
-      if ! drained
-        $stderr.puts "warning: state of stack: #{stack.inspect}"
-        raise EvalError, "stack too short"
-      end
-      return drained
-    end
-
-    # @rbs name: Symbol
-    # @rbs args: Array[Object]
-    # @rbs return: untyped
-    def method_missing(name, *args)
-      if callable? name
-        call(name, args)
-      else
-        super
-      end
-    end
-
-    # @rbs name: String|Symbol
-    # @rbs include_private: bool
-    # @rbs return: bool
-    def respond_to?(name, include_private = false)
-      callable?(name) || super
-    end
-
-    # @rbs args: Array[Object]
-    # @rbs return: Object?
-    def _start(*args)
-      call(:_start, args)
-    end
-  end
-
   class Type
     attr_accessor :callsig #: Array[Symbol]
 
@@ -966,63 +328,6 @@ module Wardite
     def initialize(callsig, retsig)
       @callsig = callsig
       @retsig = retsig
-    end
-  end
-
-  class Frame
-    attr_accessor :pc #: Integer
-    attr_accessor :sp #: Integer
-
-    attr_accessor :body #: Array[[Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer?]]
-
-    attr_accessor :arity #: Integer
-
-    attr_accessor :labels #: Array[Label]
-
-    attr_accessor :locals #: Array[wasmValue]
-
-    attr_accessor :findex #: Integer
-
-    # @rbs pc: Integer
-    # @rbs sp: Integer
-    # @rbs body: Array[[Symbol, Symbol, Array[Wardite::operandItem], Integer?, Integer?]]
-    # @rbs arity: Integer
-    # @rbs locals: Array[wasmValue]
-    # @rbs return: void
-    def initialize(pc, sp, body, arity, locals)
-      @pc = pc
-      @sp = sp
-      @body = body
-      @arity = arity
-      @locals = locals
-      @labels = []
-
-      @findex = 0
-    end
-  end
-
-  class Label
-    attr_accessor :kind #: (:if|:loop|:block)
-
-    attr_accessor :pc #: Integer
-    attr_accessor :sp #: Integer
-
-    attr_accessor :arity #: Integer
-
-    attr_accessor :start #: Integer|nil
-
-    # @rbs kind: (:if|:loop|:block)
-    # @rbs pc: Integer
-    # @rbs sp: Integer
-    # @rbs arity: Integer
-    # @rbs start: Integer|nil
-    # @rbs return: void
-    def initialize(kind, pc, sp, arity, start=nil)
-      @kind = kind
-      @pc = pc
-      @sp = sp
-      @arity = arity
-      @start = start
     end
   end
 
@@ -1432,19 +737,6 @@ module Wardite
       @result_types = results.dup
     end
 
-    # @rbs return: bool
-    def void?
-      !!block_types
-    end
-
-    # @rbs return: Integer
-    def result_size
-      if block_types # !void?
-        block_types.size
-      else
-        0
-      end
-    end
   end
 
   # @rbs!
@@ -1498,7 +790,6 @@ module Wardite
   # TODO: common interface btw. WasmFunction and ExternalFunction?
   #       may be _WasmCallable?
   class WasmFunction
-    include ValueHelper
 
     attr_accessor :callsig #: Array[Symbol]
 
@@ -1507,8 +798,6 @@ module Wardite
     attr_accessor :code_body #: CodeSection::CodeBody
 
     attr_accessor :findex #: Integer
-
-    # @rbs @default_locals: Array[wasmValue]?
 
     # @rbs callsig: Array[Symbol]
     # @rbs retsig: Array[Symbol]
@@ -1520,7 +809,6 @@ module Wardite
 
       @code_body = code_body
       @findex = 0 # for debug
-      @default_locals = nil
     end
 
     # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
@@ -1536,36 +824,6 @@ module Wardite
     # @rbs return: Array[Integer]
     def locals_count
       code_body.locals_count
-    end
-
-    # Stack-engine values are boxed lazily; Efflorescence uses type metadata.
-    # @rbs return: Array[wasmValue]
-    def default_locals
-      @default_locals ||= construct_default_locals
-    end
-
-    # @rbs return: Array[wasmValue]
-    def construct_default_locals
-      locals = [] #: Array[wasmValue]
-      locals_count.each_with_index do |count, i|
-        typ = locals_type[i]
-        count.times do
-          case typ
-          when :i32, :u32
-            locals.push I32(0)
-          when :i64, :u64
-            locals.push I64(0)
-          when :f32
-            locals.push F32(0.0)
-          when :f64
-            locals.push F64(0.0)
-          else
-            $stderr.puts "warning: unknown type #{typ.inspect}. default to I32"
-            locals.push I32(0)
-          end
-        end
-      end
-      locals
     end
 
     # @rbs override_type: Type?

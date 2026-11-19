@@ -52,7 +52,7 @@ module Wardite
       # @rbs return: bool
       def callable?: (String | Symbol name) -> bool
 
-      # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
+      # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
       # @rbs return: Wardite::wasmValue?

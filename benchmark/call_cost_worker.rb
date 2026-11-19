@@ -13,10 +13,11 @@ disabled = ARGV.fetch(4, "").split(",").map { |name| name.to_sym }
 profile = ARGV.fetch(5, "time") == "metrics"
 started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 instance = File.open(wasm, "rb") do |file|
-  Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: :stack)
+  Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, disabled_optimizations: disabled, mir_profile: profile)
 end
 loaded = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-vm = Wardite::Efflorescence::VM.new(instance, disabled_optimizations: disabled, profile: profile)
+vm = instance.runtime
+vm.prepare_all
 translated = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 result = vm.call_unboxed(export, [rounds, seed]) || raise("missing checksum")
 finished = Process.clock_gettime(Process::CLOCK_MONOTONIC)

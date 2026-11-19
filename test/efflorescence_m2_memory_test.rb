@@ -81,19 +81,19 @@ class EfflorescenceM2MemoryTest < Test::Unit::TestCase
     end
   end
 
-  test 'normal loads stores and whole memory agree with independent stack instances' do
+  test 'normal loads stores and whole memory agree with the default runtime in an independent instance' do
     bytes = compile_efflorescence_wat(WAT)
     MODES.each do |mode|
       fresh = instance(bytes, **mode)
-      old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
+      baseline = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
       STORES.each_key do |name|
         [1, 17, 100].each do |address|
           fresh.runtime.call_unboxed(name, [address, 0x89abcdef])
-          old.runtime.call(name, [address, 0x89abcdef])
-          assert_equal old.store.memories[0].data, fresh.store.memories[0].data
-          assert_equal old.store.memories[0].current, fresh.store.memories[0].current
+          baseline.runtime.call(name, [address, 0x89abcdef])
+          assert_equal baseline.store.memories[0].data, fresh.store.memories[0].data
+          assert_equal baseline.store.memories[0].current, fresh.store.memories[0].current
           LOADS.each_key do |load|
-            assert_equal old.runtime.call(load, [address]).value, fresh.runtime.call_unboxed(load, [address])
+            assert_equal baseline.runtime.call(load, [address]).value, fresh.runtime.call_unboxed(load, [address])
           end
         end
       end

@@ -9,28 +9,8 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
   include EfflorescenceHelper
   E = Wardite::Efflorescence
 
-  def load_wat(wat, engine: :efflorescence)
-    Wardite::BinaryLoader.load_from_buffer(StringIO.new(compile_efflorescence_wat(wat)), enable_wasi: false, engine: engine)
-  end
-
-  test 'stack engine rejects new features before Store initialization' do
-    cases = [
-      '(module (tag))',
-      '(module (func (local exnref)))',
-      '(module (func try_table end))',
-      '(module (type (func (result i32 i32))) (func block (type 0) i32.const 1 i32.const 2 end drop drop))',
-      '(module (func block (result exnref) unreachable end drop))'
-    ]
-    cases.each do |wat|
-      stored = false
-      trace = TracePoint.new(:call) { |event| stored = true if event.defined_class == Wardite::Store && event.method_id == :initialize }
-      trace.enable { assert_raise(Wardite::LoadError) { load_wat(wat, engine: :stack) } }
-      assert_false stored, wat
-    ensure
-      trace&.disable
-    end
-    # Existing numeric block forms remain available in the stack engine.
-    assert_nothing_raised { load_wat('(module (func block (result i64) i64.const 1 end drop))', engine: :stack) }
+  def load_wat(wat)
+    Wardite::BinaryLoader.load_from_buffer(StringIO.new(compile_efflorescence_wat(wat)), enable_wasi: false)
   end
 
   test 'unsupported tag and reference features are rejected including dead unexported functions' do
@@ -171,19 +151,15 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
       resolved << event.self if event.defined_class == Wardite::Block && event.method_id == :resolve
       flunk("decoder-owned body used the fallback scan") if event.method_id == :check_instructions
     end
-    trace.enable { body.check_features(types, false) }
+    trace.enable { body.check_features(types) }
     instructions = body.body
     indexed = instructions.first.fetch(2).first
     assert_same indexed, resolved.fetch(0)
     assert_equal [:i32], indexed.parameter_types
     assert_equal [:i64], indexed.result_types
     instructions.first.fetch(2)[0] = Wardite::Block.new(type_index: 8)
-    assert_raise_message("invalid block type index 8") { body.check_features(types, false) }
+    assert_raise_message("invalid block type index 8") { body.check_features(types) }
 
-    numeric = Wardite::CodeSection::CodeBody.new { |code| code.decode_from(StringIO.new("\x02\x7f\x0b\x0b".b)) }
-    numeric.check_features(types, true)
-    numeric.body.first.fetch(2).first.resolve([], [:exnref])
-    assert_raise_message(/indexed\/reference block signatures/) { numeric.check_features(types, true) }
     assert_equal [:end], loader.code_body(StringIO.new("\x0b".b)).map { |instruction| instruction[1] }
   end
 
@@ -192,15 +168,15 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
     body = Wardite::CodeSection::CodeBody.new { |code| code.decode_from(StringIO.new("\x0b".b)) }
     replacement = loader.code_body(StringIO.new("\x0a\x0b".b))
     body.body = replacement
-    assert_raise_message("stack engine does not support EH") { body.check_features(nil, true) }
+    body.check_features(nil)
     replacement.replace(loader.code_body(StringIO.new("\x02\x08\x0b\x0b".b)))
-    assert_raise_message("invalid block type index 8") { body.check_features(nil, false) }
+    assert_raise_message("invalid block type index 8") { body.check_features(nil) }
 
     body.decode_from(StringIO.new("\x0a\x0b".b))
     body.instruction_bytes = nil
     scanned = false
     trace = TracePoint.new(:call) { |event| scanned = true if event.method_id == :check_instructions }
-    trace.enable { assert_raise_message("stack engine does not support EH") { body.check_features(nil, true) } }
+    trace.enable { body.check_features(nil) }
     assert_true scanned
   end
 
@@ -212,10 +188,7 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
       code.instruction_bytes = "\x02\x00\x0b\x0b".b
       code.type_section = family
     end
-    assert_raise_message("invalid block type index 0") { body.check_features(nil, false) }
-    assert_raise_message(/indexed\/reference block signatures/) { body.check_features(family, true) }
+    assert_raise_message("invalid block type index 0") { body.check_features(nil) }
     assert_equal [:i32], body.body.first.fetch(2).first.result_types
-    body.body.unshift([:default, :throw_ref, [], nil, nil])
-    assert_raise_message("stack engine does not support EH") { body.check_features(family, true) }
   end
 end

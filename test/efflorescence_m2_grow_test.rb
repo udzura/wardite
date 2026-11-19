@@ -27,20 +27,20 @@ class EfflorescenceM2GrowTest < Test::Unit::TestCase
     bytes = compile_efflorescence_wat(GROW_WAT)
     MODES.each do |mode|
       fresh = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), engine: :efflorescence, enable_wasi: false, **mode)
-      old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
+      baseline = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
       vm = fresh.runtime
       memory = fresh.store.memories[0]
       assert_equal 1, vm.call_unboxed('size', [])
       original = memory.data
       assert_equal 1, vm.call_unboxed('grow', [0])
-      old.runtime.call('grow', [0])
+      baseline.runtime.call('grow', [0])
       assert_same original, memory.data
       [[1,1], [1,2], [1,0xffffffff], [0xffffffff,0xffffffff], [0,3]].each do |delta, expected|
         before = memory.data
         assert_equal expected, vm.call_unboxed('grow', [delta])
-        assert_equal expected, old.runtime.call('grow', [delta]).value
-        assert_equal old.store.memories[0].data, memory.data
-        assert_equal old.store.memories[0].current, memory.current
+        assert_equal expected, baseline.runtime.call('grow', [delta]).value
+        assert_equal baseline.store.memories[0].data, memory.data
+        assert_equal baseline.store.memories[0].current, memory.current
         assert_equal memory.current * 65536, memory.data.bytesize
         assert_equal "abc".b, memory.data.byteslice(0,3)
         assert_equal Encoding::BINARY, memory.data.encoding

@@ -23,8 +23,6 @@ module Wardite
 
       attr_reader yjit: bool
 
-      attr_reader new_engine: bool
-
       attr_reader disabled_optimizations: Array[Symbol]
 
       attr_reader mir_dump: bool

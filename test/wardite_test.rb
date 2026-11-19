@@ -20,10 +20,10 @@ class WarditeBinaryLoaderTest < Test::Unit::TestCase
 end
 
 class WarditeInstanceTest < Test::Unit::TestCase
-  test "Wardite.new defaults to Efflorescence and accepts the stack engine" do
+  test "Wardite.new defaults to Efflorescence and rejects the retired stack engine" do
     path = File.expand_path("add.wasm", __dir__)
     assert_instance_of Wardite::Efflorescence::VM, Wardite.new(path: path).runtime
-    assert_instance_of Wardite::Runtime, Wardite.new(path: path, engine: :stack).runtime
+    assert_raise_message("unknown engine: stack") { Wardite.new(path: path, engine: :stack) }
   end
 
   test "respond_to? accepts the private visibility flag" do

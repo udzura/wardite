@@ -71,7 +71,7 @@ class EfflorescenceRegisterInitializationTest < Test::Unit::TestCase
 
   test "locals constants branches recursion and trap recovery across execution modes" do
     bytes = compile_efflorescence_wat(RESET_WAT)
-    old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
+    baseline = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
     [[], [:all], [:copy], [:immediate], [:frames]].each do |disabled|
       [false, true].each do |profile|
         vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
@@ -79,7 +79,7 @@ class EfflorescenceRegisterInitializationTest < Test::Unit::TestCase
         3.times do
           [0, 123, 0xffffffff, 0x80000000].each do |seed|
             expected = (seed * 128) % (2**32)
-            assert_equal expected, old.call("run", [seed]).value
+            assert_equal expected, baseline.call("run", [seed]).value
             assert_equal expected, vm.call_unboxed("run", [seed]), "#{disabled.inspect}, #{profile}"
           end
           [0, 1, 30].each do |depth|

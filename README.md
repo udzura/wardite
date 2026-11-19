@@ -62,19 +62,17 @@ $ wardite examples/test.wasm
 
 ### Efflorescence register VM
 
-The CLI and Ruby API default to the MIR-based Efflorescence register VM. The
-CRuby and Spinel CLIs still accept `--new-engine` for compatibility. Use
-`--stack-engine` to select the legacy stack VM.
+The CLI and Ruby API use the MIR-based Efflorescence register VM. The
+CRuby and Spinel CLIs still accept `--new-engine` for compatibility.
 
 ```sh
 wardite --no-wasi --invoke add test/add.wasm 100 200
 # return value: I32(300)
 ```
 
-To select the legacy stack VM in Ruby, pass `engine: :stack` to `Wardite.new` or
-`BinaryLoader.load_from_buffer`. Efflorescence reports unsupported instructions with an explicit
+Ruby callers can omit the `engine:` keyword or pass `:efflorescence`. Efflorescence reports unsupported instructions with an explicit
 exception. See the [design, supported subset and tests](docs/efflorescence.md)
-and [engine comparison benchmark](benchmark/README.md).
+and [benchmarks](benchmark/README.md).
 
 Efflorescence now includes independent COPY/immediate/branch/fusion passes,
 flat integer bytecode and frame reuse. Execution always uses flat bytecode,

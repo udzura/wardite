@@ -142,7 +142,7 @@ variants.each do |variant|
   puts "Built #{variant}"
 end
 
-# Confirm the current engine, old Stack VM and independent arithmetic agree on
+# Confirm the current engine and independent arithmetic agree on
 # the controls and i32 boundaries before measuring any variant. Each native
 # variant is also checked at zero/one/many iterations with negative-bit seeds.
 validation = [[0, 0], [0, 123], [1, 0xffffffff], [10, 123], [1000, 0xffffffff]]
@@ -150,7 +150,7 @@ validation_worker = "#{output}/validate.rb"
 File.write(validation_worker, <<~RUBY)
   require "wardite"
   wasm, rounds, seed = ARGV
-  instance = File.open(wasm, "rb") { |file| Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: :stack) }
+  instance = File.open(wasm, "rb") { |file| Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false) }
   #{exports.inspect}.each { |name| puts "\#{name},\#{instance.runtime.call(name, [rounds.to_i, seed.to_i]).value}" }
 RUBY
 validation.each do |count, initial|
@@ -158,7 +158,7 @@ validation.each do |count, initial|
   abort stderr unless status.success?
   stdout.each_line do |line|
     name, value = line.strip.split(",")
-    raise "Old VM mismatch" unless Integer(value) == expected(name, count, initial)
+    raise "CRuby mismatch" unless Integer(value) == expected(name, count, initial)
   end
   workers.each_value do |worker|
     exports.each do |name|
@@ -168,7 +168,7 @@ validation.each do |count, initial|
   end
 end
 checksums = exports.to_h { |name| [name, expected(name, rounds, seed)] }
-puts "All variants, old VM and reference agree on boundary/control cases."
+puts "All native variants, CRuby and reference agree on boundary/control cases."
 
 rows = exports.flat_map do |name|
   workers.map do |variant, worker|

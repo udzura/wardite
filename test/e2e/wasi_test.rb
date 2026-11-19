@@ -37,19 +37,17 @@ class WarditeE2EWasiTest < Test::Unit::TestCase
       )
     WAT
     with_wasm(code) do |file|
-      [:stack, :efflorescence].each do |engine|
-        script = <<~RUBY
-          require "wardite"
-          instance = Wardite.new(path: ARGV.fetch(0), engine: ARGV.fetch(1).to_sym)
-          errno = instance.runtime.call(:_start, []).value
-          nwritten = instance.store.memories.fetch(0).data.byteslice(24, 4).unpack1("V")
-          warn [errno, nwritten].join(",")
-        RUBY
-        stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-I#{ROOT}/lib", "-e", script, file, engine.to_s)
-        assert status.success?, stderr
-        assert_equal "Hello, World!\n", stdout
-        assert_equal "0,14\n", stderr
-      end
+      script = <<~RUBY
+        require "wardite"
+        instance = Wardite.new(path: ARGV.fetch(0))
+        errno = instance.runtime.call(:_start, []).value
+        nwritten = instance.store.memories.fetch(0).data.byteslice(24, 4).unpack1("V")
+        warn [errno, nwritten].join(",")
+      RUBY
+      stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-I#{ROOT}/lib", "-e", script, file)
+      assert status.success?, stderr
+      assert_equal "Hello, World!\n", stdout
+      assert_equal "0,14\n", stderr
     end
   end
 
@@ -117,9 +115,7 @@ class WarditeE2EWasiTest < Test::Unit::TestCase
           (import "wasi_snapshot_preview1" "#{name}" (func $host (result i32)))
           (export "run" (func $host)))
       WAT
-        [:stack, :efflorescence].each do |engine|
-          assert_raise_message(/invalid WASI signature for #{name}/) { Wardite.new(path: file, engine: engine) }
-        end
+        assert_raise_message(/invalid WASI signature for #{name}/) { Wardite.new(path: file) }
         host = ->(_store, args) { assert_equal [], args; Wardite::I32.new(37) }
         instance = Wardite.new(path: file, engine: :efflorescence, enable_wasi: false,
           import_object: {wasi_snapshot_preview1: {name.to_sym => host}})
@@ -128,9 +124,7 @@ class WarditeE2EWasiTest < Test::Unit::TestCase
       end
     end
     with_wasm('(module (import "wasi_snapshot_preview1" "fd_write_from_registers" (func)))') do |file|
-      [:stack, :efflorescence].each do |engine|
-        assert_raise_message(/unknown WASI import fd_write_from_registers/) { Wardite.new(path: file, engine: engine) }
-      end
+      assert_raise_message(/unknown WASI import fd_write_from_registers/) { Wardite.new(path: file) }
     end
   end
 
@@ -145,14 +139,12 @@ class WarditeE2EWasiTest < Test::Unit::TestCase
         (func (export "poll") (result i32)
           i32.const 0 i32.const 0 i32.const 0 i32.const 0 call $poll))
     WAT
-      [:stack, :efflorescence].each do |engine|
-        instance = Wardite.new(path: file, engine: engine)
-        data = instance.store.memories.fetch(0).data
-        data[0, 8] = "sentinel"
-        assert_equal Wardite::Wasi::ENOSYS, instance.runtime.call(:seek, []).value
-        assert_equal Wardite::Wasi::ENOSYS, instance.runtime.call(:poll, []).value
-        assert_equal "sentinel", data.byteslice(0, 8)
-      end
+      instance = Wardite.new(path: file)
+      data = instance.store.memories.fetch(0).data
+      data[0, 8] = "sentinel"
+      assert_equal Wardite::Wasi::ENOSYS, instance.runtime.call(:seek, []).value
+      assert_equal Wardite::Wasi::ENOSYS, instance.runtime.call(:poll, []).value
+      assert_equal "sentinel", data.byteslice(0, 8)
     end
   end
 
