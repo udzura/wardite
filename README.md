@@ -178,8 +178,8 @@ CRuby build. Ruby's dynamic export helpers (`instance.add(...)` and
 The build leaves inline RBS and Spinel's default integer overflow checks enabled.
 Wasm integer operations bound their intermediate values, so
 `--int-overflow=promote` is not required.
-CI builds Spinel from the upstream commit `a2aa05227`, which includes the
-required `IO::Buffer` changes.
+CI and release builds use Spinel commit `072516af1`, which includes the
+required `IO::Buffer` changes and reduces GC root lookups in threaded builds.
 See the [build instructions and host memory API](docs/efflorescence-spinel-linear-memory.md).
 Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
 
