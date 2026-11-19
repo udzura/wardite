@@ -6,6 +6,8 @@ enabled in the script. See [Run](#run) for the complete
 matrix and options. The scripts below provide additional optimization-specific
 comparisons.
 
+The [stack VM removal report](../docs/stack-vm-removal.md) compares native build time, binary size, startup and execution on the default engine.
+
 ## MIR generation before caching
 
 [MIR生成性能調査（日本語）](../docs/efflorescence-mir-generation-performance.md)
@@ -184,8 +186,8 @@ The report `build/benchmark/optimizations.json` contains raw samples, phase and
 whole-process means, CRuby execution allocations and per-opcode counters.
 Time measurement does not enable MIR counters. Both phase and CLI measurements
 include the same Ruby-facing boxed return boundary. Spinel allocations are `n/a`.
-The shared phase loader creates the stack VM, then the selected MIR VM is
-constructed in the MIR phase; the fixture has no start function. Phase timing
+The load phase instantiates Efflorescence and translates semantic MIR. The
+next phase prepares all function bodies before timing execution. Phase timing
 uses a separate executable, whose Spinel inference can differ from the CLI.
 `SPINEL` and `SPINELFLAGS` choose the compiler/flags (default `-O2`).
 
@@ -306,36 +308,9 @@ larger apparent gain should not be treated as the stable speedup.
 Local raw reports are `build/benchmark/dispatch-100k.json` and
 `build/benchmark/dispatch-million.json` (also the latest `dispatch.json`).
 
-## Compare the stack and Efflorescence engines
+## Historical stack VM comparison
 
-```sh
-ruby benchmark/compare_engines.rb 100000 123
-# Optional sample counts (default: 5 samples after 2 warmups):
-RUNS=3 WARMUPS=1 ruby benchmark/compare_engines.rb 100000 123
-```
-
-Requires Ruby, Spinel/C toolchain, make and wasm-tools. YJIT is included when
-available. The script builds both native entry points, checks **all eight Phase
-1 input cases** on both exports and both engines on every runtime against an
-independent reference, then measures the requested input. A mismatch aborts.
-
-Results include whole CLI process time and separate load, MIR translation and
-execution times from `engine_phases.rb`, compiled unchanged by Spinel. Phase
-timings come from a separate process per sample, with one call per process;
-they include frame setup and the final Ruby-facing result box. The loader phase
-creates the shared instance with the stack VM; the fixture has no start
-function, so it executes no guest instructions. For Efflorescence, the next
-phase constructs the selected VM from that instance (including a second, empty
-Runtime setup for stack samples). End-to-end samples use the real
-CLI and include engine selection, startup,
-load, translation, execution and output. Warmups are separate processes, so YJIT
-compiles anew for each sample. Native compilation is outside measurement.
-Phase values are diagnostic and do not sum to the CLI time: they use a separate
-entry point, which can also change Spinel's whole-program type inference.
-
-Raw samples and means are saved to `build/benchmark/engines.json`. `SPINEL` and
-`SPINELFLAGS` can select the compiler and flags (default `-O2`, with the default
-overflow checks enabled). [Engine design and scope](../docs/efflorescence.md).
+The comparison driver and both engines are available at commit `0c806bc`.
 
 ### Phase 1 sample (2026-11-03)
 
@@ -402,20 +377,19 @@ RUNS=3 WARMUPS=1 ruby benchmark/compare.rb 100000 123
 
 The script compiles the WAT and the Spinel CLI, computes an independent Ruby
 reference, and checks all enabled command results before timing. The current
-selection is New VM / Spinel, iwasm, Wasmtime (Pulley) and Wasmtime: **8 commands**
-across both exports. Uncomment the CRuby/YJIT and Old VM runner definitions in
-`compare.rb` to enable the full nine-configuration, **18-command** matrix below.
+selection is Efflorescence / Spinel, iwasm, Wasmtime (Pulley) and Wasmtime: **8 commands**
+across both exports. Uncomment the CRuby/YJIT runner definitions in
+`compare.rb` to enable the full six-configuration, **12-command** matrix below.
 YJIT support is required only when its runner is enabled.
 
 | Engine | Execution configurations |
 | --- | --- |
-| Old VM (`Wardite::Runtime`) | CRuby (YJIT disabled), CRuby + YJIT, Spinel; `--stack-engine` |
 | New VM (`Wardite::Efflorescence::VM`) | CRuby (YJIT disabled), CRuby + YJIT, Spinel; default engine and optimizations |
 | iwasm / WAMR | Explicit interpreter mode (`--interp`) |
 | Wasmtime (Pulley) | `--target pulley64 -C cache=n` |
 | Wasmtime | Native compilation, `-C cache=n` |
 
-Hyperfine command names distinguish `Old VM` and `New VM`. A mismatch,
+A mismatch,
 unavailable enabled YJIT or a missing required runtime stops the run.
 Defaults: 100,000 rounds,
 seed 123456789, two warmup processes, and five measured processes per command.

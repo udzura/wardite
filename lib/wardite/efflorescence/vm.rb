@@ -113,7 +113,7 @@ module Wardite
         !!export && export.kind == 0
       end
 
-      # Compatible with Runtime.call: boxing happens once, at the Ruby boundary.
+      # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
       # @rbs return: Wardite::wasmValue?

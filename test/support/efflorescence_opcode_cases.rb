@@ -49,8 +49,7 @@ module EfflorescenceOpcodeCases
     wat = %((module #{preamble} (func $run (export "run") #{result} #{locals} #{code}) #{bits_export}))
     expected = "#{type}:#{expected}" if expected.is_a?(Integer)
     observation = Observation.new(result: expected, memory: memory, globals: globals, dispatch: dispatch)
-    Fixture.new(id: "#{op}/#{label}", wat: wat, windows: windows, steps: [["run", observation]],
-      legacy: route["phase"] != "M1-EH")
+    Fixture.new(id: "#{op}/#{label}", wat: wat, windows: windows, steps: [["run", observation]])
   end
 
   def integer_examples(op)

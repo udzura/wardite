@@ -86,7 +86,7 @@ class EfflorescenceM1Test < Test::Unit::TestCase
     assert_raise(Wardite::EvalError) { vm.call_unboxed('run', []) }
   end
 
-  test 'ordinary i32 operations agree with the stack engine and independent values' do
+  test 'ordinary i32 operations agree with independent values' do
     wat = <<~WAT
       (module
         (func (export "run") (param i32) (result i32)
@@ -98,13 +98,13 @@ class EfflorescenceM1Test < Test::Unit::TestCase
           block (result i32) i32.const 42 local.get 0 br_table 0 0 end))
     WAT
     bytes = validated_bytes(wat)
-    old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
+    baseline = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
     MODES.each do |mode|
       vm = load_bytes(bytes, **mode)
       %w[run table].each do |name|
         [0, 1, -1].each do |arg|
           expected = name == 'run' ? (arg == 0 ? 1 : 0xfffffffe) : 42
-          assert_equal expected, old.call(name, [arg]).value
+          assert_equal expected, baseline.call(name, [arg]).value
           assert_equal expected, vm.call_unboxed(name, [arg])
         end
       end

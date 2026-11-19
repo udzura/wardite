@@ -17,7 +17,7 @@
 
 各エンジンと各fixtureに別のインスタンスを割り当て、連続呼び出しを調べるケースだけ同じインスタンスを使う。Wasmtimeには `-W exceptions=y` を指定した。floatはWasm内で整数へreinterpretして比較する。bit保存は完全一致で判定し、演算NaNは入力に応じてcanonical NaNまたはquiet NaNの集合を判定する。既存のspec runnerは非i32の公開引数、複数結果、NaN、trapの検証に制約があるため、この比較には専用runnerを使った。
 
-[旧VMの差分表](../test/support/efflorescence_legacy_differences.tsv) に、境界外storeとbulk memoryの副作用、fillの下位8bit、符号付きゼロとnearest、符号拡張、f32の中間丸めとNaN payload、Spinelの旧VMにおけるbulk memoryの制約を記録した。差分ケースではWasmtimeまたは独立期待値をEfflorescence側の基準とする。旧VMの通常のload境界失敗と未初期化の間接呼び出しは同じtrap種別へ正規化する。EHの8 fixtureはEfflorescenceとWasmtimeで検証する。
+[旧VMの差分表](https://github.com/udzura/wardite/blob/0c806bc/test/support/efflorescence_legacy_differences.tsv) に、境界外storeとbulk memoryの副作用、fillの下位8bit、符号付きゼロとnearest、符号拡張、f32の中間丸めとNaN payload、Spinelの旧VMにおけるbulk memoryの制約を記録した。差分ケースではWasmtimeまたは独立期待値をEfflorescence側の基準とする。旧VMの通常のload境界失敗と未初期化の間接呼び出しは同じtrap種別へ正規化する。EHの8 fixtureはEfflorescenceとWasmtimeで検証する。
 
 共有デコーダーでは、死んだコードにも現れるs32の幅超過と、未参照globalの初期値の型不一致を拒否する。型、index、featureの拒否を実行経路と分けて検証した。
 

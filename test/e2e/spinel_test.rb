@@ -108,7 +108,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
     WAT
   end
 
-  test "br_table keeps the shared decoder compatible with the stack engine" do
+  test "br_table selects the expected branch across optimization modes" do
     assert_native_result(<<~WAT, "run", [0], 42)
       (module
         (func (export "run") (param i32) (result i32)
@@ -119,25 +119,25 @@ class WarditeSpinelTest < Test::Unit::TestCase
     WAT
   end
 
-  test "Efflorescence complete acceptance module on both native engines" do
+  test "native acceptance module across optimization modes" do
     Dir.mktmpdir("wardite-spinel-mir") do |dir|
       wasm = File.join(dir, "mix.wasm")
       File.binwrite(wasm, compile_efflorescence_wat(File.read(MIX_WAT)))
       MIX_CASES.each do |rounds, seed|
         expected = reference_mix(rounds, seed)
         expected -= 2**32 if expected >= 2**31
-        engine_options = [[], ["--stack-engine"], ["--mir-disable", "all"]]
+        option_sets = [[], ["--mir-disable", "all"]]
         Wardite::Efflorescence::Configuration::FEATURES.each do |feature|
-          engine_options << ["--mir-disable", feature.to_s]
+          option_sets << ["--mir-disable", feature.to_s]
         end
-        engine_options.each do |engine|
+        option_sets.each do |options|
           %w[inline_mix call_mix].each do |export|
-            out, err, status = Open3.capture3(@binary, *engine, "--invoke", export,
+            out, err, status = Open3.capture3(@binary, *options, "--invoke", export,
               "--", wasm, rounds.to_s, seed.to_s)
             assert status.success?, err
             assert_equal "", out
             assert_equal "return value: I32(#{expected})\n", err,
-              "#{engine.inspect} #{export}(#{rounds}, #{seed})"
+              "#{options.inspect} #{export}(#{rounds}, #{seed})"
           end
         end
       end
@@ -470,11 +470,9 @@ class WarditeSpinelTest < Test::Unit::TestCase
         wasm = File.join(dir, "test.wasm")
         output, status = Open3.capture2e("wasm-tools", "parse", "-", "-o", wasm, stdin_data: code)
         assert status.success?, output
-        [[], ["--stack-engine"]].each do |options|
-          _out, err, status = Open3.capture3(@binary, *options, "--no-wasi", "--invoke", "div", "--", wasm)
-          assert_false status.success?
-          assert_include err, "Wardite::IntegerOverflow"
-        end
+        _out, err, status = Open3.capture3(@binary, "--no-wasi", "--invoke", "div", "--", wasm)
+        assert_false status.success?
+        assert_include err, "Wardite::IntegerOverflow"
       end
     end
   end

@@ -70,27 +70,6 @@ module EfflorescenceManifestRun
     end
   end
 
-  def compare_stack(command, directory, runtime, fixtures, binaries)
-    path = File.join(__dir__, "efflorescence_legacy_differences.tsv")
-    differences = CSV.read(path, headers: true, col_sep: "\t")
-      .select { |row| ["both", runtime.to_s].include?(row["runtime"]) }
-    overrides = differences.to_h { |row| [row["fixture"], row] }
-    raise "duplicate legacy difference" unless overrides.size == differences.size
-    legacy = fixtures.select(&:legacy).map do |fixture|
-      difference = overrides.delete(fixture.id)
-      next fixture unless difference
-      raise "unclassified difference for #{fixture.id}" if difference["reason"].to_s.empty?
-      export, observation = fixture.steps.fetch(0)
-      changed = observation.with(result: difference["result"], memory: difference["memory"])
-      raise "redundant legacy difference for #{fixture.id}" if changed == observation
-      fixture.with(steps: [[export, changed]])
-    end
-    raise "unknown legacy difference: #{overrides.keys.join(', ')}" unless overrides.empty?
-    rows = EfflorescenceParity.observe(command, directory, :stack, legacy, binaries, [])
-    EfflorescenceParity.check_rows(:stack, legacy, rows)
-    puts "#{runtime}: #{legacy.size} stack comparisons, #{differences.size} classified differences"
-  end
-
   def run(runtimes, reference: true)
     fixtures = EfflorescenceOpcodeCases.examples
     verify_coverage(fixtures)
@@ -101,20 +80,19 @@ module EfflorescenceManifestRun
       runtimes.each do |runtime|
         command = EfflorescenceParity.worker(directory, runtime)
         { "disabled" => [:all], "default" => [] }.each do |mode, disabled|
-          rows = EfflorescenceParity.observe(command, directory, :efflorescence, fixtures, binaries, disabled)
-          EfflorescenceParity.check_rows(:efflorescence, fixtures, rows, check_dispatch: disabled.include?(:all))
+          rows = EfflorescenceParity.observe(command, directory, fixtures, binaries, disabled)
+          EfflorescenceParity.check_rows(fixtures, rows, check_dispatch: disabled.include?(:all))
           puts "#{runtime} (#{mode}): #{fixtures.size} fixtures, 188 M0 opcodes + 3 EH"
           if ENV["WARDITE_VERIFY_MIR_CACHE_PARITY"] == "1"
             cache = File.join(directory, "#{runtime}-#{mode}-mir2")
             [false, true].each do |hit|
-              cached = EfflorescenceParity.observe(command, directory, :efflorescence, fixtures, binaries, disabled,
+              cached = EfflorescenceParity.observe(command, directory, fixtures, binaries, disabled,
                 cache: cache, hit: hit)
-              EfflorescenceParity.check_rows(:efflorescence, fixtures, cached, check_dispatch: false)
+              EfflorescenceParity.check_rows(fixtures, cached, check_dispatch: false)
             end
             puts "#{runtime} (#{mode}): #{fixtures.size} MIR2 cache fixtures built and restored"
           end
         end
-        compare_stack(command, directory, runtime, fixtures, binaries)
       end
     end
   end

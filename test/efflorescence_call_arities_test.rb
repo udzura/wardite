@@ -23,9 +23,9 @@ class EfflorescenceCallAritiesTest < Test::Unit::TestCase
     end
   end
 
-  test "all transfer arities agree with the stack VM and independent references across execution modes" do
+  test "all transfer arities agree with independent references across execution modes" do
     bytes = compile_efflorescence_wat(File.read(ARITY_WAT))
-    old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
+    baseline = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
     [[], [:inline], [:inline, :frames], [:inline, :copy], [:all]].each do |disabled|
       [false, true].each do |profile|
         vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
@@ -33,7 +33,7 @@ class EfflorescenceCallAritiesTest < Test::Unit::TestCase
         INCREMENTS.each do |name, step|
           [[0, 0], [0, 123], [1, 0xffffffff], [10, 123], [1000, 0xffffffff]].each do |rounds, seed|
             expected = (seed + step * rounds) % (2**32)
-            assert_equal expected, old.call(name, [rounds, seed]).value
+            assert_equal expected, baseline.call(name, [rounds, seed]).value
             assert_equal expected, vm.call_unboxed(name, [rounds, seed]), "#{disabled.inspect}, profile=#{profile}, #{name}"
           end
         end
@@ -74,7 +74,7 @@ class EfflorescenceCallAritiesTest < Test::Unit::TestCase
 
   test "multi-argument recursion preserves active callers and repeated or permuted sources" do
     bytes = compile_efflorescence_wat(ARITY_EDGE_WAT)
-    old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
+    baseline = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
     [[], [:inline], [:inline, :frames], [:all]].each do |disabled|
       [false, true].each do |profile|
         vm = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
@@ -83,7 +83,7 @@ class EfflorescenceCallAritiesTest < Test::Unit::TestCase
           [0, 1, 50].product([0, 123, 0xffffffff]).each do |n, seed|
             {"two" => 1, "three" => 3}.each do |name, step|
               expected = (seed + step * n + n * (n + 1) / 2) % (2**32)
-              assert_equal expected, old.call(name, [n, seed]).value
+              assert_equal expected, baseline.call(name, [n, seed]).value
               assert_equal expected, vm.call_unboxed(name, [n, seed])
             end
           end

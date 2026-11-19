@@ -35,7 +35,7 @@ class WarditeSpinelWasiTest < Test::Unit::TestCase
     Dir.mktmpdir do |dir|
       file = File.join(dir, "wasi.wasm")
       File.binwrite(file, compile_efflorescence_wat(wat))
-      [[], ["--new-engine"], ["--stack-engine"]].each do |options|
+      [[], ["--new-engine"]].each do |options|
         stdout, stderr, status = Open3.capture3(@binary, *options, "--", file)
         assert_equal 7, status.exitstatus, stderr
         assert_equal "42\n", stdout

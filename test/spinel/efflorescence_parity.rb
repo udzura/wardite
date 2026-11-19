@@ -60,24 +60,11 @@ class ParityWorker
     "exception:#{fields.join(',')}"
   end
 
-  # @rbs vm: Wardite::Runtime
-  # @rbs export: String
-  # @rbs return: String
-  def self.invoke_stack(vm, export)
-    encode(vm.call(export, []))
-  end
-
-  # @rbs runtime: Wardite::Runtime | Wardite::Efflorescence::VM
+  # @rbs runtime: Wardite::Efflorescence::VM
   # @rbs export: String
   # @rbs return: String
   def self.invoke(runtime, export)
-    if runtime.is_a?(Wardite::Efflorescence::VM)
-      invoke_mir(runtime, export)
-    elsif runtime.is_a?(Wardite::Runtime)
-      invoke_stack(runtime, export)
-    else
-      raise "missing runtime"
-    end
+    invoke_mir(runtime, export)
   rescue Wardite::Unreachable
     "trap:unreachable"
   rescue Wardite::IntegerOverflow
@@ -92,13 +79,7 @@ class ParityWorker
     return "trap:invalid" if message.include?("invalid conversion to integer")
     return "trap:bounds" if message.include?("out of bounds memory access") || message.include?("invalid memory range")
     return "trap:indirect" if message.include?("call_indirect") || message.start_with?("uninitialized element")
-    raise error unless runtime.is_a?(Wardite::Runtime)
-    "legacy_error:#{message.gsub(/\s+/, ' ')}"
-  rescue StandardError => error
-    raise error unless runtime.is_a?(Wardite::Runtime)
-    message = error.message
-    return "trap:bounds" if message.start_with?("broken string or unsupported size:") || message == "invalid float bytes"
-    "legacy_error:#{error.class}:#{error.message.gsub(/\s+/, ' ')}"
+    raise
   end
 
   # @rbs store: Wardite::Store
@@ -144,12 +125,11 @@ class ParityWorker
 
   # @rbs output: File
   # @rbs fields: Array[String]
-  # @rbs engine: Symbol
   # @rbs disabled: Array[Symbol]
   # @rbs cache: String?
   # @rbs hit: bool
   # @rbs return: void
-  def self.observe(output, fields, engine, disabled, cache, hit)
+  def self.observe(output, fields, disabled, cache, hit)
     id, path, exports, windows = fields.fetch(0), fields.fetch(1), fields.fetch(2), fields.fetch(3)
     host = ParityHost.new
     imports = Wardite::HashModule.new({
@@ -158,7 +138,7 @@ class ParityWorker
     })
     begin
       instance = File.open(path, "rb") do |file|
-        Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false, engine: engine,
+        Wardite::BinaryLoader.load_from_buffer(file, enable_wasi: false,
           import_object: { env: imports }, mir_profile: cache.nil?, disabled_optimizations: disabled, mir_cache: cache)
       end
     rescue Wardite::LoadError => error
@@ -175,7 +155,7 @@ class ParityWorker
       return
     end
     runtime = instance.runtime
-    if hit && runtime.is_a?(Wardite::Efflorescence::VM) && !runtime.mir_cache_hit
+    if hit && !runtime.mir_cache_hit
       raise "#{id}: expected MIR2 cache hit"
     end
     if exports == "-"
@@ -185,21 +165,20 @@ class ParityWorker
     store = instance.store
     exports.split(",").each do |name|
       result = invoke(runtime, name)
-      counts = runtime.is_a?(Wardite::Efflorescence::VM) ? dispatches(runtime) : "-"
+      counts = dispatches(runtime)
       globals = store.globals.map { |global| encode(global.value) }.join(",")
       output.puts([id, name, result, memory(store, windows), globals, host.events.join(","), counts].join("\t"))
     end
   end
 end
 
-engine = ARGV.fetch(0).to_sym
-disabled = ARGV.fetch(3).split(",").map { |value| value.to_sym }
-cache = ARGV[4]
-hit = ARGV[5] == "hit"
-File.open(ARGV.fetch(2), "w") do |output|
-  File.open(ARGV.fetch(1), "r") do |input|
+disabled = ARGV.fetch(2).split(",").map { |value| value.to_sym }
+cache = ARGV[3]
+hit = ARGV[4] == "hit"
+File.open(ARGV.fetch(1), "w") do |output|
+  File.open(ARGV.fetch(0), "r") do |input|
     while row = input.gets
-      ParityWorker.observe(output, row.chomp.split("\t"), engine, disabled, cache, hit)
+      ParityWorker.observe(output, row.chomp.split("\t"), disabled, cache, hit)
     end
   end
 end

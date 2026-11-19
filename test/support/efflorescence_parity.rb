@@ -14,8 +14,8 @@ module EfflorescenceParity
     end
   end
 
-  Fixture = Data.define(:id, :wat, :steps, :windows, :stdout, :legacy) do
-    def initialize(id:, wat:, steps:, windows: "-", stdout: "", legacy: true)
+  Fixture = Data.define(:id, :wat, :steps, :windows, :stdout) do
+    def initialize(id:, wat:, steps:, windows: "-", stdout: "")
       super
     end
   end
@@ -45,22 +45,22 @@ module EfflorescenceParity
     [binary]
   end
 
-  def self.observe(command, directory, engine, fixtures, binaries, disabled, cache: nil, hit: false)
+  def self.observe(command, directory, fixtures, binaries, disabled, cache: nil, hit: false)
     plan = File.join(directory, "plan.tsv")
     result = File.join(directory, "result.tsv")
     File.write(plan, fixtures.map do |fixture|
       [fixture.id, binaries.fetch(fixture.id), fixture.steps.map(&:first).join(","), fixture.windows].join("\t")
     end.join("\n") + "\n")
     options = cache ? [cache, hit ? "hit" : "build"] : []
-    stdout, stderr = capture(*command, engine.to_s, plan, result, disabled.join(","), *options)
+    stdout, stderr = capture(*command, plan, result, disabled.join(","), *options)
     expected_stdout = fixtures.map(&:stdout).join
-    raise "#{engine} stdout: #{expected_stdout.inspect} expected, #{stdout.inspect} observed" unless stdout == expected_stdout
+    raise "stdout: #{expected_stdout.inspect} expected, #{stdout.inspect} observed" unless stdout == expected_stdout
     rows = File.readlines(result, chomp: true).map do |line|
       id, export, result, memory, globals, host, dispatch = line.split("\t", -1)
       [id, export, Observation.new(result: result, memory: memory, globals: globals, host: host, dispatch: dispatch.split(","))]
     end
     ids = fixtures.flat_map { |fixture| fixture.steps.map { |export, _| [fixture.id, export] } }
-    raise "#{engine} did not complete the plan\n#{stderr}" unless rows.map { |id, export, _| [id, export] } == ids
+    raise "did not complete the plan\n#{stderr}" unless rows.map { |id, export, _| [id, export] } == ids
     rows
   end
 
@@ -79,18 +79,18 @@ module EfflorescenceParity
     (Integer(value) & mask) == canonical
   end
 
-  def self.check_rows(engine, fixtures, rows, check_dispatch: true)
+  def self.check_rows(fixtures, rows, check_dispatch: true)
     index = 0
     fixtures.each do |fixture|
       fixture.steps.each do |export, expected|
         _, _, actual = rows.fetch(index)
         index += 1
-        label = "#{engine} #{fixture.id} #{export}"
+        label = "#{fixture.id} #{export}"
         unless result_matches?(expected.result, actual.result) && expected.memory == actual.memory &&
             expected.globals == actual.globals && expected.host == actual.host
           raise "#{label}\nexpected #{expected.inspect}\nobserved #{actual.inspect}"
         end
-        if engine == :efflorescence && check_dispatch
+        if check_dispatch
           missing = expected.dispatch - actual.dispatch
           raise "#{label} did not dispatch #{missing.join(', ')}" unless missing.empty?
         end
@@ -105,18 +105,8 @@ module EfflorescenceParity
       command = worker(directory, runtime)
       binaries = compile(directory, fixtures)
       configurations.each do |disabled|
-        rows = observe(command, directory, :efflorescence, fixtures, binaries, disabled)
-        check_rows(:efflorescence, fixtures, rows, check_dispatch: disabled.include?(:all))
-      end
-      legacy = fixtures.filter_map do |fixture|
-        case fixture.legacy
-        when true then fixture
-        when Array then fixture.with(steps: fixture.legacy)
-        end
-      end
-      unless legacy.empty?
-        rows = observe(command, directory, :stack, legacy, binaries, [])
-        check_rows(:stack, legacy, rows)
+        rows = observe(command, directory, fixtures, binaries, disabled)
+        check_rows(fixtures, rows, check_dispatch: disabled.include?(:all))
       end
       yield command, binaries if block_given?
     end

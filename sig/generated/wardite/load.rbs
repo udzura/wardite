@@ -97,12 +97,9 @@ module Wardite
 
     attr_reader blocks: Array[Block]
 
-    attr_reader has_eh_instructions: bool
-
     # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
     # @rbs blocks: Array[Block]
-    # @rbs has_eh_instructions: bool
-    def initialize: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions, Array[Block] blocks, bool has_eh_instructions) -> untyped
+    def initialize: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions, Array[Block] blocks) -> untyped
   end
 
   class CodeSection < Section
@@ -133,9 +130,8 @@ module Wardite
       def decode_from: (File | StringIO buf) -> void
 
       # @rbs types: TypeSection?
-      # @rbs stack: bool
       # @rbs return: void
-      def check_features: (TypeSection? types, bool stack) -> void
+      def check_features: (TypeSection? types) -> void
 
       private
 
@@ -145,21 +141,18 @@ module Wardite
 
       # @rbs decoded: DecodedBody
       # @rbs types: TypeSection?
-      # @rbs stack: bool
       # @rbs return: void
-      def check_decoded: (DecodedBody decoded, TypeSection? types, bool stack) -> void
+      def check_decoded: (DecodedBody decoded, TypeSection? types) -> void
 
       # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       # @rbs types: TypeSection?
-      # @rbs stack: bool
       # @rbs return: void
-      def check_instructions: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions, TypeSection? types, bool stack) -> void
+      def check_instructions: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions, TypeSection? types) -> void
 
       # @rbs block: Block
       # @rbs types: TypeSection?
-      # @rbs stack: bool
       # @rbs return: void
-      def check_block: (Block block, TypeSection? types, bool stack) -> void
+      def check_block: (Block block, TypeSection? types) -> void
     end
 
     # Keep the code section for on-demand MIR inspection after the host has
@@ -313,10 +306,6 @@ module Wardite
     # @rbs buf: File|StringIO
     # @rbs return: DecodedBody
     def self.decode_body: (File | StringIO buf) -> DecodedBody
-
-    # @rbs code: Symbol
-    # @rbs return: bool
-    def self.eh_instruction?: (Symbol code) -> bool
 
     # Decode s33, distinguishing the one-byte value/void forms from indices.
     # @rbs buf: File|StringIO

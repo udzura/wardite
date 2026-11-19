@@ -277,7 +277,7 @@ module Wardite
         linked.entries.each_with_index do |entry, index|
           next unless entry.kind == :defined
           body = bodies.fetch(entry.defined_index)
-          body.check_features(types, false)
+          body.check_features(types)
           wasm = Wardite::WasmFunction.new(entry.parameter_types, entry.result_types, body)
           functions << translate_function(wasm, index, functions.size)
         end

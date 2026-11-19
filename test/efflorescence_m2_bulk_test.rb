@@ -116,16 +116,16 @@ class EfflorescenceM2BulkTest < Test::Unit::TestCase
     end
   end
 
-  test 'ordinary bulk operations agree with the stack VM in independent Stores' do
+  test 'ordinary bulk operations agree across execution modes in independent Stores' do
     bytes = compile_efflorescence_wat(BULK_WAT)
     MODES.each do |mode|
       fresh = instance(bytes, **mode)
-      old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
+      baseline = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
       [['init',[20,0,9]], ['copy',[22,20,7]], ['copy',[20,22,7]], ['fill',[17,42,3]]].each do |name,args|
         fresh.runtime.call_unboxed(name,args)
-        old.runtime.call(name,args)
-        assert_equal old.store.memories[0].data, fresh.store.memories[0].data
-        assert_equal old.store.memories[0].current, fresh.store.memories[0].current
+        baseline.runtime.call(name,args)
+        assert_equal baseline.store.memories[0].data, fresh.store.memories[0].data
+        assert_equal baseline.store.memories[0].current, fresh.store.memories[0].current
       end
     end
   end

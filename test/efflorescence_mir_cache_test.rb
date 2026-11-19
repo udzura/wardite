@@ -451,7 +451,7 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     _stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-Ilib", "exe/wardite",
       "--stack-engine", "--mir-cache", @cache, add_wasm)
     assert_false status.success?
-    assert_include stderr, "require Efflorescence"
+    assert_include stderr, "invalid option: --stack-engine"
   end
 
   test "two processes can publish the same cache entry concurrently" do

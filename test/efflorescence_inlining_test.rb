@@ -31,7 +31,7 @@ class EfflorescenceInliningTest < Test::Unit::TestCase
 
   test "parameter snapshots local zeroing constant returns and void calls survive every pass toggle" do
     bytes = compile_efflorescence_wat(INLINE_WAT)
-    old = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
+    baseline = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false).runtime
     configurations = [[], [:all], *E::Configuration::FEATURES.map { |feature| [feature] }]
     configurations.each do |disabled|
       [false, true].each do |profile|
@@ -43,7 +43,7 @@ class EfflorescenceInliningTest < Test::Unit::TestCase
           [0, 1, 10, 1000].each { |n| cases << ["loop", [n, seed], n * seed % (2**32)] }
           2.times do
             cases.each do |name, args, expected|
-              assert_equal expected, old.call(name, args).value
+              assert_equal expected, baseline.call(name, args).value
               assert_equal expected, vm.call_unboxed(name, args), "#{disabled.inspect}, profile=#{profile}, #{name}#{args}"
             end
           end

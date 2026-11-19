@@ -11,10 +11,7 @@
 `--mir-disable all` で、最適化していないMIRをflatへ変換して実行します。
 実行器はflatに統一され、flatを切り替える最適化フラグはありません。
 
-Efflorescenceは、Warditeの既定のPure Ruby製レジスタ型インタプリタです。
-従来のスタックVMは、CLIでは `--stack-engine`、Rubyでは `engine: :stack` で選択できます。
-両エンジンはバイナリローダー、デコード済みのWasm命令、ストア、エクスポート情報を共有しますが、
-実行処理は独立しています。
+WarditeはPure Ruby製のレジスタ型インタプリタEfflorescenceで実行します。
 
 ```sh
 wasm-tools parse benchmark/i32_mix.wat -o build/i32_mix.wasm
@@ -116,10 +113,11 @@ import・ホスト関数、WASI呼び出し、メモリ・グローバル変数�
 bundle exec rake test
 bundle exec rake check
 make spinel-test RUBY="bundle exec ruby"
+# 当時の比較を再現する場合はコミット 0c806bc で実行
 ruby benchmark/compare_engines.rb 100000 123
 ```
 
-テストでは、既存の `wasm-tools parse` の手順を使い、
+以下はPhase 1当時の検証記録です。テストでは、既存の `wasm-tools parse` の手順を使い、
 **変更を加えていない `benchmark/i32_mix.wat` 全体**をコンパイルします。
 ビルド済みのテスト用バイナリや、処理量を減らしたプログラムへの置き換えは行いません。
 指定された8組すべての入力について、CRubyとSpinel上で、両方のエクスポート関数・両方のエンジンの結果を、

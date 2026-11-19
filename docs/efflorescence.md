@@ -12,10 +12,7 @@ This document records Phase 1 (`67fbfae`). Current Efflorescence enables the
 [Phase 2 optimizations](efflorescence-phase2.md) by default; `--mir-disable all`
 selects unoptimized MIR lowered to the same flat bytecode executor.
 
-Efflorescence is Wardite's default pure Ruby register interpreter. Select the
-legacy stack VM with `--stack-engine` in the CLI or `engine: :stack` in Ruby.
-Both engines share the binary loader, decoded Wasm instructions, store and
-exports. Each engine executes independently.
+Efflorescence is Wardite’s pure Ruby register interpreter.
 
 ```sh
 wasm-tools parse benchmark/i32_mix.wat -o build/i32_mix.wasm
@@ -108,10 +105,11 @@ decoding and validation limitations still apply.
 bundle exec rake test
 bundle exec rake check
 make spinel-test RUBY="bundle exec ruby"
+# Historical comparison, run from commit 0c806bc
 ruby benchmark/compare_engines.rb 100000 123
 ```
 
-Tests compile the **entire unchanged** `benchmark/i32_mix.wat` using the existing
+The Phase 1 tests described below compiled the **entire unchanged** `benchmark/i32_mix.wat` using the existing
 `wasm-tools parse` flow. No prebuilt fixture or reduced workload is substituted.
 All eight specified input pairs run against both exports, both engines and an
 independent modulo-based reference on CRuby and Spinel. Additional tests cover

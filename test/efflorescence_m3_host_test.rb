@@ -44,19 +44,15 @@ class EfflorescenceM3HostTest < Test::Unit::TestCase
     assert_not_same vm.semantic_ir.entries[0].result_types, vm.ir.entries[0].result_types
   end
 
-  test "both engines instantiate and reexport imports without function or code sections" do
+  test "instances reexport imports without function or code sections" do
     wat = '(module (import "env" "inc" (func $inc (param i32) (result i32))) (export "inc" (func $inc)))'
     bytes = compile_efflorescence_wat(wat)
-    [:stack, :efflorescence].each do |engine|
-      instance = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), engine: engine, enable_wasi: false,
-        import_object: {env: {inc: ->(_store, args) { args[0].value + 1 }}})
-      assert_equal 12, instance.runtime.call(:inc, [11]).value
-      if engine == :efflorescence
-        assert_equal 0, instance.runtime.call_unboxed(:inc, [-1])
-        assert_raise(Wardite::ArgumentError) { instance.runtime.call_unboxed(:inc, [1.0]) }
-        assert_raise(Wardite::ArgumentError) { instance.runtime.call_unboxed(:inc, []) }
-      end
-    end
+    instance = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false,
+      import_object: {env: {inc: ->(_store, args) { args[0].value + 1 }}})
+    assert_equal 12, instance.runtime.call(:inc, [11]).value
+    assert_equal 0, instance.runtime.call_unboxed(:inc, [-1])
+    assert_raise(Wardite::ArgumentError) { instance.runtime.call_unboxed(:inc, [1.0]) }
+    assert_raise(Wardite::ArgumentError) { instance.runtime.call_unboxed(:inc, []) }
   end
 
   test "profiling an imported export counts one host call and no frames" do
