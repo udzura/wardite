@@ -183,7 +183,7 @@ required `IO::Buffer` changes.
 See the [build instructions and host memory API](docs/efflorescence-spinel-linear-memory.md).
 Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
 
-#### Cross-compile from macOS with Zig
+#### Build release executables on macOS
 
 With Zig 0.17.1, Ruby, and the Xcode Command Line Tools installed, run:
 
@@ -192,8 +192,11 @@ make spinel-zig
 ```
 
 The first build downloads and builds the same Spinel revision used in CI.
-It builds the Spinel runtime and native StringIO code for each target and
-uses Zig to compile and link the resulting Wardite executables.
+It builds the Spinel runtime and native StringIO code for each target.
+On a local Apple Silicon Mac, the macOS arm64 executable is compiled and
+linked with Apple Clang. To build just that executable without installing Zig,
+run `make spinel-zig ZIG_TARGETS=aarch64-macos`. Linux targets use Zig.
+On Intel Macs and in CI (when `CI` or `GITHUB_ACTIONS` is set), all targets use Zig.
 
 | Target | Executable |
 | --- | --- |
