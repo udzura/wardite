@@ -175,7 +175,17 @@ jobs:
         with:
           path: ${{ runner.temp }}/spinel
           key: ${{ steps.spinel-cache.outputs.cache-primary-key }}
+      - name: Cache Spinel test objects
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/spinel-test-objects
+          key: spinel-objects-v1-${{ steps.spinel-environment.outputs.name }}-${{ hashFiles('lib/**/*.rb', 'exe/wardite', 'test/**/*.rb', 'Makefile', '.github/scripts/spinel-incremental') }}
+          restore-keys: |
+            spinel-objects-v1-${{ steps.spinel-environment.outputs.name }}-
       - name: Run Spinel tests
+        env:
+          SPINEL: ${{ github.workspace }}/.github/scripts/spinel-incremental
+          SPINEL_CACHE_DIR: ${{ runner.temp }}/spinel-test-objects
         run: make spinel-test RUBY="bundle exec ruby"
       - name: Archive installed Spinel
         id: spinel-archive

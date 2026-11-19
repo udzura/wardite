@@ -1,0 +1,8 @@
+#!/bin/sh
+# The dispatch test inspects the production compiler's generated C.
+for arg do
+  if [ "$arg" = "-c" ]; then
+    exec spinel "$@"
+  fi
+done
+exec spinel --incremental "$@"
