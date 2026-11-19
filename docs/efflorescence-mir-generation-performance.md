@@ -182,3 +182,25 @@ bundle exec ruby -Ilib benchmark/profile_mir_generation_allocations.rb \
 - 詳細タイマーを入れたライブラリでoptimizer・inlining・register initializationの既存テストを実行し、24 tests / 5,872 assertions、失敗0。メソッドの `source_location` もコピー側を指すことを確認した。
 - 4種類のi32-chainをCRubyのEfflorescenceとWasmtimeで実行し、入力123に対する結果が `123 + N` と一致した。
 - 計測スクリプトの構文、保存JSONの解析・sample数・IR統計、ドキュメントへのリンクを確認した。
+
+## Spinelでの関数単位の並列生成（2026-11-19）
+
+macOS arm64、Spinel `a2aa05227`、`make spinel` の既定オプションで、上記の Ruby 3.4.2 fixture（8,161 関数）を使用した。タグ `v1.3.0` と変更後の CLI を比較した。各条件で毎回新しいプロセスを起動し、MIR キャッシュを使わず、条件の順序を往復させてウォームアップ 1 回の後に 5 回測定した。全回で標準出力は `42`、終了コードは 0。
+
+```sh
+WARDITE_TRACE=1 WARDITE_MIR_WORKERS=8 SPINEL_WORKERS=8 \
+  build/wardite -- tmp/ruby.wasm --disable-gems -e 'puts 6*7'
+```
+
+| 条件 | semantic MIR 生成 | モジュールロード全体 | プロセス起動から終了まで |
+| --- | ---: | ---: | ---: |
+| v1.3.0 | 1.310 s | 1.864 s | 2.469 s |
+| 1 ワーカー | 1.505 s | 2.134 s | 2.777 s |
+| 2 ワーカー | 0.827 s | 1.458 s | 2.101 s |
+| 4 ワーカー | 0.457 s | 1.082 s | 1.723 s |
+| 8 ワーカー | 0.394 s | 1.021 s | 1.666 s |
+| 環境変数未指定 | 0.391 s | 1.029 s | 1.669 s |
+
+値は中央値。タグ版の MIR 生成時間だけは、同じタグの `Translator#translate` に単調時計の計測を追加した別ビルドで測った。8 ワーカーではタグ版比で MIR 生成が 70%、プロセス全体が 33% 短縮した。変更後は Spinel のスレッド対応ランタイムをリンクするため、1 ワーカーでのプロセス全体はタグ版より 12% 遅かった。ゲストの実行時間が中心の `i32_mix.wat` の `call_mix(10000000, 123)` はタグ版 219.84 ms、変更後の既定設定 220.80 ms。同じ関数の反復 0 回では 3.67 ms から 4.24 ms になった（各 9 回の中央値）。
+
+`ruby.wasm` の MIR2 ファイルはタグ版と 8 ワーカー版で 83,817,292 バイトすべてが一致した（SHA-256 `9e52cc9ec5e4c65dc725cf5128330f19670f9df0cc1030cdda4c5ea66c839c8a`）。Base64 の WASI モジュールでもタグ版と 1・2・4・8 ワーカー版の MIR2 ファイルが一致した。

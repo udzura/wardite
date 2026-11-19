@@ -87,7 +87,7 @@ File.open(File.join(root, "build.lock"), "a") do |lock|
   host = File.join(root, "host-#{SPINEL_REF}")
   unpack(archive, host)
   spinel = File.join(host, "bin", "spinel")
-  inputs = ["lib/libspinel_rt.a", "packages/stringio/sp_stringio.o"]
+  inputs = ["lib/libspinel_rt_mt.a", "packages/stringio/sp_stringio_mt.o"]
   submake = [make, "-j#{jobs}", "NO_CCACHE=1"]
   make_env = {"MAKEFLAGS" => nil, "MFLAGS" => nil}
   run(make_env, *submake, "-C", host, "deps")

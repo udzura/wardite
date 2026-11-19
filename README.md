@@ -89,6 +89,14 @@ the Wasm, links imports, and initializes a fresh instance. `--mir-dump` and
 `--mir-profile` build MIR normally. Ruby callers can pass `mir_cache: dir`.
 CRuby and Spinel use different cache keys.
 
+On a cold load, native Spinel translates modules with at least 32 defined
+functions using up to eight workers, including the calling thread. Smaller
+modules and CRuby use one worker by default. Set `WARDITE_MIR_WORKERS=1`
+to force serial translation, or choose 2–8 to request parallel translation
+even for a small module. `SPINEL_WORKERS` controls the underlying Spinel
+scheduler and also sets the default MIR worker count (up to eight).
+`WARDITE_TRACE=1` reports semantic MIR translation time on a cache miss.
+
 The default `--mir-cache-verify checksum` checks the payload size and samples
 blocks. Use `--mir-cache-verify sha256` or Ruby's `mir_cache_verify: :sha256`
 to check the whole payload. Both modes use the same cache file. By default,

@@ -209,10 +209,11 @@ module Wardite
 
       # @rbs instance: Wardite::Instance
       # @rbs source: ModuleSource
-      def initialize(instance, source = ModuleSource.new(instance))
+      # @rbs entries: Array[FunctionEntry]
+      def initialize(instance, source = ModuleSource.new(instance), entries = [])
         @source = source
         @instance = instance
-        @entries = []
+        @entries = entries
         @stack, @controls = [], []
         @constants = {}
         @i64_constants = nil
@@ -255,13 +256,98 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::IR
       def translate(linked = link)
         @entries = linked.entries
-        functions = [] #: Array[Wardite::Efflorescence::Function]
-        @instance.store.funcs.each_with_index do |function, index|
-          if function.is_a?(Wardite::WasmFunction)
-            functions << translate_function(function, index, functions.size)
-          end
+        trace = ENV["WARDITE_TRACE"]
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC) if trace
+        configured = ENV["WARDITE_MIR_WORKERS"]
+        # CRuby serializes Ruby translation under the GVL. On Spinel, avoid
+        # starting helpers for tiny modules unless explicitly requested.
+        workers = if configured
+          configured.to_i.clamp(1, 8)
+        elsif RUBY_ENGINE == "spinel" && @entries.size - linked.hosts.size >= 32
+          (ENV["SPINEL_WORKERS"] || "8").to_i.clamp(1, 8)
+        else
+          1
+        end
+        functions = if workers > 1
+          translate_parallel(workers)
+        else
+          translate_range(0, @entries.size)
+        end
+        if started
+          elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+          $stderr.puts "semantic MIR translation: #{elapsed}"
         end
         IR.new(functions, entries: @entries, hosts: linked.hosts)
+      end
+
+      # Partition in module order by decoded instruction count. Each translator
+      # owns its stacks and output. Only linked declarations are shared.
+      # @rbs workers: Integer
+      # @rbs return: Array[Function]
+      def translate_parallel(workers)
+        store = @instance.store.funcs
+        total = 0
+        store.each { |wasm| total += wasm.body.size if wasm.is_a?(Wardite::WasmFunction) }
+        target = (total + workers - 1) / workers
+        starts = [0]
+        accumulated = 0
+        store.each_with_index do |wasm, index|
+          next unless wasm.is_a?(Wardite::WasmFunction)
+          if accumulated >= target && accumulated > 0 && starts.size < workers
+            starts << index
+            accumulated = 0
+          end
+          accumulated += wasm.body.size
+        end
+        threads = [] #: Array[Thread]
+        begin
+          (starts.size - 1).times do |i|
+            threads << start_translation(starts.fetch(i), starts.fetch(i + 1))
+          end
+          tail = translate_range(starts.last || 0, store.size)
+        ensure
+          # Wait for every worker even when several ranges fail. The earliest
+          # range in module order has the same error as serial translation.
+          error = nil #: StandardError?
+          threads.each do |thread|
+            begin
+              thread.join
+            rescue StandardError => failure
+              error ||= failure
+            end
+          end
+          raise error if error
+        end
+        functions = [] #: Array[Function]
+        threads.each { |thread| functions.concat(thread.value) }
+        functions.concat(tail)
+      end
+
+      # @rbs first: Integer
+      # @rbs limit: Integer
+      # @rbs return: Thread
+      def start_translation(first, limit)
+        worker = Translator.new(@instance, @source, @entries)
+        Thread.new do
+          Thread.current.report_on_exception = false
+          worker.translate_range(first, limit)
+        end
+      end
+
+      # @rbs first: Integer
+      # @rbs limit: Integer
+      # @rbs return: Array[Function]
+      def translate_range(first, limit)
+        functions = [] #: Array[Function]
+        index = first
+        while index < limit
+          wasm = @instance.store.funcs.fetch(index)
+          if wasm.is_a?(Wardite::WasmFunction)
+            functions << translate_function(wasm, index, @entries.fetch(index).defined_index)
+          end
+          index += 1
+        end
+        functions
       end
 
       # Replay the original declarations without re-linking host functions,

@@ -87,7 +87,8 @@ module Wardite
 
       # @rbs instance: Wardite::Instance
       # @rbs source: ModuleSource
-      def initialize: (Wardite::Instance instance, ?ModuleSource source) -> untyped
+      # @rbs entries: Array[FunctionEntry]
+      def initialize: (Wardite::Instance instance, ?ModuleSource source, ?Array[FunctionEntry] entries) -> untyped
 
       # @rbs return: Wardite::Efflorescence::IR
       def link: () -> Wardite::Efflorescence::IR
@@ -95,6 +96,22 @@ module Wardite
       # @rbs linked: Wardite::Efflorescence::IR
       # @rbs return: Wardite::Efflorescence::IR
       def translate: (?Wardite::Efflorescence::IR linked) -> Wardite::Efflorescence::IR
+
+      # Partition in module order by decoded instruction count. Each translator
+      # owns its stacks and output. Only linked declarations are shared.
+      # @rbs workers: Integer
+      # @rbs return: Array[Function]
+      def translate_parallel: (Integer workers) -> Array[Function]
+
+      # @rbs first: Integer
+      # @rbs limit: Integer
+      # @rbs return: Thread
+      def start_translation: (Integer first, Integer limit) -> Thread
+
+      # @rbs first: Integer
+      # @rbs limit: Integer
+      # @rbs return: Array[Function]
+      def translate_range: (Integer first, Integer limit) -> Array[Function]
 
       # Replay the original declarations without re-linking host functions,
       # executing start, or consulting live global/memory/table slots.
