@@ -70,7 +70,10 @@ FileUtils.mkdir_p(root)
 root = File.realpath(root)
 ENV["ZIG_GLOBAL_CACHE_DIR"] ||= File.join(root, "zig-global")
 ENV["ZIG_LOCAL_CACHE_DIR"] ||= File.join(root, "zig-local")
-run(ENV.fetch("ZIG"), "version")
+native_macos = targets.include?("aarch64-macos") &&
+  %w[arm64 aarch64].include?(RbConfig::CONFIG["host_cpu"]) &&
+  !ENV["CI"] && !ENV["GITHUB_ACTIONS"]
+run(ENV.fetch("ZIG"), "version") unless native_macos && targets.uniq == ["aarch64-macos"]
 
 File.open(File.join(root, "build.lock"), "a") do |lock|
   lock.flock(File::LOCK_EX)
@@ -84,14 +87,19 @@ File.open(File.join(root, "build.lock"), "a") do |lock|
     end
   end
 
-  host = File.join(root, "host-#{SPINEL_REF}")
+  # The native executable links the host runtime. Cache its objects by
+  # deployment target so a previous host build cannot raise the minimum OS.
+  host = File.join(root, native_macos ? "host-arm64-macos.#{macos}-#{SPINEL_REF}" : "host-#{SPINEL_REF}")
   unpack(archive, host)
   spinel = File.join(host, "bin", "spinel")
   inputs = ["lib/libspinel_rt_mt.a", "packages/stringio/sp_stringio_mt.o"]
   submake = [make, "-j#{jobs}", "NO_CCACHE=1"]
   make_env = {"MAKEFLAGS" => nil, "MFLAGS" => nil}
-  run(make_env, *submake, "-C", host, "deps")
-  run(make_env, *submake, "-C", host, "bin/spinel", *inputs)
+  native_env = {"MACOSX_DEPLOYMENT_TARGET" => macos, "CC" => "/usr/bin/clang"}
+  host_env = native_macos ? make_env.merge(native_env) : make_env
+  run(host_env, *submake, "-C", host, "deps")
+  # Spinel locates its lib directory by probing for the single-thread archive.
+  run(host_env, *submake, "-C", host, "bin/spinel", "lib/libspinel_rt.a", *inputs)
 
   script = [RbConfig.ruby, File.expand_path(__FILE__)]
   cc = Shellwords.join([*script, "cc"])
@@ -100,20 +108,24 @@ File.open(File.join(root, "build.lock"), "a") do |lock|
     target = supported_targets.fetch(name)
     output = File.join(root, target)
     FileUtils.mkdir_p(output)
-    runtime = File.join(output, "spinel-#{SPINEL_REF}")
-    unpack(archive, runtime)
-    env = {
-      "WARDITE_ZIG_TARGET" => target,
-      "WARDITE_SPINEL_HOST" => host,
-      "WARDITE_SPINEL_RUNTIME" => runtime
-    }
     puts "Building Wardite for #{target}"
-    run(make_env.merge(env), *submake, "-C", runtime, "CC=#{cc}", "AR_DET=#{ar}", *inputs)
     Dir.mktmpdir("wardite-", output) do |staging|
       binary = File.join(staging, "wardite")
-      run(env, spinel, "-I", "lib", "--strict-require", *Shellwords.split(spinel_flags),
-          "--cc=#{cc}", "--jobs=#{jobs}", "--split-parts=#{[jobs.to_i * 3, 64].min}",
-          "exe/wardite", "-o", binary)
+      args = [spinel, "-I", "lib", "--strict-require", *Shellwords.split(spinel_flags)]
+      if native_macos && name == "aarch64-macos"
+        run(native_env, *args, "--cc=/usr/bin/clang", "exe/wardite", "-o", binary)
+      else
+        runtime = File.join(output, "spinel-#{SPINEL_REF}")
+        unpack(archive, runtime)
+        env = {
+          "WARDITE_ZIG_TARGET" => target,
+          "WARDITE_SPINEL_HOST" => host,
+          "WARDITE_SPINEL_RUNTIME" => runtime
+        }
+        run(make_env.merge(env), *submake, "-C", runtime, "CC=#{cc}", "AR_DET=#{ar}", *inputs)
+        run(env, *args, "--cc=#{cc}", "--jobs=#{jobs}", "--split-parts=#{[jobs.to_i * 3, 64].min}",
+            "exe/wardite", "-o", binary)
+      end
       File.rename(binary, File.join(output, "wardite"))
     end
     puts File.join(output, "wardite")
