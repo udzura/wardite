@@ -216,3 +216,27 @@ WARDITE_TRACE=1 WARDITE_MIR_WORKERS=8 SPINEL_WORKERS=8 \
 | Base64 encode・4 MiB | 419.5 ms | 425.8 ms | 1.5% |
 
 原因の切り分けには Apple Clang・`-O2` を使った。v1.3.0 に条件付きの `Thread.new` を加えてスレッド対応ビルドを作り、実行時にはその分岐を通さずに計測した。Base64 encode の総時間からモジュールロード時間を引いた値は、元のタグ版で 348.2 ms、対照版で 378.2 ms、PR の 8 ワーカー版で 378.5 ms だった。約 30 ms の差はワーカーを起動せずに再現した。スレッド対応コード内での各処理の寄与は未計測。
+
+### Spinel の固定版更新後の配布ビルド
+
+Wardite `0b56dda` のソースを共通にして、旧固定版と新固定版の Spinel で macOS arm64 配布用 CLI をビルドした。Apple M3 Pro、macOS 27.2.1、Apple Clang 21.0.0、`-O2`、macOS デプロイメントターゲット 13.0。MIR キャッシュを使わず、`WARDITE_TRACE=1 WARDITE_MIR_WORKERS=8 SPINEL_WORKERS=8` で毎回新しいプロセスを起動した。
+
+| ワークロード | `a2aa05227` | `072516af1` | 経過時間の変化 |
+| --- | ---: | ---: | ---: |
+| Base64 encode・4 MiB | 557.3 ms | 515.9 ms | −7.4% |
+| Base64 decode・元データ 4 MiB | 427.8 ms | 409.8 ms | −4.2% |
+| PNG グレースケール・1024 × 1024 | 350.3 ms | 329.5 ms | −6.0% |
+| Ruby 3.4.2 Wasm・コールド起動 | 2.885 s | 3.082 s | +6.8% |
+
+値はプロセス起動から終了までの中央値。各バイナリを 2 回ウォームアップし、ペア内で先に走らせる版を同数にして順序を無作為化した。Base64 と PNG は各 16 回、Ruby は各 10 回。Base64 はエンコード済み・デコード済みの fixture、PNG は Wasmtime の出力とバイト単位で一致した。Ruby の `--disable-gems -e 'puts 6*7'` は両版で `42` を出力した。
+
+Ruby の起動を追加で計測した。Spinel のワーカー数は 8 に固定し、MIR ワーカー数を 1・8 に変えた。ウォームアップ各 1 回の後、4 条件が各実行位置に同じ回数現れる順序で各 8 回測定した。次の値も中央値で、ロード時間には semantic MIR 生成を含む。
+
+| MIR ワーカー数 | semantic MIR 生成（旧 → 新） | モジュールロード（旧 → 新） | 起動から終了まで（旧 → 新） |
+| ---: | ---: | ---: | ---: |
+| 1 | 2.731 → 2.334 s | 3.898 → 3.680 s | 4.913 → 4.753 s |
+| 8 | 0.637 → 0.551 s | 1.713 → 1.871 s | 2.704 → 2.857 s |
+
+8 ワーカーでは semantic MIR 生成が短縮した一方、ロード全体とプロセス全体は長くなった。今回の比較には両固定版間の Spinel の変更をすべて含む。TLS 最適化単独の寄与は未測定。
+
+Base64 と PNG のゲスト・入力は wardite-benches `f07c454`、Ruby は本ページ冒頭の Ruby 3.4.2 fixture を使った。[全サンプルの CSV](../benchmark/results/spinel-072516af1.csv)・[WASI ベンチのソース](https://github.com/udzura/wardite-benches/tree/f07c4548e3caba59ccdfd16f8f888ebb6af40f95)
