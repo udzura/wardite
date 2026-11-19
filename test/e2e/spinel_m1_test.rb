@@ -34,6 +34,32 @@ class WarditeSpinelM1Test < Test::Unit::TestCase
     assert_include error, 'dispatches=' if options.include?('--mir-profile')
   end
 
+  test 'parallel translation preserves MIR order and direct call targets' do
+    with_wasm(CALL_PROTOCOL_WAT) do |file|
+      command = [@binary, '--no-wasi', '--mir-dump', '--invoke', 'mutual', '--', file, '4']
+      expected, status = Open3.capture2e({'WARDITE_MIR_WORKERS' => '1'}, *command)
+      assert_predicate status, :success?, expected
+      [2, 4, 8].each do |count|
+        env = {'SPINEL_WORKERS' => count.to_s, 'WARDITE_MIR_WORKERS' => count.to_s}
+        actual, status = Open3.capture2e(env, *command)
+        assert_predicate status, :success?, actual
+        assert_equal expected, actual
+      end
+    end
+  end
+
+  test 'parallel translation reports the earliest invalid function once' do
+    with_wasm('(module (func (export "f") i32.clz drop) (func i32.add drop) (func i64.add drop))') do |file|
+      command = [@binary, '--no-wasi', '--invoke', 'f', file]
+      serial, status = Open3.capture2e({'WARDITE_MIR_WORKERS' => '1'}, *command)
+      assert_false status.success?
+      assert_include serial, 'function 0, Wasm PC 0: operand stack underflow'
+      parallel, status = Open3.capture2e({'WARDITE_MIR_WORKERS' => '8', 'SPINEL_WORKERS' => '8'}, *command)
+      assert_false status.success?
+      assert_equal serial, parallel
+    end
+  end
+
   EH_CASES.each do |name, wat, calls|
     test "M1 EH #{name}" do
       with_wasm(wat) do |file|
