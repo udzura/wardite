@@ -207,6 +207,19 @@ pages, switches the pages to read/execute, calls the function, and releases
 the mapping on return. This keeps executable memory scoped to one call and
 adds a mapping cost per invocation. A mapping failure falls back to MIR.
 
+On an Apple Silicon Mac, run the full regression suite with:
+
+```sh
+bin/test-spinel-jit
+```
+
+Use native arm64 Ruby with the bundle installed, Spinel, `wasm-tools`, and
+the Xcode Command Line Tools. The script builds the CLI, checks that
+`inline_mix` runs as native code and that unsupported MIR falls back, then
+runs `rake test` with `WARDITE_MIR_JIT=1` and the native binary available to
+all Spinel E2E tests. Incremental build objects are reused across runs under
+`build/spinel-jit-test/objects` by default.
+
 #### Build release executables on macOS
 
 With Zig 0.17.1, Ruby, and the Xcode Command Line Tools installed, run:
