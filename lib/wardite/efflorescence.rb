@@ -15,6 +15,7 @@ require_relative "efflorescence/function_preparer"
 
 # Spinel initializes the cache tables at startup, after Opcode is defined.
 if RUBY_ENGINE == "spinel"
+  require_relative "efflorescence/spinel_jit"
   require_relative "efflorescence/mir_cache"
   require_relative "efflorescence/snapshot"
 end

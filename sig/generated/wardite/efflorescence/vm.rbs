@@ -15,6 +15,8 @@ module Wardite
       # Records a startup snapshot before the first WASI call outside its allowlist.
       attr_accessor snapshot: Wardite::Efflorescence::Snapshot?
 
+      @jit: SpinelJIT?
+
       @global_bits: Array[Integer]
 
       @optimized_ir: Wardite::Efflorescence::IR?
