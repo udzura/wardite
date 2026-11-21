@@ -1,0 +1,13 @@
+# Generated from lib/wardite/efflorescence/loop_invariants.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    module Passes
+      class LoopInvariants
+        # @rbs function: Function
+        # @rbs return: void
+        def run: (Function function) -> void
+      end
+    end
+  end
+end

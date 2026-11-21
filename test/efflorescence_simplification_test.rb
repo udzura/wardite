@@ -42,4 +42,23 @@ class EfflorescenceSimplificationTest < Test::Unit::TestCase
     assert_equal [[BR, 3], [MEMORY_FILL, 0], [RETURN, 0], [I32_SUB, 3, 0, 0], [BR, 1]],
       fn.instructions.map(&:operands)
   end
+
+  test "LICM hoists an invariant once and leaves loop-carried inputs in place" do
+    fn = body([[BR_IF_ZERO, 0, 5], [I32_AND, 2, 1, 1], [I32_SUB_IMM, 0, 0, 1],
+      [I32_XOR, 3, 2, 0], [BR, 0], [RETURN, 1]], params: 2)
+    E::Passes::LoopInvariants.new.run(fn)
+    assert_equal [[I32_AND, 2, 1, 1], [BR_IF_ZERO, 0, 5], [I32_SUB_IMM, 0, 0, 1],
+      [I32_XOR, 3, 2, 0], [BR, 1], [RETURN, 1]], fn.instructions.map(&:operands)
+  end
+
+  test "LICM skips side entrances and destinations observed after zero trips" do
+    [
+      [[BR_IF, 0, 3], [BR_IF_ZERO, 0, 6], [COPY, 3, 1], [I32_AND, 2, 1, 1], [COPY, 3, 2], [BR, 1], [RETURN, 0]],
+      [[BR_IF_ZERO, 0, 4], [I32_AND, 2, 1, 1], [I32_SUB_IMM, 0, 0, 1], [BR, 0], [RETURN, 2]]
+    ].each_with_index do |words, index|
+      fn = body(words, params: 2, locals: index)
+      E::Passes::LoopInvariants.new.run(fn)
+      assert_equal words, fn.instructions.map(&:operands)
+    end
+  end
 end

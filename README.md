@@ -86,6 +86,12 @@ Pass `--mir-enable cse` or set `WARDITE_MIR_CSE=1` to try block-local common sub
 for integer operations. Use `--mir-disable cse` to turn it off in the same
 environment. The experimental pass has its own MIR2 cache key.
 
+For repeated i64 byte-table checks that share a branch target, `exit_copy`
+moves constant assignments onto the taken edges. It is enabled by default.
+The experimental `fold`, `cfg`, `dce`, and `licm` passes can be enabled
+independently with `--mir-enable NAME`. Each combination has its own MIR2 key.
+See [ADR 0028](docs/adr/0028-efflorescence-reduce-executed-instructions.md).
+
 On CRuby and Spinel, the default is to validate the whole module at load time
 and prepare MIR on the first call to each function. For repeated runs, pass
 `--mir-cache DIR`: the first run prepares all functions and writes the cache,
