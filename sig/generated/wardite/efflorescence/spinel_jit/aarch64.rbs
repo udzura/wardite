@@ -26,6 +26,10 @@ module Wardite
         # @rbs return: void
         def load_constant: (Integer dest, Integer value) -> void
 
+        # @rbs value: Integer
+        # @rbs return: Integer
+        def constant_register: (Integer value) -> Integer
+
         # @rbs op: Integer
         # @rbs a: Integer
         # @rbs b: Integer

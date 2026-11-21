@@ -14,6 +14,7 @@ module Wardite
         def initialize
           @words = [] #: Array[Integer]
           @labels = [] #: Array[Integer]
+          @constant_slots = {} #: Hash[Integer, Integer]
         end
 
         # Compile one complete lowered function. Branch targets in flat MIR
@@ -31,7 +32,10 @@ module Wardite
 
           # Frame initialization is outside every MIR label, including PC 0.
           (2...[function.register_count, SCRATCH].min).each do |slot|
-            load_constant(slot, function.initial_value(slot))
+            value = function.initial_value(slot)
+            load_constant(slot, value)
+            # Only MIR constants keep this value across writes and backedges.
+            @constant_slots[value] = slot if function.constant_registers.include?(slot)
           end
           pc = 0
           while pc < code.size
@@ -69,6 +73,16 @@ module Wardite
           @words << (0x72a00000 | (high << 5) | dest) unless high == 0 # movk, lsl 16
         end
 
+        # @rbs value: Integer
+        # @rbs return: Integer
+        def constant_register(value)
+          slot = @constant_slots[value]
+          return slot if slot
+
+          load_constant(SCRATCH, value)
+          SCRATCH
+        end
+
         # @rbs op: Integer
         # @rbs a: Integer
         # @rbs b: Integer
@@ -101,13 +115,13 @@ module Wardite
                 base = op == Opcode::I32_ADD_IMM ? 0x11000000 : 0x51000000
                 @words << (base | (c << 10) | (b << 5) | a)
               else
-                load_constant(SCRATCH, c)
+                right = constant_register(c)
                 base = op == Opcode::I32_ADD_IMM ? 0x0b000000 : 0x4b000000
-                @words << (base | (SCRATCH << 16) | (b << 5) | a)
+                @words << (base | (right << 16) | (b << 5) | a)
               end
             when Opcode::I32_MUL_IMM
-              load_constant(SCRATCH, c)
-              @words << (0x1b007c00 | (SCRATCH << 16) | (b << 5) | a)
+              right = constant_register(c)
+              @words << (0x1b007c00 | (right << 16) | (b << 5) | a)
             else
               return false
             end
