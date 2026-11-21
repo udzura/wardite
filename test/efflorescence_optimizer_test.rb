@@ -206,6 +206,19 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     end
   end
 
+  test "masked i64 extraction ignores sign extension and wraps the shift count" do
+    [0, 32, 58, 63, 64, 127].each do |shift|
+      wat = "(module (func (export \"run\") (param i64) (result i32)
+        local.get 0 i64.const #{shift} i64.shr_u i32.wrap_i64 i32.const -1 i32.and))"
+      vm = load_efflorescence(wat).runtime
+      [-1, -(1 << 63), 0x12345678abcdef01].each do |value|
+        expected = ((value % (1 << 64)) >> (shift & 63)) & 0xffffffff
+        assert_equal expected, vm.call_unboxed(:run, [value])
+      end
+      assert_include vm.ir.function_at(0).bytecode.each_slice(E::Lowerer::WIDTH).map(&:first), OP::I32_EXTRACT_I64
+    end
+  end
+
   test "passes preserve input MIR and reduce dispatches and copies" do
     instance = load_efflorescence(File.read(MIX_WAT))
     vm = instance.runtime

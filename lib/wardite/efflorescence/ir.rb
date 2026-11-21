@@ -212,10 +212,11 @@ module Wardite
       F64_GLOBAL_SET = 194
 
       BR_IF_I64_EQ = 195
-      I32_TABLE_STORE8 = 196
-      I64_BYTE_LOOKUP = 197
-      I32_BYTE_MUL_ADD = 198
-      I32_BYTE_ADD_STORE = 199
+      I32_EXTRACT_I64 = 196
+      I32_TABLE_STORE8 = 197
+      I64_BYTE_LOOKUP = 198
+      I32_BYTE_MUL_ADD = 199
+      I32_BYTE_ADD_STORE = 200
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U].freeze #: Array[Integer]
 
@@ -248,11 +249,12 @@ module Wardite
                  F32_REINTERPRET_I32 F64_REINTERPRET_I64
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
                  F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
-                 BR_IF_I64_EQ
+                 BR_IF_I64_EQ I32_EXTRACT_I64
                  I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
+        I32_EXTRACT_I64 => [:i32, :i64],
         I64_EQZ => [:i32, :i64],
         I32_WRAP_I64 => [:i32, :i64],
         I64_EQ => [:i32, :i64, :i64],
@@ -366,7 +368,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: Array[Symbol]?
       def self.extended_alu_types(opcode)
-        opcode >= F32_EQ ? FLOAT_ALU_TYPES[opcode] : I64_ALU_TYPES[opcode]
+        opcode.between?(F32_EQ, F64_REINTERPRET_I64) ? FLOAT_ALU_TYPES[opcode] : I64_ALU_TYPES[opcode]
       end
 
       EXTENDED_LOAD_TYPES = {

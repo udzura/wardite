@@ -617,6 +617,7 @@ module Wardite
           pc = 0
           while pc + 1 < instructions.size
             candidate = instructions.fetch(pc)
+            break if candidate[0] == Opcode::I64_SHR_U && instructions.fetch(pc + 1)[0] == Opcode::I32_WRAP_I64
             break if (candidate[0] == Opcode::I32_SHR_U_IMM || candidate[0] == Opcode::I32_SHL_IMM) && instructions.fetch(pc + 1)[0] == Opcode::I32_XOR
             pc += 1
           end
@@ -629,6 +630,16 @@ module Wardite
             rewrite.mark(pc)
             instruction = function.instructions[pc]
             following = function.instructions[pc + 1]
+            if instruction[0] == Opcode::I64_SHR_U
+              extract = masked_shift(function, analysis, pc)
+              if extract
+                rewrite.mark(pc + 1)
+                rewrite.mark(pc + 2)
+                rewrite.emit(extract)
+                pc += 3
+                next
+              end
+            end
             shift = instruction[0] == Opcode::I32_SHR_U_IMM || instruction[0] == Opcode::I32_SHL_IMM
             if shift && following && following[0] == Opcode::I32_XOR && analysis.leaders[pc + 1] == 0 &&
                 instruction[1] >= function.parameter_count + function.local_count && analysis.single_use?(instruction[1]) &&
@@ -644,6 +655,31 @@ module Wardite
             end
           end
           rewrite.finish
+        end
+
+        private
+
+        # @rbs function: Function
+        # @rbs analysis: Analysis
+        # @rbs pc: Integer
+        # @rbs return: Instruction?
+        def masked_shift(function, analysis, pc)
+          shift = function.instructions.fetch(pc)
+          wrap = function.instructions[pc + 1]
+          mask = function.instructions[pc + 2]
+          return unless wrap && wrap[0] == Opcode::I32_WRAP_I64 && wrap[2] == shift[1]
+          return unless mask && mask[0] == Opcode::I32_AND && mask[2] == wrap[1]
+          return unless function.constant_registers.include?(shift[3]) && function.constant_registers.include?(mask[3])
+          first_temp = function.parameter_count + function.local_count
+          return unless shift[1] >= first_temp && wrap[1] >= first_temp
+          return unless analysis.single_use?(shift[1]) && analysis.single_use?(wrap[1])
+          return unless analysis.leaders[pc + 1] == 0 && analysis.leaders[pc + 2] == 0
+
+          count = function.initial_value(shift[3]) & 63
+          bits = function.initial_value(mask[3])
+          # The interpreter shifts a signed carrier. Trim mask bits beyond the source's high bit.
+          bits &= (1 << (64 - count)) - 1 if count > 32
+          Instruction.new([Opcode::I32_EXTRACT_I64, mask[1], shift[2], (bits << 6) | count])
         end
       end
     end

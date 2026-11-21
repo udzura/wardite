@@ -215,6 +215,14 @@ module Wardite
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
         def run: (Wardite::Efflorescence::Function function) -> void
+
+        private
+
+        # @rbs function: Function
+        # @rbs analysis: Analysis
+        # @rbs pc: Integer
+        # @rbs return: Instruction?
+        def masked_shift: (Function function, Analysis analysis, Integer pc) -> Instruction?
       end
     end
 

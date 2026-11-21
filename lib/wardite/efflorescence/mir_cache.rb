@@ -13,7 +13,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 11
+      CODE_VERSION = 12
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -241,6 +241,7 @@ module Wardite
           when GLOBAL_GET, I64_GLOBAL_GET, F32_GLOBAL_GET, F64_GLOBAL_GET then :global_get
           when GLOBAL_SET, I64_GLOBAL_SET, F32_GLOBAL_SET, F64_GLOBAL_SET then :global_set
           when I32_LOAD..I32_STORE16, I64_LOAD..I64_STORE32, F32_LOAD..F64_STORE then :address
+          when I32_EXTRACT_I64 then :extract
           when I32_ADD_IMM..I32_SHR_U_IMM then :immediate
           when I32_XOR_SHR_U_IMM, I32_XOR_SHL_IMM then :shift
           end
@@ -498,6 +499,7 @@ module Wardite
             when :address then raise Invalid unless @has_memory && c.between?(0, 0xffffffff)
             when :memory then raise Invalid unless @has_memory
             when :immediate then raise Invalid unless c.between?(0, 0xffffffff)
+            when :extract then raise Invalid unless c.between?(0, (0xffffffff << 6) | 63)
             when :shift then raise Invalid unless c.between?(0, 31)
             end
             pc += Lowerer::WIDTH
