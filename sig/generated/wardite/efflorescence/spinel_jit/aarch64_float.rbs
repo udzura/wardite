@@ -1,0 +1,38 @@
+# Generated from lib/wardite/efflorescence/spinel_jit/aarch64_float.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class SpinelJIT
+      class AArch64
+        private
+
+        # @rbs slot: Integer
+        # @rbs return: bool
+        def wide_slot?: (Integer slot) -> bool
+
+        # Round to nearest/even, keep subnormals, mask FP exceptions, and use
+        # canonical arithmetic NaNs. Preserve the caller's environment on replay too.
+        # @rbs return: void
+        def save_float_environment: () -> void
+
+        # @rbs return: void
+        def restore_float_environment: () -> void
+
+        # MIR slots hold raw bits. Only v0 and v1 are used for FP arithmetic.
+        # @rbs op: Integer
+        # @rbs dest: Integer
+        # @rbs left: Integer
+        # @rbs c: Integer
+        # @rbs return: bool
+        def emit_float: (Integer op, Integer dest, Integer left, Integer c) -> bool
+
+        # @rbs op: Integer
+        # @rbs dest: Integer
+        # @rbs left: Integer
+        # @rbs types: Array[Symbol]
+        # @rbs return: void
+        def emit_float_conversion: (Integer op, Integer dest, Integer left, Array[Symbol] types) -> void
+      end
+    end
+  end
+end

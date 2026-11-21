@@ -24,14 +24,16 @@ module Wardite
           @types = [] #: Array[Symbol]
           @frame_size = 0
           @needs_bailout = false
+          @uses_float = false
         end
 
         # @rbs function: Function
         # @rbs return: String?
         def compile(function)
-          return unless function.result_types == [:i32] || function.result_types == [:i64]
+          return unless function.result_types.size == 1 && FunctionEntry.numeric_type?(function.result_types.fetch(0))
           @types = function.register_types
-          return unless @types.size <= MAX_SLOTS && @types.all? { |type| type == :i32 || type == :i64 }
+          return unless @types.size <= MAX_SLOTS && @types.all? { |type| FunctionEntry.numeric_type?(type) }
+          @uses_float = @types.any? { |type| FloatBits.float_type?(type) }
 
           code = function.bytecode
           width = Lowerer::WIDTH
@@ -75,6 +77,7 @@ module Wardite
         def initialize_frame(function)
           # Save the argument/result buffer before assigning x0 to MIR slot 0.
           # [sp] holds the pointer; spill slots start at [sp, #8].
+          save_float_environment if @uses_float
           spilled = [function.register_count - SCRATCH, 0].max
           @frame_size = ((spilled + 1) * 8 + 15) & ~15
           @words << (0xd10003ff | (@frame_size << 10)) # sub sp, sp, #size
@@ -88,7 +91,7 @@ module Wardite
           (function.parameter_count...function.register_count).each do |slot|
             value = function.initial_value(slot)
             reg = slot < SCRATCH ? slot : SCRATCH
-            load_constant(reg, value, @types.fetch(slot) == :i64)
+            load_constant(reg, value, wide_slot?(slot))
             store_slot(slot, reg)
             if slot < SCRATCH && @types.fetch(slot) == :i32 && function.constant_registers.include?(slot)
               @constant_slots[value] = slot
@@ -101,6 +104,7 @@ module Wardite
         def finish_frame(status)
           @words << (0x52800000 | (status << 5)) # movz w0, #status
           @words << (0x910003ff | (@frame_size << 10)) # add sp, sp, #size
+          restore_float_environment if @uses_float
           @words << 0xd65f03c0 # ret
         end
 
@@ -175,7 +179,7 @@ module Wardite
           end
           return false unless a.between?(0, @types.size - 1)
           if op == Opcode::RETURN
-            base = @types.fetch(a) == :i64 ? 0xaa0003e0 : 0x2a0003e0
+            base = wide_slot?(a) ? 0xaa0003e0 : 0x2a0003e0
             @words << (base | (read_slot(a, LEFT) << 16)) # mov x0/w0, result
             @words << 0xf94003f1 # ldr x17, [sp]
             @words << 0xf9000220 # str x0, [x17]
@@ -186,10 +190,15 @@ module Wardite
           return false unless b.between?(0, @types.size - 1)
           left = read_slot(b, LEFT)
           dest = a < SCRATCH ? a : SCRATCH
+          if op.between?(Opcode::F32_EQ, Opcode::F64_REINTERPRET_I64)
+            return false unless emit_float(op, dest, left, c)
+            store_slot(a, dest)
+            return true
+          end
           case op
           when Opcode::COPY, Opcode::I64_EXTEND_I32_U, Opcode::I32_WRAP_I64
             # A W move implements unsigned extension, including in-place.
-            base = op == Opcode::COPY && @types.fetch(a) == :i64 ? 0xaa0003e0 : 0x2a0003e0
+            base = op == Opcode::COPY && wide_slot?(a) ? 0xaa0003e0 : 0x2a0003e0
             @words << (base | (left << 16) | dest)
           when Opcode::I32_EQZ, Opcode::I64_EQZ
             base = op == Opcode::I64_EQZ ? 0xf100001f : 0x7100001f
@@ -301,3 +310,5 @@ module Wardite
     end
   end
 end
+
+require_relative "aarch64_float"

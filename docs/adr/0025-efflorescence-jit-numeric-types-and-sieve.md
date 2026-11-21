@@ -1,6 +1,6 @@
 # ADR 0025: 関数JITをi64、f32/f64の順に拡張してから篩法を高速化する
 
-- **状態** 第1段階（i64）は実装・検証済み。第2段階（f32/f64）と第3段階（篩法）は計画中
+- **状態** 第1段階（i64）と第2段階（f32/f64）は実装・検証済み。第3段階（篩法）は計画中
 - **日付** 2026-11-21
 - **前提** [ADR 0024（関数JITとi32の試し割り）](0024-efflorescence-function-jit-and-trial-division.md)
 
@@ -36,6 +36,21 @@ macOS 27.2.1 arm64、Spinel `072516af1` の `-O2` ビルドで計測した。see
 両方の幅で引数・結果と演算を扱い、混合型の変換まで実装する。各f32演算で単精度に丸める。コピーやreinterpretではNaNのpayloadと符号付きゼロを含むビット列を保存し、算術で生じるNaNはWasmが許す範囲で照合する。浮動小数点から整数への変換では、trapを起こす命令と飽和変換の境界を区別する。[既存VMの浮動小数点仕様](0005-efflorescence-m5-floating-point.md)
 
 完了時には、両方の幅の値と境界値を命令別に検証し、`float_alu` と `float_convert` がネイティブで完走してVMと同じ結果を返すことを確認する。[浮動小数点ベンチ](../../benchmark/float_m5.wat)
+
+**実装結果（2026-11-21）**　引数・戻り値・MIRスロットは第1段階と同じバッファでビット列を受け渡す。演算時にだけAArch64の単精度・倍精度レジスタを使う。浮動小数点を使う関数に入るときにホストのFPCR・FPSRを保存し、最近接偶数丸め、非正規化数の保持、算術NaNの正規化を指定する。正常終了時とVMへの復帰時に元の設定とフラグを戻す。整数へのtruncは変換命令のinvalidフラグを検査してVMにtrapを引き継ぎ、trunc_satは同じ変換命令の飽和結果を返す。[浮動小数点コード生成](../../lib/wardite/efflorescence/spinel_jit/aarch64_float.rb)
+
+算術・比較・変換70命令の385ケースで、値・ビット列・trapをJIT有効時と無効時に照合した。3種類の最適化設定すべてで、プロファイル無効時は全385関数がコンパイルされ、VMへの復帰は期待した40件のtrapだけだった。[入力と期待値](../../test/support/efflorescence_m5_cases.rb)・[トレースの検証](../../test/e2e/spinel_m5_test.rb)
+
+macOS 27.2.1 arm64、Spinel `072516af1` の `-O2` ビルドで、第1段階と同じくCLI起動からの中央値を取った（実行順を交替、各2回ウォームアップ・9回計測）。マンデルブロはwardite-benches `921a692` のRust版Wasmを両精度でそのまま実行した。4関数すべてでネイティブ実行をトレースで確認し、JIT有効・無効ともにWasmtimeと結果が一致した。[マンデルブロの実装](https://github.com/udzura/wardite-benches/blob/921a69220eaad620ecc033013f4171e5b21eb8e7/rust/examples/mandelbrot.rs)・[計測スクリプト](../../benchmark/measure_float_jit.rb)
+
+| 関数 | 入力 | 結果 | JIT無効 | JIT有効 | 無効 / 有効 |
+|---|---|---:|---:|---:|---:|
+| `mandelbrot_f32` | 200×150、最大100反復 | 745,736 | 2,791.666 ms | 21.575 ms | 129.39倍 |
+| `mandelbrot_f64` | 200×150、最大100反復 | 747,800 | 2,810.988 ms | 22.064 ms | 127.40倍 |
+| `float_alu` | 200,000反復、seed 123 | 1,075,838,977 | 184.764 ms | 9.946 ms | 18.58倍 |
+| `float_convert` | 200,000反復、seed 123 | 20,000,100,123 | 99.431 ms | 9.369 ms | 10.61倍 |
+
+wardite-benchesを隣のディレクトリにビルドした環境では、`ruby benchmark/measure_float_jit.rb build/spinel-float-jit/wardite` で4ケースを再計測できる。第2引数に別の `mandelbrot.wasm` のパスも指定できる。
 
 ### 3. 元の篩のループを切り出して高速化する
 
