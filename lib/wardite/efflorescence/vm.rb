@@ -530,7 +530,7 @@ module Wardite
       # @rbs return: Array[Wardite::Efflorescence::FramePool]
       def new_pools
         pools = [] #: Array[Wardite::Efflorescence::FramePool]
-        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames, @preparer) }
+        @ir.functions.each { |function| pools << FramePool.new(function, @reuse_frames, @preparer, @jit) }
         pools
       end
 
@@ -686,6 +686,15 @@ module Wardite
         end
       end
 
+      # @rbs frame: Frame
+      # @rbs pc: Integer
+      # @rbs return: Integer
+      def run_byte_loop(frame, pc)
+        jit = @jit
+        raise Wardite::EvalError, "missing loop JIT" unless jit
+        jit.run_loop(frame, pc, @store_access.memory.buffer)
+      end
+
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
       # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
@@ -695,7 +704,7 @@ module Wardite
         frames = active_frames
         registers = frame.registers
         global_bits = @global_bits
-        instructions = frame.function.bytecode
+        instructions = frame.instructions
         pc = Integer(frame.pc)
         # Avoid Kernel#loop's StopIteration handler in the native hot loop.
         while true
@@ -825,6 +834,11 @@ module Wardite
               pc = Integer(b)
               next
             end
+          when -1 # SpinelJIT::LOOP_BACKEDGE (runtime dispatch only)
+            if registers[a] != 0
+              pc = Integer(run_byte_loop(frame, pc))
+              next
+            end
           when 19 # Opcode::BR_IF_ZERO
             b = instructions.fetch(pc + 2)
             if registers[a] == 0
@@ -847,7 +861,7 @@ module Wardite
             frames << next_frame
             frame = next_frame
             registers = frame.registers
-            instructions = frame.function.bytecode
+            instructions = frame.instructions
             pc = 0
             next
           when 67 # Opcode::CALL_HOST
@@ -859,7 +873,7 @@ module Wardite
             frame.pc = pc
             frame = execute_indirect(frame, pools, frames, a, b, c, metrics)
             registers = frame.registers
-            instructions = frame.function.bytecode
+            instructions = frame.instructions
             pc = Integer(frame.pc)
             next
           when 11 # Opcode::RETURN
@@ -875,7 +889,7 @@ module Wardite
             frame = current_frame(frames)
             registers = frame.registers
             registers[destination] = return_value if destination >= 0
-            instructions = frame.function.bytecode
+            instructions = frame.instructions
             pc = Integer(frame.pc)
             next
           when 12 # Opcode::TRAP
@@ -982,7 +996,7 @@ module Wardite
             value_ref = exception_at(frame, a)
             frame = propagate(value_ref, frames, pools)
             registers = frame.registers
-            instructions = frame.function.bytecode
+            instructions = frame.instructions
             pc = Integer(frame.pc)
             next
           when 51 # Opcode::THROW_REF
@@ -990,7 +1004,7 @@ module Wardite
             raise Wardite::EvalError, "throw_ref null" unless value_ref
             frame = propagate(value_ref, frames, pools)
             registers = frame.registers
-            instructions = frame.function.bytecode
+            instructions = frame.instructions
             pc = Integer(frame.pc)
             next
           when 52 # Opcode::GLOBAL_GET

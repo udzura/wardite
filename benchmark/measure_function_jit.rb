@@ -11,8 +11,9 @@ module MeasureFunctionJIT
     expected = "return value: #{result_type}(#{result})"
     command = [binary, "--no-wasi", "--invoke", name, "--", *args]
     output, status = Open3.capture2e({"WARDITE_MIR_JIT" => "1", "WARDITE_TRACE" => "1"}, *command)
-    events = output.lines.grep(/^MIR JIT function /)
-    abort "JIT did not complete #{name}: #{output}" unless events.size == 1 && events.first.match?(/: compiled$/)
+    events = output.lines.grep(/^MIR JIT /)
+    native = block_given? ? yield(events) : events.size == 1 && events.first.match?(/: compiled$/)
+    abort "JIT did not complete #{name}: #{output}" unless native
     abort output unless status.success? && output.lines.map(&:chomp).include?(expected)
 
     # Alternate the order within each pair. Include process startup, loading,

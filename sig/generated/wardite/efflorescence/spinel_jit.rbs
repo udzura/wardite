@@ -3,6 +3,16 @@
 module Wardite
   module Efflorescence
     class SpinelJIT
+      # Private dispatch label, present only in a VM-local copy of verified MIR.
+      LOOP_BACKEDGE: ::Integer
+
+      class LoopBody
+        attr_reader instructions: Array[Integer]
+
+        # @rbs function: Function
+        def initialize: (Function function) -> untyped
+      end
+
       module Native
         def self.ffi_source: (String) -> void
 
@@ -11,9 +21,23 @@ module Wardite
         def self.wardite_jit_supported: () -> Integer
 
         def self.wardite_jit_run: (String, Integer, IO::Buffer) -> Integer
+
+        def self.wardite_jit_run_loop: (String, Integer, IO::Buffer, IO::Buffer, Integer) -> Integer
       end
 
       def initialize: () -> untyped
+
+      # The first iteration runs in the VM. Replace only a taken backward
+      # BR_IF so incoming branches and snapshots keep their original word PCs.
+      # @rbs function: Function
+      # @rbs return: LoopBody?
+      def loop_body: (Function function) -> LoopBody?
+
+      # @rbs frame: Frame
+      # @rbs pc: Integer
+      # @rbs memory: IO::Buffer
+      # @rbs return: Integer
+      def run_loop: (Frame frame, Integer pc, IO::Buffer memory) -> Integer
 
       # nil is cached for unsupported functions, just like a successful entry.
       # @rbs function: Function

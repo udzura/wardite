@@ -1,0 +1,34 @@
+# Generated from lib/wardite/efflorescence/spinel_jit/byte_loop.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class SpinelJIT
+      class AArch64
+        # x0 points to 8-byte MIR slots, x1 to current linear memory, x2 is
+        # its byte length. x3..x5 are scratch. Spill after each MIR write so
+        # every exit has the exact register state at its continuation PC.
+        # @rbs function: Function
+        # @rbs head: Integer
+        # @rbs latch: Integer
+        # @rbs return: String?
+        def compile_byte_loop: (Function function, Integer head, Integer latch) -> String?
+
+        private
+
+        # @rbs reg: Integer
+        # @rbs slot: Integer
+        # @rbs return: void
+        def load_loop_slot: (Integer reg, Integer slot) -> void
+
+        # @rbs pc: Integer
+        # @rbs return: void
+        def return_pc: (Integer pc) -> void
+
+        # @rbs branch_word: Integer
+        # @rbs pc: Integer
+        # @rbs return: void
+        def exit_unless: (Integer branch_word, Integer pc) -> void
+      end
+    end
+  end
+end
