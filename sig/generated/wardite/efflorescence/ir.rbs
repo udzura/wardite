@@ -399,6 +399,8 @@ module Wardite
 
       F64_GLOBAL_SET: ::Integer
 
+      BR_IF_I64_EQ: ::Integer
+
       I32_TABLE_STORE8: ::Integer
 
       I64_BYTE_LOOKUP: ::Integer

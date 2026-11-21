@@ -203,6 +203,12 @@ module Wardite
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
         def run: (Wardite::Efflorescence::Function function) -> void
+
+        private
+
+        # @rbs opcode: Integer
+        # @rbs return: Integer
+        def fused_branch: (Integer opcode) -> Integer
       end
 
       class Superinstructions

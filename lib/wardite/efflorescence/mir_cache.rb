@@ -13,7 +13,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 10
+      CODE_VERSION = 11
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -229,7 +229,7 @@ module Wardite
         EXTRA_OPERANDS = Opcode::NAMES.each_index.map do |opcode|
           case opcode
           when BR then :branch
-          when BR_IF, BR_IF_ZERO then :conditional
+          when BR_IF, BR_IF_ZERO, BR_IF_I64_EQ then :conditional
           when CALL then :call
           when CALL_HOST, CALL_INDIRECT then :dynamic_call
           when RETURN then :return

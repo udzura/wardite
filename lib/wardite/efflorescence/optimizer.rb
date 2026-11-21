@@ -568,7 +568,7 @@ module Wardite
           pc = 0
           while pc + 1 < instructions.size
             candidate = instructions.fetch(pc)
-            break if candidate[0] == Opcode::I32_EQZ && instructions.fetch(pc + 1)[0] == Opcode::BR_IF
+            break if instructions.fetch(pc + 1)[0] == Opcode::BR_IF && fused_branch(candidate[0]) >= 0
             pc += 1
           end
           return if pc + 1 >= instructions.size
@@ -580,11 +580,13 @@ module Wardite
             rewrite.mark(pc)
             instruction = function.instructions[pc]
             following = function.instructions[pc + 1]
-            if instruction[0] == Opcode::I32_EQZ && following && following[0] == Opcode::BR_IF &&
+            if following && following[0] == Opcode::BR_IF && fused_branch(instruction[0]) >= 0 &&
                 following[1] == instruction[1] && analysis.single_use?(instruction[1]) &&
                 instruction[1] >= function.parameter_count + function.local_count && analysis.leaders[pc + 1] == 0
               rewrite.mark(pc + 1)
-              rewrite.emit(Instruction.new([Opcode::BR_IF_ZERO, instruction[2], following[2]]))
+              words = [fused_branch(instruction[0]), instruction[2], following[2]]
+              words << instruction[3] unless instruction[0] == Opcode::I32_EQZ
+              rewrite.emit(Instruction.new(words))
               pc += 2
             else
               rewrite.emit(instruction.copy)
@@ -592,6 +594,18 @@ module Wardite
             end
           end
           rewrite.finish
+        end
+
+        private
+
+        # @rbs opcode: Integer
+        # @rbs return: Integer
+        def fused_branch(opcode)
+          case opcode
+          when Opcode::I32_EQZ then Opcode::BR_IF_ZERO
+          when Opcode::I64_EQ then Opcode::BR_IF_I64_EQ
+          else -1
+          end
         end
       end
 

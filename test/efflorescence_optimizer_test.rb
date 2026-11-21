@@ -189,6 +189,23 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     end
   end
 
+  test "fused i64 equality preserves both edges and signed bit patterns" do
+    wasm = compile_efflorescence_wat(<<~WAT)
+      (module
+        (func (export "eq") (param i64 i64) (result i32)
+          block local.get 0 local.get 1 i64.eq br_if 0 i32.const 0 return end i32.const 1))
+    WAT
+    Dir.mktmpdir do |dir|
+      [{disabled_optimizations: [:branch]}, {mir_profile: true}, {mir_cache: dir}, {mir_cache: dir}].each do |options|
+        vm = Wardite.new(buffer: StringIO.new(wasm), enable_wasi: false, **options).runtime
+        assert_equal 1, vm.call_unboxed(:eq, [-1, -1])
+        assert_equal 0, vm.call_unboxed(:eq, [-1, 0xffffffff])
+        ops = vm.ir.function_at(0).bytecode.each_slice(E::Lowerer::WIDTH).map(&:first)
+        assert_equal !options.key?(:disabled_optimizations), ops.include?(OP::BR_IF_I64_EQ)
+      end
+    end
+  end
+
   test "passes preserve input MIR and reduce dispatches and copies" do
     instance = load_efflorescence(File.read(MIX_WAT))
     vm = instance.runtime
