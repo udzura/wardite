@@ -81,6 +81,10 @@ Use `--mir-disable NAME` to compare
 individual features, `--mir-dump` to inspect MIR and `--mir-profile` for counters.
 See [Phase 2](docs/efflorescence-phase2.md) ([日本語](docs/efflorescence-phase2-ja.md)).
 
+Set `WARDITE_MIR_CSE=1` to try block-local common subexpression elimination
+for integer operations. Use `--mir-disable cse` to turn it off in the same
+environment. The experimental pass has its own MIR2 cache key.
+
 On CRuby and Spinel, the default is to validate the whole module at load time
 and prepare MIR on the first call to each function. For repeated runs, pass
 `--mir-cache DIR`: the first run prepares all functions and writes the cache,

@@ -4,7 +4,7 @@
 module Wardite
   module Efflorescence
     class Configuration
-      FEATURES = %i[copy immediate branch superinstruction inline compact frames].freeze
+      FEATURES = %i[copy immediate branch superinstruction inline compact cse frames].freeze
       attr_reader :disabled #: Array[Symbol]
 
       # @rbs disabled: Array[Symbol]
@@ -12,6 +12,7 @@ module Wardite
         unknown = disabled - FEATURES - [:all]
         raise Wardite::ArgumentError, "unknown MIR optimization: #{unknown.join(', ')}" unless unknown.empty?
         @disabled = disabled.include?(:all) ? FEATURES.dup : disabled.dup
+        @disabled << :cse unless ENV["WARDITE_MIR_CSE"] == "1" || @disabled.include?(:cse)
       end
 
       # @rbs feature: Symbol
@@ -539,6 +540,140 @@ module Wardite
         end
       end
 
+      class LocalCSE
+        include Opcode
+
+        # @rbs function: Function
+        # @rbs return: void
+        def run(function)
+          analysis = Analysis.new(function)
+          function.handlers.each do |handler|
+            handler.clauses.each { |clause| analysis.leaders[clause.target_pc] = 1 }
+          end
+          values = {} #: Hash[Integer, Integer]
+          expressions = {} #: Hash[String, Integer]
+          holders = {} #: Hash[Integer, Integer]
+          copies = [] #: Array[Integer]
+          function.instructions.each_with_index do |insn, pc|
+            if analysis.leaders[pc] == 1
+              values.clear
+              expressions.clear
+              holders.clear
+            end
+            dest = Opcode.destination(insn)
+            next if dest < 0
+            # Entry slots have distinct negative numbers. Each definition can
+            # introduce a new nonnegative number, including a trapping load.
+            number = pc
+            op = insn[0]
+            if op == COPY
+              number = values.fetch(insn[2], -1 - insn[2])
+            elsif candidate?(op)
+              key = expression(insn, values)
+              previous = expressions.fetch(key, -1)
+              if previous >= 0
+                source = holders.fetch(previous)
+                unless values.fetch(source) == previous
+                  # A COPY may still hold the value after its producer changed.
+                  source = values.key(previous) || -1
+                end
+                if source >= 0
+                  number = previous
+                  Opcode.read_positions(insn).each { |pos| analysis.reads[insn[pos]] -= 1 }
+                  analysis.reads[source] += 1
+                  function.instructions[pc] = Instruction.new([COPY, dest, source])
+                  copies << pc
+                end
+              end
+              expressions[key] = number
+            end
+            values[dest] = number
+            holders[number] = dest
+          end
+          forward_copies(function, copies, analysis) unless copies.empty?
+        end
+
+        private
+
+        # The opcode encodes both operand and result types. No store reads,
+        # floating-point operations or trapping integer operations qualify.
+        # @rbs op: Integer
+        # @rbs return: bool
+        def candidate?(op)
+          op.between?(I32_ADD, I32_EQZ) || op.between?(I32_ADD_IMM, I32_SHR_U_IMM) ||
+            op.between?(I32_EQ, I32_POPCNT) || op.between?(I32_AND, I32_EXTEND16_S) ||
+            op.between?(I64_EQZ, I64_MUL)
+        end
+
+        # @rbs insn: Instruction
+        # @rbs values: Hash[Integer, Integer]
+        # @rbs return: String
+        def expression(insn, values)
+          op = insn[0]
+          left = values.fetch(insn[2], -1 - insn[2])
+          right = 0
+          if insn.size > 3
+            right = insn[3]
+            unless op.between?(I32_ADD_IMM, I32_SHR_U_IMM)
+              right = values.fetch(right, -1 - right)
+              case op
+              when I32_ADD, I32_MUL, I32_AND, I32_OR, I32_XOR, I32_EQ, I32_NE,
+                   I64_ADD, I64_MUL, I64_AND, I64_OR, I64_XOR, I64_EQ, I64_NE
+                left, right = right, left if left > right
+              end
+            end
+          end
+          "#{op}:#{left}:#{right}"
+        end
+
+        # Only forward copies introduced by CSE. Count all reads, including
+        # side tables, before deleting a copy. Each alias expires on a write
+        # to either slot or on entry to the next basic block.
+        # @rbs function: Function
+        # @rbs copies: Array[Integer]
+        # @rbs analysis: Analysis
+        # @rbs return: void
+        def forward_copies(function, copies, analysis)
+          reads = analysis.reads
+          aliases = {} #: Hash[Integer, Integer]
+          written = Array.new(function.register_count, -1)
+          next_copy = 0
+          function.instructions.each_with_index do |insn, pc|
+            aliases.clear if analysis.leaders[pc] == 1
+            unless aliases.empty?
+              Opcode.read_positions(insn).each do |pos|
+                slot = insn[pos]
+                source = aliases.fetch(slot, -1)
+                if source >= 0 && written[source] < written[slot]
+                  insn[pos] = source
+                  reads[slot] -= 1
+                  reads[source] += 1
+                end
+              end
+            end
+            dest = Opcode.destination(insn)
+            next if dest < 0
+            written[dest] = pc
+            aliases.delete(dest)
+            if next_copy < copies.size && pc == copies.fetch(next_copy)
+              aliases[dest] = insn[2]
+              next_copy += 1
+            end
+          end
+          rewrite = Rewrite.new(function)
+          next_copy = 0
+          function.instructions.each_with_index do |insn, pc|
+            rewrite.mark(pc)
+            if next_copy < copies.size && pc == copies.fetch(next_copy)
+              next_copy += 1
+              next if reads[insn[1]] == 0 || insn[1] == insn[2]
+            end
+            rewrite.emit(insn)
+          end
+          rewrite.finish
+        end
+      end
+
       class ImmediateSpecialization
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
@@ -728,21 +863,20 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       def optimize_function(function)
-        unless OptimizationScope.caller?(function)
-          # The adjacent producer/COPY pass is linear and does not propagate
-          # aliases across blocks. Keep the other passes under their size cap.
-          if @configuration.enabled?(:copy) && !function.uses_eh &&
-              function.instructions.size > OptimizationScope::MAX_LOOP_FUNCTION &&
+        scoped = OptimizationScope.caller?(function)
+        if @configuration.enabled?(:copy)
+          if scoped
+            mixed = function.uses_i64 || function.uses_float || function.uses_store || function.uses_dynamic_calls
+            Passes::CopyPropagation.new.run(function, coalesce_only: mixed && function.instructions.size > OptimizationScope::SMALL_FUNCTION)
+          elsif !function.uses_eh && function.instructions.size > OptimizationScope::MAX_LOOP_FUNCTION &&
               OptimizationScope.call_free_loop?(function.instructions, OptimizationScope::LONG_LOOP)
             Passes::CopyPropagation.new.run(function, coalesce_only: true)
           end
-          return
         end
-        if @configuration.enabled?(:copy)
-          mixed = function.uses_i64 || function.uses_float || function.uses_store || function.uses_dynamic_calls
-          Passes::CopyPropagation.new.run(function, coalesce_only: mixed && function.instructions.size > OptimizationScope::SMALL_FUNCTION)
-        end
-        Passes::ImmediateSpecialization.new.run(function) if @configuration.enabled?(:immediate)
+        Passes::ImmediateSpecialization.new.run(function) if scoped && @configuration.enabled?(:immediate)
+        Passes::LocalCSE.new.run(function) if @configuration.enabled?(:cse)
+        return unless scoped
+
         Passes::BranchFusion.new.run(function) if @configuration.enabled?(:branch)
         Passes::Superinstructions.new.run(function) if @configuration.enabled?(:superinstruction)
       end
