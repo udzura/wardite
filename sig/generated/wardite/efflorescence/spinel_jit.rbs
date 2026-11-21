@@ -1,0 +1,25 @@
+# Generated from lib/wardite/efflorescence/spinel_jit.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class SpinelJIT
+      module Native
+        def self.ffi_source: (String) -> void
+
+        def self.ffi_func: (Symbol, Array[Symbol], Symbol) -> void
+
+        def self.wardite_jit_supported: () -> Integer
+
+        def self.wardite_jit_run: (String, Integer, Integer, Integer) -> Integer
+      end
+
+      def initialize: () -> untyped
+
+      # nil is cached for unsupported functions, just like a successful entry.
+      # @rbs function: Function
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Integer?
+      def call: (Function function, Array[Integer] arguments) -> Integer?
+    end
+  end
+end

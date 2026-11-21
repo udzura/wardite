@@ -16,6 +16,7 @@ module Wardite
       # @rbs @semantic_ir: Wardite::Efflorescence::IR?
       # @rbs @optimized_ir: Wardite::Efflorescence::IR?
       # @rbs @global_bits: Array[Integer]
+      # @rbs @jit: SpinelJIT?
 
       # @rbs instance: Wardite::Instance
       # @rbs disabled_optimizations: Array[Symbol]
@@ -41,6 +42,9 @@ module Wardite
         @configuration = Configuration.new(disabled_optimizations)
         @reuse_frames = @configuration.enabled?(:frames)
         @profiling = profile
+        @jit = if RUBY_ENGINE == "spinel" && ENV["WARDITE_MIR_JIT"] == "1" && !profile && SpinelJIT::Native.wardite_jit_supported != 0
+          SpinelJIT.new
+        end
         @metrics = Metrics.new
         @semantic_ir = @optimized_ir = nil
         @mir_cache = mir_cache
@@ -508,6 +512,14 @@ module Wardite
           end
         end
 
+        jit = @jit
+        if jit
+          function = @ir.defined_at(entry.defined_index)
+          preparer = @preparer
+          preparer.prepare(function) if preparer && (function.bytecode.empty? || function.cache_pending)
+          result = jit.call(function, arguments)
+          return result unless result.nil?
+        end
         pools = new_pools
         frame = pool_at(pools, entry.defined_index).acquire(-1)
         arguments.each_with_index { |value, i| frame.registers[i] = value }

@@ -183,6 +183,43 @@ required `IO::Buffer` changes and reduces GC root lookups in threaded builds.
 See the [build instructions and host memory API](docs/efflorescence-spinel-linear-memory.md).
 Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
 
+#### Experimental function JIT on macOS arm64
+
+Set `WARDITE_MIR_JIT=1` before starting Wardite to try the AArch64 backend.
+This example runs the same integer loop with or without the JIT:
+
+```sh
+wat2wasm benchmark/i32_mix.wat -o build/i32_mix.wasm
+build/wardite --no-wasi --invoke inline_mix build/i32_mix.wasm 1000000 123
+WARDITE_MIR_JIT=1 WARDITE_TRACE=1 build/wardite --no-wasi --invoke inline_mix build/i32_mix.wasm 1000000 123
+```
+
+On the first public call to a function, Wardite prepares its usual MIR.
+The [Ruby emitter](lib/wardite/efflorescence/spinel_jit/aarch64.rb) translates
+the whole function and resolves branches once it knows each instruction's
+native offset. It accepts the optimized operations used by `inline_mix`,
+two i32 arguments, and one i32 result. Unsupported functions, calls from
+inside interpreted Wasm, and MIR profiling use the interpreter.
+
+The [Spinel adapter](lib/wardite/efflorescence/spinel_jit.rb) caches the machine
+code bytes per VM and function. For each call it copies them into writable
+pages, switches the pages to read/execute, calls the function, and releases
+the mapping on return. This keeps executable memory scoped to one call and
+adds a mapping cost per invocation. A mapping failure falls back to MIR.
+
+On an Apple Silicon Mac, run the full regression suite with:
+
+```sh
+bin/test-spinel-jit
+```
+
+Use native arm64 Ruby with the bundle installed, Spinel, `wasm-tools`, and
+the Xcode Command Line Tools. The script builds the CLI, checks that
+`inline_mix` runs as native code and that unsupported MIR falls back, then
+runs `rake test` with `WARDITE_MIR_JIT=1` and the native binary available to
+all Spinel E2E tests. Incremental build objects are reused across runs under
+`build/spinel-jit-test/objects` by default.
+
 #### Build release executables on macOS
 
 With Zig 0.17.1, Ruby, and the Xcode Command Line Tools installed, run:

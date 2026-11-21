@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+
+# Use the same Ruby that runs the tests, including when invoked under Rosetta.
+bundle exec ruby -e 'abort "Run this suite with native arm64 Ruby on macOS." unless RUBY_PLATFORM.match?(/arm64-darwin/)'
+
+build_dir=${BUILD_DIR:-build/spinel-jit-test}
+mkdir -p "$build_dir"
+build_dir=$(cd "$build_dir" && pwd)
+export SPINEL="${SPINEL:-$PWD/.github/scripts/spinel-incremental}"
+export SPINEL_CACHE_DIR="${SPINEL_CACHE_DIR:-$build_dir/objects}"
+export WARDITE_SPINEL_BIN="$build_dir/wardite"
+export WARDITE_MIR_JIT=1
+# Individual tests opt into tracing. Always run the full suite, even if a
+# filter from an earlier rake test is still set in the shell.
+unset WARDITE_TRACE TEST TESTOPTS
+
+make spinel BUILD_DIR="$build_dir"
+
+# A successful result alone could come from the interpreter. This test checks
+# the trace and checksum before spending time on the full regression suite.
+echo "Checking native JIT execution and interpreter fallback"
+bundle exec ruby -Ilib:test test/e2e/spinel_jit_test.rb
+
+echo "Running all Wardite tests with the Spinel JIT enabled"
+exec bundle exec rake test
