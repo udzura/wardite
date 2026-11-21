@@ -245,8 +245,10 @@ class EfflorescenceTest < Test::Unit::TestCase
         err.lines.grep(/^opcode I32_AND /).first.to_s.strip
       end
       assert_equal "opcode I32_AND 2", profile.call
-      assert_equal "opcode I32_AND 1", profile.call("--mir-cse")
-      assert_equal "opcode I32_AND 2", profile.call("--mir-disable", "cse", "--mir-cse")
+      assert_equal "opcode I32_AND 1", profile.call("--mir-enable", "cse")
+      assert_equal "opcode I32_AND 1", profile.call("--mir-enable", "copy", "--mir-enable", "all")
+      assert_equal "opcode I32_AND 2", profile.call("--mir-enable", "all", "--mir-disable", "cse")
+      assert_equal "opcode I32_AND 2", profile.call("--mir-disable", "cse", "--mir-enable", "cse")
     end
   end
 

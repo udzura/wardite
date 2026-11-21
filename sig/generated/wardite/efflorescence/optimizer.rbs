@@ -8,8 +8,9 @@ module Wardite
       attr_reader disabled: Array[Symbol]
 
       # @rbs disabled: Array[Symbol]
+      # @rbs enabled: Array[Symbol]
       # @rbs cse: bool
-      def initialize: (Array[Symbol] disabled, ?cse: bool) -> untyped
+      def initialize: (Array[Symbol] disabled, ?enabled: Array[Symbol], ?cse: bool) -> untyped
 
       # @rbs feature: Symbol
       # @rbs return: bool

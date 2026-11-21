@@ -36,12 +36,13 @@ module Wardite
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs engine: Symbol
     # @rbs mir_cse: bool
+    # @rbs enabled_optimizations: Array[Symbol]
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
     # @rbs eager_mir: bool
     # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
-    def initialize(import_object, engine: :efflorescence, disabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, eager_mir: false, &blk)
+    def initialize(import_object, engine: :efflorescence, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, eager_mir: false, &blk)
       raise LoadError, "unknown engine: #{engine}" unless engine == :efflorescence
       @wasi = nil
 
@@ -86,7 +87,8 @@ module Wardite
       code = code_section
       source_code = code.source_bytes if code && !cached_functions
       code.source_bytes = nil if code
-      @runtime = Efflorescence::VM.new(self, source_code: source_code, disabled_optimizations: disabled_optimizations, mir_cse: mir_cse, profile: mir_profile,
+      @runtime = Efflorescence::VM.new(self, source_code: source_code, disabled_optimizations: disabled_optimizations,
+        enabled_optimizations: enabled_optimizations, mir_cse: mir_cse, profile: mir_profile,
         mir_cache: mir_cache, cached_functions: cached_functions, cache_checked: true, eager_mir: eager_mir)
     end
 
