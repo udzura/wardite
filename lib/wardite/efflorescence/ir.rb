@@ -720,6 +720,53 @@ module Wardite
         @operands.size
       end
 
+      # Fixed register operands shared with MIR2 bytecode validation. Calls
+      # and returns also have signature-dependent operands at position one.
+      FIXED_REGISTER_MASKS = Opcode::NAMES.each_index.map do |opcode|
+        next 0 if opcode == Opcode::CALL || opcode == Opcode::RETURN
+
+        instruction = Instruction.new([opcode, 0, 0, 0])
+        positions = Opcode.read_positions(instruction)
+        positions << 1 if Opcode.destination(instruction) >= 0 && !Opcode.dynamic_call?(opcode)
+        positions.reduce(0) { |mask, position| mask | (1 << (position - 1)) }
+      end.freeze #: Array[Integer]
+
+      # @rbs mapping: Array[Integer]
+      # @rbs rename: bool
+      # @rbs return: void
+      def visit_registers!(mapping, rename)
+        opcode = self[0]
+        mask = FIXED_REGISTER_MASKS.fetch(opcode)
+        if opcode == Opcode::CALL || opcode == Opcode::RETURN || Opcode.dynamic_call?(opcode)
+          mask |= 1 if self[1] >= 0
+        end
+        visit_register!(1, mapping, rename) if (mask & 1) != 0
+        visit_register!(2, mapping, rename) if (mask & 2) != 0
+        visit_register!(3, mapping, rename) if (mask & 4) != 0
+        if opcode == Opcode::CALL
+          i = 3
+          while i < size
+            visit_register!(i, mapping, rename)
+            i += 1
+          end
+        end
+      end
+
+      # @rbs position: Integer
+      # @rbs mapping: Array[Integer]
+      # @rbs rename: bool
+      # @rbs return: void
+      def visit_register!(position, mapping, rename)
+        slot = self[position]
+        if rename
+          @operands[position] = mapping.fetch(slot)
+        else
+          raise TranslationError, "invalid MIR register r#{slot}" unless slot >= 0 && slot < mapping.size
+          mapping[slot] = 0
+        end
+      end
+      private :visit_register!
+
       # @rbs return: Wardite::Efflorescence::Instruction
       def copy
         Instruction.new(@operands.dup)
@@ -731,15 +778,6 @@ module Wardite
     # This is deliberately separate from translation and execution so later
     # function-level optimization passes can consume and produce MIR.
     class Function
-      # Fixed register positions for slot renaming. Direct calls additionally
-      # carry a variable-length argument list starting at operand three.
-      REGISTER_POSITIONS = Opcode::NAMES.each_index.map do |opcode|
-        instruction = Instruction.new([opcode, 0, 0])
-        positions = Opcode.read_positions(instruction)
-        positions << 1 if Opcode.destination(instruction) >= 0
-        positions.freeze
-      end.freeze #: Array[Array[Integer]]
-
       attr_reader :index #: Integer
       attr_reader :pool_index #: Integer
       attr_reader :parameter_types #: Array[Symbol]
@@ -916,17 +954,11 @@ module Wardite
         return if count == fixed
 
         mapping = Array.new(count, -1)
-        each_register_operand do |operands, position|
-          slot = operands.fetch(position)
+        @instructions.each { |insn| insn.visit_registers!(mapping, false) }
+        map_side_registers! do |slot|
           raise TranslationError, "invalid MIR register r#{slot}" unless slot >= 0 && slot < count
           mapping[slot] = 0
-        end
-        @handlers.each do |handler|
-          handler.clauses.each do |clause|
-            slot = clause.reference_register
-            raise TranslationError, "invalid MIR catch register r#{slot}" if slot >= count
-            mapping[slot] = 0 if slot >= 0
-          end
+          slot
         end
         next_slot = 0
         count.times do |slot|
@@ -953,44 +985,25 @@ module Wardite
       # @rbs mapping: Array[Integer]
       # @rbs return: void
       def replace_register_references!(mapping)
-        each_register_operand do |operands, position|
-          operands[position] = mapping.fetch(operands.fetch(position))
-        end
-        @handlers.each do |handler|
-          handler.clauses.each do |clause|
-            slot = clause.reference_register
-            clause.replace_reference_register(mapping.fetch(slot)) if slot >= 0
-          end
-        end
+        @instructions.each { |insn| insn.visit_registers!(mapping, true) }
+        map_side_registers! { |slot| mapping.fetch(slot) }
       end
 
-      # @rbs () { (Array[Integer], Integer) -> void } -> void
-      def each_register_operand
-        @instructions.each do |instruction|
-          operands = instruction.operands
-          opcode = instruction[0]
-          REGISTER_POSITIONS.fetch(opcode).each do |position|
-            # Void calls and returns encode the absent register as -1.
-            yield operands, position if instruction[position] >= 0
-          end
-          if opcode == Opcode::CALL
-            position = 3
-            while position < operands.size
-              yield operands, position
-              position += 1
+      # @rbs () { (Integer) -> Integer } -> void
+      def map_side_registers!
+        @throw_sites.each { |site| site.payload_registers.map! { |slot| yield(slot) } }
+        @memory_sites.each { |site| site.sources.map! { |slot| yield(slot) } }
+        @dynamic_sites.each { |site| site.arguments.map! { |slot| yield(slot) } }
+        @handlers.each do |handler|
+          handler.clauses.each do |clause|
+            clause.payload_registers.map! { |slot| yield(slot) }
+            if clause.reference_register >= 0
+              clause.replace_reference_register(yield(clause.reference_register))
             end
           end
         end
-        @throw_sites.each { |site| site.payload_registers.each_index { |i| yield site.payload_registers, i } }
-        @memory_sites.each { |site| site.sources.each_index { |i| yield site.sources, i } }
-        @dynamic_sites.each { |site| site.arguments.each_index { |i| yield site.arguments, i } }
-        @handlers.each do |handler|
-          handler.clauses.each do |clause|
-            clause.payload_registers.each_index { |i| yield clause.payload_registers, i }
-          end
-        end
       end
-      private :each_register_operand
+      private :map_side_registers!
 
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Integer

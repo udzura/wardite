@@ -605,6 +605,21 @@ module Wardite
       # @rbs return: Integer
       def size: () -> Integer
 
+      # Fixed register operands shared with MIR2 bytecode validation. Calls
+      # and returns also have signature-dependent operands at position one.
+      FIXED_REGISTER_MASKS: Array[Integer]
+
+      # @rbs mapping: Array[Integer]
+      # @rbs rename: bool
+      # @rbs return: void
+      def visit_registers!: (Array[Integer] mapping, bool rename) -> void
+
+      # @rbs position: Integer
+      # @rbs mapping: Array[Integer]
+      # @rbs rename: bool
+      # @rbs return: void
+      def visit_register!: (Integer position, Array[Integer] mapping, bool rename) -> void
+
       # @rbs return: Wardite::Efflorescence::Instruction
       def copy: () -> Wardite::Efflorescence::Instruction
     end
@@ -614,10 +629,6 @@ module Wardite
     # This is deliberately separate from translation and execution so later
     # function-level optimization passes can consume and produce MIR.
     class Function
-      # Fixed register positions for slot renaming. Direct calls additionally
-      # carry a variable-length argument list starting at operand three.
-      REGISTER_POSITIONS: Array[Array[Integer]]
-
       attr_reader index: Integer
 
       attr_reader pool_index: Integer
@@ -742,8 +753,8 @@ module Wardite
       # @rbs return: void
       def replace_register_references!: (Array[Integer] mapping) -> void
 
-      # @rbs () { (Array[Integer], Integer) -> void } -> void
-      def each_register_operand: () { (Array[Integer], Integer) -> void } -> void
+      # @rbs () { (Integer) -> Integer } -> void
+      def map_side_registers!: () { (Integer) -> Integer } -> void
 
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Integer
