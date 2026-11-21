@@ -1,8 +1,9 @@
 # Wardite i32 benchmark
 
-Run `ruby benchmark/compare.rb` to compare the **new Efflorescence VM on Spinel,
-Wasmtime and iwasm** on the same workload. Old-VM and CRuby/YJIT runners can be
-enabled in the script. See [Run](#run) for the complete
+Run `ruby benchmark/compare.rb` to compare **Wardite on Spinel, Wasmtime and
+iwasm** on the same workload. On Apple Silicon macOS the script also measures
+Wardite with its MIR JIT enabled. CRuby/YJIT runners can be enabled in the script.
+See [Run](#run) for the complete
 matrix and options. The scripts below provide additional optimization-specific
 comparisons.
 
@@ -371,20 +372,34 @@ Run from the repository root:
 ruby benchmark/compare.rb
 # Adjust work size and seed:
 ruby benchmark/compare.rb 200000 42
+# Reuse an existing build/wardite for 50 million rounds:
+ruby benchmark/compare.rb --skip-build 50000000
+# Use the installed wardite from PATH:
+ruby benchmark/compare.rb --wardite wardite 50000000
 # Adjust sample counts (default: 5 samples after 2 warmups):
 RUNS=3 WARMUPS=1 ruby benchmark/compare.rb 100000 123
 ```
 
-The script compiles the WAT and the Spinel CLI, computes an independent Ruby
-reference, and checks all enabled command results before timing. The current
-selection is Efflorescence / Spinel, iwasm, Wasmtime (Pulley) and Wasmtime: **8 commands**
-across both exports. Uncomment the CRuby/YJIT runner definitions in
-`compare.rb` to enable the full six-configuration, **12-command** matrix below.
+By default, the script compiles the WAT and the Spinel CLI. With `--skip-build`
+it compiles the WAT and reuses the existing `build/wardite` executable. After
+editing Wardite, omit the flag to benchmark the updated code.
+`--wardite COMMAND` also skips the build. It accepts an executable name from
+`PATH` or a path relative to the current directory or absolute. If an installed
+release returns the expected checksum but emits no MIR JIT trace, the script
+skips its JIT timing and reports the other measurements.
+The script computes an independent Ruby
+reference, and checks all enabled command results before timing. On Apple Silicon
+macOS it measures **10 commands** across both exports. The two Spinel runners
+use the same binary with `WARDITE_MIR_JIT=0` and `WARDITE_MIR_JIT=1`.
+The untimed JIT check verifies that each export compiled and ran without falling
+back to the interpreter. Tracing is disabled during timing. Other platforms run
+the original **8 commands**. Uncomment the CRuby/YJIT runner definitions in
+`compare.rb` to add four commands.
 YJIT support is required only when its runner is enabled.
 
 | Engine | Execution configurations |
 | --- | --- |
-| New VM (`Wardite::Efflorescence::VM`) | CRuby (YJIT disabled), CRuby + YJIT, Spinel; default engine and optimizations |
+| Wardite (`Wardite::Efflorescence::VM`) | Spinel with MIR JIT off, Spinel with MIR JIT on (Apple Silicon macOS), optional CRuby with and without YJIT |
 | iwasm / WAMR | Explicit interpreter mode (`--interp`) |
 | Wasmtime (Pulley) | `--target pulley64 -C cache=n` |
 | Wasmtime | Native compilation, `-C cache=n` |
@@ -410,8 +425,8 @@ ruby -Ilib exe/wardite --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.
 ruby -Ilib exe/wardite --new-engine --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
 ruby --yjit -Ilib exe/wardite --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
 ruby --yjit -Ilib exe/wardite --new-engine --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
-./build/wardite --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
-./build/wardite --new-engine --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
+WARDITE_MIR_JIT=0 ./build/wardite --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
+WARDITE_MIR_JIT=1 ./build/wardite --no-wasi --invoke inline_mix -- build/benchmark/i32_mix.wasm 100000 123456789
 iwasm --interp -f inline_mix build/benchmark/i32_mix.wasm 100000 123456789
 wasmtime run --target pulley64 -C cache=n --invoke inline_mix build/benchmark/i32_mix.wasm 100000 123456789
 wasmtime run -C cache=n --invoke inline_mix build/benchmark/i32_mix.wasm 100000 123456789
@@ -423,7 +438,8 @@ These are **whole CLI process wall times**: Ruby/native startup, module loading,
 execution, and printing the checksum. Wasmtime also compiles the Wasm module
 in each timed process; its compiled-module cache is explicitly disabled. They measure the cost of running this
 program through each runtime's CLI, rather than execution-loop throughput alone.
-Hyperfine warmups start separate processes; YJIT compiles anew in each process.
+Hyperfine warmups start separate processes. Wardite's MIR JIT compilation
+cost is included in every timed JIT process.
 Increase rounds to reduce the share spent on startup/loading, and keep the same
 rounds and seed across comparisons. Zero rounds return the seed without mixing
 and can be used to inspect startup/loading overhead.
@@ -435,8 +451,8 @@ same call overhead that an interpreter does. This workload covers i32
 execution and calls; it does not measure memory instructions, floating point,
 WASI, or arbitrary real-world programs.
 
-Zero/one rounds and high-bit seeds can be checked with the same script; each
-checksum is validated across both Wardite VMs, iwasm and both Wasmtime modes.
+Zero/one rounds and high-bit seeds can be checked with the same script. Each
+checksum is validated across all enabled Wardite, iwasm and Wasmtime configurations.
 
 ### Full engine comparison (2026-11-04)
 
