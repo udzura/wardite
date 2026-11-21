@@ -544,9 +544,9 @@ module Wardite
         versions = [FORMAT_VERSION, CODE_VERSION].pack("L<2")
         # Keep prior MIR2 and snapshot identities for equivalent pass sets.
         # Newly introduced passes contribute a version only when active.
-        disabled = (configuration.disabled - %i[cse fold cfg]).uniq.sort.join(",")
+        disabled = (configuration.disabled - %i[cse fold cfg dce exit_copy]).uniq.sort.join(",")
         disabled += "+cse1" if configuration.enabled?(:cse)
-        %i[fold cfg].each { |pass| disabled += "+#{pass}1" if configuration.enabled?(pass) }
+        %i[fold cfg dce exit_copy].each { |pass| disabled += "+#{pass}1" if configuration.enabled?(pass) }
         key_data = versions + Digest::SHA256.digest(wasm) + disabled
         key_data = "spinel\0".b + key_data if RUBY_ENGINE == "spinel"
         key = Digest::SHA256.digest(key_data)

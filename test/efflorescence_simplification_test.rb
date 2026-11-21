@@ -33,4 +33,13 @@ class EfflorescenceSimplificationTest < Test::Unit::TestCase
     assert_equal [[BR, 2], [RETURN, 0], [BR, 2]], fn.instructions.map(&:operands)
     assert_equal 1, clause.target_pc
   end
+
+  test "dead definitions cascade across a backward edge but side-table uses remain" do
+    fn = body([[BR, 4], [I32_MUL, 2, 1, 0], [MEMORY_FILL, 0], [RETURN, 0],
+      [I32_ADD, 1, 0, 0], [I32_SUB, 3, 0, 0], [BR, 1]])
+    fn.memory_sites << E::MemorySite.new([0, 3, 0])
+    E::Passes::DeadCode.new.run(fn)
+    assert_equal [[BR, 3], [MEMORY_FILL, 0], [RETURN, 0], [I32_SUB, 3, 0, 0], [BR, 1]],
+      fn.instructions.map(&:operands)
+  end
 end

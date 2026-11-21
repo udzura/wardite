@@ -180,6 +180,108 @@ module Wardite
           rewrite.finish
         end
       end
+
+      class DeadCode
+        # A pure definition can disappear when its slot has no remaining
+        # readers anywhere. Revisit earlier definitions exposed by deletion.
+        # @rbs function: Function
+        # @rbs return: void
+        def run(function)
+          reads = Array.new(function.register_count, 0)
+          code = function.instructions
+          definitions = Array.new(function.register_count, -1)
+          previous = Array.new(code.size, -1)
+          code.each_with_index do |insn, pc|
+            function.read_count(insn).times { |i| reads[function.read_at(insn, i)] += 1 }
+            next unless insn[0] == Opcode::COPY || Opcode.pure_integer?(insn[0])
+            slot = insn[1]
+            previous[pc] = definitions[slot]
+            definitions[slot] = pc
+          end
+          pending = [] #: Array[Integer]
+          definitions.each_with_index { |pc, slot| pending << slot if pc >= 0 && reads[slot] == 0 }
+          return if pending.empty?
+          removed = Array.new(code.size, false)
+          until pending.empty?
+            slot = pending.pop || raise(TranslationError, "missing dead slot")
+            pc = definitions.fetch(slot)
+            while pc >= 0
+              removed[pc] = true
+              insn = code.fetch(pc)
+              Opcode.read_positions(insn).each do |pos|
+                source = insn[pos]
+                reads[source] -= 1
+                pending << source if reads[source] == 0 && definitions[source] >= 0
+              end
+              pc = previous.fetch(pc)
+            end
+          end
+          rewrite = Rewrite.new(function)
+          code.each_with_index do |insn, pc|
+            rewrite.mark(pc)
+            rewrite.emit(insn) unless removed[pc]
+          end
+          rewrite.finish
+        end
+      end
+
+      class ExitCopies
+        # A conditional exit often carries a constant error index. If the
+        # fallthrough immediately overwrites the slot, only the taken edge
+        # needs the assignment. Materialize it there, past the hot loop.
+        # @rbs function: Function
+        # @rbs return: void
+        def run(function)
+          # The measured case is a chain of fused i64 sentinel checks.
+          return unless function.uses_store && function.uses_i64 && !function.uses_eh && function.handlers.empty?
+          code = function.instructions
+          targets = nil #: Array[bool]?
+          moves = {} #: Hash[Integer, Integer]
+          exits = {} #: Hash[Integer, Integer]
+          code.each_with_index do |replacement, next_pc|
+            next unless next_pc > 1 && replacement[0] == Opcode::COPY && replacement[1] != replacement[2]
+            pc = next_pc - 1
+            branch = code.fetch(pc)
+            next unless branch[0] == Opcode::BR_IF_I64_EQ && branch[2] > next_pc
+            load = code.fetch(pc - 1)
+            next unless load[0] == Opcode::I64_LOAD8_U && (load[1] == branch[1] || load[1] == branch[3])
+            slot = replacement[1]
+            entries = targets ||= ByteSequences.entry_points(function)
+            cursor = pc
+            loop do
+              insn = code.fetch(cursor)
+              break if function.reads(insn).include?(slot)
+              if Opcode.destination(insn) == slot
+                if insn[0] == Opcode::COPY && function.constant_registers.include?(insn[2])
+                  moves[cursor] = pc
+                  exits[branch[2]] = exits.fetch(branch[2], 0) + 1
+                end
+                break
+              end
+              break if cursor == 0 || entries[cursor]
+              cursor -= 1
+              prev = code.fetch(cursor)
+              break if Opcode.target_position(prev) >= 0 || Opcode.terminal?(prev[0])
+            end
+          end
+          # A shared slow path amortizes its extra jump over several checks.
+          moves.delete_if { |_, pc| exits.fetch(code.fetch(pc)[2]) < 2 }
+          return if moves.empty?
+          rewrite = Rewrite.new(function)
+          code.each_with_index do |insn, pc|
+            rewrite.mark(pc)
+            rewrite.emit(insn) unless moves.key?(pc)
+          end
+          rewrite.finish
+          output = function.instructions
+          moves.each do |source, branch_pc|
+            branch = code.fetch(branch_pc)
+            target = branch[2]
+            branch[2] = output.size
+            output << code.fetch(source) << Instruction.new([Opcode::BR, target])
+          end
+        end
+      end
     end
   end
 end

@@ -26,6 +26,23 @@ module Wardite
         # @rbs return: void
         def run: (Function function) -> void
       end
+
+      class DeadCode
+        # A pure definition can disappear when its slot has no remaining
+        # readers anywhere. Revisit earlier definitions exposed by deletion.
+        # @rbs function: Function
+        # @rbs return: void
+        def run: (Function function) -> void
+      end
+
+      class ExitCopies
+        # A conditional exit often carries a constant error index. If the
+        # fallthrough immediately overwrites the slot, only the taken edge
+        # needs the assignment. Materialize it there, past the hot loop.
+        # @rbs function: Function
+        # @rbs return: void
+        def run: (Function function) -> void
+      end
     end
   end
 end
