@@ -484,6 +484,14 @@ module Wardite
       private_class_method :fixed_read_positions
       private_constant :READ_POSITIONS
 
+      # @rbs op: Integer
+      # @rbs return: bool
+      def self.pure_integer?(op)
+        op.between?(I32_ADD, I32_EQZ) || op.between?(I32_ADD_IMM, I32_SHR_U_IMM) ||
+          op.between?(I32_EQ, I32_POPCNT) || op.between?(I32_AND, I32_EXTEND16_S) ||
+          op.between?(I64_EQZ, I64_MUL)
+      end
+
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Array[Integer]
       def self.read_positions(instruction)

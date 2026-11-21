@@ -204,12 +204,6 @@ module Wardite
 
         private
 
-        # The opcode encodes both operand and result types. No store reads,
-        # floating-point operations or trapping integer operations qualify.
-        # @rbs op: Integer
-        # @rbs return: bool
-        def candidate?: (Integer op) -> bool
-
         # @rbs insn: Instruction
         # @rbs values: Hash[Integer, Integer]
         # @rbs return: String
@@ -274,7 +268,7 @@ module Wardite
 
       # @rbs function: Function
       # @rbs return: void
-      def compact_registers: (Function function) -> void
+      def finish_function: (Function function) -> void
 
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void

@@ -4,7 +4,7 @@
 module Wardite
   module Efflorescence
     class Configuration
-      FEATURES = %i[copy immediate branch superinstruction inline compact cse frames].freeze
+      FEATURES = %i[copy immediate branch superinstruction inline compact cse frames fold].freeze
       attr_reader :disabled #: Array[Symbol]
 
       # @rbs disabled: Array[Symbol]
@@ -16,6 +16,7 @@ module Wardite
         @disabled = disabled.include?(:all) ? FEATURES.dup : disabled.dup
         cse_enabled = cse || ENV["WARDITE_MIR_CSE"] == "1" || enabled.include?(:cse) || enabled.include?(:all)
         @disabled << :cse unless cse_enabled || @disabled.include?(:cse)
+        @disabled.concat(%i[fold] - enabled - @disabled) unless enabled.include?(:all)
       end
 
       # @rbs feature: Symbol
@@ -571,7 +572,7 @@ module Wardite
             op = insn[0]
             if op == COPY
               number = values.fetch(insn[2], -1 - insn[2])
-            elsif candidate?(op)
+            elsif Opcode.pure_integer?(op)
               key = expression(insn, values)
               previous = expressions.fetch(key, -1)
               if previous >= 0
@@ -597,16 +598,6 @@ module Wardite
         end
 
         private
-
-        # The opcode encodes both operand and result types. No store reads,
-        # floating-point operations or trapping integer operations qualify.
-        # @rbs op: Integer
-        # @rbs return: bool
-        def candidate?(op)
-          op.between?(I32_ADD, I32_EQZ) || op.between?(I32_ADD_IMM, I32_SHR_U_IMM) ||
-            op.between?(I32_EQ, I32_POPCNT) || op.between?(I32_AND, I32_EXTEND16_S) ||
-            op.between?(I64_EQZ, I64_MUL)
-        end
 
         # @rbs insn: Instruction
         # @rbs values: Hash[Integer, Integer]
@@ -847,13 +838,14 @@ module Wardite
             optimize_function(output.function_at(index))
           end
         end
-        output.functions.each { |function| compact_registers(function) }
+        output.functions.each { |function| finish_function(function) }
         output
       end
 
       # @rbs function: Function
       # @rbs return: void
-      def compact_registers(function)
+      def finish_function(function)
+        Passes::ConstantFolding.new.run(function) if @configuration.enabled?(:fold)
         function.compact_registers! if @configuration.enabled?(:compact)
       end
 
