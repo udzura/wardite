@@ -3,6 +3,16 @@
 module Wardite
   module Efflorescence
     class SpinelJIT
+      class ByteLoop
+        attr_reader code: String
+
+        attr_reader kind: String
+
+        # @rbs code: String
+        # @rbs kind: String
+        def initialize: (String code, String kind) -> untyped
+      end
+
       class AArch64
         # x0 points to 8-byte MIR slots, x1 to current linear memory, x2 is
         # its byte length. x3..x5 are scratch. Spill after each MIR write so
@@ -10,8 +20,8 @@ module Wardite
         # @rbs function: Function
         # @rbs head: Integer
         # @rbs latch: Integer
-        # @rbs return: String?
-        def compile_byte_loop: (Function function, Integer head, Integer latch) -> String?
+        # @rbs return: ByteLoop?
+        def compile_byte_loop: (Function function, Integer head, Integer latch) -> ByteLoop?
 
         private
 

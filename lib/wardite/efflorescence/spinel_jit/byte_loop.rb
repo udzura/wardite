@@ -4,6 +4,18 @@
 module Wardite
   module Efflorescence
     class SpinelJIT
+      class ByteLoop
+        attr_reader :code #: String
+        attr_reader :kind #: String
+
+        # @rbs code: String
+        # @rbs kind: String
+        def initialize(code, kind)
+          @code = code
+          @kind = kind
+        end
+      end
+
       class AArch64
         # x0 points to 8-byte MIR slots, x1 to current linear memory, x2 is
         # its byte length. x3..x5 are scratch. Spill after each MIR write so
@@ -11,21 +23,30 @@ module Wardite
         # @rbs function: Function
         # @rbs head: Integer
         # @rbs latch: Integer
-        # @rbs return: String?
+        # @rbs return: ByteLoop?
         def compile_byte_loop(function, head, latch)
           code = function.bytecode
           width = Lowerer::WIDTH
           return unless head >= 0 && head % width == 0 && code.size <= 0x7fffffff
           types = function.register_types
-          has_load = false
+          memory_op = nil #: String?
           pc = head
           while pc < latch
             op, a, b, c = code.fetch(pc), code.fetch(pc + 1), code.fetch(pc + 2), code.fetch(pc + 3)
-            return unless a.between?(0, types.size - 1) && b.between?(0, types.size - 1)
-            return unless types.fetch(a) == :i32 && types.fetch(b) == :i32
+            return unless a.between?(0, types.size - 1) && types.fetch(a) == :i32
+            if op == Opcode::BR_IF
+              # Preserve the original target (e.g. the Rust index panic path).
+              return unless b.between?(0, code.size - width) && b % width == 0 && !b.between?(head, latch)
+              load_loop_slot(4, a)
+              exit_unless(0x34000004, b) # cbz w4, continue
+              pc += width
+              next
+            end
+
+            return unless b.between?(0, types.size - 1) && types.fetch(b) == :i32
             load_loop_slot(4, b)
             case op
-            when Opcode::I32_LOAD8_U
+            when Opcode::I32_LOAD8_U, Opcode::I32_STORE8
               return unless c.between?(0, 0xffffffff)
               # Extend the i32 base before adding the static Wasm offset.
               if c != 0
@@ -34,8 +55,15 @@ module Wardite
               end
               @words << 0xeb02009f # cmp x4, x2
               exit_unless(0x54000003, pc) # b.lo: address < length
+              if op == Opcode::I32_STORE8
+                load_loop_slot(3, a)
+                @words << 0x38246823 # strb w3, [x1, x4]
+                memory_op = "store8"
+                pc += width
+                next
+              end
               @words << 0x38646823 # ldrb w3, [x1, x4]
-              has_load = true
+              memory_op ||= "load8_u"
             when Opcode::COPY
               @words << 0x2a0403e3 # mov w3, w4
             when Opcode::I32_EQZ
@@ -44,7 +72,7 @@ module Wardite
             when Opcode::I32_ADD_IMM
               load_constant(5, c, false)
               emit_binary(Opcode::I32_ADD, 3, 4, 5)
-            when Opcode::I32_ADD, Opcode::I32_SUB, Opcode::I32_EQ, Opcode::I32_NE
+            when Opcode::I32_ADD, Opcode::I32_SUB, Opcode::I32_EQ, Opcode::I32_NE, Opcode::I32_GEU
               return unless c.between?(0, types.size - 1) && types.fetch(c) == :i32
               load_loop_slot(5, c)
               emit_binary(op, 3, 4, 5)
@@ -54,13 +82,13 @@ module Wardite
             @words << (0xf9000003 | (a << 10)) # str x3, [x0, #8*a]
             pc += width
           end
-          return unless has_load
+          return unless memory_op
           condition = code.fetch(latch + 1)
           return unless condition.between?(0, types.size - 1) && types.fetch(condition) == :i32
           load_loop_slot(4, condition)
           @words << (0x35000004 | ((-@words.size & 0x7ffff) << 5)) # cbnz w4, head
           return_pc(latch + width)
-          @words.pack("V*")
+          ByteLoop.new(@words.pack("V*"), memory_op)
         end
 
         private

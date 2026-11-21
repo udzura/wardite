@@ -58,28 +58,28 @@ module Wardite
           }
 
           // A loop returns the original flat MIR word PC at which the VM resumes.
-          int wardite_jit_run_loop(const char *bytes, size_t size, void *slots, const void *memory, size_t length) {
+          int wardite_jit_run_loop(const char *bytes, size_t size, void *slots, void *memory, size_t length) {
             void *page = wardite_jit_map(bytes, size);
             if (!page) return -1;
-            int pc = ((int (*)(uint64_t *, const void *, size_t))page)(slots, memory, length);
+            int pc = ((int (*)(uint64_t *, void *, size_t))page)(slots, memory, length);
             munmap(page, size);
             return pc;
           }
           #else
           int wardite_jit_supported(void) { return 0; }
           int wardite_jit_run(const char *bytes, size_t size, void *slots) { return WARDITE_JIT_MAPPING_FAILED; }
-          int wardite_jit_run_loop(const char *bytes, size_t size, void *slots, const void *memory, size_t length) { return -1; }
+          int wardite_jit_run_loop(const char *bytes, size_t size, void *slots, void *memory, size_t length) { return -1; }
           #endif
         C
         ffi_func :wardite_jit_supported, [], :int
         ffi_func :wardite_jit_run, [:binstr, :size_t, :buffer_inout], :int
-        ffi_func :wardite_jit_run_loop, [:binstr, :size_t, :buffer_inout, :buffer_in, :size_t], :int
+        ffi_func :wardite_jit_run_loop, [:binstr, :size_t, :buffer_inout, :buffer_inout, :size_t], :int
       end
 
       def initialize
         @entries = {} #: Hash[Integer, String?]
         @loop_bodies = {} #: Hash[Integer, LoopBody?]
-        @loops = [] #: Array[String]
+        @loops = [] #: Array[ByteLoop]
       end
 
       # The first iteration runs in the VM. Replace only a taken backward
@@ -98,13 +98,13 @@ module Wardite
           if original.fetch(pc) == Opcode::BR_IF
             head = original.fetch(pc + 2)
             if head < pc && pc - head <= 64 * width
-              code = AArch64.new.compile_byte_loop(function, head, pc)
-              if code
+              entry = AArch64.new.compile_byte_loop(function, head, pc)
+              if entry
                 selected = body || LoopBody.new(function)
                 selected.instructions[pc] = LOOP_BACKEDGE
                 selected.instructions[pc + 3] = @loops.size
                 body = selected
-                @loops << code
+                @loops << entry
               end
             end
           end
@@ -120,7 +120,8 @@ module Wardite
       # @rbs return: Integer
       def run_loop(frame, pc, memory)
         instructions = frame.instructions
-        code = @loops.fetch(instructions.fetch(pc + 3))
+        entry = @loops.fetch(instructions.fetch(pc + 3))
+        code = entry.code
         registers = frame.registers
         slots = IO::Buffer.new(registers.size * 8)
         registers.each_with_index { |value, i| slots.set_value(:s64, i * 8, value) }
@@ -131,7 +132,7 @@ module Wardite
         end
         registers.size.times { |i| registers[i] = Integer(slots.get_value(:s64, i * 8)) }
         if ENV["WARDITE_TRACE"]
-          warn "MIR JIT byte loop function #{frame.function.index}: backedge #{pc / Lowerer::WIDTH}, native exit #{resume / Lowerer::WIDTH}"
+          warn "MIR JIT byte loop function #{frame.function.index}: backedge #{pc / Lowerer::WIDTH}, native exit #{resume / Lowerer::WIDTH} (#{entry.kind})"
         end
         resume
       end
