@@ -26,6 +26,7 @@ module Wardite
       @inspection_links: Wardite::Efflorescence::IR?
 
       # @rbs instance: Wardite::Instance
+      # @rbs mir_cse: bool
       # @rbs disabled_optimizations: Array[Symbol]
       # @rbs profile: bool
       # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
@@ -33,7 +34,7 @@ module Wardite
       # @rbs source_code: String?
       # @rbs eager_mir: bool
       # @rbs cache_checked: bool
-      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?, ?cached_functions: Array[Function]?, ?cache_checked: bool, ?source_code: String?, ?eager_mir: bool) -> untyped
+      def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?mir_cse: bool, ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?, ?cached_functions: Array[Function]?, ?cache_checked: bool, ?source_code: String?, ?eager_mir: bool) -> untyped
 
       # Inspecting the executable IR requests every uncached function body.
       # MIR2 consumers can still inspect pending cache slots individually.

@@ -8,11 +8,12 @@ module Wardite
       attr_reader :disabled #: Array[Symbol]
 
       # @rbs disabled: Array[Symbol]
-      def initialize(disabled)
+      # @rbs cse: bool
+      def initialize(disabled, cse: false)
         unknown = disabled - FEATURES - [:all]
         raise Wardite::ArgumentError, "unknown MIR optimization: #{unknown.join(', ')}" unless unknown.empty?
         @disabled = disabled.include?(:all) ? FEATURES.dup : disabled.dup
-        @disabled << :cse unless ENV["WARDITE_MIR_CSE"] == "1" || @disabled.include?(:cse)
+        @disabled << :cse unless cse || ENV["WARDITE_MIR_CSE"] == "1" || @disabled.include?(:cse)
       end
 
       # @rbs feature: Symbol

@@ -37,6 +37,7 @@ module Wardite
         @wasi = true
         @yjit = false
         @disabled_optimizations = []
+        @mir_cse = false
         @mir_dump = false
         @mir_profile = false
         @mir_cache = nil
@@ -63,6 +64,7 @@ module Wardite
           opts.on("--mir-disable NAME", "Disable copy, immediate, branch, superinstruction, inline, compact, cse, frames, or all (repeatable)") {|v|
             @disabled_optimizations << v.to_sym
           }
+          opts.on("--mir-cse", "Enable experimental block-local common subexpression elimination") { @mir_cse = true }
           opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }
           opts.on("--mir-profile", "Instrument MIR execution (do not use for timing)") { @mir_profile = true }
           opts.on("--mir-cache DIR", "Build all functions on a miss; restore on first call on a hit") { |dir| @mir_cache = dir }
@@ -118,7 +120,7 @@ module Wardite
       def new_instance
         ins = File.open(file, "rb") do |f|
           Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi,
-            disabled_optimizations: disabled_optimizations, mir_profile: mir_profile,
+            disabled_optimizations: disabled_optimizations, mir_cse: @mir_cse, mir_profile: mir_profile,
             mir_cache: mir_dump ? nil : mir_cache, mir_cache_verify: @mir_cache_verify, mir_cache_eager: @mir_eager || !!mir_dump)
         end
         if memsize > 1
