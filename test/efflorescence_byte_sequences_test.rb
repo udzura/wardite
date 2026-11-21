@@ -82,6 +82,22 @@ class EfflorescenceByteSequencesTest < Test::Unit::TestCase
     end
   end
 
+  test "byte division stores wrap before division and preserve trap order" do
+    body = <<~WAT
+      local.get 2 local.get 0 i32.const 5 i32.add local.get 1 i32.div_u i32.store8 offset=3
+      local.get 2 i32.const 1 i32.add
+    WAT
+    check_sequence(body, OP::I32_DIV_U_STORE8, [0xfffffffe, 2, 17], 18) do |vm|
+      assert_equal 1, vm.call_unboxed(:read, [20])
+      assert_equal 18, vm.call_unboxed(:run, [512, 2, 17])
+      assert_equal 2, vm.call_unboxed(:read, [20])
+      zero = assert_raise(Wardite::EvalError) { vm.call_unboxed(:run, [512, 0, 0xffffffff]) }
+      assert_equal "integer divide by zero", zero.message
+      bounds = assert_raise(Wardite::EvalError) { vm.call_unboxed(:run, [512, 2, 0xffffffff]) }
+      assert_equal "out of bounds memory access", bounds.message
+    end
+  end
+
   test "a branch into the sequence keeps individual dispatches" do
     fn = E::Function.new(0, [], [], 0)
     fn.replace_instructions([

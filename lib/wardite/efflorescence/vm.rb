@@ -758,6 +758,16 @@ module Wardite
             @store_access.store(registers[instructions.fetch(pc + 10)], 0, 1, sum)
             registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
             pc += 3 * Lowerer::WIDTH
+          when 201 # Opcode::I32_DIV_U_STORE8
+            sum = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
+            registers[a] = sum
+            divisor = registers.fetch(instructions.fetch(pc + 7))
+            raise Wardite::EvalError, "integer divide by zero" if divisor == 0
+            quotient = sum / divisor
+            registers[instructions.fetch(pc + 5)] = quotient
+            @store_access.store(registers[instructions.fetch(pc + 10)], instructions.fetch(pc + 11), 1, quotient)
+            registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
+            pc += 3 * Lowerer::WIDTH
           when 0 # Opcode::COPY
             b = instructions.fetch(pc + 2)
             registers[a] = registers[b]
