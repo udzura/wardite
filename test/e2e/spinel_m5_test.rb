@@ -36,7 +36,19 @@ class WarditeSpinelM5Test < Test::Unit::TestCase
       expected = File.join(dir, "vectors.txt")
       File.binwrite(wasm, compile_efflorescence_wat(wat))
       File.write(expected, vectors)
-      run_worker("efflorescence_m5_vectors", "M5 vectors passed", wasm, expected)
+      run_worker("efflorescence_m5_vectors", "M5 vectors passed", wasm, expected) do |worker|
+        next unless ENV["WARDITE_MIR_JIT"] == "1" && RUBY_PLATFORM.match?(/arm64-darwin/)
+
+        output, status = Open3.capture2e({"WARDITE_MIR_JIT" => "1", "WARDITE_TRACE" => "1"}, worker, wasm, expected)
+        assert_predicate status, :success?, output
+        events = vectors.lines.each_with_index.flat_map do |row, index|
+          calls = ["MIR JIT function #{index}: compiled"]
+          calls << "MIR JIT function #{index}: interpreter bailout" if %w[invalid overflow].include?(row.split.last)
+          calls
+        end
+        # Each optimization configuration runs once with and once without profiling.
+        assert_equal events * 3, output.lines.grep(/^MIR JIT function /).map(&:chomp)
+      end
     end
   end
 
@@ -65,9 +77,11 @@ class WarditeSpinelM5Test < Test::Unit::TestCase
       output, status = Open3.capture2e(ENV.fetch("SPINEL", "spinel"), "--strict-require", "-O2",
         "-I#{root}/lib", File.join(root, "test/spinel/#{source}.rb"), "-o", worker)
       assert status.success?, output
-      output, status = Open3.capture2e(worker, *arguments)
+      env = block_given? ? {"WARDITE_MIR_JIT" => "0"} : {}
+      output, status = Open3.capture2e(env, worker, *arguments)
       assert status.success?, output
       assert_equal "#{expected}\n", output
+      yield worker if block_given?
     end
   end
 end

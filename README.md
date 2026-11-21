@@ -197,15 +197,17 @@ WARDITE_MIR_JIT=1 WARDITE_TRACE=1 build/wardite --no-wasi --invoke inline_mix bu
 On the first public call to a function, Wardite prepares its usual MIR.
 The [Ruby emitter](lib/wardite/efflorescence/spinel_jit/aarch64.rb) translates
 the whole function and resolves branches once it knows each instruction's
-native offset. It accepts i32 and i64 parameters and one integer result.
-It supports i64 arithmetic, comparisons, bit operations and integer
-conversions, including functions with mixed-width arguments. The trial-division
+native offset. It accepts i32, i64, f32 and f64 parameters and one numeric
+result. It supports i64 arithmetic and bit operations, scalar floating-point
+arithmetic and comparisons, and integer/float conversions. Each floating-point
+operation rounds at its Wasm width. The trial-division
 `count_primes` benchmark uses a 64-bit square and an unsigned comparison.
 The first 15 MIR slots live in registers and the remaining slots use an
 aligned stack frame, up to 128 slots in total.
 
-If execution reaches a zero divisor, signed division overflow, a trap, or
-a direct call immediately followed by a trap, the interpreter replays the
+If execution reaches an integer zero divisor, signed division overflow, an
+invalid or overflowing trapping float-to-integer conversion, an explicit
+trap, or a direct call immediately followed by a trap, the interpreter replays the
 function from its original arguments. All instructions executed natively
 before replay affect only local values. Functions with other calls or memory
 operations, calls from inside interpreted Wasm, and MIR profiling use the
@@ -223,6 +225,11 @@ A mapping failure disables the native entry for that function.
 Run `ruby benchmark/measure_i64_jit.rb build/wardite` to compare the
 `alu` and `division` loops with the JIT off and on. It checks both results
 against Wasmtime and reports median whole-process times.
+
+Run `ruby benchmark/measure_float_jit.rb build/wardite /path/to/mandelbrot.wasm`
+for the f32 and f64 Mandelbrot exports from wardite-benches and Wardite's
+`float_alu` and `float_convert` loops. The Wasm path is optional when
+wardite-benches is built in the directory next to this checkout.
 
 On an Apple Silicon Mac, run the full regression suite with:
 
