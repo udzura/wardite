@@ -10,7 +10,7 @@ module Wardite
 
         def self.wardite_jit_supported: () -> Integer
 
-        def self.wardite_jit_run: (String, Integer, Integer, Integer) -> Integer
+        def self.wardite_jit_run: (String, Integer, Integer, Integer, IO::Buffer) -> Integer
       end
 
       def initialize: () -> untyped

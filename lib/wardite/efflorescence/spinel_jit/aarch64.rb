@@ -12,6 +12,8 @@ module Wardite
         RIGHT = 17
         MAX_INSTRUCTIONS = 1024
         MAX_SLOTS = 128 # keeps the aligned leaf frame below one page
+        OK = 0
+        FALLBACK = 1
         BAILOUT = -1 # internal label, outside the MIR address space
 
         def initialize
@@ -55,8 +57,7 @@ module Wardite
 
           bailout_pc = @words.size
           if @needs_bailout
-            @words << 0x92800020 # movn x0, #1 => signed long -2
-            finish_frame
+            finish_frame(FALLBACK)
           end
           @branches.each do |source, target|
             dest = target == BAILOUT ? bailout_pc : @labels.fetch(target / width)
@@ -73,11 +74,12 @@ module Wardite
         # @rbs function: Function
         # @rbs return: void
         def initialize_frame(function)
-          spilled = function.register_count - SCRATCH
-          if spilled > 0
-            @frame_size = (spilled * 8 + 15) & ~15
-            @words << (0xd10003ff | (@frame_size << 10)) # sub sp, sp, #size
-          end
+          # x2 holds the result pointer on entry and becomes MIR slot 2.
+          # Keep it at [sp], with spill slots starting at [sp, #8].
+          spilled = [function.register_count - SCRATCH, 0].max
+          @frame_size = ((spilled + 1) * 8 + 15) & ~15
+          @words << (0xd10003ff | (@frame_size << 10)) # sub sp, sp, #size
+          @words << 0xf90003e2 # str x2, [sp]
           (function.parameter_count...function.register_count).each do |slot|
             value = function.initial_value(slot)
             reg = slot < SCRATCH ? slot : SCRATCH
@@ -89,9 +91,11 @@ module Wardite
           end
         end
 
+        # @rbs status: Integer
         # @rbs return: void
-        def finish_frame
-          @words << (0x910003ff | (@frame_size << 10)) if @frame_size > 0 # add sp, sp, #size
+        def finish_frame(status)
+          @words << (0x52800000 | (status << 5)) # movz w0, #status
+          @words << (0x910003ff | (@frame_size << 10)) # add sp, sp, #size
           @words << 0xd65f03c0 # ret
         end
 
@@ -122,7 +126,7 @@ module Wardite
         # @rbs return: Integer
         def read_slot(slot, scratch)
           return slot if slot < SCRATCH
-          @words << (0xf94003e0 | ((slot - SCRATCH) << 10) | scratch) # ldr xN, [sp, #offset]
+          @words << (0xf94003e0 | ((slot - SCRATCH + 1) << 10) | scratch) # ldr xN, [sp, #offset]
           scratch
         end
 
@@ -130,7 +134,7 @@ module Wardite
         # @rbs reg: Integer
         # @rbs return: void
         def store_slot(slot, reg)
-          @words << (0xf90003e0 | ((slot - SCRATCH) << 10) | reg) if slot >= SCRATCH
+          @words << (0xf90003e0 | ((slot - SCRATCH + 1) << 10) | reg) if slot >= SCRATCH
         end
 
         # @rbs word: Integer
@@ -167,7 +171,9 @@ module Wardite
           return false unless a.between?(0, @types.size - 1)
           if op == Opcode::RETURN
             @words << (0x2a0003e0 | (read_slot(a, LEFT) << 16)) # mov w0, wa
-            finish_frame
+            @words << 0xf94003f1 # ldr x17, [sp]
+            @words << 0xf9000220 # str x0, [x17] (zero-extended i32 result)
+            finish_frame(OK)
             return true
           end
 

@@ -212,8 +212,10 @@ inside interpreted Wasm, and MIR profiling use the interpreter.
 The [Spinel adapter](lib/wardite/efflorescence/spinel_jit.rb) caches the machine
 code bytes per VM and function. For each call it copies them into writable
 pages, switches the pages to read/execute, calls the function, and releases
-the mapping on return. This keeps executable memory scoped to one call and
-adds a mapping cost per invocation. A mapping failure falls back to MIR.
+the mapping on return. The native function returns a status and writes the
+Wasm value into a separate 8-byte output buffer on success. A bailout leaves
+the buffer untouched and keeps the compiled code for the next invocation.
+A mapping failure disables the native entry for that function.
 
 On an Apple Silicon Mac, run the full regression suite with:
 

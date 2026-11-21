@@ -47,6 +47,8 @@ class WarditeSpinelJITTest < Test::Unit::TestCase
       cases = [
         ["odd_prime", [9], 0], ["odd_prime", [97], 1],
         ["odd_prime", [4294967291], 1], ["wide", [65536], 0], ["wide", [0xffffffff], 1],
+        # Successful values may also equal any of the native status codes.
+        ["remainder", [3, 3], 0], ["remainder", [4, 3], 1], ["remainder", [5, 3], 2],
         ["remainder", [0xffffffff, 65536], 65535],
         ["remainder", [0xfffffffe, 0xffffffff], 0xfffffffe]
       ]
