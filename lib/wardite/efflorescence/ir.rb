@@ -1178,6 +1178,7 @@ module Wardite
     end
 
     class Frame
+      attr_reader :instructions #: Array[Integer]
       attr_reader :function #: Wardite::Efflorescence::Function
       attr_reader :pool_index #: Integer
       # Numeric registers hold unsigned 32-bit or signed 64-bit carriers.
@@ -1190,6 +1191,7 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return_register: Integer
       def initialize(function, return_register)
+        @instructions = function.bytecode
         @function = function
         @pool_index = function.pool_index
         # Constants are initialized once and never written by verified MIR.
@@ -1203,6 +1205,12 @@ module Wardite
         @local_end = @local_start + function.local_count
         @return_register = return_register
         @pc = 0
+      end
+
+      # @rbs body: SpinelJIT::LoopBody
+      # @rbs return: void
+      def use_loop_body(body)
+        @instructions = body.instructions
       end
 
       # @rbs return: void
@@ -1242,7 +1250,9 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs reuse: bool
       # @rbs preparer: Wardite::Efflorescence::FunctionPreparer?
-      def initialize(function, reuse, preparer = nil)
+      # @rbs jit: SpinelJIT?
+      def initialize(function, reuse, preparer = nil, jit = nil)
+        @jit = jit
         @function = function
         @reuse = reuse
         @preparer = preparer
@@ -1264,7 +1274,12 @@ module Wardite
         @preparer.prepare(@function) if @preparer && (@function.bytecode.empty? || @function.cache_pending)
         @clear_references = @function.uses_eh
         @created += 1
-        Frame.new(@function, destination)
+        frame = Frame.new(@function, destination)
+        if @jit
+          body = @jit.loop_body(@function)
+          frame.use_loop_body(body) if body
+        end
+        frame
       end
 
       # @rbs frame: Wardite::Efflorescence::Frame

@@ -882,6 +882,8 @@ module Wardite
     end
 
     class Frame
+      attr_reader instructions: Array[Integer]
+
       attr_reader function: Wardite::Efflorescence::Function
 
       attr_reader pool_index: Integer
@@ -900,6 +902,10 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return_register: Integer
       def initialize: (Wardite::Efflorescence::Function function, Integer return_register) -> untyped
+
+      # @rbs body: SpinelJIT::LoopBody
+      # @rbs return: void
+      def use_loop_body: (SpinelJIT::LoopBody body) -> void
 
       # @rbs return: void
       def clear_references: () -> void
@@ -921,7 +927,8 @@ module Wardite
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs reuse: bool
       # @rbs preparer: Wardite::Efflorescence::FunctionPreparer?
-      def initialize: (Wardite::Efflorescence::Function function, bool reuse, ?Wardite::Efflorescence::FunctionPreparer? preparer) -> untyped
+      # @rbs jit: SpinelJIT?
+      def initialize: (Wardite::Efflorescence::Function function, bool reuse, ?Wardite::Efflorescence::FunctionPreparer? preparer, ?SpinelJIT? jit) -> untyped
 
       # @rbs destination: Integer
       # @rbs return: Wardite::Efflorescence::Frame

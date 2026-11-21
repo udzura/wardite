@@ -241,6 +241,11 @@ module Wardite
       # @rbs return: void
       def execute_float: (Integer opcode, Array[Integer] instructions, Integer pc, Integer a, Array[Integer] registers) -> void
 
+      # @rbs frame: Frame
+      # @rbs pc: Integer
+      # @rbs return: Integer
+      def run_byte_loop: (Frame frame, Integer pc) -> Integer
+
       # @rbs frame: Wardite::Efflorescence::Frame
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
       # @rbs active_frames: Array[Wardite::Efflorescence::Frame]
