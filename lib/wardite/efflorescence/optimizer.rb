@@ -4,7 +4,7 @@
 module Wardite
   module Efflorescence
     class Configuration
-      FEATURES = %i[copy immediate branch superinstruction inline compact cse frames fold].freeze
+      FEATURES = %i[copy immediate branch superinstruction inline compact cse frames fold cfg].freeze
       attr_reader :disabled #: Array[Symbol]
 
       # @rbs disabled: Array[Symbol]
@@ -16,7 +16,7 @@ module Wardite
         @disabled = disabled.include?(:all) ? FEATURES.dup : disabled.dup
         cse_enabled = cse || ENV["WARDITE_MIR_CSE"] == "1" || enabled.include?(:cse) || enabled.include?(:all)
         @disabled << :cse unless cse_enabled || @disabled.include?(:cse)
-        @disabled.concat(%i[fold] - enabled - @disabled) unless enabled.include?(:all)
+        @disabled.concat(%i[fold cfg] - enabled - @disabled) unless enabled.include?(:all)
       end
 
       # @rbs feature: Symbol
@@ -846,6 +846,7 @@ module Wardite
       # @rbs return: void
       def finish_function(function)
         Passes::ConstantFolding.new.run(function) if @configuration.enabled?(:fold)
+        Passes::ControlFlow.new.run(function) if @configuration.enabled?(:cfg)
         function.compact_registers! if @configuration.enabled?(:compact)
       end
 
