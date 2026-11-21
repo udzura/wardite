@@ -228,6 +228,30 @@ class EfflorescenceTest < Test::Unit::TestCase
     end
   end
 
+  test "CLI can enable CSE for one invocation" do
+    Dir.mktmpdir do |dir|
+      file = File.join(dir, "mask.wasm")
+      File.binwrite(file, compile_efflorescence_wat(<<~WAT))
+        (module (func (export "mask") (param i32) (result i32)
+          (i32.add (i32.and (local.get 0) (i32.const 255))
+                   (i32.and (local.get 0) (i32.const 255)))))
+      WAT
+      profile = ->(*flags) do
+        _, err, status = Open3.capture3({"WARDITE_MIR_CSE" => nil}, RbConfig.ruby,
+          "-I#{File.expand_path('../lib', __dir__)}", File.expand_path("../exe/wardite", __dir__),
+          *flags, "--mir-profile", "--no-wasi", "--invoke", "mask", "--", file, "258")
+        assert_predicate status, :success?, err
+        assert_include err, "return value: I32(4)"
+        err.lines.grep(/^opcode I32_AND /).first.to_s.strip
+      end
+      assert_equal "opcode I32_AND 2", profile.call
+      assert_equal "opcode I32_AND 1", profile.call("--mir-enable", "cse")
+      assert_equal "opcode I32_AND 1", profile.call("--mir-enable", "copy", "--mir-enable", "all")
+      assert_equal "opcode I32_AND 2", profile.call("--mir-enable", "all", "--mir-disable", "cse")
+      assert_equal "opcode I32_AND 2", profile.call("--mir-disable", "cse", "--mir-enable", "cse")
+    end
+  end
+
   test "CLI selects preparation on first call, eager preparation, or automatic disk caching" do
     Dir.mktmpdir do |dir|
       file = File.join(dir, "mix.wasm")

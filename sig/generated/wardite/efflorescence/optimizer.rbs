@@ -8,7 +8,9 @@ module Wardite
       attr_reader disabled: Array[Symbol]
 
       # @rbs disabled: Array[Symbol]
-      def initialize: (Array[Symbol] disabled) -> untyped
+      # @rbs enabled: Array[Symbol]
+      # @rbs cse: bool
+      def initialize: (Array[Symbol] disabled, ?enabled: Array[Symbol], ?cse: bool) -> untyped
 
       # @rbs feature: Symbol
       # @rbs return: bool
@@ -191,6 +193,36 @@ module Wardite
         # @rbs function: Wardite::Efflorescence::Function
         # @rbs return: void
         def remove_dead_copies: (Wardite::Efflorescence::Function function) -> void
+      end
+
+      class LocalCSE
+        include Opcode
+
+        # @rbs function: Function
+        # @rbs return: void
+        def run: (Function function) -> void
+
+        private
+
+        # The opcode encodes both operand and result types. No store reads,
+        # floating-point operations or trapping integer operations qualify.
+        # @rbs op: Integer
+        # @rbs return: bool
+        def candidate?: (Integer op) -> bool
+
+        # @rbs insn: Instruction
+        # @rbs values: Hash[Integer, Integer]
+        # @rbs return: String
+        def expression: (Instruction insn, Hash[Integer, Integer] values) -> String
+
+        # Only forward copies introduced by CSE. Count all reads, including
+        # side tables, before deleting a copy. Each alias expires on a write
+        # to either slot or on entry to the next basic block.
+        # @rbs function: Function
+        # @rbs copies: Array[Integer]
+        # @rbs analysis: Analysis
+        # @rbs return: void
+        def forward_copies: (Function function, Array[Integer] copies, Analysis analysis) -> void
       end
 
       class ImmediateSpecialization
