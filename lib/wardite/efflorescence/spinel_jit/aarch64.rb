@@ -29,8 +29,7 @@ module Wardite
         # @rbs function: Function
         # @rbs return: String?
         def compile(function)
-          params = function.parameter_types
-          return unless (params == [:i32] || params == [:i32, :i32]) && function.result_types == [:i32]
+          return unless function.result_types == [:i32] || function.result_types == [:i64]
           @types = function.register_types
           return unless @types.size <= MAX_SLOTS && @types.all? { |type| type == :i32 || type == :i64 }
 
@@ -63,7 +62,7 @@ module Wardite
             dest = target == BAILOUT ? bailout_pc : @labels.fetch(target / width)
             delta = dest - source
             word = @words.fetch(source)
-            # B uses imm26. CBZ/CBNZ use imm19; the code size cap bounds both.
+            # B uses imm26. Conditional branches use imm19; the code size cap bounds both.
             @words[source] = word | (word == 0x14000000 ? (delta & 0x03ffffff) : ((delta & 0x7ffff) << 5))
           end
           @words.pack("V*")
@@ -74,12 +73,18 @@ module Wardite
         # @rbs function: Function
         # @rbs return: void
         def initialize_frame(function)
-          # x2 holds the result pointer on entry and becomes MIR slot 2.
-          # Keep it at [sp], with spill slots starting at [sp, #8].
+          # Save the argument/result buffer before assigning x0 to MIR slot 0.
+          # [sp] holds the pointer; spill slots start at [sp, #8].
           spilled = [function.register_count - SCRATCH, 0].max
           @frame_size = ((spilled + 1) * 8 + 15) & ~15
           @words << (0xd10003ff | (@frame_size << 10)) # sub sp, sp, #size
-          @words << 0xf90003e2 # str x2, [sp]
+          @words << 0xf90003e0 # str x0, [sp]
+          @words << 0xaa0003f1 # mov x17, x0
+          function.parameter_count.times do |slot|
+            reg = slot < SCRATCH ? slot : SCRATCH
+            @words << (0xf9400000 | (slot << 10) | (RIGHT << 5) | reg) # ldr xN, [x17, #offset]
+            store_slot(slot, reg)
+          end
           (function.parameter_count...function.register_count).each do |slot|
             value = function.initial_value(slot)
             reg = slot < SCRATCH ? slot : SCRATCH
@@ -170,9 +175,10 @@ module Wardite
           end
           return false unless a.between?(0, @types.size - 1)
           if op == Opcode::RETURN
-            @words << (0x2a0003e0 | (read_slot(a, LEFT) << 16)) # mov w0, wa
+            base = @types.fetch(a) == :i64 ? 0xaa0003e0 : 0x2a0003e0
+            @words << (base | (read_slot(a, LEFT) << 16)) # mov x0/w0, result
             @words << 0xf94003f1 # ldr x17, [sp]
-            @words << 0xf9000220 # str x0, [x17] (zero-extended i32 result)
+            @words << 0xf9000220 # str x0, [x17]
             finish_frame(OK)
             return true
           end
@@ -181,10 +187,31 @@ module Wardite
           left = read_slot(b, LEFT)
           dest = a < SCRATCH ? a : SCRATCH
           case op
-          when Opcode::COPY, Opcode::I64_EXTEND_I32_U
+          when Opcode::COPY, Opcode::I64_EXTEND_I32_U, Opcode::I32_WRAP_I64
             # A W move implements unsigned extension, including in-place.
             base = op == Opcode::COPY && @types.fetch(a) == :i64 ? 0xaa0003e0 : 0x2a0003e0
             @words << (base | (left << 16) | dest)
+          when Opcode::I32_EQZ, Opcode::I64_EQZ
+            base = op == Opcode::I64_EQZ ? 0xf100001f : 0x7100001f
+            @words << (base | (left << 5)) # cmp left, #0
+            @words << (0x1a9f17e0 | dest) # cset wD, eq
+          when Opcode::I64_EXTEND8_S, Opcode::I64_EXTEND16_S, Opcode::I64_EXTEND32_S, Opcode::I64_EXTEND_I32_S
+            last_bit = case op
+            when Opcode::I64_EXTEND8_S then 7
+            when Opcode::I64_EXTEND16_S then 15
+            else 31
+            end
+            @words << (0x93400000 | (last_bit << 10) | (left << 5) | dest) # sbfm xD, xN, #0, #last_bit
+          when Opcode::I64_CLZ
+            @words << (0xdac01000 | (left << 5) | dest)
+          when Opcode::I64_CTZ
+            @words << (0xdac00000 | (left << 5) | dest) # rbit
+            @words << (0xdac01000 | (dest << 5) | dest) # clz
+          when Opcode::I64_POPCNT
+            @words << (0x9e670000 | (left << 5)) # fmov d0, xN
+            @words << 0x0e205800 # cnt v0.8b, v0.8b
+            @words << 0x0e31b800 # addv b0, v0.8b
+            @words << (0x0e013c00 | dest) # umov wD, v0.b[0]
           when Opcode::I32_XOR_SHL_IMM, Opcode::I32_XOR_SHR_U_IMM
             return false unless c.between?(0, 31)
             base = op == Opcode::I32_XOR_SHL_IMM ? 0x4a000000 : 0x4a400000
@@ -216,20 +243,53 @@ module Wardite
           operands = (right << 16) | (left << 5) | dest
           case op
           when Opcode::I32_ADD then @words << (0x0b000000 | operands)
+          when Opcode::I32_SUB then @words << (0x4b000000 | operands)
           when Opcode::I32_OR then @words << (0x2a000000 | operands)
+          when Opcode::I64_ADD then @words << (0x8b000000 | operands)
+          when Opcode::I64_SUB then @words << (0xcb000000 | operands)
+          when Opcode::I64_AND then @words << (0x8a000000 | operands)
+          when Opcode::I64_OR then @words << (0xaa000000 | operands)
+          when Opcode::I64_XOR then @words << (0xca000000 | operands)
+          when Opcode::I64_SHL then @words << (0x9ac02000 | operands)
+          when Opcode::I64_SHR_U then @words << (0x9ac02400 | operands)
+          when Opcode::I64_SHR_S then @words << (0x9ac02800 | operands)
+          when Opcode::I64_ROTR then @words << (0x9ac02c00 | operands)
+          when Opcode::I64_ROTL
+            @words << (0xcb0003e0 | (right << 16) | SCRATCH) # neg x15, shift
+            @words << (0x9ac02c00 | (SCRATCH << 16) | (left << 5) | dest) # rorv
           when Opcode::I64_MUL then @words << (0x9b007c00 | operands)
-          when Opcode::I32_REM_U
-            branch(0x34000000 | right, BAILOUT)
-            @words << (0x1ac00800 | (right << 16) | (left << 5) | SCRATCH) # udiv
-            @words << (0x1b008000 | (right << 16) | (left << 10) | (SCRATCH << 5) | dest) # msub
-          when Opcode::I32_NE, Opcode::I32_LTU, Opcode::I32_GEU, Opcode::I32_GTU, Opcode::I64_GTU
-            base = op == Opcode::I64_GTU ? 0xeb00001f : 0x6b00001f
+          when Opcode::I32_REM_U, Opcode::I64_REM_U, Opcode::I64_REM_S, Opcode::I64_DIV_U, Opcode::I64_DIV_S
+            size = op == Opcode::I32_REM_U ? 0 : 0x80000000
+            branch(size | 0x34000000 | right, BAILOUT) # cbz
+            if op == Opcode::I64_DIV_S
+              # Negating MIN sets V. Only then test whether the divisor is -1.
+              @words << (0xeb0003ff | (left << 16)) # cmp xzr, left
+              @words << (0xba416800 | (right << 5)) # ccmn right, #1, #0, vs
+              branch(0x54000000, BAILOUT) # b.eq
+            end
+            div = op == Opcode::I64_DIV_S || op == Opcode::I64_REM_S ? 0x1ac00c00 : 0x1ac00800
+            if op == Opcode::I64_DIV_S || op == Opcode::I64_DIV_U
+              @words << (size | div | operands)
+            else
+              @words << (size | div | (right << 16) | (left << 5) | SCRATCH)
+              @words << (size | 0x1b008000 | (right << 16) | (left << 10) | (SCRATCH << 5) | dest) # msub
+            end
+          when Opcode::I32_EQ, Opcode::I32_NE, Opcode::I32_LTU, Opcode::I32_GEU, Opcode::I32_GTU,
+               Opcode::I64_EQ, Opcode::I64_NE, Opcode::I64_LTS, Opcode::I64_LTU, Opcode::I64_GTS,
+               Opcode::I64_GTU, Opcode::I64_LES, Opcode::I64_LEU, Opcode::I64_GES, Opcode::I64_GEU
+            base = op >= Opcode::I64_EQ ? 0xeb00001f : 0x6b00001f
             @words << (base | (right << 16) | (left << 5)) # cmp
             condition = case op
-            when Opcode::I32_NE then 1  # ne
-            when Opcode::I32_LTU then 3 # lo
-            when Opcode::I32_GEU then 2 # hs
-            else 8                     # hi
+            when Opcode::I32_EQ, Opcode::I64_EQ then 0   # eq
+            when Opcode::I32_NE, Opcode::I64_NE then 1   # ne
+            when Opcode::I32_GEU, Opcode::I64_GEU then 2 # hs
+            when Opcode::I32_LTU, Opcode::I64_LTU then 3 # lo
+            when Opcode::I32_GTU, Opcode::I64_GTU then 8 # hi
+            when Opcode::I64_LEU then 9  # ls
+            when Opcode::I64_GES then 10 # ge
+            when Opcode::I64_LTS then 11 # lt
+            when Opcode::I64_GTS then 12 # gt
+            else 13                      # le
             end
             @words << (0x1a9f07e0 | ((condition ^ 1) << 12) | dest) # cset
           else
