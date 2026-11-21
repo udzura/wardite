@@ -166,6 +166,13 @@ module Wardite
             branch(0x14000000, BAILOUT)
             return true
           end
+          if op == Opcode::BR_IF_I64_EQ
+            return false unless b.between?(0, length - 1) && b % Lowerer::WIDTH == 0
+            return false unless a.between?(0, @types.size - 1) && c.between?(0, @types.size - 1)
+            @words << (0xeb00001f | (read_slot(a, LEFT) << 5) | (read_slot(c, RIGHT) << 16))
+            branch(0x54000000, b) # b.eq
+            return true
+          end
           if op == Opcode::BR || op == Opcode::BR_IF || op == Opcode::BR_IF_ZERO
             target = op == Opcode::BR ? a : b
             return false unless target.between?(0, length - 1) && target % Lowerer::WIDTH == 0

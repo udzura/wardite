@@ -16,6 +16,8 @@ module LegacyMIRReads
          I32_EQ, I32_NE, I32_LTS, I32_LTU, I32_GTS, I32_GTU, I32_LES, I32_LEU, I32_GES, I32_GEU,
          I32_DIV_S, I32_DIV_U, I32_REM_S, I32_REM_U, I32_AND, I32_OR, I32_SHR_S, I32_ROTL, I32_ROTR
       [2, 3]
+    when BR_IF_I64_EQ
+      [1, 3]
     when BR_IF, BR_IF_ZERO
       [1]
     when CALL

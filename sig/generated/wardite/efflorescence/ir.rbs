@@ -399,6 +399,10 @@ module Wardite
 
       F64_GLOBAL_SET: ::Integer
 
+      BR_IF_I64_EQ: ::Integer
+
+      I32_EXTRACT_I64: ::Integer
+
       I32_TABLE_STORE8: ::Integer
 
       I64_BYTE_LOOKUP: ::Integer
@@ -406,6 +410,8 @@ module Wardite
       I32_BYTE_MUL_ADD: ::Integer
 
       I32_BYTE_ADD_STORE: ::Integer
+
+      I32_DIV_U_STORE8: ::Integer
 
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]

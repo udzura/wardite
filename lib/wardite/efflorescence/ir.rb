@@ -211,12 +211,15 @@ module Wardite
       F32_GLOBAL_SET = 193
       F64_GLOBAL_SET = 194
 
-      I32_TABLE_STORE8 = 195
-      I64_BYTE_LOOKUP = 196
-      I32_BYTE_MUL_ADD = 197
-      I32_BYTE_ADD_STORE = 198
+      BR_IF_I64_EQ = 195
+      I32_EXTRACT_I64 = 196
+      I32_TABLE_STORE8 = 197
+      I64_BYTE_LOOKUP = 198
+      I32_BYTE_MUL_ADD = 199
+      I32_BYTE_ADD_STORE = 200
+      I32_DIV_U_STORE8 = 201
       # The remaining three instructions retain their ordinary four-word slots.
-      SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U].freeze #: Array[Integer]
+      SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U, I32_ADD_IMM].freeze #: Array[Integer]
 
       NAMES = %w[COPY I32_ADD I32_SUB I32_MUL I32_XOR I32_SHL I32_SHR_U I32_EQZ
                  BR BR_IF CALL RETURN TRAP I32_ADD_IMM I32_SUB_IMM I32_MUL_IMM
@@ -247,10 +250,12 @@ module Wardite
                  F32_REINTERPRET_I32 F64_REINTERPRET_I64
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
                  F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
-                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE].freeze
+                 BR_IF_I64_EQ I32_EXTRACT_I64
+                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
+        I32_EXTRACT_I64 => [:i32, :i64],
         I64_EQZ => [:i32, :i64],
         I32_WRAP_I64 => [:i32, :i64],
         I64_EQ => [:i32, :i64, :i64],
@@ -364,7 +369,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: Array[Symbol]?
       def self.extended_alu_types(opcode)
-        opcode >= F32_EQ ? FLOAT_ALU_TYPES[opcode] : I64_ALU_TYPES[opcode]
+        opcode.between?(F32_EQ, F64_REINTERPRET_I64) ? FLOAT_ALU_TYPES[opcode] : I64_ALU_TYPES[opcode]
       end
 
       EXTENDED_LOAD_TYPES = {
@@ -412,6 +417,8 @@ module Wardite
                I32_EQ, I32_NE, I32_LTS, I32_LTU, I32_GTS, I32_GTU, I32_LES, I32_LEU, I32_GES, I32_GEU,
                I32_DIV_S, I32_DIV_U, I32_REM_S, I32_REM_U, I32_AND, I32_OR, I32_SHR_S, I32_ROTL, I32_ROTR
             [2, 3]
+          when BR_IF_I64_EQ
+            [1, 3]
           when BR_IF, BR_IF_ZERO
             [1]
           when CALL_INDIRECT
@@ -519,7 +526,7 @@ module Wardite
       # @rbs return: bool
       def self.side_effect?(opcode)
         dynamic_call?(opcode) || may_throw?(opcode) || may_trap?(opcode) || reads_store?(opcode) || writes_store?(opcode) ||
-          [BR, BR_IF, BR_IF_ZERO, RETURN, EH_ENTER, EH_TRIM, PROFILE].include?(opcode)
+          [BR, BR_IF, BR_IF_ZERO, BR_IF_I64_EQ, RETURN, EH_ENTER, EH_TRIM, PROFILE].include?(opcode)
       end
 
       # @rbs opcode: Integer
@@ -564,7 +571,7 @@ module Wardite
       def self.target_position(instruction)
         case instruction[0]
         when BR then 1
-        when BR_IF, BR_IF_ZERO then 2
+        when BR_IF, BR_IF_ZERO, BR_IF_I64_EQ then 2
         else -1
         end
       end

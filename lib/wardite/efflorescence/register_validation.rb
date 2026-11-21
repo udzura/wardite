@@ -394,7 +394,9 @@ module Wardite
       def validate_extended_instruction(function, instruction, read_count, destination)
         opcode = instruction[0]
         types = Opcode.extended_alu_types(opcode)
-        if types
+        if opcode == Opcode::BR_IF_I64_EQ
+          check_reads_of_type(function, instruction, :i64, read_count)
+        elsif types
           check_register(function, destination, types.fetch(0))
           check_reads(function, instruction, types, 0, read_count, 1)
         elsif (type = Opcode::EXTENDED_LOAD_TYPES[opcode])

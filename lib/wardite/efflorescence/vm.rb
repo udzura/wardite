@@ -715,7 +715,15 @@ module Wardite
           # Integer literal labels let Spinel emit a C switch. Keep the
           # Opcode comments in sync; the dispatch contract test checks them.
           case opcode
-          when 195 # Opcode::I32_TABLE_STORE8
+          when 195 # Opcode::BR_IF_I64_EQ
+            if registers[a] == registers[instructions.fetch(pc + 3)]
+              pc = Integer(instructions.fetch(pc + 2))
+              next
+            end
+          when 196 # Opcode::I32_EXTRACT_I64
+            c = instructions.fetch(pc + 3)
+            registers[a] = (registers.fetch(instructions.fetch(pc + 2)) >> (c & 63)) & (c >> 6)
+          when 197 # Opcode::I32_TABLE_STORE8
             address = (registers[instructions.fetch(pc + 2)] + registers[instructions.fetch(pc + 3)]) & 0xffffffff
             registers[a] = address
             byte = @store_access.load8_u(address, instructions.fetch(pc + 7))
@@ -723,7 +731,7 @@ module Wardite
             @store_access.store(registers[instructions.fetch(pc + 10)], instructions.fetch(pc + 11), 1, byte)
             registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
             pc += 3 * Lowerer::WIDTH
-          when 196 # Opcode::I64_BYTE_LOOKUP
+          when 198 # Opcode::I64_BYTE_LOOKUP
             address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
             registers[a] = address
             byte = @store_access.load8_u(address, 0)
@@ -732,7 +740,7 @@ module Wardite
             registers[instructions.fetch(pc + 9)] = table_address
             registers[instructions.fetch(pc + 13)] = @store_access.load8_u(table_address, 0)
             pc += 3 * Lowerer::WIDTH
-          when 197 # Opcode::I32_BYTE_MUL_ADD
+          when 199 # Opcode::I32_BYTE_MUL_ADD
             address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
             registers[a] = address
             byte = @store_access.load8_u(address, 0)
@@ -742,12 +750,22 @@ module Wardite
             registers[instructions.fetch(pc + 9)] = product
             registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + product) & 0xffffffff
             pc += 3 * Lowerer::WIDTH
-          when 198 # Opcode::I32_BYTE_ADD_STORE
+          when 200 # Opcode::I32_BYTE_ADD_STORE
             byte = @store_access.load8_u(registers[instructions.fetch(pc + 2)], 0)
             registers[a] = byte
             sum = (byte + registers[instructions.fetch(pc + 7)]) & 0xffffffff
             registers[instructions.fetch(pc + 5)] = sum
             @store_access.store(registers[instructions.fetch(pc + 10)], 0, 1, sum)
+            registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
+            pc += 3 * Lowerer::WIDTH
+          when 201 # Opcode::I32_DIV_U_STORE8
+            sum = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
+            registers[a] = sum
+            divisor = registers.fetch(instructions.fetch(pc + 7))
+            raise Wardite::EvalError, "integer divide by zero" if divisor == 0
+            quotient = sum / divisor
+            registers[instructions.fetch(pc + 5)] = quotient
+            @store_access.store(registers[instructions.fetch(pc + 10)], instructions.fetch(pc + 11), 1, quotient)
             registers[instructions.fetch(pc + 13)] = (registers[instructions.fetch(pc + 14)] + instructions.fetch(pc + 15)) & 0xffffffff
             pc += 3 * Lowerer::WIDTH
           when 0 # Opcode::COPY
