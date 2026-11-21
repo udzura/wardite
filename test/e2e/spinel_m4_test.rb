@@ -20,7 +20,19 @@ class WarditeSpinelM4Test < Test::Unit::TestCase
 
   test "native i64 instructions match the CRuby reference vectors" do
     functions, rows = alu_cases
-    run_worker("efflorescence_m4_vectors", "M4 vectors passed", "(module #{functions})", rows)
+    run_worker("efflorescence_m4_vectors", "M4 vectors passed", "(module #{functions})", rows) do |worker, arguments|
+      next unless ENV["WARDITE_MIR_JIT"] == "1" && RUBY_PLATFORM.match?(/arm64-darwin/)
+
+      # The worker also checks every value and trap against the M4 reference.
+      # Tracing proves which exports ran natively and which inputs used replay.
+      output, status = Open3.capture2e({"WARDITE_MIR_JIT" => "1", "WARDITE_TRACE" => "1"}, worker, *arguments)
+      assert_predicate status, :success?, output
+      expected = rows.group_by(&:first).values.each_with_index.flat_map do |cases, index|
+        traps = cases.count { |row| %w[zero overflow].include?(row.last) }
+        ["MIR JIT function #{index}: compiled"] + ["MIR JIT function #{index}: interpreter bailout"] * traps
+      end
+      assert_equal expected, output.lines.grep(/^MIR JIT function /).map(&:chomp)
+    end
   end
 
   test "native i64 memory, globals and EH preserve signed register bits" do
@@ -52,9 +64,11 @@ class WarditeSpinelM4Test < Test::Unit::TestCase
       output, status = Open3.capture2e(ENV.fetch("SPINEL", "spinel"), "--strict-require", "-O2",
         "-I#{root}/lib", File.join(root, "test/spinel/#{source}.rb"), "-o", worker)
       assert status.success?, output
-      output, status = Open3.capture2e(worker, *arguments)
+      env = block_given? ? {"WARDITE_MIR_JIT" => "0"} : {}
+      output, status = Open3.capture2e(env, worker, *arguments)
       assert status.success?, output
       assert_equal "#{expected}\n", output
+      yield worker, arguments if block_given?
     end
   end
 end

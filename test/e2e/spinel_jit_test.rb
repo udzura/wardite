@@ -68,4 +68,31 @@ class WarditeSpinelJITTest < Test::Unit::TestCase
       end
     end
   end
+
+  test "i64 entry preserves zero-argument constants and mixed arguments across the spill boundary" do
+    binary = ENV["WARDITE_SPINEL_BIN"]
+    omit "Run bin/test-spinel-jit to test the native executable" unless binary
+    omit "AArch64 JIT requires Apple Silicon macOS" unless RUBY_PLATFORM.match?(/arm64-darwin/)
+    wat = <<~WAT
+      (module
+        (func (export "constant") (result i64) i64.const -9223372036854775808)
+        (func (export "mixed") (param i32 #{Array.new(16, "i64").join(" ")}) (result i64)
+          local.get 15 local.get 16 i64.rem_s
+          local.get 0 i64.extend_i32_u i64.add))
+    WAT
+    Dir.mktmpdir do |dir|
+      wasm = File.join(dir, "entry.wasm")
+      File.binwrite(wasm, compile_efflorescence_wat(wat))
+      min = -(1 << 63)
+      cases = [["constant", [], min], ["mixed", [0xffffffff, *Array.new(14, 0), min, 7], 0xffffffff - 1]]
+      cases.each do |name, args, expected|
+        env = {"WARDITE_MIR_JIT" => "1", "WARDITE_TRACE" => "1"}
+        output, status = Open3.capture2e(env, binary, "--no-wasi", "--invoke", name, "--", wasm, *args.map(&:to_s))
+        assert_predicate status, :success?, output
+        assert_match(/MIR JIT function \d+: compiled/, output)
+        assert_not_match(/bailout|mapping unavailable/, output)
+        assert_include output, "return value: #{Wardite::I64(expected).inspect}"
+      end
+    end
+  end
 end
