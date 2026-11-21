@@ -30,7 +30,7 @@ module Wardite
             long result = -1;
             if (mprotect(page, size, PROT_READ | PROT_EXEC) == 0) {
               sys_icache_invalidate(page, size);
-              result = ((uint32_t (*)(uint32_t, uint32_t))page)(a, b);
+              result = ((long (*)(uint32_t, uint32_t))page)(a, b);
             }
             munmap(page, size);
             return result;
@@ -63,8 +63,14 @@ module Wardite
         code = @entries[index]
         return unless code
 
-        result = Native.wardite_jit_run(code, code.bytesize, arguments.fetch(0), arguments.fetch(1))
+        result = Native.wardite_jit_run(code, code.bytesize, arguments.fetch(0), arguments.fetch(1, 0))
         return result if result >= 0
+
+        if result == -2
+          # Only side-effect-free instructions ran; replay from the original arguments.
+          warn "MIR JIT function #{index}: interpreter bailout" if ENV["WARDITE_TRACE"]
+          return nil
+        end
 
         @entries[index] = nil
         warn "MIR JIT function #{index}: executable mapping unavailable" if ENV["WARDITE_TRACE"]

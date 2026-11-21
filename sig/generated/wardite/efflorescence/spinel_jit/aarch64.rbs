@@ -3,40 +3,75 @@
 module Wardite
   module Efflorescence
     class SpinelJIT
-      # MIR slot n lives in wn. w0 and w1 therefore receive the two arguments
-      # directly. w15 is scratch. Larger register IDs fall back to the VM.
+      # Slots 0..14 live in x0..x14; larger slots occupy 8 bytes each at sp.
+      # x15..x17 are caller-saved scratch. Writes to W registers zero-extend.
       class AArch64
         SCRATCH: ::Integer
 
-        # Keeps every generated branch within the signed imm19 range of CBZ.
+        LEFT: ::Integer
+
+        RIGHT: ::Integer
+
         MAX_INSTRUCTIONS: ::Integer
+
+        MAX_SLOTS: ::Integer
+
+        BAILOUT: ::Integer
 
         def initialize: () -> untyped
 
-        # Compile one complete lowered function. Branch targets in flat MIR
-        # are word offsets; AArch64 branch displacements count instructions.
         # @rbs function: Function
         # @rbs return: String?
         def compile: (Function function) -> String?
 
         private
 
+        # @rbs function: Function
+        # @rbs return: void
+        def initialize_frame: (Function function) -> void
+
+        # @rbs return: void
+        def finish_frame: () -> void
+
         # @rbs dest: Integer
         # @rbs value: Integer
+        # @rbs wide: bool
         # @rbs return: void
-        def load_constant: (Integer dest, Integer value) -> void
+        def load_constant: (Integer dest, Integer value, bool wide) -> void
 
         # @rbs value: Integer
         # @rbs return: Integer
         def constant_register: (Integer value) -> Integer
 
+        # @rbs slot: Integer
+        # @rbs scratch: Integer
+        # @rbs return: Integer
+        def read_slot: (Integer slot, Integer scratch) -> Integer
+
+        # @rbs slot: Integer
+        # @rbs reg: Integer
+        # @rbs return: void
+        def store_slot: (Integer slot, Integer reg) -> void
+
+        # @rbs word: Integer
+        # @rbs target: Integer
+        # @rbs return: void
+        def branch: (Integer word, Integer target) -> void
+
         # @rbs op: Integer
         # @rbs a: Integer
         # @rbs b: Integer
         # @rbs c: Integer
-        # @rbs count: Integer
+        # @rbs length: Integer
         # @rbs return: bool
-        def emit: (Integer op, Integer a, Integer b, Integer c, Integer count) -> bool
+        def emit: (Integer op, Integer a, Integer b, Integer c, Integer length) -> bool
+
+        # @rbs op: Integer
+        # @rbs dest: Integer
+        # @rbs left: Integer
+        # @rbs right: Integer
+        # @rbs return: bool
+        def emit_binary: (Integer op, Integer dest, Integer left, Integer right) -> bool
       end
     end
   end

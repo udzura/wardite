@@ -197,8 +197,16 @@ WARDITE_MIR_JIT=1 WARDITE_TRACE=1 build/wardite --no-wasi --invoke inline_mix bu
 On the first public call to a function, Wardite prepares its usual MIR.
 The [Ruby emitter](lib/wardite/efflorescence/spinel_jit/aarch64.rb) translates
 the whole function and resolves branches once it knows each instruction's
-native offset. It accepts the optimized operations used by `inline_mix`,
-two i32 arguments, and one i32 result. Unsupported functions, calls from
+native offset. It accepts one or two i32 arguments and one i32 result.
+Supported operations include the `inline_mix` loop and the unsigned remainder,
+comparisons, and 64-bit square used by the trial-division `count_primes`
+benchmark. The first 15 MIR slots live in registers and the remaining slots
+use an aligned stack frame, up to 128 slots in total.
+
+If execution reaches a zero divisor, a trap, or a direct call immediately
+followed by a trap, the interpreter replays the function from its original
+arguments. All instructions executed natively before replay affect only
+local values. Functions with other calls or memory operations, calls from
 inside interpreted Wasm, and MIR profiling use the interpreter.
 
 The [Spinel adapter](lib/wardite/efflorescence/spinel_jit.rb) caches the machine
@@ -215,7 +223,7 @@ bin/test-spinel-jit
 
 Use native arm64 Ruby with the bundle installed, Spinel, `wasm-tools`, and
 the Xcode Command Line Tools. The script builds the CLI, checks that
-`inline_mix` runs as native code and that unsupported MIR falls back, then
+integer loops run as native code and that trap and fallback paths work, then
 runs `rake test` with `WARDITE_MIR_JIT=1` and the native binary available to
 all Spinel E2E tests. Incremental build objects are reused across runs under
 `build/spinel-jit-test/objects` by default.
