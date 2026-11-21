@@ -1,6 +1,6 @@
 # ADR 0026: 未使用のMIRスロットを除いてフレームを小さくする
 
-- **状態** 提案
+- **状態** 実装・レビュー中。[実装 PR](https://github.com/udzura/wardite/pull/81)・[検証コードと比較結果](https://github.com/udzura/wardite-benches/pull/2)
 - **日付** 2026-11-21
 - **関連** [ADR 0013（フレーム確保の費用）](0013-efflorescence-frame-acquisition.md)、[ADR 0025（ループJIT）](0025-efflorescence-jit-numeric-types-and-sieve.md)
 

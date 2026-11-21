@@ -13,7 +13,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 13
+      CODE_VERSION = 14
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -214,17 +214,7 @@ module Wardite
 
         attr_reader :functions #: Array[Function]
 
-        # Reuse the semantic register roles for fixed operands. Lowering
-        # moves direct call arguments into a side table and leaves optional
-        # destinations and return operands to be checked against signatures.
-        REGISTER_MASKS = Opcode::NAMES.each_index.map do |opcode|
-          next 0 if opcode == CALL || opcode == RETURN
-
-          instruction = Instruction.new([opcode, 0, 0, 0])
-          positions = Opcode.read_positions(instruction)
-          positions << 1 if Opcode.destination(instruction) >= 0 && !Opcode.dynamic_call?(opcode)
-          positions.reduce(0) { |mask, position| mask | (1 << (position - 1)) }
-        end.freeze #: Array[Integer]
+        REGISTER_MASKS = Instruction::FIXED_REGISTER_MASKS #: Array[Integer]
 
         EXTRA_OPERANDS = Opcode::NAMES.each_index.map do |opcode|
           case opcode

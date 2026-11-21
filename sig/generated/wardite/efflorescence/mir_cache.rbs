@@ -121,9 +121,6 @@ module Wardite
 
         attr_reader functions: Array[Function]
 
-        # Reuse the semantic register roles for fixed operands. Lowering
-        # moves direct call arguments into a side table and leaves optional
-        # destinations and return operands to be checked against signatures.
         REGISTER_MASKS: Array[Integer]
 
         EXTRA_OPERANDS: Array[Symbol?]

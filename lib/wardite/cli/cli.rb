@@ -60,7 +60,7 @@ module Wardite
             @wasi = false
           }
           opts.on("--new-engine", "Use Efflorescence (kept for compatibility)") { }
-          opts.on("--mir-disable NAME", "Disable copy, immediate, branch, superinstruction, inline, frames, or all (repeatable)") {|v|
+          opts.on("--mir-disable NAME", "Disable copy, immediate, branch, superinstruction, inline, compact, frames, or all (repeatable)") {|v|
             @disabled_optimizations << v.to_sym
           }
           opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }

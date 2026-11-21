@@ -41,6 +41,7 @@ module Wardite
           end
           @optimizer.optimize_function(body) if @inlining.expand_calls(body, @ir, @leaves)
         end
+        @optimizer.compact_registers(body)
         RegisterValidation.new.validate(body, @ir, tags: @tags)
         @optimizer.fuse_byte_sequences(body)
         Instrumentation.new.instrument_function(body) if @profile

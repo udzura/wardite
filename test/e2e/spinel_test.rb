@@ -153,7 +153,7 @@ class WarditeSpinelTest < Test::Unit::TestCase
       assert status.success?, err
       assert_equal "", out
       assert_include err, "Semantic MIR (instructions=35 copies=11 registers=37)"
-      assert_include err, "Optimized MIR (instructions=23 copies=2 registers=49)"
+      assert_include err, "Optimized MIR (instructions=23 copies=2 registers=15)"
       assert_include err, "I32_XOR_SHR_U_IMM"
       assert_include err, "dispatches=73 copies=1 register_reads=63 register_writes=51 function_entries=1 frames_created=1"
       assert_match(/^opcode I32_XOR_SHR_U_IMM \d+$/, err)
