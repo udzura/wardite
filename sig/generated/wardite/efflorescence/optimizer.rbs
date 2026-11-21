@@ -240,6 +240,10 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::IR
       def optimize_in_place: (Wardite::Efflorescence::IR output) -> Wardite::Efflorescence::IR
 
+      # @rbs function: Function
+      # @rbs return: void
+      def compact_registers: (Function function) -> void
+
       # @rbs function: Wardite::Efflorescence::Function
       # @rbs return: void
       def fuse_byte_sequences: (Wardite::Efflorescence::Function function) -> void

@@ -614,6 +614,10 @@ module Wardite
     # This is deliberately separate from translation and execution so later
     # function-level optimization passes can consume and produce MIR.
     class Function
+      # Fixed register positions for slot renaming. Direct calls additionally
+      # carry a variable-length argument list starting at operand three.
+      REGISTER_POSITIONS: Array[Array[Integer]]
+
       attr_reader index: Integer
 
       attr_reader pool_index: Integer
@@ -729,11 +733,17 @@ module Wardite
       # @rbs return: void
       def lower_handlers: () -> void
 
-      # Rename MIR references, including operands stored outside instructions.
-      # The caller supplies existing same-typed slots and validates the result.
+      # Mark references and rename them with the same traversal, including
+      # write-only operands and side tables that survive instruction rewrites.
+      # @rbs return: void
+      def compact_registers!: () -> void
+
       # @rbs mapping: Array[Integer]
       # @rbs return: void
       def replace_register_references!: (Array[Integer] mapping) -> void
+
+      # @rbs () { (Array[Integer], Integer) -> void } -> void
+      def each_register_operand: () { (Array[Integer], Integer) -> void } -> void
 
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Integer
