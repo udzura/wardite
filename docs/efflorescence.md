@@ -30,10 +30,9 @@ instance.runtime.call("call_mix", [100000, 123]) # Wardite::I32, same as Runtime
 instance.runtime.call_unboxed("call_mix", [100000, 123]) # 3870791521 (Integer)
 ```
 
-Spinel uses the same sources (`make spinel`). Invoke exported functions through
-`runtime.call` or the CLI: Spinel currently does not dispatch undefined methods
-through Ruby's `method_missing` (including the existing VM's convenience API).
-No Spinel-specific runtime API or global integer-overflow option is needed.
+Spinel uses the same sources (`make spinel`). On both engines, use
+`runtime.callable?(name)` to check for an exported function, `runtime.call(name, args)`
+to invoke it, and `instance.exports[name]` to look up an exported handle by its string name.
 
 ## MIR and execution
 

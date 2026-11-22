@@ -24,11 +24,11 @@ module Wardite
       # @rbs return: Integer
       def fd_write_from_registers: (Wardite::Store store, Array[Integer] values, Array[Integer]? sources) -> Integer
 
-      # @rbs _store: Wardite::Store
+      # @rbs store: Wardite::Store
       # @rbs values: Array[Integer]
       # @rbs sources: Array[Integer]?
       # @rbs return: bot
-      def proc_exit_from_registers: (untyped _store, Array[Integer] values, Array[Integer]? sources) -> bot
+      def proc_exit_from_registers: (Wardite::Store store, Array[Integer] values, Array[Integer]? sources) -> bot
     end
   end
 end

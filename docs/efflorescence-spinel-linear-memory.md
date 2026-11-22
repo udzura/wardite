@@ -16,13 +16,13 @@ CRubyのホストAPIは `Memory#data` のStringを引き続き使える。両ホ
 
 ## ビルド
 
-WarditeのCIは [Spinel upstreamの `072516af1`](https://github.com/matz/spinel/commit/072516af13322849eabe107eeb910e43fb2882be) に固定する。このリビジョンは `IO::Buffer.new` の領域割り当て失敗を `IO::Buffer::AllocationError` として伝える。CIはコミットとビルド環境でツールチェーンを識別し、Actionsキャッシュ、`main` の成功済み実行のArtifact、ソースからのビルドの順で取得する。インストール一式の `spinel.tar.gz` は、保存元のActions実行ページからダウンロードできる。Artifactにはリポジトリの既定の保持期間を適用する。
+WarditeのCIは [Spinel upstreamの `68476ebd3`](https://github.com/matz/spinel/commit/68476ebd3d91584899e8e40c42004aee591211cc) に固定する。このリビジョンは `IO::Buffer.new` の領域割り当て失敗を `IO::Buffer::AllocationError` として伝える。CIはコミットとビルド環境でツールチェーンを識別し、Actionsキャッシュ、`main` の成功済み実行のArtifact、ソースからのビルドの順で取得する。インストール一式の `spinel.tar.gz` は、保存元のActions実行ページからダウンロードできる。Artifactにはリポジトリの既定の保持期間を適用する。
 
 同じリビジョンをローカルでビルドするには、クローン先のパスを `spinel_src` に指定し、Warditeのルートから実行する。
 
 ```sh
 git clone https://github.com/matz/spinel.git "$spinel_src"
-git -C "$spinel_src" switch --detach 072516af13322849eabe107eeb910e43fb2882be
+git -C "$spinel_src" switch --detach 68476ebd3d91584899e8e40c42004aee591211cc
 make -C "$spinel_src" deps
 make -C "$spinel_src" all
 make spinel SPINEL="$spinel_src/bin/spinel"

@@ -68,16 +68,6 @@ module Wardite
       # @rbs return: (Integer | Float)?
       def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float)?
 
-      # @rbs name: Symbol
-      # @rbs *arguments: Object
-      # @rbs return: Wardite::wasmValue?
-      def method_missing: (Symbol name, *Object arguments) -> Wardite::wasmValue?
-
-      # @rbs name: String|Symbol
-      # @rbs include_private: bool
-      # @rbs return: bool
-      def respond_to_missing?: (String | Symbol name, ?bool include_private) -> bool
-
       # @rbs return: String
       def dump_mir: () -> String
 

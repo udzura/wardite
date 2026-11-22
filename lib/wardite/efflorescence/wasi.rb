@@ -39,11 +39,11 @@ module Wardite
           values.fetch(indices.fetch(2)), values.fetch(indices.fetch(3)))
       end
 
-      # @rbs _store: Wardite::Store
+      # @rbs store: Wardite::Store
       # @rbs values: Array[Integer]
       # @rbs sources: Array[Integer]?
       # @rbs return: bot
-      def proc_exit_from_registers(_store, values, sources)
+      def proc_exit_from_registers(store, values, sources)
         exit(values.fetch((sources || PROC_EXIT_ARGUMENTS).fetch(0)))
       end
 

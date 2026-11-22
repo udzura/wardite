@@ -31,7 +31,7 @@ data_url = "data:image/png;base64," + orig
 instance = Wardite::BinaryLoader::load_from_buffer(f);
 instance.store.memories[0].grow(data_url.size / (64*1024) + 1)
 
-start = instance.exports.__heap_base.value.value
+start = instance.exports["__heap_base"].value.value
 instance.store.memories[0].data[start...(start+data_url.size)] = data_url
 
 offset = 0
@@ -39,7 +39,7 @@ result = nil
 begin
   # pub fn grayscale(width: i32, height: i32, memory_offset: i32, length: i32) -> *const u8
   #profile.start
-  offset = instance.runtime.grayscale_blob($options.width, $options.height, start, data_url.size)
+  offset = instance.runtime.call("grayscale_blob", [$options.width, $options.height, start, data_url.size])
   #result = profile.stop
 rescue => e
   raise "failed to execute grayscale() " + e.message

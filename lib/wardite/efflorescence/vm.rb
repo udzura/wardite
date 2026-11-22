@@ -141,20 +141,6 @@ module Wardite
         unbox_result(entry.result_types.fetch(0), result)
       end
 
-      # @rbs name: Symbol
-      # @rbs *arguments: Object
-      # @rbs return: Wardite::wasmValue?
-      def method_missing(name, *arguments)
-        callable?(name) ? call(name, arguments) : super
-      end
-
-      # @rbs name: String|Symbol
-      # @rbs include_private: bool
-      # @rbs return: bool
-      def respond_to_missing?(name, include_private = false)
-        callable?(name) || super
-      end
-
       # @rbs return: String
       def dump_mir
         inspection = Inspection.new

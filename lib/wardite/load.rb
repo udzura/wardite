@@ -408,7 +408,6 @@ module Wardite
       if enable_wasi && sections_.any? { |section| section.is_a?(ImportSection) &&
           section.imports.any? { |import| import.module_name == "wasi_snapshot_preview1" } }
         wasi_env = if RUBY_ENGINE == "spinel"
-          require "wardite/wasi"
           Wardite::WasiSnapshotPreview1.new
         else
           require "wardite/efflorescence/wasi"

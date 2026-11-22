@@ -54,7 +54,7 @@ jobs:
       actions: read
       contents: read
     env:
-      SPINEL_REF: 072516af13322849eabe107eeb910e43fb2882be
+      SPINEL_REF: 68476ebd3d91584899e8e40c42004aee591211cc
     strategy:
       matrix:
         ruby:

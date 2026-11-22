@@ -30,10 +30,9 @@ instance.runtime.call_unboxed("call_mix", [100000, 123]) # 3870791521 (Integer)
 ```
 
 Spinelでも同じソースコードを使います（`make spinel`）。
-エクスポートされた関数は、`runtime.call` またはCLIから呼び出してください。
-現在のSpinelは、未定義メソッドの呼び出しをRubyの `method_missing` に転送しません。
-この制約は、既存VMが提供する簡便な呼び出しAPIにも当てはまります。
-Spinel固有のランタイムAPIや、プログラム全体の整数オーバーフロー設定を変更するオプションは不要です。
+CRuby、Spinel ともに、エクスポートされた関数の有無は `runtime.callable?(name)` で確認し、
+`runtime.call(name, args)` で呼び出せます。メモリやグローバルなどのエクスポートは、
+文字列名で `instance.exports[name]` から取得できます。
 
 ## MIRと実行処理
 

@@ -372,7 +372,7 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     WAT
     [0, 123, 0xffffffff].each do |x|
       shifted = x >> 13
-      assert_equal ((shifted ^ x) + shifted) & 0xffffffff, instance.run(x).value
+      assert_equal ((shifted ^ x) + shifted) & 0xffffffff, instance.runtime.call("run", [x]).value
     end
     assert instance.runtime.optimized_ir.functions[0].instructions.none? { |i| i[0] == OP::I32_XOR_SHR_U_IMM }
   end
@@ -391,7 +391,7 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
           i32.const 0 call $helper))
     WAT
     3.times do
-      assert_equal 0, instance.run.value
+      assert_equal 0, instance.runtime.call("run", []).value
       assert_equal 2, instance.runtime.metrics.frames_created
       assert_equal 3, instance.runtime.metrics.function_entries
     end

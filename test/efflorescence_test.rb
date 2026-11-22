@@ -45,9 +45,9 @@ class EfflorescenceTest < Test::Unit::TestCase
                   Wardite::Efflorescence::Opcode::COPY,
                   Wardite::Efflorescence::Opcode::RETURN], function.instructions.map { |insn| insn[0] }
     assert function.instructions.flat_map(&:operands).all? { |value| value.is_a?(Integer) }
-    assert_equal 52, instance.runtime.add(42).value
-    assert instance.runtime.respond_to?(:add)
-    assert_equal 10, instance.add(0).value
+    assert_equal 52, instance.runtime.call(:add, [42]).value
+    assert instance.runtime.callable?(:add)
+    assert_equal 10, instance.runtime.call("add", [0]).value
   end
 
   test "local get snapshots survive set and tee" do
@@ -58,8 +58,8 @@ class EfflorescenceTest < Test::Unit::TestCase
         (func (export "tee") (param i32) (result i32)
           local.get 0 i32.const 10 local.tee 0 i32.add))
     WAT
-    assert_equal 124, instance.set(123).value
-    assert_equal 133, instance.tee(123).value
+    assert_equal 124, instance.runtime.call("set", [123]).value
+    assert_equal 133, instance.runtime.call("tee", [123]).value
   end
 
   test "stack prefix snapshots survive conditional edges and loop backedges" do
@@ -84,10 +84,10 @@ class EfflorescenceTest < Test::Unit::TestCase
           end
           local.get 0 i32.add))
     WAT
-    assert_equal 106, instance.prefix(7, 0).value
-    assert_equal 14, instance.prefix(7, 1).value
-    assert_equal 24, instance.loop_prefix(7, 10).value
-    assert_equal 14, instance.loop_prefix(7, 0).value
+    assert_equal 106, instance.runtime.call("prefix", [7, 0]).value
+    assert_equal 14, instance.runtime.call("prefix", [7, 1]).value
+    assert_equal 24, instance.runtime.call("loop_prefix", [7, 10]).value
+    assert_equal 14, instance.runtime.call("loop_prefix", [7, 0]).value
   end
 
   test "branch results, discarded values, function labels and dead code" do
@@ -115,11 +115,11 @@ class EfflorescenceTest < Test::Unit::TestCase
             i32.const 77
           end))
     WAT
-    assert_equal 7, instance.choose(0).value
-    assert_equal 42, instance.choose(1).value
-    assert_equal 55, instance.nested.value
-    assert_equal 123, instance.label.value
-    assert_equal 77, instance.loop_result(3).value
+    assert_equal 7, instance.runtime.call("choose", [0]).value
+    assert_equal 42, instance.runtime.call("choose", [1]).value
+    assert_equal 55, instance.runtime.call("nested", []).value
+    assert_equal 123, instance.runtime.call("label", []).value
+    assert_equal 77, instance.runtime.call("loop_result", [3]).value
   end
 
   test "internal frames handle recursion and void calls without Ruby recursion" do
@@ -135,8 +135,8 @@ class EfflorescenceTest < Test::Unit::TestCase
           local.get 0 i32.const 1 i32.sub call $count
           i32.const 1 i32.add))
     WAT
-    assert_equal 5005, instance.count(5000).value
-    assert_equal 5, instance.count(0).value
+    assert_equal 5005, instance.runtime.call("count", [5000]).value
+    assert_equal 5, instance.runtime.call("count", [0]).value
   end
 
   test "i32 normalization wrapping shift counts and unsigned products" do
@@ -156,11 +156,11 @@ class EfflorescenceTest < Test::Unit::TestCase
         when "shl" then left << (right % 32)
         when "shr_u" then left >> (right % 32)
         end
-        assert_equal expected & 0xffffffff, instance.run(a, b).value, "#{op}(#{a}, #{b})"
+        assert_equal expected & 0xffffffff, instance.runtime.call("run", [a, b]).value, "#{op}(#{a}, #{b})"
       end
     end
     identity = load_efflorescence('(module (func (export "id") (param i32) (result i32) local.get 0))')
-    [-1, 0x100000001, -(2**80)].each { |value| assert_equal value & 0xffffffff, identity.id(value).value }
+    [-1, 0x100000001, -(2**80)].each { |value| assert_equal value & 0xffffffff, identity.runtime.call("id", [value]).value }
   end
 
   test "only Ruby return boundary boxes i32" do
@@ -195,7 +195,7 @@ class EfflorescenceTest < Test::Unit::TestCase
         (func (export "void"))
         (func (export "id") (param i32) (result i32) local.get 0))
     WAT
-    assert_nil instance.void
+    assert_nil instance.runtime.call("void", [])
     assert_false instance.runtime.callable?(:memory)
     assert_raise(NoMethodError) { instance.runtime.call(:memory, []) }
     assert_raise(NoMethodError) { instance.runtime.call(:missing, []) }
