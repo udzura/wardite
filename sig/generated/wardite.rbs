@@ -176,6 +176,12 @@ module Wardite
     # @rbs return: Integer
     def grow: (Integer delta) -> Integer
 
+    # Allocate the zeroed image for a validated snapshot. Every live byte
+    # comes from the saved pages, so the old buffer can be discarded.
+    # @rbs pages: Integer
+    # @rbs return: bool
+    def replace_snapshot_buffer: (Integer pages) -> bool
+
     def inspect: () -> untyped
 
     private

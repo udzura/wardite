@@ -579,6 +579,21 @@ module Wardite
       previous
     end
 
+    # Allocate the zeroed image for a validated snapshot. Every live byte
+    # comes from the saved pages, so the old buffer can be discarded.
+    # @rbs pages: Integer
+    # @rbs return: bool
+    def replace_snapshot_buffer(pages)
+      limit = max
+      return false if pages < current || pages > MAX_PAGES || (limit && pages > limit)
+      return false if buffer.locked?
+      replacement = allocate_storage(pages)
+      return false unless replacement
+      replace_storage(replacement, pages * PAGE_SIZE)
+      self.current = pages
+      true
+    end
+
     def inspect
       preview = read_bytes(0, [bytesize, 64].min)
       "#<Wardite::Memory initial=#{bytesize.inspect} max=#{@max.inspect} preview=#{preview.inspect}...>"
