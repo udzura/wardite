@@ -1018,9 +1018,9 @@ module Wardite
           # Active explicit-memory segments still target memory 0 in M2.
           memory_index = data_type == 2 ? fetch_uleb128(sbuf) : 0
           raise LoadError, "only memory 0 is supported" unless memory_index == 0
-          code = fetch_insn_while_end(sbuf)
-          ops = code_body(StringIO.new(code))
-          offset = decode_expr(ops)
+          raise LoadError, "data offset requires i32.const" unless assert_byte(sbuf) == 0x41
+          offset = fetch_sleb128(sbuf, width: 32)
+          raise LoadError, "constant expression requires end" unless assert_byte(sbuf) == 0x0b
           len = fetch_uleb128(sbuf)
           data = assert_read(sbuf, len).b
           segment = DataSection::Segment.new do |seg|
