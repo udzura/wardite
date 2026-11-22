@@ -188,6 +188,7 @@ module Wardite
       # @rbs inspect: bool
       # @rbs return: Wardite::Efflorescence::IR
       def build_mir(semantic, profile, inspect)
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC) if ENV["WARDITE_TRACE"]
         optimizer = Optimizer.new(@configuration)
         optimized = inspect ? optimizer.optimize(semantic) : optimizer.optimize_in_place(semantic)
         optimized.functions.each do |function|
@@ -196,6 +197,10 @@ module Wardite
         end
         ir = profile ? Instrumentation.new.instrument(optimized) : optimized
         Lowerer.new.compile(ir)
+        if started
+          elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+          $stderr.puts "MIR optimization and lowering: #{elapsed}"
+        end
         if inspect
           @semantic_ir = semantic
           @optimized_ir = optimized

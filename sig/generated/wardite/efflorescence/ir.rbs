@@ -451,6 +451,10 @@ module Wardite
       # @rbs return: Array[Integer]
       def self.fixed_read_positions: (Integer opcode) -> Array[Integer]
 
+      # @rbs op: Integer
+      # @rbs return: bool
+      def self.pure_integer?: (Integer op) -> bool
+
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Array[Integer]
       def self.read_positions: (Wardite::Efflorescence::Instruction instruction) -> Array[Integer]

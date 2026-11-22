@@ -1,0 +1,23 @@
+# Generated from lib/wardite/efflorescence/simplification.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    module Passes
+      class ConstantFolding
+        include Opcode
+
+        # Forward only immutable constant slots. Side tables keep their original
+        # operands and count as reads when deciding whether a COPY is removable.
+        # @rbs function: Function
+        # @rbs return: void
+        def run: (Function function) -> void
+
+        # @rbs op: Integer
+        # @rbs left: Integer
+        # @rbs right: Integer
+        # @rbs return: Integer
+        def calculate: (Integer op, Integer left, Integer right) -> Integer
+      end
+    end
+  end
+end
