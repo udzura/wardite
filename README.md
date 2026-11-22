@@ -91,6 +91,7 @@ moves constant assignments onto the taken edges. It is enabled by default.
 The experimental `fold`, `cfg`, `dce`, and `licm` passes can be enabled
 independently with `--mir-enable NAME`. Each combination has its own MIR2 key.
 See [ADR 0028](docs/adr/0028-efflorescence-reduce-executed-instructions.md).
+[ADR 0029](docs/adr/0029-efflorescence-spinel-interpreter-costs.md) covers byte-table lookup fusion, the Spinel pin, and comparisons with iwasm and Wasmtime.
 
 On CRuby and Spinel, the default is to validate the whole module at load time
 and prepare MIR on the first call to each function. For repeated runs, pass
