@@ -167,7 +167,8 @@ module Wardite
             used_pages[page] = true
             memory.write_bytes(page * PAGE_SIZE, contents.byteslice(i * PAGE_SIZE, PAGE_SIZE) || raise(MIRCache::Invalid))
           end
-          used_pages.each_with_index { |nonzero, page| memory.write_bytes(page * PAGE_SIZE, ZERO_PAGE) unless nonzero }
+          # Newly grown pages are already zero. Existing pages can contain initial data.
+          current.times { |page| memory.write_bytes(page * PAGE_SIZE, ZERO_PAGE) unless used_pages[page] }
         end
         access = StoreAccess.new(store)
         store.globals.each_with_index do |global, index|
