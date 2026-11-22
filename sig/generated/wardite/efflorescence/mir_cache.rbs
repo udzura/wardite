@@ -256,6 +256,18 @@ module Wardite
       # @rbs source: String?
       def self.publish: (String directory, String destination, String prefix, String payload, ?String? source) -> void
 
+      # @rbs instance: Wardite::Instance
+      # @rbs count: Integer
+      # @rbs return: Writer
+      def layout_header: (Wardite::Instance instance, Integer count) -> Writer
+
+      # Many functions share a type index. Encode the declared signature once
+      # per type when comparing the live module with the serialized IR layout.
+      # @rbs instance: Wardite::Instance
+      # @rbs count: Integer
+      # @rbs return: String
+      def declared_layout: (Wardite::Instance instance, Integer count) -> String
+
       # Include the module's import identities, and every function's signature
       # and index mapping. The live entries and hosts are always linked afresh.
       # @rbs instance: Wardite::Instance

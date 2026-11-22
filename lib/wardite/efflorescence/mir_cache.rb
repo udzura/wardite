@@ -272,9 +272,10 @@ module Wardite
         # @rbs return: void
         def declare(layout)
           raise Invalid unless @reader.count(8) == @defined_count && @bodies.size == @defined_count
-          @defined_count.times do
-            @offsets << @reader.integer
-            @lengths << @reader.integer
+          pairs = @reader.bytes(@defined_count * 8).unpack("l<*") #: Array[Integer]
+          @defined_count.times do |index|
+            @offsets << pairs.fetch(index * 2)
+            @lengths << pairs.fetch(index * 2 + 1)
           end
           raise Invalid unless @reader.bytes(@reader.count(1)) == layout
 
@@ -595,7 +596,7 @@ module Wardite
         payload = artifact ? artifact.directory_bytes : read_verified_payload
         entries = module_entries(instance)
         decoder = Decoder.new(payload, instance, entries, artifact: artifact)
-        decoder.declare(encode_layout(instance, entries))
+        decoder.declare(declared_layout(instance, entries.size))
         if @eager
           decoder.functions.each { |function| decoder.restore(function) }
         else
@@ -778,19 +779,56 @@ module Wardite
         end
       end
 
+      # @rbs instance: Wardite::Instance
+      # @rbs count: Integer
+      # @rbs return: Writer
+      def layout_header(instance, count)
+        writer = Writer.new
+        imports = instance.import_section.imports
+        writer.integers(imports.size, count)
+        imports.each do |import|
+          writer.integers(import.module_name.bytesize, import.name.bytesize)
+          writer.bytes << import.module_name.b << import.name.b
+        end
+        writer
+      end
+
+      # Many functions share a type index. Encode the declared signature once
+      # per type when comparing the live module with the serialized IR layout.
+      # @rbs instance: Wardite::Instance
+      # @rbs count: Integer
+      # @rbs return: String
+      def declared_layout(instance, count)
+        writer = layout_header(instance, count)
+        imports = instance.import_section.imports
+        signatures = [] #: Array[String]
+        types = instance.type_section
+        if types
+          types.defined_types.each_with_index do |params, i|
+            signature = Writer.new
+            signature.types(params)
+            signature.types(types.defined_results.fetch(i))
+            signatures << signature.bytes
+          end
+        end
+        imports.each_with_index do |import, index|
+          writer.integers(-1, index)
+          writer.bytes << signatures.fetch(import.sig_index)
+        end
+        instance.function_section&.func_indices&.each_with_index do |type, index|
+          writer.integers(index, -1)
+          writer.bytes << signatures.fetch(type)
+        end
+        writer.bytes
+      end
+
       # Include the module's import identities, and every function's signature
       # and index mapping. The live entries and hosts are always linked afresh.
       # @rbs instance: Wardite::Instance
       # @rbs entries: Array[FunctionEntry]
       # @rbs return: String
       def encode_layout(instance, entries)
-        writer = Writer.new
-        imports = instance.import_section.imports
-        writer.integers(imports.size, entries.size)
-        imports.each do |import|
-          writer.integers(import.module_name.bytesize, import.name.bytesize)
-          writer.bytes << import.module_name.b << import.name.b
-        end
+        writer = layout_header(instance, entries.size)
         entries.each do |entry|
           writer.integers(entry.defined_index, entry.host_index)
           writer.types(entry.parameter_types)
