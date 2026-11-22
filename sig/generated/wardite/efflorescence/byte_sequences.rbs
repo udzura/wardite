@@ -2,7 +2,7 @@
 
 module Wardite
   module Efflorescence
-    # Select four-instruction sequences after register validation. Keeping all
+    # Select short instruction sequences after register validation. Keeping all
     # operand slots preserves PCs for branches, catches, and snapshot frames.
     class ByteSequences
       include Opcode
@@ -15,6 +15,28 @@ module Wardite
       # @rbs function: Function
       # @rbs return: void
       def self.fuse: (Function function) -> void
+
+      # @rbs opcode: Integer
+      # @rbs return: Integer
+      def self.length: (Integer opcode) -> Integer
+
+      # @rbs load: Instruction
+      # @rbs branch: Instruction
+      # @rbs return: bool
+      def self.lookup_branch?: (Instruction load, Instruction branch) -> bool
+
+      # Only the two address slots lose writes. The early read of the table
+      # base must also see the same value as the original sequence.
+      # @rbs function: Function
+      # @rbs pc: Integer
+      # @rbs uses: Array[Integer]
+      # @rbs return: bool
+      def self.dead_lookup_addresses?: (Function function, Integer pc, Array[Integer] uses) -> bool
+
+      # Include call arguments and side tables in the use counts.
+      # @rbs function: Function
+      # @rbs return: Array[Integer]
+      def self.read_counts: (Function function) -> Array[Integer]
 
       # Used both when lowering and when checking a restored bytecode body.
       # @rbs head: Integer

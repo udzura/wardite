@@ -413,6 +413,8 @@ module Wardite
 
       I32_DIV_U_STORE8: ::Integer
 
+      I64_BYTE_LOOKUP_BR_EQ: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 
