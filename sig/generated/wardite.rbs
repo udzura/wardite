@@ -81,11 +81,6 @@ module Wardite
 
     # @rbs return: ExportSection
     def export_section: () -> ExportSection
-
-    # @rbs name: Symbol
-    # @rbs args: Array[Object]
-    # @rbs return: untyped
-    def method_missing: (Symbol name, *untyped args) -> untyped
   end
 
   class Type
@@ -290,13 +285,6 @@ module Wardite
     # @rbs name: String
     # @rbs return: exportHandle|nil
     def []: (String name) -> (exportHandle | nil)
-
-    # @rbs name: String|Symbol
-    # @rbs include_private: bool
-    # @rbs return: bool
-    def respond_to?: (String | Symbol name, ?bool include_private) -> bool
-
-    def method_missing: (untyped name, *untyped _args) -> untyped
   end
 
   # TODO: common interface btw. WasmFunction and ExternalFunction?

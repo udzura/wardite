@@ -26,19 +26,15 @@ class WarditeInstanceTest < Test::Unit::TestCase
     assert_raise_message("unknown engine: stack") { Wardite.new(path: path, engine: :stack) }
   end
 
-  test "respond_to? accepts the private visibility flag" do
-    bytes = File.binread(File.expand_path("add.wasm", __dir__))
-    instance = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
-
-    [instance.runtime, instance.exports].each do |receiver|
-      assert_equal true, receiver.respond_to?(:add)
-      assert_equal true, receiver.respond_to?("add", false)
-      assert_equal true, receiver.respond_to?(:add, true)
-      assert_equal true, receiver.respond_to?(:to_s, false)
-      assert_equal false, receiver.respond_to?(:initialize, false)
-      assert_equal true, receiver.respond_to?(:initialize, true)
-      assert_equal false, receiver.respond_to?(:missing_export, false)
-      assert_equal false, receiver.respond_to?(:missing_export, true)
+  test "exports are looked up and called by name" do
+    instance = Wardite.new(path: File.expand_path("add.wasm", __dir__), enable_wasi: false)
+    assert instance.runtime.callable?(:add)
+    assert_false instance.runtime.callable?(:missing_export)
+    assert_kind_of Wardite::WasmFunction, instance.exports["add"]
+    assert_nil instance.exports["missing_export"]
+    [instance, instance.runtime, instance.exports].each do |receiver|
+      assert_false receiver.respond_to?(:add)
+      assert_raise(NoMethodError) { receiver.public_send(:add, 2, 3) }
     end
   end
 
@@ -49,13 +45,6 @@ class WarditeInstanceTest < Test::Unit::TestCase
       instance = ::Wardite::BinaryLoader.load_from_buffer(wasm)
       ret = instance.runtime.call(:add, [100, 200])
       ret.value == 300
-    end
-
-    assert do
-      wasm = ::StringIO.new(bytes)
-      instance = ::Wardite::BinaryLoader.load_from_buffer(wasm)
-      ret = instance.runtime.add(200, 300)
-      ret.value == 500
     end
   end
 end

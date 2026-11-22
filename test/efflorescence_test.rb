@@ -45,9 +45,9 @@ class EfflorescenceTest < Test::Unit::TestCase
                   Wardite::Efflorescence::Opcode::COPY,
                   Wardite::Efflorescence::Opcode::RETURN], function.instructions.map { |insn| insn[0] }
     assert function.instructions.flat_map(&:operands).all? { |value| value.is_a?(Integer) }
-    assert_equal 52, instance.runtime.add(42).value
-    assert instance.runtime.respond_to?(:add)
-    assert_equal 10, instance.add(0).value
+    assert_equal 52, instance.runtime.call(:add, [42]).value
+    assert instance.runtime.callable?(:add)
+    assert_equal 10, instance.runtime.call("add", [0]).value
   end
 
   test "local get snapshots survive set and tee" do

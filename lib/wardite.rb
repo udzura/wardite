@@ -312,20 +312,6 @@ module Wardite
       end
       sec
     end
-
-    # Native callers use runtime.call; a method_missing hook boxes ordinary typed calls.
-    unless RUBY_ENGINE == "spinel"
-      # @rbs name: Symbol
-      # @rbs args: Array[Object]
-      # @rbs return: untyped
-      def method_missing(name, *args)
-        if runtime.callable? name
-          runtime.call(name, args)
-        else
-          super
-        end
-      end
-    end
   end
 
   class Type
@@ -780,23 +766,6 @@ module Wardite
     # @rbs return: exportHandle|nil
     def [](name)
       @mappings[name]&.[](1)
-    end
-
-    unless RUBY_ENGINE == "spinel"
-      # @rbs name: String|Symbol
-      # @rbs include_private: bool
-      # @rbs return: bool
-      def respond_to?(name, include_private = false)
-        !!self[name.to_s] || super
-      end
-
-      def method_missing(name, *_args)
-        if self[name.to_s]
-          self[name.to_s]
-        else
-          super
-        end
-      end
     end
   end
 

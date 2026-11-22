@@ -46,10 +46,10 @@ method = ARGV[1]
 args = ARGV[2..-1] || []
 
 instance = Wardite::new(path: path)
-if !method && instance.runtime.respond_to?(:_start)
-  instance.runtime._start
-else
+if method
   instance.runtime.call(method, args)
+elsif instance.runtime.callable?("_start")
+  instance.runtime.call("_start", [])
 end
 ```
 
@@ -182,9 +182,9 @@ The executable enables the shared WASI Preview 1 host by default. Use
 `build/wardite -- "$ruby_wasm" --disable-gems -e 'puts 6*7'`.
 See the [ruby.wasm verification record](docs/efflorescence-ruby-wasm-phase1.md)
 for the build and file-loading commands. Vernier profiling is available in the
-CRuby build. Ruby's dynamic export helpers (`instance.add(...)` and
-`runtime.add(...)`) rely on `method_missing`; use `instance.runtime.call("add",
-[100, 200])` when compiling an application with Spinel.
+CRuby build. In both builds, use `instance.runtime.call("add", [100, 200])`
+to invoke an exported function and `instance.exports["memory"]` to look up an
+exported memory.
 
 The build leaves inline RBS and Spinel's default integer overflow checks enabled.
 Wasm integer operations bound their intermediate values, so
