@@ -102,6 +102,84 @@ module Wardite
           end
         end
       end
+
+      class ControlFlow
+        include Opcode
+
+        # @rbs function: Function
+        # @rbs return: void
+        def run(function)
+          code = function.instructions
+          return unless code.any? { |insn| Opcode.target_position(insn) >= 0 }
+          constants = Array.new(function.register_count, false)
+          function.constant_registers.each { |r| constants[r] = true }
+          code.each_with_index do |insn, pc|
+            op = insn[0]
+            next unless (op == BR_IF || op == BR_IF_ZERO || op == BR_IF_I64_EQ) && constants[insn[1]]
+            next if op == BR_IF_I64_EQ && !constants[insn[3]]
+            value = function.initial_value(insn[1])
+            taken = case op
+                    when BR_IF then value != 0
+                    when BR_IF_ZERO then value == 0
+                    else value == function.initial_value(insn[3])
+                    end
+            code[pc] = Instruction.new([BR, taken ? insn[2] : pc + 1])
+          end
+          # Resolve jump chains once, including cycles (one self-loop suffices).
+          target = Array.new(code.size, -1)
+          path = [] #: Array[Integer]
+          code.each_index do |pc|
+            current = pc
+            while target.fetch(current) == -1 && code.fetch(current)[0] == BR
+              target[current] = -2
+              path << current
+              current = code.fetch(current)[1]
+            end
+            endpoint = target.fetch(current) >= 0 ? target.fetch(current) : current
+            target[pc] = endpoint
+            path.each { |entry| target[entry] = endpoint }
+            path.clear
+          end
+          code.each do |insn|
+            pos = Opcode.target_position(insn)
+            insn[pos] = target.fetch(insn[pos]) if pos >= 0
+          end
+          live = Array.new(code.size, false)
+          pending = [0]
+          # Preserve every declared catch entry, even for an unused handler.
+          function.handlers.each { |h| h.clauses.each { |c| pending << c.target_pc } }
+          until pending.empty?
+            pc = pending.pop || 0
+            while pc < code.size && !live.fetch(pc)
+              live[pc] = true
+              insn = code.fetch(pc)
+              pos = Opcode.target_position(insn)
+              pending << insn[pos] if pos >= 0
+              break if Opcode.terminal?(insn[0])
+              pc += 1
+            end
+          end
+          # A target reached through discarded code may now be fallthrough.
+          following = code.size
+          (code.size - 1).downto(0) do |pc|
+            next unless live[pc]
+            branch = code.fetch(pc)
+            position = Opcode.target_position(branch)
+            if position >= 0 && branch[position] == following
+              live[pc] = false
+            else
+              following = pc
+            end
+          end
+          return unless live.include?(false)
+          rewrite = Rewrite.new(function)
+          code.each_with_index do |insn, pc|
+            rewrite.mark(pc)
+            rewrite.emit(insn) if live[pc]
+          end
+          rewrite.finish
+        end
+      end
     end
   end
 end

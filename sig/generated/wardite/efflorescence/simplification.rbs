@@ -18,6 +18,14 @@ module Wardite
         # @rbs return: Integer
         def calculate: (Integer op, Integer left, Integer right) -> Integer
       end
+
+      class ControlFlow
+        include Opcode
+
+        # @rbs function: Function
+        # @rbs return: void
+        def run: (Function function) -> void
+      end
     end
   end
 end

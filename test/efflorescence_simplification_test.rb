@@ -24,4 +24,13 @@ class EfflorescenceSimplificationTest < Test::Unit::TestCase
     assert_equal E::I64Arithmetic::MIN, pass.calculate(I64_ADD, E::I64Arithmetic::MAX, 1)
     assert_equal 1, pass.calculate(I64_SHR_U, E::I64Arithmetic::MIN, 127)
   end
+
+  test "thread jumps and preserve self loops and catch roots" do
+    fn = body([[BR, 2], [TRAP], [BR, 4], [RETURN, 0], [BR, 4]])
+    clause = E::CatchTarget.new(0, [], -1, 3, 0)
+    fn.handlers << E::HandlerDescriptor.new([clause])
+    E::Passes::ControlFlow.new.run(fn)
+    assert_equal [[BR, 2], [RETURN, 0], [BR, 2]], fn.instructions.map(&:operands)
+    assert_equal 1, clause.target_pc
+  end
 end
