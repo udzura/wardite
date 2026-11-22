@@ -15,6 +15,7 @@ module Wardite
       # @rbs count: Integer
       # @rbs return: Integer
       def self.flat_shl(value, count)
+        return SpinelInteger.wardite_i64_shl(value, count) if RUBY_ENGINE == "spinel"
         return value if count == 0
 
         magnitude = (value & (MAX >> count)) << count
@@ -26,6 +27,7 @@ module Wardite
       # @rbs count: Integer
       # @rbs return: Integer
       def self.flat_shr_u(value, count)
+        return SpinelInteger.wardite_i64_shr_u(value, count) if RUBY_ENGINE == "spinel"
         count == 0 ? value : (value >> count) & (MAX >> (count - 1))
       end
 
