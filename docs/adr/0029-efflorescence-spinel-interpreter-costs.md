@@ -26,9 +26,9 @@
 
 ## iwasm・Wasmtime との比較
 
-2026-11-22 時点の最新安定版を Apple M3 Pro（macOS 27.2.1、arm64）で比較した。Wardite は #89 の `3edaf5d`、MIR workers 8、JIT 無効。iwasm は fast interpreter の `--interp`、Wasmtime は Cranelift を使った。[WAMR 2.4.6](https://github.com/wasm-micro-runtime/wasm-micro-runtime/releases/tag/WAMR-2.4.6)・[Wasmtime 51.0.0](https://github.com/bytecodealliance/wasmtime/releases/tag/v51.0.0)
+2026-11-22 時点の最新安定版を Apple M3 Pro（macOS 27.2.1、arm64）で比較した。Wardite は #89 の `3edaf5d`、Base64・PNG は MIR workers 8、JIT 無効。iwasm は fast interpreter、Wasmtime は Cranelift を使った。[WAMR 2.4.6](https://github.com/wasm-micro-runtime/wasm-micro-runtime/releases/tag/WAMR-2.4.6)・[Wasmtime 51.0.0](https://github.com/bytecodealliance/wasmtime/releases/tag/v51.0.0)
 
-各欄は中央値（ms）。32文字ループは 4 MiB 分の反復全体をゲスト内で計時し、ほかは新規プロセスの起動から終了までを計った。各構成を1回ウォームアップし、実行順を変えながら Base64・PNG は12回、Ruby は10回測定した。
+各欄は中央値（ms）。32文字ループは 4 MiB 分の反復全体をゲスト内で計時し、ほかは新規プロセスの起動から終了までを計った。各構成を1回ウォームアップし、実行順を変えながら 各12回測定した。
 
 | 測定区間 | Wardite #89 | iwasm 2.4.6 | Wasmtime 51.0.0 |
 |---|---:|---:|---:|
@@ -36,11 +36,22 @@
 | 4 MiB Base64 decode・全体 | 199.58 | 55.27 | 21.81 |
 | 4 MiB Base64 encode・全体 | 290.59 | 53.37 | 21.35 |
 | 1024×1024 PNG・全体 | 217.96 | 42.92 | 29.21 |
-| ruby.wasm 起動・未準備 | 2,179.17 | 318.23 | 5,965.19 |
-| ruby.wasm 起動・事前準備あり | 152.13 | — | 31.65 |
 
 decode 全体で Wardite にかかる時間は iwasm の 3.61 倍、Wasmtime の 9.15 倍だった。iwasm との時間差は全体で 144.31 ms、32文字ループで 128.40 ms あり、この入力では引き続き復号ループが差の大半を占める。今回の命令融合と Spinel の配列アクセス改善は JIT 無効でも効いた。残りの時間差のうち、さらに命令を融合して縮められる分は未検証である。
 
-ruby.wasm は Ruby 4.0.9 で `--disable-gems -e 'puts RUBY_DESCRIPTION'` を実行した。未準備では各エンジンが Wasm を読み込み、Wasmtime のコンパイルキャッシュは無効にした。事前準備ありでは Wardite は MIR2 と起動スナップショットを遅延復元し、Wasmtime は同じ Wasm をあらかじめ Cranelift でコンパイルした。どちらも準備時間は計時外。iwasm はインタプリタ起動のみを測り、Ruby の実行に必要なスタックを 1 MiB に設定した。
+### ruby.wasm の起動
 
-3ランタイムの出力をバイト単位で照合し、Base64 の2反復目の全32位置に不正文字を入れた場合のエラー位置と終了コードも確認した。Wardite のキャッシュヒットとスナップショット復元は別プロセスのトレースで確認した。[実行手順・全194サンプル](https://github.com/udzura/wardite-benches/tree/03bd94d/adr/0029)・[検証 PR](https://github.com/udzura/wardite-benches/pull/9)
+Ruby 4.0.9 の同じ Wasm とゲスト引数 `--disable-gems -e 'puts RUBY_DESCRIPTION'` を使い、毎回新規プロセスで終了までを測った。単位は ms、実行順を変えた各12回の中央値。OS のファイルキャッシュはウォーム。
+
+| ruby.wasm の起動条件 | Wardite #89 | iwasm 2.4.6 | Wasmtime 51.0.0 |
+|---|---:|---:|---:|
+| オプションなし・永続キャッシュが空 | 2,134.72 | スタック不足 | 6,093.77 |
+| オプションなし・自動キャッシュヒット | — | — | 101.86 |
+| スタックを 1 MiB に指定 | — | 310.48 | — |
+| 全キャッシュ復元・事前コンパイル済み起動 | 147.65 | — | 30.85 |
+
+通常起動では各ランタイムの既定設定を使う。Wasmtime はどちらも同じ `wasmtime run ruby.wasm …` で、変えたのは自動キャッシュの中身だけ。ミスは毎回空のディレクトリで、コンパイルとキャッシュへの保存を含む。ヒットは測定前に同じ Wasm を1回実行して作ったキャッシュを使う。Wardite は通常起動で永続キャッシュを作らない。iwasm はこの Wasm が既定スタックで起動できないため、成功した条件を別行に示した。
+
+最終行では Wardite は MIR2 と起動スナップショットを遅延復元し、Wasmtime は `wasmtime compile` で作った `.cwasm` を直接指定した。両方とも事前準備は計時外。
+
+3ランタイムの出力を照合し、Base64 の2反復目の全32位置で不正文字のエラー位置と終了コードを確認した。Ruby 起動では、計時とは別のトレースで Wasmtime の自動キャッシュ、Wardite の MIR2 とスナップショットの復元を確認した。[Base64・PNG の検証](https://github.com/udzura/wardite-benches/pull/9)・[起動条件と生データ](https://github.com/udzura/wardite-benches/tree/f7b66c6/adr/0029)
