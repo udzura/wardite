@@ -102,9 +102,9 @@ module Wardite
           reads = function.read_count(instruction)
           writes = Opcode.destination(instruction) >= 0 ? 1 : 0
           writes += instruction.size - 3 if instruction[0] == Opcode::CALL
-          limit = pc + (instruction[0] >= Opcode::I32_TABLE_STORE8 ? ByteSequences::LENGTH : 1)
+          limit = pc + (instruction[0] >= Opcode::I32_TABLE_STORE8 ? ByteSequences.length(instruction[0]) : 1)
           # The fused handler forwards intermediate values without reading
-          # their register slots again. Its destination writes are retained.
+          # their register slots again. The lookup branch also skips two address writes.
           if limit > pc + 1
             reads -= ByteSequences::FORWARDED_READS.fetch(instruction[0] - Opcode::I32_TABLE_STORE8)
           end
@@ -113,6 +113,7 @@ module Wardite
             reads += function.read_count(member)
             writes += 1 if Opcode.destination(member) >= 0
           end
+          writes -= 2 if instruction[0] == Opcode::I64_BYTE_LOOKUP_BR_EQ
           rewrite.emit(Instruction.new([Opcode::PROFILE, instruction[0], reads, writes]))
           rewrite.emit(instruction.copy)
           pc += 1

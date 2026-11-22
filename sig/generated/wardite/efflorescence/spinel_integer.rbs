@@ -10,6 +10,8 @@ module Wardite
       def self.wardite_i64_shl: (Integer, Integer) -> Integer
 
       def self.wardite_i64_shr_u: (Integer, Integer) -> Integer
+
+      def self.wardite_byte_lookup: (IO::Buffer, Integer, Integer, Integer) -> Integer
     end
   end
 end

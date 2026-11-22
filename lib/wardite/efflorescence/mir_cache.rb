@@ -13,7 +13,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 14
+      CODE_VERSION = 15
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -451,12 +451,19 @@ module Wardite
             opcode, a, b, c = code[pc], code[pc + 1], code[pc + 2], code[pc + 3]
             raise Invalid unless opcode.between?(0, REGISTER_MASKS.size - 1) && opcode != PROFILE
             if opcode >= I32_TABLE_STORE8
-              raise Invalid unless pc + ByteSequences::LENGTH * Lowerer::WIDTH <= code.size
+              length = ByteSequences.length(opcode)
+              raise Invalid unless pc + length * Lowerer::WIDTH <= code.size
               head = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8)
-              members = Array.new(ByteSequences::LENGTH) do |i|
+              members = Array.new(length) do |i|
                 Instruction.new(code[pc + i * Lowerer::WIDTH, Lowerer::WIDTH] || raise(Invalid))
               end
-              raise Invalid unless ByteSequences.match(head, members[0], members[1], members[2], members[3]) == opcode
+              matched = ByteSequences.match(head, members[0], members[1], members[2], members[3])
+              if opcode == I64_BYTE_LOOKUP_BR_EQ
+                raise Invalid unless matched == I64_BYTE_LOOKUP && ByteSequences.lookup_branch?(members[3], members[4])
+                raise Invalid if members[2][2] == members[0][1] || members[2][2] == members[1][1]
+              else
+                raise Invalid unless matched == opcode
+              end
               opcode = head
             end
             mask = REGISTER_MASKS.fetch(opcode)

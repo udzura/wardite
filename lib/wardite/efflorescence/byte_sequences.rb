@@ -3,34 +3,83 @@
 
 module Wardite
   module Efflorescence
-    # Select four-instruction sequences after register validation. Keeping all
+    # Select short instruction sequences after register validation. Keeping all
     # operand slots preserves PCs for branches, catches, and snapshot frames.
     class ByteSequences
       include Opcode
       LENGTH = 4
       # Indexed in the same order as Opcode::SEQUENCE_HEADS.
-      FORWARDED_READS = [2, 3, 3, 2, 2].freeze #: Array[Integer]
+      FORWARDED_READS = [2, 3, 3, 2, 2, 4].freeze #: Array[Integer]
 
       # @rbs function: Function
       # @rbs return: void
       def self.fuse(function)
         instructions = function.instructions
         targets = nil #: Array[bool]?
+        uses = nil #: Array[Integer]?
         pc = 0
         while pc + LENGTH <= instructions.size
           first = instructions.fetch(pc)
           opcode = match(first[0], first, instructions.fetch(pc + 1), instructions.fetch(pc + 2), instructions.fetch(pc + 3))
-          if opcode >= 0
-            entries = targets || entry_points(function)
-            targets = entries
-            unless entries[pc + 1] || entries[pc + 2] || entries[pc + 3]
-              first[0] = opcode
-              pc += LENGTH
-              next
-            end
+          if opcode < 0
+            pc += 1
+            next
           end
-          pc += 1
+
+          entries = targets ||= entry_points(function)
+          if entries[pc + 1] || entries[pc + 2] || entries[pc + 3]
+            pc += 1
+            next
+          end
+          if opcode == I64_BYTE_LOOKUP && pc + LENGTH < instructions.size && !entries[pc + LENGTH] &&
+              lookup_branch?(instructions.fetch(pc + 3), instructions.fetch(pc + LENGTH))
+            counts = uses || read_counts(function)
+            uses = counts
+            opcode = I64_BYTE_LOOKUP_BR_EQ if dead_lookup_addresses?(function, pc, counts)
+          end
+          first[0] = opcode
+          pc += length(opcode)
         end
+      end
+
+      # @rbs opcode: Integer
+      # @rbs return: Integer
+      def self.length(opcode)
+        opcode == I64_BYTE_LOOKUP_BR_EQ ? LENGTH + 1 : LENGTH
+      end
+
+      # @rbs load: Instruction
+      # @rbs branch: Instruction
+      # @rbs return: bool
+      def self.lookup_branch?(load, branch)
+        branch[0] == BR_IF_I64_EQ && branch[1] == load[1]
+      end
+
+      # Only the two address slots lose writes. The early read of the table
+      # base must also see the same value as the original sequence.
+      # @rbs function: Function
+      # @rbs pc: Integer
+      # @rbs uses: Array[Integer]
+      # @rbs return: bool
+      def self.dead_lookup_addresses?(function, pc, uses)
+        code = function.instructions
+        first = code.fetch(pc)
+        second = code.fetch(pc + 1)
+        third = code.fetch(pc + 2)
+        floor = function.parameter_count + function.local_count
+        first[1] >= floor && third[1] >= floor && uses.fetch(first[1]) == 1 &&
+          uses.fetch(third[1]) == 1 && third[2] != second[1] && third[2] != first[1]
+      end
+
+      # Include call arguments and side tables in the use counts.
+      # @rbs function: Function
+      # @rbs return: Array[Integer]
+      def self.read_counts(function)
+        counts = Array.new(function.register_count, 0)
+        function.instructions.each do |op|
+          function.read_count(op).times { |i| counts[function.read_at(op, i)] += 1 }
+        end
+        counts
       end
 
       # Used both when lowering and when checking a restored bytecode body.

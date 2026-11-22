@@ -747,6 +747,18 @@ module Wardite
             registers[instructions.fetch(pc + 9)] = table_address
             registers[instructions.fetch(pc + 13)] = @store_access.load8_u(table_address, 0)
             pc += 3 * Lowerer::WIDTH
+          when 202 # Opcode::I64_BYTE_LOOKUP_BR_EQ
+            address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
+            table = registers.fetch(instructions.fetch(pc + 10))
+            pair = @store_access.byte_lookup(address, table)
+            registers[instructions.fetch(pc + 5)] = pair >> 8
+            decoded = pair & 255
+            registers[instructions.fetch(pc + 13)] = decoded
+            if decoded == registers[instructions.fetch(pc + 19)]
+              pc = Integer(instructions.fetch(pc + 18))
+              next
+            end
+            pc += 4 * Lowerer::WIDTH
           when 199 # Opcode::I32_BYTE_MUL_ADD
             address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
             registers[a] = address

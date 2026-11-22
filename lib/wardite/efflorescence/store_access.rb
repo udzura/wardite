@@ -109,6 +109,21 @@ module Wardite
         end
       end
 
+      # Return both bytes so the VM can retain the guest-visible input byte.
+      # @rbs address: Integer
+      # @rbs table: Integer
+      # @rbs return: Integer
+      def byte_lookup(address, table)
+        if RUBY_ENGINE == "spinel"
+          source = memory.buffer
+          pair = SpinelInteger.wardite_byte_lookup(source, source.size, address, table)
+          raise Wardite::EvalError, "out of bounds memory access" if pair < 0
+          return pair
+        end
+        byte = load8_u(address, 0)
+        (byte << 8) | load8_u((table + byte) & 0xffffffff, 0)
+      end
+
       # @rbs address: Integer
       # @rbs offset: Integer
       # @rbs return: Integer
