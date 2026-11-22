@@ -793,22 +793,14 @@ module Wardite
       attr_reader :result_types #: Array[Symbol]
       attr_accessor :local_count #: Integer
       attr_accessor :cache_pending #: bool
-      attr_reader :instructions #: Array[Wardite::Efflorescence::Instruction]
+      attr_reader :calls #: Array[Wardite::Efflorescence::CallSite]
       attr_reader :initial_registers #: Array[Integer]
-      attr_reader :constant_registers #: Array[Integer]
-      attr_reader :bytecode #: Array[Integer]
       attr_reader :register_types #: Array[Symbol]
-      attr_reader :handlers #: Array[Wardite::Efflorescence::HandlerDescriptor]
-      attr_reader :flat_handlers #: Array[Wardite::Efflorescence::HandlerDescriptor]
-      attr_reader :throw_sites #: Array[Wardite::Efflorescence::ThrowSite]
       attr_accessor :uses_i64 #: bool
       attr_accessor :uses_float #: bool
       attr_accessor :uses_eh #: bool
       attr_accessor :uses_store #: bool
       attr_accessor :uses_dynamic_calls #: bool
-      attr_reader :dynamic_sites #: Array[Wardite::Efflorescence::DynamicCallSite]
-      attr_reader :memory_sites #: Array[Wardite::Efflorescence::MemorySite]
-      attr_reader :calls #: Array[Wardite::Efflorescence::CallSite]
 
       # @rbs index: Integer
       # @rbs parameter_types: Array[Symbol]
@@ -823,22 +815,55 @@ module Wardite
         @result_types = result_types.dup
         @local_count = local_count
         @cache_pending = false
+        # Spinel keeps this hot call-site table in a native pointer array.
+        @calls = []
         @register_types = parameter_types + (local_types || Array.new(local_count, :i32))
-        @handlers = []
-        @flat_handlers = []
-        @throw_sites = []
-        @memory_sites = []
         @uses_store = false
         @uses_dynamic_calls = false
-        @dynamic_sites = []
         @uses_i64 = @register_types.include?(:i64) || result_types.include?(:i64)
         @uses_float = @register_types.any? { |type| FloatBits.float_type?(type) } || result_types.any? { |type| FloatBits.float_type?(type) }
         @uses_eh = @register_types.include?(:exnref)
-        @instructions = []
         @initial_registers = Array.new(parameter_types.size + local_count, 0)
-        @constant_registers = []
-        @bytecode = []
-        @calls = []
+      end
+
+      # @rbs return: Array[Wardite::Efflorescence::HandlerDescriptor]
+      def flat_handlers
+        @flat_handlers ||= [] #: Array[Wardite::Efflorescence::HandlerDescriptor]
+      end
+
+      # @rbs return: Array[Wardite::Efflorescence::HandlerDescriptor]
+      def handlers
+        @handlers ||= [] #: Array[Wardite::Efflorescence::HandlerDescriptor]
+      end
+
+      # @rbs return: Array[Wardite::Efflorescence::ThrowSite]
+      def throw_sites
+        @throw_sites ||= [] #: Array[Wardite::Efflorescence::ThrowSite]
+      end
+
+      # @rbs return: Array[Wardite::Efflorescence::MemorySite]
+      def memory_sites
+        @memory_sites ||= [] #: Array[Wardite::Efflorescence::MemorySite]
+      end
+
+      # @rbs return: Array[Wardite::Efflorescence::DynamicCallSite]
+      def dynamic_sites
+        @dynamic_sites ||= [] #: Array[Wardite::Efflorescence::DynamicCallSite]
+      end
+
+      # @rbs return: Array[Wardite::Efflorescence::Instruction]
+      def instructions
+        @instructions ||= [] #: Array[Wardite::Efflorescence::Instruction]
+      end
+
+      # @rbs return: Array[Integer]
+      def constant_registers
+        @constant_registers ||= [] #: Array[Integer]
+      end
+
+      # @rbs return: Array[Integer]
+      def bytecode
+        @bytecode ||= [] #: Array[Integer]
       end
 
       # @rbs return: Integer
@@ -874,7 +899,7 @@ module Wardite
       # @rbs type: Symbol
       def allocate_constant(value, type: :i32)
         slot = allocate_register(value, type: type)
-        @constant_registers << slot
+        constant_registers << slot
         slot
       end
 
@@ -916,25 +941,25 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::MemorySite
       def memory_site(index)
         raise Wardite::EvalError, "invalid MIR memory site" if index < 0
-        @memory_sites[index] || raise(Wardite::EvalError, "invalid MIR memory site")
+        memory_sites[index] || raise(Wardite::EvalError, "invalid MIR memory site")
       end
 
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::DynamicCallSite
       def dynamic_site(index)
         raise TranslationError, "invalid MIR dynamic call site" if index < 0
-        @dynamic_sites[index] || raise(TranslationError, "invalid MIR dynamic call site")
+        dynamic_sites[index] || raise(TranslationError, "invalid MIR dynamic call site")
       end
 
       # All PC consumers (rewrites, profiling, lowering) share this enumeration.
       # @rbs mapping: Array[Integer]
       # @rbs return: void
       def remap_targets!(mapping)
-        @instructions.each do |instruction|
+        instructions.each do |instruction|
           position = Opcode.target_position(instruction)
           instruction[position] = mapping.fetch(instruction[position]) if position >= 0
         end
-        remap_handler_targets!(@handlers, mapping)
+        remap_handler_targets!(handlers, mapping)
       end
 
       # @rbs handlers: Array[Wardite::Efflorescence::HandlerDescriptor]
@@ -948,10 +973,10 @@ module Wardite
 
       # @rbs return: void
       def lower_handlers
-        @flat_handlers = @handlers.map { |handler| handler.copy }
-        return if @flat_handlers.empty?
-        mapping = (0..@instructions.size).map { |pc| pc * Lowerer::WIDTH }
-        remap_handler_targets!(@flat_handlers, mapping)
+        @flat_handlers = handlers.map { |handler| handler.copy }
+        return if flat_handlers.empty?
+        mapping = (0..instructions.size).map { |pc| pc * Lowerer::WIDTH }
+        remap_handler_targets!(flat_handlers, mapping)
       end
 
       # Mark references and rename them with the same traversal, including
@@ -963,7 +988,7 @@ module Wardite
         return if count == fixed
 
         mapping = Array.new(count, -1)
-        @instructions.each { |insn| insn.visit_registers!(mapping, false) }
+        instructions.each { |insn| insn.visit_registers!(mapping, false) }
         map_side_registers! do |slot|
           raise TranslationError, "invalid MIR register r#{slot}" unless slot >= 0 && slot < count
           mapping[slot] = 0
@@ -988,22 +1013,22 @@ module Wardite
         end
         @initial_registers = values
         @register_types = types
-        @constant_registers = @constant_registers.map { |slot| mapping.fetch(slot) }.reject { |slot| slot < 0 }
+        @constant_registers = constant_registers.map { |slot| mapping.fetch(slot) }.reject { |slot| slot < 0 }
       end
 
       # @rbs mapping: Array[Integer]
       # @rbs return: void
       def replace_register_references!(mapping)
-        @instructions.each { |insn| insn.visit_registers!(mapping, true) }
+        instructions.each { |insn| insn.visit_registers!(mapping, true) }
         map_side_registers! { |slot| mapping.fetch(slot) }
       end
 
       # @rbs () { (Integer) -> Integer } -> void
       def map_side_registers!
-        @throw_sites.each { |site| site.payload_registers.map! { |slot| yield(slot) } }
-        @memory_sites.each { |site| site.sources.map! { |slot| yield(slot) } }
-        @dynamic_sites.each { |site| site.arguments.map! { |slot| yield(slot) } }
-        @handlers.each do |handler|
+        throw_sites.each { |site| site.payload_registers.map! { |slot| yield(slot) } }
+        memory_sites.each { |site| site.sources.map! { |slot| yield(slot) } }
+        dynamic_sites.each { |site| site.arguments.map! { |slot| yield(slot) } }
+        handlers.each do |handler|
           handler.clauses.each do |clause|
             clause.payload_registers.map! { |slot| yield(slot) }
             if clause.reference_register >= 0
@@ -1040,7 +1065,7 @@ module Wardite
       def side_reads(instruction)
         opcode = instruction[0]
         if opcode == Opcode::THROW
-          @throw_sites.fetch(instruction[1]).payload_registers
+          throw_sites.fetch(instruction[1]).payload_registers
         elsif Opcode.memory_site?(opcode)
           memory_site(instruction[1]).sources
         elsif Opcode.dynamic_call?(opcode)
@@ -1080,13 +1105,13 @@ module Wardite
         result.uses_eh = @uses_eh
         result.uses_store = @uses_store
         result.uses_dynamic_calls = @uses_dynamic_calls
-        @dynamic_sites.each { |site| result.dynamic_sites << site.copy }
-        @memory_sites.each { |site| result.memory_sites << site.copy }
-        @handlers.each { |handler| result.handlers << handler.copy }
-        @throw_sites.each { |site| result.throw_sites << site.copy }
+        dynamic_sites.each { |site| result.dynamic_sites << site.copy }
+        memory_sites.each { |site| result.memory_sites << site.copy }
+        handlers.each { |handler| result.handlers << handler.copy }
+        throw_sites.each { |site| result.throw_sites << site.copy }
         count = register_count
         constant = Array.new(count, 0)
-        @constant_registers.each do |register|
+        constant_registers.each do |register|
           constant[register] = 1 if register >= 0 && register < count
         end
         index = @parameter_types.size + @local_count
@@ -1098,7 +1123,7 @@ module Wardite
           end
           index += 1
         end
-        result.replace_instructions(@instructions.map { |instruction| instruction.copy })
+        result.replace_instructions(instructions.map { |instruction| instruction.copy })
         result
       end
     end
