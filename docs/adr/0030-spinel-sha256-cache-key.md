@@ -96,3 +96,7 @@ data セグメント走査と MIR 命令検証の C FFI は、同じ親ビルド
 | Wasmtime 51.0.0、cwasm | **50.78 ms** |
 
 全変更入りは変更前から 43.97 ms（40.9%）、ゼロクリア変更のみの版から 16.21 ms（20.3%）短縮した。同時に測った Wasmtime の 1.25 倍で、差は 12.88 ms だった。
+
+### 電力モード別の最終計測
+
+全変更入り Wardite の WMIR＋スナップショットと Wasmtime 51.0.0 の cwasm の2条件だけで再計測した。低電力モード OFF の初回は各32回の中央値が **37.332 ms / 29.037 ms**、手元での再現は **35.194 ms / 27.893 ms** で、いずれも Wardite の起動が目標の 39 ms を下回った。同じ手順で低電力モードを ON にした手元の結果は **59.529 ms / 45.995 ms** だった。今後は macOS の電力モードを計測前後に記録し、同じモードで測った結果を比較する。[電力モード別の中央値と生データ](https://github.com/udzura/wardite-benches/tree/9a0265e3d15ce9766abad8904a68a17df2166ce6/benchmark/wmir/phases/prepared-startup)
