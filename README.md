@@ -190,8 +190,9 @@ exported memory.
 The build leaves inline RBS and Spinel's default integer overflow checks enabled.
 Wasm integer operations bound their intermediate values, so
 `--int-overflow=promote` is not required.
-CI and release builds use Spinel commit `68476ebd3`, which includes the
-required `IO::Buffer` changes and avoids redundant GC roots on integer-array fetches.
+CI and release builds pin Spinel commit `a64542970` from
+[Spinel #12380](https://github.com/matz/spinel/pull/12380), which uses Arm SHA2
+instructions to hash Wasm cache keys on supported AArch64 targets.
 See the [build instructions and host memory API](docs/efflorescence-spinel-linear-memory.md).
 Override `SPINEL`, `SPINELFLAGS`, `BUILD_DIR`, or `RUBY` when needed.
 
