@@ -72,17 +72,15 @@ module Wardite
         if cached_functions || (!eager_mir && !mir_cache && @module_source.code)
           @preparer = FunctionPreparer.new(@ir, @configuration, @module_source.tags, profile, mir_cache)
         end
-        if mir_cache && !profile && !@mir_cache_hit
-          mir_cache.write_ir(instance, @ir)
-        end
         start = instance.start_section
         if start
           entry = @ir.entry_at(start.func_index)
           unless entry.parameter_types.empty? && entry.result_types.empty?
             raise Wardite::LoadError, "start function must have no parameters or results"
           end
-          execute(entry, [])
         end
+        mir_cache.write_ir(instance, @ir) if mir_cache && !profile && !@mir_cache_hit
+        execute(@ir.entry_at(start.func_index), []) if start && !mir_cache&.compiling_artifact?
       end
 
       # Inspecting the executable IR requests every uncached function body.

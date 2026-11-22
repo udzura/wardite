@@ -164,6 +164,8 @@ module Wardite
         @locals_type = []
         @body = [] #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
         @instruction_bytes = nil
+        @instruction_map = nil #: IO::Buffer?
+        @instruction_offset = @instruction_length = 0
         @decoded = nil #: DecodedBody?
         @type_section = nil
         blk.call(self)
@@ -171,7 +173,7 @@ module Wardite
 
       # @rbs return: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       def body
-        check_features(@type_section) if @instruction_bytes
+        check_features(@type_section) if @instruction_bytes || @instruction_map
         # The caller can mutate both the array and the Block objects in it.
         @decoded = nil
         @body
@@ -181,6 +183,7 @@ module Wardite
       # @rbs return: void
       def body=(instructions)
         @body = instructions
+        @instruction_map = nil
         @instruction_bytes = nil
         @decoded = nil
       end
@@ -188,8 +191,19 @@ module Wardite
       # @rbs bytes: String?
       # @rbs return: void
       def instruction_bytes=(bytes)
+        @instruction_map = nil
         @instruction_bytes = bytes
         @decoded = nil
+      end
+
+      # @rbs map: IO::Buffer
+      # @rbs offset: Integer
+      # @rbs length: Integer
+      # @rbs return: void
+      def map_instructions(map, offset, length)
+        @instruction_map = map
+        @instruction_offset = offset
+        @instruction_length = length
       end
 
       # @rbs buf: File|StringIO
@@ -201,6 +215,10 @@ module Wardite
       # @rbs types: TypeSection?
       # @rbs return: void
       def check_features(types)
+        if (map = @instruction_map)
+          @instruction_bytes = map.get_string(@instruction_offset, @instruction_length)
+          @instruction_map = nil
+        end
         if (bytes = @instruction_bytes)
           decoded = BinaryLoader.decode_body(StringIO.new(bytes))
           check_decoded(decoded, types)
@@ -378,11 +396,12 @@ module Wardite
     # @rbs enabled_optimizations: Array[Symbol]
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
+    # @rbs emit_wmir: String?
     # @rbs mir_cache: String?
     # @rbs mir_cache_verify: Symbol
     # @rbs mir_cache_eager: bool
     # @rbs return: Instance
-    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :efflorescence, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false)
+    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :efflorescence, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false, emit_wmir: nil)
       start = Time.now.to_f #: Float
       unless mir_cache_verify == :checksum || mir_cache_verify == :sha256
         raise ArgumentError, "MIR cache verification must be checksum or sha256"
@@ -390,22 +409,50 @@ module Wardite
       raise LoadError, "unknown engine: #{engine}" unless engine == :efflorescence
       @buf = buf
       cache = nil #: Efflorescence::MIRCache?
-      if mir_cache && !mir_profile
+      artifact = nil #: Efflorescence::MIRArtifact?
+      artifact_input = buf.is_a?(File) && File.extname(buf.path) == ".wmir"
+      if artifact_input || emit_wmir
+        raise ArgumentError, "WMIR cannot be combined with a cache directory or MIR profiling" if mir_cache || mir_profile
+        raise ArgumentError, "expected Wasm input for --compile-wmir" if emit_wmir && artifact_input
+      end
+      if (mir_cache || artifact_input || emit_wmir) && !mir_profile
         require "wardite/efflorescence/mir_cache" unless RUBY_ENGINE == "spinel"
-        # Hash the same bytes that the decoder will see, even if the file changes.
-        bytes = buf.read || "".b
+        bytes = "".b
+        if artifact_input && buf.is_a?(File)
+          artifact = Efflorescence::MIRArtifact.new(buf, mir_cache_verify)
+          if disabled_optimizations.empty? && enabled_optimizations.empty? && !mir_cse
+            enabled_optimizations = artifact.enabled
+            disabled_optimizations = Efflorescence::Configuration::FEATURES - enabled_optimizations
+          end
+        else
+          # Hash the same bytes that the decoder will see, even if the file changes.
+          bytes = buf.read || "".b
+          raise LoadError, "WMIR exceeds the Wasm size limit" if emit_wmir && bytes.bytesize > Efflorescence::MIRCache::MAX_BYTES
+          @buf = StringIO.new(bytes)
+        end
         configuration = Efflorescence::Configuration.new(disabled_optimizations, enabled: enabled_optimizations, cse: mir_cse)
         disabled_optimizations = configuration.disabled
-        cache = Efflorescence::MIRCache.new(mir_cache, bytes, configuration, verify: mir_cache_verify, eager: mir_cache_eager)
-        @buf = StringIO.new(bytes)
+        cache = Efflorescence::MIRCache.new(mir_cache || ".", bytes, configuration, verify: mir_cache_verify,
+          eager: mir_cache_eager, artifact: artifact, output: emit_wmir)
       end
 
       version = preamble
-      sections_ = sections(!cache.nil?, true)
+      sections_ = sections(!cache.nil?, true, artifact)
       @buf = buf if cache
 
       wasi_env = nil
-      if enable_wasi && sections_.any? { |section| section.is_a?(ImportSection) &&
+      if emit_wmir
+        # Compilation uses import signatures only. Link actual hosts when loading the artifact.
+        import_object = {} #: Hash[Symbol, wasmModuleSrc]
+        placeholder = HashModule.new({})
+        sections_.each do |section|
+          next unless section.is_a?(ImportSection)
+          section.imports.each do |desc|
+            import_object[desc.module_name.to_sym] = placeholder
+            placeholder.hash[desc.name.to_sym] = -> (_store, _args) { raise LoadError, "host call during WMIR compilation" }
+          end
+        end
+      elsif enable_wasi && sections_.any? { |section| section.is_a?(ImportSection) &&
           section.imports.any? { |import| import.module_name == "wasi_snapshot_preview1" } }
         wasi_env = if RUBY_ENGINE == "spinel"
           Wardite::WasiSnapshotPreview1.new
@@ -451,7 +498,8 @@ module Wardite
     # @rbs defer_code: bool
     # @rbs keep_code: bool
     # @rbs return: Array[Section]
-    def self.sections(defer_code = false, keep_code = false)
+    # @rbs artifact: Efflorescence::MIRArtifact?
+    def self.sections(defer_code = false, keep_code = false, artifact = nil)
       sections = [] #: Array[Section]
 
       loop do
@@ -480,7 +528,12 @@ module Wardite
           when Wardite::SectionElement
             elem_section
           when Wardite::SectionCode
-            code_section(defer_code, keep_code)
+            source = @buf
+            if artifact && source.is_a?(File)
+              artifact.code_section(source, fetch_uleb128(source))
+            else
+              code_section(defer_code, keep_code)
+            end
           when Wardite::SectionData
             data_section
           when Wardite::Const::SectionDataCount
@@ -1109,7 +1162,13 @@ module Wardite
     def self.unimplemented_skip_section(code)
       $stderr.puts "warning: unimplemented section: 0x0#{code}" if ENV['WARN_UNIMPLEMENTED_SECTION']
       size = fetch_uleb128(@buf)
-      @buf.read(size)
+      source = @buf
+      if source.is_a?(File) && source.stat.file?
+        raise LoadError, "truncated custom section" if size > source.stat.size - source.pos
+        source.pos += size
+      else
+        assert_read(source, size)
+      end
       nil
     end
 

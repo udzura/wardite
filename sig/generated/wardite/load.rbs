@@ -125,6 +125,12 @@ module Wardite
       # @rbs return: void
       def instruction_bytes=: (String? bytes) -> void
 
+      # @rbs map: IO::Buffer
+      # @rbs offset: Integer
+      # @rbs length: Integer
+      # @rbs return: void
+      def map_instructions: (IO::Buffer map, Integer offset, Integer length) -> void
+
       # @rbs buf: File|StringIO
       # @rbs return: void
       def decode_from: (File | StringIO buf) -> void
@@ -245,11 +251,12 @@ module Wardite
     # @rbs enabled_optimizations: Array[Symbol]
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
+    # @rbs emit_wmir: String?
     # @rbs mir_cache: String?
     # @rbs mir_cache_verify: Symbol
     # @rbs mir_cache_eager: bool
     # @rbs return: Instance
-    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, wasmModuleSrc], ?enable_wasi: boolish, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?enabled_optimizations: Array[Symbol], ?mir_cse: bool, ?mir_profile: bool, ?mir_cache: String?, ?mir_cache_verify: Symbol, ?mir_cache_eager: bool) -> Instance
+    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, wasmModuleSrc], ?enable_wasi: boolish, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?enabled_optimizations: Array[Symbol], ?mir_cse: bool, ?mir_profile: bool, ?mir_cache: String?, ?mir_cache_verify: Symbol, ?mir_cache_eager: bool, ?emit_wmir: String?) -> Instance
 
     # @rbs return: Integer
     def self.preamble: () -> Integer
@@ -257,7 +264,8 @@ module Wardite
     # @rbs defer_code: bool
     # @rbs keep_code: bool
     # @rbs return: Array[Section]
-    def self.sections: (?bool defer_code, ?bool keep_code) -> Array[Section]
+    # @rbs artifact: Efflorescence::MIRArtifact?
+    def self.sections: (?bool defer_code, ?bool keep_code, ?Efflorescence::MIRArtifact? artifact) -> Array[Section]
 
     # @rbs return: TypeSection
     def self.type_section: () -> TypeSection

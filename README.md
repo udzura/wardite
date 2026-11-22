@@ -101,6 +101,25 @@ the Wasm, links imports, and initializes a fresh instance. `--mir-dump` and
 `--mir-profile` build MIR normally. Ruby callers can pass `mir_cache: dir`.
 CRuby and Spinel use different cache keys.
 
+To prepare a standalone executable module, compile it once and run the resulting
+`.wmir` file with the same Wardite engine:
+
+```sh
+build/wardite --compile-wmir ruby.wmir -- ruby.wasm
+build/wardite -- ruby.wmir --disable-gems -e 'puts RUBY_DESCRIPTION'
+build/wardite --snapshot ./snapshots -- ruby.wmir --disable-gems -e 'puts RUBY_DESCRIPTION'
+```
+
+The artifact contains the Wasm and its prepared MIR. Wardite maps the file
+read-only, checks its version, runtime, optimization flags and function directory,
+and decodes a function's MIR when it is called. The original Wasm path and a MIR
+cache directory are unnecessary. Use artifacts from a trusted producer and replace
+them by rename so live mappings keep a stable inode. To verify the complete
+embedded Wasm and MIR payload before running, pass `--mir-cache-verify sha256`.
+The ordinary Wasm cache and its matching artifact share a snapshot identity.
+Ruby callers can load an artifact with `Wardite.new(path: "module.wmir")`.
+[ADR 0030](docs/adr/0030-spinel-sha256-cache-key.md)
+
 On a cold load, native Spinel translates modules with at least 32 defined
 functions using up to eight workers, including the calling thread. Smaller
 modules and CRuby use one worker by default. Set `WARDITE_MIR_WORKERS=1`
@@ -120,7 +139,7 @@ can go undetected in checksum mode, including changes that leave the MIR
 structurally valid.
 [MIR2 cache measurements](docs/efflorescence-mir2-cache.md)
 
-For WASI commands, `--snapshot DIR` (with `--mir-cache DIR`) saves
+For WASI commands, `--snapshot DIR` (with `--mir-cache DIR` or a `.wmir` input) saves
 the guest state just before its first WASI call that reads files or writes output,
 and later runs with the same Wasm, arguments, environment, preopens and stdio
 kinds resume from there. Clock values and random bytes read before that point
