@@ -4,7 +4,7 @@
 module Wardite
   module Efflorescence
     class Configuration
-      FEATURES = %i[copy immediate branch superinstruction inline frames].freeze
+      FEATURES = %i[copy immediate branch superinstruction inline compact frames].freeze
       attr_reader :disabled #: Array[Symbol]
 
       # @rbs disabled: Array[Symbol]
@@ -709,7 +709,14 @@ module Wardite
             optimize_function(output.function_at(index))
           end
         end
+        output.functions.each { |function| compact_registers(function) }
         output
+      end
+
+      # @rbs function: Function
+      # @rbs return: void
+      def compact_registers(function)
+        function.compact_registers! if @configuration.enabled?(:compact)
       end
 
       # @rbs function: Wardite::Efflorescence::Function

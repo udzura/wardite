@@ -605,6 +605,21 @@ module Wardite
       # @rbs return: Integer
       def size: () -> Integer
 
+      # Fixed register operands shared with MIR2 bytecode validation. Calls
+      # and returns also have signature-dependent operands at position one.
+      FIXED_REGISTER_MASKS: Array[Integer]
+
+      # @rbs mapping: Array[Integer]
+      # @rbs rename: bool
+      # @rbs return: void
+      def visit_registers!: (Array[Integer] mapping, bool rename) -> void
+
+      # @rbs position: Integer
+      # @rbs mapping: Array[Integer]
+      # @rbs rename: bool
+      # @rbs return: void
+      def visit_register!: (Integer position, Array[Integer] mapping, bool rename) -> void
+
       # @rbs return: Wardite::Efflorescence::Instruction
       def copy: () -> Wardite::Efflorescence::Instruction
     end
@@ -729,11 +744,17 @@ module Wardite
       # @rbs return: void
       def lower_handlers: () -> void
 
-      # Rename MIR references, including operands stored outside instructions.
-      # The caller supplies existing same-typed slots and validates the result.
+      # Mark references and rename them with the same traversal, including
+      # write-only operands and side tables that survive instruction rewrites.
+      # @rbs return: void
+      def compact_registers!: () -> void
+
       # @rbs mapping: Array[Integer]
       # @rbs return: void
       def replace_register_references!: (Array[Integer] mapping) -> void
+
+      # @rbs () { (Integer) -> Integer } -> void
+      def map_side_registers!: () { (Integer) -> Integer } -> void
 
       # @rbs instruction: Wardite::Efflorescence::Instruction
       # @rbs return: Integer
