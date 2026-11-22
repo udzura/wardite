@@ -542,7 +542,10 @@ module Wardite
       # @rbs eager: bool
       def initialize(directory, wasm, configuration, verify: :checksum, eager: false)
         versions = [FORMAT_VERSION, CODE_VERSION].pack("L<2")
-        disabled = configuration.disabled.uniq.sort.join(",")
+        # Opting in changes bytecode. Keep existing default MIR2 and snapshot
+        # identities usable for the unchanged, non-CSE pipeline.
+        disabled = (configuration.disabled - [:cse]).uniq.sort.join(",")
+        disabled += "+cse1" if configuration.enabled?(:cse)
         key_data = versions + Digest::SHA256.digest(wasm) + disabled
         key_data = "spinel\0".b + key_data if RUBY_ENGINE == "spinel"
         key = Digest::SHA256.digest(key_data)

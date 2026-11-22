@@ -241,13 +241,15 @@ module Wardite
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs enable_wasi: boolish
     # @rbs engine: Symbol
+    # @rbs mir_cse: bool
+    # @rbs enabled_optimizations: Array[Symbol]
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
     # @rbs mir_cache: String?
     # @rbs mir_cache_verify: Symbol
     # @rbs mir_cache_eager: bool
     # @rbs return: Instance
-    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, wasmModuleSrc], ?enable_wasi: boolish, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?mir_profile: bool, ?mir_cache: String?, ?mir_cache_verify: Symbol, ?mir_cache_eager: bool) -> Instance
+    def self.load_from_buffer: (File | StringIO buf, ?import_object: Hash[Symbol, wasmModuleSrc], ?enable_wasi: boolish, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?enabled_optimizations: Array[Symbol], ?mir_cse: bool, ?mir_profile: bool, ?mir_cache: String?, ?mir_cache_verify: Symbol, ?mir_cache_eager: bool) -> Instance
 
     # @rbs return: Integer
     def self.preamble: () -> Integer

@@ -19,6 +19,8 @@ module Wardite
       # @rbs @jit: SpinelJIT?
 
       # @rbs instance: Wardite::Instance
+      # @rbs mir_cse: bool
+      # @rbs enabled_optimizations: Array[Symbol]
       # @rbs disabled_optimizations: Array[Symbol]
       # @rbs profile: bool
       # @rbs mir_cache: Wardite::Efflorescence::MIRCache?
@@ -26,7 +28,7 @@ module Wardite
       # @rbs source_code: String?
       # @rbs eager_mir: bool
       # @rbs cache_checked: bool
-      def initialize(instance, disabled_optimizations: [], profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false, source_code: nil, eager_mir: false)
+      def initialize(instance, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false, source_code: nil, eager_mir: false)
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
         @global_bits = []
@@ -39,7 +41,7 @@ module Wardite
           @indirect_functions = instance.store.funcs.dup
           @indirect_functions.each_with_index { |function, index| @function_indices[function.object_id] = index }
         end
-        @configuration = Configuration.new(disabled_optimizations)
+        @configuration = Configuration.new(disabled_optimizations, enabled: enabled_optimizations, cse: mir_cse)
         @reuse_frames = @configuration.enabled?(:frames)
         @profiling = profile
         @jit = if RUBY_ENGINE == "spinel" && ENV["WARDITE_MIR_JIT"] == "1" && !profile && SpinelJIT::Native.wardite_jit_supported != 0

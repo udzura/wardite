@@ -374,13 +374,15 @@ module Wardite
     # @rbs import_object: Hash[Symbol, wasmModuleSrc]
     # @rbs enable_wasi: boolish
     # @rbs engine: Symbol
+    # @rbs mir_cse: bool
+    # @rbs enabled_optimizations: Array[Symbol]
     # @rbs disabled_optimizations: Array[Symbol]
     # @rbs mir_profile: bool
     # @rbs mir_cache: String?
     # @rbs mir_cache_verify: Symbol
     # @rbs mir_cache_eager: bool
     # @rbs return: Instance
-    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :efflorescence, disabled_optimizations: [], mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false)
+    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :efflorescence, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false)
       start = Time.now.to_f #: Float
       unless mir_cache_verify == :checksum || mir_cache_verify == :sha256
         raise ArgumentError, "MIR cache verification must be checksum or sha256"
@@ -392,7 +394,7 @@ module Wardite
         require "wardite/efflorescence/mir_cache" unless RUBY_ENGINE == "spinel"
         # Hash the same bytes that the decoder will see, even if the file changes.
         bytes = buf.read || "".b
-        configuration = Efflorescence::Configuration.new(disabled_optimizations)
+        configuration = Efflorescence::Configuration.new(disabled_optimizations, enabled: enabled_optimizations, cse: mir_cse)
         disabled_optimizations = configuration.disabled
         cache = Efflorescence::MIRCache.new(mir_cache, bytes, configuration, verify: mir_cache_verify, eager: mir_cache_eager)
         @buf = StringIO.new(bytes)
@@ -416,6 +418,7 @@ module Wardite
       end
 
       return Instance.new(import_object, engine: engine, disabled_optimizations: disabled_optimizations,
+        enabled_optimizations: enabled_optimizations, mir_cse: mir_cse,
         mir_profile: mir_profile, mir_cache: cache, eager_mir: mir_cache_eager) do |i|
         i.version = version
         i.sections = sections_
