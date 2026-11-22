@@ -4,6 +4,7 @@
 require "digest"
 require "fileutils"
 require "securerandom"
+require_relative "mir_artifact"
 
 module Wardite
   module Efflorescence
@@ -240,7 +241,10 @@ module Wardite
         # @rbs payload: String
         # @rbs instance: Wardite::Instance
         # @rbs entries: Array[FunctionEntry]
-        def initialize(payload, instance, entries)
+        # @rbs artifact: MIRArtifact?
+        def initialize(payload, instance, entries, artifact: nil)
+          @artifact = artifact
+          @payload_size = artifact ? artifact.payload_size : payload.bytesize
           @payload = payload
           @reader = Reader.new(payload)
           @entries = entries
@@ -274,11 +278,12 @@ module Wardite
           end
           raise Invalid unless @reader.bytes(@reader.count(1)) == layout
 
+          @reader.finish if @artifact
           cursor = @reader.offset
           @defined_count.times do |pool_index|
             offset = @offsets.fetch(pool_index)
             length = @lengths.fetch(pool_index)
-            raise Invalid unless offset == cursor && length > 0 && length <= @payload.bytesize - cursor
+            raise Invalid unless offset == cursor && length > 0 && length <= @payload_size - cursor
             cursor += length
 
             index = @import_count + pool_index
@@ -287,7 +292,7 @@ module Wardite
             function.cache_pending = true
             @functions << function
           end
-          raise Invalid unless cursor == @payload.bytesize
+          raise Invalid unless cursor == @payload_size
         end
 
         # A failed decode must never expose a partially filled function. Keep
@@ -299,7 +304,13 @@ module Wardite
           length = @lengths.fetch(index)
           raise Invalid unless length > 0
           @lengths[index] = 0
-          @reader = Reader.new(@payload, offset: @offsets.fetch(index), length: length)
+          offset = @offsets.fetch(index)
+          artifact = @artifact
+          @reader = if artifact
+            Reader.new(artifact.record(offset, length))
+          else
+            Reader.new(@payload, offset: offset, length: length)
+          end
           read_function(@bodies.fetch(index), function)
           read_sites(function, @functions)
           @reader.finish
@@ -547,20 +558,28 @@ module Wardite
       # @rbs configuration: Configuration
       # @rbs verify: Symbol
       # @rbs eager: bool
-      def initialize(directory, wasm, configuration, verify: :checksum, eager: false)
+      # @rbs artifact: MIRArtifact?
+      # @rbs output: String?
+      def initialize(directory, wasm, configuration, verify: :checksum, eager: false, artifact: nil, output: nil)
+        @artifact = artifact
+        @output = output
+        @configuration = configuration
+        @wasm = output ? wasm : nil
+        @source_digest = artifact ? artifact.source_digest : Digest::SHA256.digest(wasm)
         versions = [FORMAT_VERSION, CODE_VERSION].pack("L<2")
         # Keep prior MIR2 and snapshot identities for equivalent pass sets.
         # Newly introduced passes contribute a version only when active.
         disabled = (configuration.disabled - %i[cse fold cfg dce exit_copy licm]).uniq.sort.join(",")
         disabled += "+cse1" if configuration.enabled?(:cse)
         %i[fold cfg dce exit_copy licm].each { |pass| disabled += "+#{pass}1" if configuration.enabled?(pass) }
-        key_data = versions + Digest::SHA256.digest(wasm) + disabled
+        key_data = versions + @source_digest + disabled
         key_data = "spinel\0".b + key_data if RUBY_ENGINE == "spinel"
         key = Digest::SHA256.digest(key_data)
+        raise Wardite::LoadError, "incompatible WMIR runtime or MIR configuration" if artifact && artifact.key != key
         @key = key
         @header = MAGIC + versions + key
         @directory = File.expand_path(directory)
-        @path = File.join(@directory, "#{key.unpack1("H*")}.mir2")
+        @path = artifact ? artifact.path : File.join(@directory, "#{key.unpack1("H*")}.mir2")
         @verify = verify
         @eager = eager
         @decoder = nil #: Decoder?
@@ -571,20 +590,30 @@ module Wardite
       # @rbs instance: Wardite::Instance
       # @rbs return: Array[Function]?
       def read_functions(instance)
-        payload = read_verified_payload
+        return nil if @output
+        artifact = @artifact
+        payload = artifact ? artifact.directory_bytes : read_verified_payload
         entries = module_entries(instance)
-        decoder = Decoder.new(payload, instance, entries)
+        decoder = Decoder.new(payload, instance, entries, artifact: artifact)
         decoder.declare(encode_layout(instance, entries))
         if @eager
           decoder.functions.each { |function| decoder.restore(function) }
         else
           @decoder = decoder
         end
-        $stderr.puts "MIR2 cache hit: #{@path}" if ENV["WARDITE_TRACE"]
+        if ENV["WARDITE_TRACE"]
+          $stderr.puts(artifact ? "WMIR mapped: #{@path}" : "MIR2 cache hit: #{@path}")
+        end
         decoder.functions
       rescue SystemCallError, IOError, Invalid
+        raise Wardite::LoadError, "invalid WMIR function directory" if @artifact
         $stderr.puts "MIR2 cache miss: #{@path}" if ENV["WARDITE_TRACE"]
         nil
+      end
+
+      # @rbs return: bool
+      def compiling_artifact?
+        !@output.nil?
       end
 
       # @rbs function: Function
@@ -595,6 +624,7 @@ module Wardite
         decoder = @decoder || raise(Invalid)
         decoder.restore(function)
       rescue Invalid
+        raise Wardite::EvalError, "invalid WMIR function #{function.index} in #{@path}" if @artifact
         raise Wardite::EvalError, "invalid MIR2 function #{function.index} in #{@path}. Delete this cache file and retry."
       end
 
@@ -611,7 +641,6 @@ module Wardite
       # @rbs ir: IR
       # @rbs return: void
       def write_ir(instance, ir)
-        FileUtils.mkdir_p(@directory)
         layout = encode_layout(instance, ir.entries)
         table = Writer.new
         table.integers(ir.functions.size)
@@ -621,16 +650,27 @@ module Wardite
           start = records.bytes.bytesize
           records.function(function)
           table.integers(offset + start, records.bytes.bytesize - start)
-          return if @header.bytesize + INTEGRITY_SIZE + offset + records.bytes.bytesize > MAX_BYTES
+          if @header.bytesize + INTEGRITY_SIZE + offset + records.bytes.bytesize > MAX_BYTES
+            raise Wardite::LoadError, "WMIR exceeds the MIR size limit" if @output
+            return
+          end
         end
         table.integers(layout.bytesize)
         payload = table.bytes
         payload << layout
         payload << records.bytes
+        output = @output
+        if output
+          MIRArtifact.write(output, @wasm || raise(Invalid), @source_digest, key, @configuration, offset, payload)
+          @wasm = nil
+          return
+        end
+        FileUtils.mkdir_p(@directory)
         length = [payload.bytesize].pack("Q<")
         prefix = @header + length + MIRCache.sample_checksum(payload, length) + Digest::SHA256.digest(payload)
         MIRCache.publish(@directory, @path, prefix, payload)
       rescue SystemCallError, IOError
+        raise if @output
         # Cache I/O is optional once the normal build has succeeded.
         nil
       end
@@ -721,13 +761,15 @@ module Wardite
       # @rbs prefix: String
       # @rbs payload: String
       # @rbs return: void
-      def self.publish(directory, destination, prefix, payload)
+      # @rbs source: String?
+      def self.publish(directory, destination, prefix, payload, source = nil)
         path = File.join(directory, ".wardite-#{SecureRandom.hex(16)}.tmp")
         file = File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600)
         begin
           file.binmode
           file.write(prefix)
           file.write(payload)
+          file.write(source) if source
           file.close
           File.rename(path, destination)
         ensure

@@ -128,7 +128,8 @@ module Wardite
         # @rbs payload: String
         # @rbs instance: Wardite::Instance
         # @rbs entries: Array[FunctionEntry]
-        def initialize: (String payload, Wardite::Instance instance, Array[FunctionEntry] entries) -> untyped
+        # @rbs artifact: MIRArtifact?
+        def initialize: (String payload, Wardite::Instance instance, Array[FunctionEntry] entries, ?artifact: MIRArtifact?) -> untyped
 
         # @rbs layout: String
         # @rbs return: void
@@ -199,13 +200,18 @@ module Wardite
       # @rbs configuration: Configuration
       # @rbs verify: Symbol
       # @rbs eager: bool
-      def initialize: (String directory, String wasm, Configuration configuration, ?verify: Symbol, ?eager: bool) -> untyped
+      # @rbs artifact: MIRArtifact?
+      # @rbs output: String?
+      def initialize: (String directory, String wasm, Configuration configuration, ?verify: Symbol, ?eager: bool, ?artifact: MIRArtifact?, ?output: String?) -> untyped
 
       # Restore against module declarations so a miss can decode and check the
       # Wasm bodies before Store initialization or any host lookup.
       # @rbs instance: Wardite::Instance
       # @rbs return: Array[Function]?
       def read_functions: (Wardite::Instance instance) -> Array[Function]?
+
+      # @rbs return: bool
+      def compiling_artifact?: () -> bool
 
       # @rbs function: Function
       # @rbs return: void
@@ -247,7 +253,8 @@ module Wardite
       # @rbs prefix: String
       # @rbs payload: String
       # @rbs return: void
-      def self.publish: (String directory, String destination, String prefix, String payload) -> void
+      # @rbs source: String?
+      def self.publish: (String directory, String destination, String prefix, String payload, ?String? source) -> void
 
       # Include the module's import identities, and every function's signature
       # and index mapping. The live entries and hosts are always linked afresh.

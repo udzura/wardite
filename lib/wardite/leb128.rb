@@ -1,7 +1,7 @@
 # rbs_inline: enabled
 module Wardite
   module Leb128Helper
-    # @rbs buf: File|StringIO
+    # @rbs buf: File|StringIO|Efflorescence::MIRArtifact::CodeReader
     # @rbs max_level: Integer
     # @rbs return: Integer
     def fetch_uleb128(buf, max_level: 4)

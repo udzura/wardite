@@ -44,6 +44,7 @@ module Wardite
         @mir_cache_verify = :checksum
         @mir_eager = false
         @snapshot = nil
+        @emit_wmir = nil #: String?
         @memsize = 1
         parser = RUBY_ENGINE == "spinel" ? SpinelOptions : OptionParser
         options = parser.new do |opts|
@@ -70,6 +71,7 @@ module Wardite
           }
           opts.on("--mir-dump", "Print semantic and optimized MIR") { @mir_dump = true }
           opts.on("--mir-profile", "Instrument MIR execution (do not use for timing)") { @mir_profile = true }
+          opts.on("--compile-wmir FILE", "Compile Wasm to a directly loadable .wmir file and exit") { |path| @emit_wmir = path }
           opts.on("--mir-cache DIR", "Build all functions on a miss; restore on first call on a hit") { |dir| @mir_cache = dir }
           opts.on("--mir-eager", "--mir-cache-eager", "Prepare all MIR at load time (default: on first call)") { @mir_eager = true }
           opts.on("--mir-cache-verify MODE", "Verify the MIR2 cache with checksum (default) or sha256") do |mode|
@@ -78,20 +80,25 @@ module Wardite
             end
             @mir_cache_verify = mode.to_sym
           end
-          opts.on("--snapshot DIR", "Resume WASI startup from a local snapshot (needs --mir-cache; fixes clocks and random bytes read before it)") { |dir| @snapshot = dir }
+          opts.on("--snapshot DIR", "Resume WASI startup from a local snapshot (needs --mir-cache or .wmir; fixes clocks and random bytes read before it)") { |dir| @snapshot = dir }
           opts.on("--yjit", "Enable yjit if available; setting WARDITE_YJIT_ON=1 has the same effect") {|_v|
             @yjit = true
           }
           opts.on("--out-profile [file]", "Enable Vernier profiling and save to the file") {|v|
             @profile_file_path = v
           }
-          opts.on("FILE.wasm") { }
+          opts.on("FILE.wasm | FILE.wmir") { }
         end
         options.parse!(args)
-        if snapshot && (!mir_cache || mir_dump || mir_profile)
-          raise "--snapshot requires --mir-cache, without --mir-dump or --mir-profile"
-        end
         @file = args[0] || raise("require file argument")
+        artifact = File.extname(@file) == ".wmir"
+        if snapshot && ((!mir_cache && !artifact) || mir_dump || mir_profile)
+          raise "--snapshot requires --mir-cache or a .wmir file, without --mir-dump or --mir-profile"
+        end
+        if (output = @emit_wmir)
+          raise "--compile-wmir output must end in .wmir" unless File.extname(output) == ".wmir"
+          raise "--compile-wmir requires a Wasm input and no execution options" if artifact || mir_cache || snapshot || mir_profile || mir_dump || invoke
+        end
         @args = (args[1..-1] || [])
         @args.unshift if @args[0] == '--'
 
@@ -124,7 +131,7 @@ module Wardite
         ins = File.open(file, "rb") do |f|
           Wardite::BinaryLoader.load_from_buffer(f, enable_wasi: wasi,
             disabled_optimizations: disabled_optimizations, enabled_optimizations: @enabled_optimizations, mir_profile: mir_profile,
-            mir_cache: mir_dump ? nil : mir_cache, mir_cache_verify: @mir_cache_verify, mir_cache_eager: @mir_eager || !!mir_dump)
+            mir_cache: mir_dump ? nil : mir_cache, mir_cache_verify: @mir_cache_verify, mir_cache_eager: @mir_eager || !!mir_dump, emit_wmir: @emit_wmir)
         end
         if memsize > 1
           ins.store.memories[0].grow(memsize)
@@ -151,7 +158,9 @@ module Wardite
 
       # @rbs return: void
       def __run
-        if invoke
+        if @emit_wmir
+          new_instance
+        elsif invoke
           invoke_function
         else
           if wasi

@@ -875,12 +875,12 @@ module Wardite
   # @rbs return: Instance
   def self.new(path: nil, buffer: nil, **options)
     if path
-      buffer = File.open(path)
+      return File.open(path, "rb") { |file| Wardite::BinaryLoader.load_from_buffer(file, **options) }
     end
     if buffer.nil?
       raise ::ArgumentError, "nil buffer passed"
     end
-    Wardite::BinaryLoader::load_from_buffer(buffer, **options);
+    Wardite::BinaryLoader.load_from_buffer(buffer, **options)
   end
 end
 
