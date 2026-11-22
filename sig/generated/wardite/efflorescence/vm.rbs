@@ -125,8 +125,7 @@ module Wardite
       # A concrete return type breaks the inference cycle between the current
       # frame and the array it is restored from after every internal RETURN.
       # @rbs return: Wardite::Efflorescence::Frame
-      # @rbs frames: Array[Wardite::Efflorescence::Frame]
-      def current_frame: (Array[Wardite::Efflorescence::Frame] frames) -> Wardite::Efflorescence::Frame
+      def current_frame: (untyped frames) -> Wardite::Efflorescence::Frame
 
       # @rbs value: Integer
       # @rbs return: Integer

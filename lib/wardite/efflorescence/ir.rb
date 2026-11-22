@@ -889,10 +889,7 @@ module Wardite
       # @rbs return: void
       def install_code(code, calls)
         @bytecode = code
-        # Keep the resolved table in Spinel's unboxed CallSite array.
-        @calls = []
-        calls.each { |site| add_call_site(site) }
-        nil
+        @calls = calls
       end
 
       # Keep the element type at the array boundary. In particular, fetch on
@@ -1072,9 +1069,7 @@ module Wardite
         @memory_sites = body.memory_sites
         @dynamic_sites = body.dynamic_sites
         @bytecode = body.bytecode
-        @calls = []
-        body.call_site_count.times { |i| add_call_site(body.call_site(i)) }
-        nil
+        @calls = body.calls
       end
 
       # @rbs return: Wardite::Efflorescence::Function

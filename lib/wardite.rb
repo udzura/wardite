@@ -7,7 +7,12 @@ require_relative "wardite/const"
 require_relative "wardite/float_bits"
 require_relative "wardite/instruction"
 require_relative "wardite/value"
-require_relative "wardite/wasm_module"
+# Spinel needs the host mixin at load time to compile classes that include it.
+if RUBY_ENGINE == "spinel"
+  require_relative "wardite/wasi"
+else
+  require_relative "wardite/wasm_module"
+end
 require_relative "wardite/load"
 require_relative "wardite/errors"
 
@@ -308,14 +313,17 @@ module Wardite
       sec
     end
 
-    # @rbs name: Symbol
-    # @rbs args: Array[Object]
-    # @rbs return: untyped
-    def method_missing(name, *args)
-      if runtime.callable? name
-        runtime.call(name, args)
-      else
-        super
+    # Native callers use runtime.call; a method_missing hook boxes ordinary typed calls.
+    unless RUBY_ENGINE == "spinel"
+      # @rbs name: Symbol
+      # @rbs args: Array[Object]
+      # @rbs return: untyped
+      def method_missing(name, *args)
+        if runtime.callable? name
+          runtime.call(name, args)
+        else
+          super
+        end
       end
     end
   end
@@ -774,18 +782,20 @@ module Wardite
       @mappings[name]&.[](1)
     end
 
-    # @rbs name: String|Symbol
-    # @rbs include_private: bool
-    # @rbs return: bool
-    def respond_to?(name, include_private = false)
-      !!self[name.to_s] || super
-    end
+    unless RUBY_ENGINE == "spinel"
+      # @rbs name: String|Symbol
+      # @rbs include_private: bool
+      # @rbs return: bool
+      def respond_to?(name, include_private = false)
+        !!self[name.to_s] || super
+      end
 
-    def method_missing(name, *_args)
-      if self[name.to_s]
-        self[name.to_s]
-      else
-        super
+      def method_missing(name, *_args)
+        if self[name.to_s]
+          self[name.to_s]
+        else
+          super
+        end
       end
     end
   end
