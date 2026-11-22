@@ -286,6 +286,7 @@ module Wardite
       # A concrete return type breaks the inference cycle between the current
       # frame and the array it is restored from after every internal RETURN.
       # @rbs return: Wardite::Efflorescence::Frame
+      # @rbs frames: Array[Wardite::Efflorescence::Frame]
       def current_frame(frames)
         frames.last || raise(Wardite::EvalError, "missing MIR caller")
       end
@@ -376,7 +377,8 @@ module Wardite
           frame = current_frame(frames)
           until frame.handlers.empty?
             id = frame.handlers.pop || raise(Wardite::EvalError, "missing handler")
-            descriptors = frame.function.flat_handlers
+            function = frame.function
+            descriptors = function.flat_handlers
             descriptors.fetch(id).clauses.each do |clause|
               if clause.tag_index < 0 || @instance.tags.fetch(clause.tag_index).equal?(value.tag)
                 frame.trim_handlers(clause.handler_depth)
@@ -399,7 +401,8 @@ module Wardite
       # @rbs id: Integer
       # @rbs return: Wardite::Efflorescence::ExceptionValue
       def exception_at(frame, id)
-        site = frame.function.throw_sites.fetch(id)
+        function = frame.function
+        site = function.throw_sites.fetch(id)
         payload = site.payload_registers.map { |register| frame.registers[register] }
         ExceptionValue.new(@instance.tags.fetch(site.tag_index), payload)
       end
@@ -478,13 +481,14 @@ module Wardite
       # @rbs return: Integer?
       def invoke_typed_host(host, arguments, sources)
         boxed = [] #: Array[Wardite::wasmValue]
-        host.entry.parameter_types.each_with_index do |type, i|
+        entry = host.entry
+        entry.parameter_types.each_with_index do |type, i|
           index = sources ? sources.fetch(i) : i
           value = arguments.fetch(index)
           boxed << box_result(type, value)
         end
         result = host.callable.call(@instance.store, boxed)
-        type = host.entry.result_types[0]
+        type = entry.result_types[0]
         case type
         when nil
           return nil if result.nil?
@@ -498,7 +502,8 @@ module Wardite
           return result.value & 0xffffffff if result.is_a?(Wardite::I32)
           return result & 0xffffffff if result.is_a?(Integer)
         end
-        raise Wardite::EvalError, "host ABI result mismatch for #{host.external.name}"
+        external = host.external
+        raise Wardite::EvalError, "host ABI result mismatch for #{external.name}"
       end
 
       # Each public or start entry owns its frames, pools and counters. Host
@@ -584,7 +589,10 @@ module Wardite
             if @depth == 1
               # The snapshot reads globals from the Store.
               write_globals if @has_globals
-              recorder.save(@instance, @active_frames)
+              # Passing the live stack to the snapshot writer boxes it on every CALL/RETURN.
+              snapshot_frames = [] #: Array[Wardite::Efflorescence::Frame]
+              @active_frames.each { |active| snapshot_frames << active }
+              recorder.save(@instance, snapshot_frames)
             end
           end
         end

@@ -254,6 +254,10 @@ module Wardite
     # @rbs return: Integer
     def filesystem_errno: (SystemCallError error) -> Integer
 
+    # @rbs file: IO
+    # @rbs return: String
+    def fd_filestat_bytes: (IO file) -> String
+
     # @rbs stat: File::Stat
     # @rbs return: String
     def filestat_bytes: (File::Stat stat) -> String

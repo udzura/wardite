@@ -621,12 +621,12 @@ module Wardite
     # @rbs return: Object
     def fd_filestat_get(store, args)
       file = @fd_table[args[0].value.to_i]
-      return Wasi::EBADF unless file && !file.is_a?(Wasi::PreopenedDir)
+      return Wasi::EBADF unless file.is_a?(IO)
       offset = args[1].value.to_i
       memory = store.memories[0]
       return Wasi::EFAULT unless memory && memory.range?(offset, 64)
 
-      memory.write_bytes(offset, filestat_bytes(file.stat))
+      memory.write_bytes(offset, fd_filestat_bytes(file))
       0
     rescue SystemCallError => error
       filesystem_errno(error)
@@ -903,6 +903,12 @@ module Wardite
         else Wasi::EIO
         end
       end
+    end
+
+    # @rbs file: IO
+    # @rbs return: String
+    def fd_filestat_bytes(file)
+      filestat_bytes(file.stat)
     end
 
     # @rbs stat: File::Stat

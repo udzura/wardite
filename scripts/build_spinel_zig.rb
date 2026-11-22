@@ -33,7 +33,7 @@ elsif ARGV.first == "ar"
 end
 
 # Keep this revision in sync with the Spinel job in runtime-tests.yml.
-SPINEL_REF = "072516af13322849eabe107eeb910e43fb2882be"
+SPINEL_REF = "68476ebd3d91584899e8e40c42004aee591211cc"
 
 def run(*command, **options)
   system(*command, **options, exception: true)
