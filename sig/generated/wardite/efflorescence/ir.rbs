@@ -647,6 +647,8 @@ module Wardite
 
       attr_accessor cache_pending: bool
 
+      attr_reader calls: Array[Wardite::Efflorescence::CallSite]
+
       attr_reader initial_registers: Array[Integer]
 
       attr_reader register_types: Array[Symbol]
@@ -686,9 +688,6 @@ module Wardite
 
       # @rbs return: Array[Wardite::Efflorescence::Instruction]
       def instructions: () -> Array[Wardite::Efflorescence::Instruction]
-
-      # @rbs return: Array[Wardite::Efflorescence::CallSite]
-      def calls: () -> Array[Wardite::Efflorescence::CallSite]
 
       # @rbs return: Array[Integer]
       def constant_registers: () -> Array[Integer]

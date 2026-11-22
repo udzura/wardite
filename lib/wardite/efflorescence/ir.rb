@@ -793,6 +793,7 @@ module Wardite
       attr_reader :result_types #: Array[Symbol]
       attr_accessor :local_count #: Integer
       attr_accessor :cache_pending #: bool
+      attr_reader :calls #: Array[Wardite::Efflorescence::CallSite]
       attr_reader :initial_registers #: Array[Integer]
       attr_reader :register_types #: Array[Symbol]
       attr_accessor :uses_i64 #: bool
@@ -814,6 +815,8 @@ module Wardite
         @result_types = result_types.dup
         @local_count = local_count
         @cache_pending = false
+        # Spinel keeps this hot call-site table in a native pointer array.
+        @calls = []
         @register_types = parameter_types + (local_types || Array.new(local_count, :i32))
         @uses_store = false
         @uses_dynamic_calls = false
@@ -851,11 +854,6 @@ module Wardite
       # @rbs return: Array[Wardite::Efflorescence::Instruction]
       def instructions
         @instructions ||= [] #: Array[Wardite::Efflorescence::Instruction]
-      end
-
-      # @rbs return: Array[Wardite::Efflorescence::CallSite]
-      def calls
-        @calls ||= [] #: Array[Wardite::Efflorescence::CallSite]
       end
 
       # @rbs return: Array[Integer]
@@ -924,18 +922,18 @@ module Wardite
       # @rbs index: Integer
       # @rbs return: Wardite::Efflorescence::CallSite
       def call_site(index)
-        calls[index] || raise(Wardite::EvalError, "invalid MIR call site")
+        @calls[index] || raise(Wardite::EvalError, "invalid MIR call site")
       end
 
       # @rbs return: Integer
       def call_site_count
-        calls.length
+        @calls.length
       end
 
       # @rbs site: Wardite::Efflorescence::CallSite
       # @rbs return: void
       def add_call_site(site)
-        calls.push(site)
+        @calls.push(site)
         nil
       end
 
