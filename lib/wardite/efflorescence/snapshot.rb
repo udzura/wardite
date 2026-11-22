@@ -161,10 +161,15 @@ module Wardite
         reader.finish
 
         if memory
-          raise MIRCache::Invalid if pages > current && memory.grow(pages - current) < 0
-          used_pages = Array.new(pages, false)
+          if RUBY_ENGINE == "spinel" && pages > current
+            raise MIRCache::Invalid unless memory.replace_snapshot_buffer(pages)
+            current = 0
+          elsif pages > current
+            raise MIRCache::Invalid if memory.grow(pages - current) < 0
+          end
+          used_pages = Array.new(current, false)
           used.each_with_index do |page, i|
-            used_pages[page] = true
+            used_pages[page] = true if page < current
             memory.write_bytes(page * PAGE_SIZE, contents.byteslice(i * PAGE_SIZE, PAGE_SIZE) || raise(MIRCache::Invalid))
           end
           # Newly grown pages are already zero. Existing pages can contain initial data.
