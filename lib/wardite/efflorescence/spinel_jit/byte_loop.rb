@@ -13,6 +13,23 @@ module Wardite
         def initialize(code, kind)
           @code = code
           @kind = kind
+          @page = 0
+        end
+
+        # @rbs return: Integer
+        def executable_page
+          return @page if @page != 0
+          @page = Native.wardite_jit_map_code(@code, @code.bytesize)
+          warn "MIR JIT mapped byte-loop page" if @page != 0 && ENV["WARDITE_TRACE"]
+          @page
+        end
+
+        # @rbs return: void
+        def release
+          return if @page == 0
+          Native.wardite_jit_unmap_code(@page, @code.bytesize)
+          @page = 0
+          warn "MIR JIT released byte-loop page" if ENV["WARDITE_TRACE"]
         end
       end
 
