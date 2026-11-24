@@ -124,9 +124,67 @@ class WarditeSpinelJITByteLoopTest < Test::Unit::TestCase
     end
   end
 
+  test "hot lookup loops preserve call arguments and store prefixes at VM exits" do
+    wat = <<~'WAT'
+      (module
+       (memory 1 2)
+       (data (i32.const 1025) "\01") (data (i32.const 4096) "B\ff")
+       (func $report (param i32 i32) (result i32) local.get 0 i32.const 8 i32.shl local.get 1 i32.or)
+       (func $scan (export "scan") (param $src i32) (param $table i32) (param $dst i32) (param $n i32) (result i32)
+         (local $byte i32) (local $value i64)
+         block $bad
+           loop $again
+             local.get $table local.get $src i32.const 1 i32.add i32.load8_u local.tee $byte
+             i32.add i64.load8_u local.tee $value i64.const 255 i64.eq br_if $bad
+             local.get $dst local.get $value i64.store32 offset=1
+             local.get $dst i32.const 4 i32.add local.set $dst
+             local.get $src i32.const 1 i32.add local.set $src
+             local.get $n i32.const -1 i32.add local.tee $n br_if $again
+           end
+           local.get $dst return
+         end
+         local.get $src local.get $byte call $report)
+       (func (export "grow") (result i32) i32.const 1 memory.grow)
+       (func (export "byte") (param i32) (result i32) local.get 0 i32.load8_u))
+    WAT
+    # The sentinel is in the first native iteration. The exit calls $report
+    # with the updated pointer and byte via the flat call-site argument table.
+    vectors = <<~ROWS
+      scan 0 4096 10000 1030 262145
+      byte 14093 66
+      byte 14097 0
+      scan 2048 4096 14001 3 14013
+      scan 65532 4096 15000 5 bounds
+      byte 15009 66
+      byte 15013 0
+      scan 1023 65535 16000 3 bounds
+      scan 2048 4096 65530 3 bounds
+      byte 65531 66
+      byte 65535 0
+      grow 1
+      scan 65534 4096 80000 3 80012
+      byte 80009 66
+    ROWS
+    with_vector_traces(wat, vectors) do |jit, output, _code|
+      exits = output.scan(/lookup loop function 1: backedge 9, native exit (\d+), iterations (\d+)/)
+      assert_equal jit ? [%w[11 1], %w[10 2], %w[0 3], %w[0 1], %w[5 1], %w[10 2]] : [], exits, output
+    end
+  end
+
   private
 
   def check_vectors(wat, vectors)
+    with_vector_traces(wat, vectors) do |jit, output, code|
+      exits = output.scan(/backedge (\d+), native exit (\d+) \(store8\)/).map { |pair| pair.map(&:to_i) }
+      if jit
+        yield exits, code
+      else
+        assert_empty exits, output
+      end
+    end
+  end
+
+  def with_vector_traces(wat, vectors)
     Dir.mktmpdir do |dir|
       wasm = File.join(dir, "loop.wasm")
       rows = File.join(dir, "rows.txt")
@@ -145,12 +203,7 @@ class WarditeSpinelJITByteLoopTest < Test::Unit::TestCase
         env = {"WARDITE_MIR_JIT" => jit ? "1" : "0", "WARDITE_TRACE" => "1"}
         output, status = Open3.capture2e(env, worker, wasm, rows)
         assert_predicate status, :success?, output
-        exits = output.scan(/backedge (\d+), native exit (\d+) \(store8\)/).map { |pair| pair.map(&:to_i) }
-        if jit
-          yield exits, code
-        else
-          assert_empty exits, output
-        end
+        yield jit, output, code
       end
     end
   end

@@ -1,0 +1,33 @@
+# Generated from lib/wardite/efflorescence/spinel_jit/loop_liveness.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class SpinelJIT
+      # Live MIR slots at native entry and at each VM continuation. Work on
+      # verified flat code so a cache hit has the same information as a miss.
+      class LoopLiveness
+        include Opcode
+
+        # @rbs function: Function
+        def initialize: (Function function) -> untyped
+
+        # @rbs members: Array[bool]
+        # @rbs head: Integer
+        # @rbs return: bool
+        def single_entry?: (Array[bool] members, Integer head) -> bool
+
+        # @rbs slots: Array[Integer]
+        # @rbs pcs: Array[Integer]
+        # @rbs return: Hash[Integer, Array[Integer]]
+        def at: (Array[Integer] slots, Array[Integer] pcs) -> Hash[Integer, Array[Integer]]
+
+        private
+
+        # @rbs sets: Array[Array[Integer]]
+        # @rbs bits: Hash[Integer, Integer]
+        # @rbs return: Array[Integer]
+        def masks: (Array[Array[Integer]] sets, Hash[Integer, Integer] bits) -> Array[Integer]
+      end
+    end
+  end
+end

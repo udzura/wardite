@@ -23,6 +23,12 @@ module Wardite
         def self.wardite_jit_run: (String, Integer, IO::Buffer) -> Integer
 
         def self.wardite_jit_run_loop: (String, Integer, IO::Buffer, IO::Buffer, Integer) -> Integer
+
+        def self.wardite_jit_map_code: (String, Integer) -> Integer
+
+        def self.wardite_jit_unmap_code: (Integer, Integer) -> void
+
+        def self.wardite_jit_call_loop: (Integer, IO::Buffer, IO::Buffer, Integer) -> Integer
       end
 
       def initialize: () -> untyped
@@ -38,6 +44,11 @@ module Wardite
       # @rbs memory: IO::Buffer
       # @rbs return: Integer
       def run_loop: (Frame frame, Integer pc, IO::Buffer memory) -> Integer
+
+      # RX pages are reused across loop entries and guest calls within one
+      # execution. run_frames releases them even on traps and WASI exits.
+      # @rbs return: void
+      def release_loop_pages: () -> void
 
       # nil is cached for unsupported functions, just like a successful entry.
       # @rbs function: Function

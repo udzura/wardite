@@ -541,6 +541,7 @@ module Wardite
         execute_flat(current_frame(active_frames), pools, active_frames, metrics)
       ensure
         @depth -= 1
+        @jit&.release_loop_pages if @depth == 0
         @active_frames = outer
         active_frames.each { |active| pool_at(pools, active.pool_index).release(active) }
         if @profiling
