@@ -22,7 +22,8 @@ module Wardite
       class LookupSite
         HOT_BACKEDGES: ::Integer
 
-        def initialize: () -> untyped
+        # @rbs label: String
+        def initialize: (String label) -> untyped
 
         # @rbs frame: Frame
         # @rbs pc: Integer
@@ -39,6 +40,8 @@ module Wardite
       # targets inside the loop; guard their fallthrough back to the VM.
       class LookupLoopCompiler < AArch64
         include Opcode
+
+        MARKERS: Array[Integer]
 
         CACHE_REGISTERS: ::Integer
 

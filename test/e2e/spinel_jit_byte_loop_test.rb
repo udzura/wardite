@@ -215,6 +215,42 @@ class WarditeSpinelJITByteLoopTest < Test::Unit::TestCase
     end
   end
 
+  test "byte-add loops preserve overlapping writes and resume at a trapping member" do
+    wat = <<~'WAT'
+      (module (memory 1) (data (i32.const 65535) "\ff")
+        (func (export "add") (param $src i32) (param $dst i32) (param $count i32) (result i32)
+          loop $again
+            local.get $dst local.get $src i32.load8_u local.get $count i32.add i32.store8
+            local.get $dst i32.const 1 i32.add local.set $dst
+            local.get $src i32.const 1 i32.add local.set $src
+            local.get $count i32.const -1 i32.add local.tee $count br_if $again
+          end
+          local.get $dst)
+        (func (export "read") (param i32) (result i32) local.get 0 i32.load8_u))
+    WAT
+    # src and dst overlap on the first call. Native iterations consume the
+    # bytes stored by previous VM and native iterations, including overflow.
+    vectors = <<~ROWS
+      add 0 1 1028 1029
+      read 1028 10
+      add 65534 2000 3 bounds
+      read 2000 3
+      read 2001 1
+      read 2002 0
+      add 3000 65534 3 bounds
+      read 65534 3
+      read 65535 2
+    ROWS
+    with_vector_traces(wat, vectors) do |jit, output, code|
+      ops = Wardite::Efflorescence::Opcode
+      head = code.index(ops::I32_BYTE_ADD_STORE)
+      assert_not_nil head
+      latch = code.index(ops::BR_IF)
+      exits = output.scan(/byte-add loop function 0: backedge \d+, native exit (\d+)/).flatten.map(&:to_i)
+      assert_equal jit ? [latch + 1, head, head + 2] : [], exits, output
+    end
+  end
+
   private
 
   def check_vectors(wat, vectors)

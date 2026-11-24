@@ -117,7 +117,7 @@ module Wardite
         small = function.register_count <= AArch64::MAX_SLOTS
         lookup = function.register_count <= LookupLoopCompiler::MAX_FRAME && !function.uses_eh &&
           function.flat_handlers.empty? && original.size <= LookupLoopCompiler::MAX_FUNCTION * Lowerer::WIDTH &&
-          (original.include?(Opcode::I64_BYTE_LOOKUP_BR_EQ) || original.include?(Opcode::I32_TABLE_STORE8))
+          LookupLoopCompiler::MARKERS.any? { |marker| original.include?(marker) }
         unless small || lookup
           @loop_bodies[function.index] = nil
           return nil
@@ -128,12 +128,12 @@ module Wardite
         last_lookup = -1
         while pc < original.size
           op = original.fetch(pc)
-          last_lookup = pc if op == Opcode::I64_BYTE_LOOKUP_BR_EQ || op == Opcode::I32_TABLE_STORE8
+          last_lookup = pc if LookupLoopCompiler::MARKERS.include?(op)
           if op == Opcode::BR_IF
             head = original.fetch(pc + 2)
             index = nil #: Integer?
             if lookup && head.between?(0, last_lookup) && head < pc && pc - head <= LookupLoopCompiler::MAX_SPAN * width
-              @lookup_sites << LookupSite.new
+              @lookup_sites << LookupSite.new(original.fetch(last_lookup) == Opcode::I32_BYTE_ADD_STORE ? "byte-add" : "lookup")
               index = -@lookup_sites.size
             elsif small && head < pc && pc - head <= 64 * width
               entry = AArch64.new.compile_byte_loop(function, head, pc)

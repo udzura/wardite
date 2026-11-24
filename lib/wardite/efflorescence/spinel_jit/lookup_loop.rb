@@ -24,7 +24,9 @@ module Wardite
       class LookupSite
         HOT_BACKEDGES = 1024 # 24 KiB of binary data in either bulk loop
 
-        def initialize
+        # @rbs label: String
+        def initialize(label)
+          @label = label
           @remaining = HOT_BACKEDGES
           @loop = nil #: LookupLoop?
           @page = 0
@@ -55,7 +57,7 @@ module Wardite
           outputs.each { |i| frame.registers[slots.fetch(i)] = Integer(buffer.get_value(:s64, i * 8)) }
           if ENV["WARDITE_TRACE"]
             turns = Integer(buffer.get_value(:s64, slots.size * 8))
-            warn "MIR JIT lookup loop function #{frame.function.index}: backedge #{pc / Lowerer::WIDTH}, native exit #{resume / Lowerer::WIDTH}, iterations #{turns}, inputs #{loop.inputs.size}, outputs #{outputs.size}"
+            warn "MIR JIT #{@label} loop function #{frame.function.index}: backedge #{pc / Lowerer::WIDTH}, native exit #{resume / Lowerer::WIDTH}, iterations #{turns}, inputs #{loop.inputs.size}, outputs #{outputs.size}"
           end
           resume
         end
@@ -73,6 +75,7 @@ module Wardite
       # targets inside the loop; guard their fallthrough back to the VM.
       class LookupLoopCompiler < AArch64
         include Opcode
+        MARKERS = [I64_BYTE_LOOKUP_BR_EQ, I32_TABLE_STORE8, I32_BYTE_ADD_STORE].freeze #: Array[Integer]
         CACHE_REGISTERS = 10 # x6..x15; x0..x2 are the ABI, x3..x5 scratch, x17 counts iterations.
         MAX_WORDS = 8192
         MAX_FRAME = 2048
@@ -111,7 +114,7 @@ module Wardite
               pc += ByteSequences.length(op) * Lowerer::WIDTH
               next
             end
-            has_lookup = true if op == I32_TABLE_STORE8
+            has_lookup = true if op == I32_TABLE_STORE8 || op == I32_BYTE_ADD_STORE
             return unless supported?(op)
             Opcode.read_positions(insn).each { |pos| counts[insn[pos]] += 1 }
             dest = Opcode.destination(insn)
@@ -174,7 +177,7 @@ module Wardite
                I64_STORE16, I64_STORE32, COPY, I32_ADD_IMM, I32_ADD, I32_NE,
                I64_SHL, I64_SHR_U, I64_OR, I64_AND, I64_NE, I64_LOAD, I32_STORE8,
                I32_TABLE_STORE8, I32_WRAP_I64, I32_EXTRACT_I64, I32_SHR_U_IMM,
-               I32_AND, I32_GTU, I32_LEU then true
+               I32_AND, I32_GTU, I32_LEU, I32_GEU, I32_BYTE_ADD_STORE then true
           else false
           end
         end
@@ -250,7 +253,7 @@ module Wardite
           else
             left = source(b, 4)
             case op
-            when I32_LOAD8_U, I64_LOAD8_U, I64_LOAD
+            when I32_LOAD8_U, I64_LOAD8_U, I64_LOAD, I32_BYTE_ADD_STORE
               wide = op == I64_LOAD
               checked_address(left, c, wide ? 8 : 1, pc)
               @words << (wide ? 0xf8646823 : 0x38646823) # ldr x3 / ldrb w3, [x1, x4]
