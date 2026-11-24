@@ -117,7 +117,7 @@ module Wardite
         small = function.register_count <= AArch64::MAX_SLOTS
         lookup = function.register_count <= LookupLoopCompiler::MAX_FRAME && !function.uses_eh &&
           function.flat_handlers.empty? && original.size <= LookupLoopCompiler::MAX_FUNCTION * Lowerer::WIDTH &&
-          original.include?(Opcode::I64_BYTE_LOOKUP_BR_EQ)
+          (original.include?(Opcode::I64_BYTE_LOOKUP_BR_EQ) || original.include?(Opcode::I32_TABLE_STORE8))
         unless small || lookup
           @loop_bodies[function.index] = nil
           return nil
@@ -128,7 +128,7 @@ module Wardite
         last_lookup = -1
         while pc < original.size
           op = original.fetch(pc)
-          last_lookup = pc if op == Opcode::I64_BYTE_LOOKUP_BR_EQ
+          last_lookup = pc if op == Opcode::I64_BYTE_LOOKUP_BR_EQ || op == Opcode::I32_TABLE_STORE8
           if op == Opcode::BR_IF
             head = original.fetch(pc + 2)
             index = nil #: Integer?

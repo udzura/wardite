@@ -22,7 +22,7 @@ module Wardite
       end
 
       class LookupSite
-        HOT_BACKEDGES = 1024 # about 24 KiB of output in the 32-symbol decode loop
+        HOT_BACKEDGES = 1024 # 24 KiB of binary data in either bulk loop
 
         def initialize
           @remaining = HOT_BACKEDGES
@@ -111,6 +111,7 @@ module Wardite
               pc += ByteSequences.length(op) * Lowerer::WIDTH
               next
             end
+            has_lookup = true if op == I32_TABLE_STORE8
             return unless supported?(op)
             Opcode.read_positions(insn).each { |pos| counts[insn[pos]] += 1 }
             dest = Opcode.destination(insn)
@@ -171,7 +172,9 @@ module Wardite
           case op
           when BR_IF, BR_IF_I64_EQ, I64_BYTE_LOOKUP, I32_LOAD8_U, I64_LOAD8_U,
                I64_STORE16, I64_STORE32, COPY, I32_ADD_IMM, I32_ADD, I32_NE,
-               I64_SHL, I64_SHR_U, I64_OR, I64_AND, I64_NE then true
+               I64_SHL, I64_SHR_U, I64_OR, I64_AND, I64_NE, I64_LOAD, I32_STORE8,
+               I32_TABLE_STORE8, I32_WRAP_I64, I32_EXTRACT_I64, I32_SHR_U_IMM,
+               I32_AND, I32_GTU, I32_LEU then true
           else false
           end
         end
@@ -236,25 +239,32 @@ module Wardite
             guard(0x54000000, b)
           elsif op == I64_BYTE_LOOKUP_BR_EQ
             emit_lookup(pc)
-          elsif op == I64_STORE16 || op == I64_STORE32
-            address = source(b, 4)
-            value = source(a, 3)
-            # Base and instruction offset are unsigned i32. Check the last
-            # byte in 64 bits, preserving unaligned stores and trap order.
-            load_constant(5, c, false)
-            @words << (0x8b2040a4 | (address << 16)) # add x4, x5, wAddress, uxtw
-            bytes = op == I64_STORE16 ? 2 : 4
-            @words << (0x91000085 | ((bytes - 1) << 10)) # add x5, x4, #last
-            check_byte(5, pc)
-            @words << ((bytes == 2 ? 0x78246820 : 0xb8246820) | value)
+          elsif op == I32_STORE8 || op == I64_STORE16 || op == I64_STORE32
+            bytes, store = case op
+            when I32_STORE8 then [1, 0x38246820]
+            when I64_STORE16 then [2, 0x78246820]
+            else [4, 0xb8246820]
+            end
+            checked_address(source(b, 4), c, bytes, pc)
+            @words << (store | source(a, 3))
           else
             left = source(b, 4)
             case op
-            when I32_LOAD8_U, I64_LOAD8_U
-              load_constant(5, c, false)
-              @words << (0x8b2040a4 | (left << 16))
-              check_byte(4, pc)
-              @words << 0x38646823 # ldrb w3, [x1, x4]
+            when I32_LOAD8_U, I64_LOAD8_U, I64_LOAD
+              wide = op == I64_LOAD
+              checked_address(left, c, wide ? 8 : 1, pc)
+              @words << (wide ? 0xf8646823 : 0x38646823) # ldr x3 / ldrb w3, [x1, x4]
+            when I32_TABLE_STORE8
+              # Its three remaining flat instructions run in order, with their own trap PCs.
+              emit_binary(I32_ADD, 3, left, source(c, 5))
+            when I32_WRAP_I64
+              @words << (0x2a0003e3 | (left << 16)) # mov w3, wLeft
+            when I32_SHR_U_IMM
+              @words << (0x53007c03 | ((c & 31) << 16) | (left << 5)) # lsr w3, wLeft, #shift
+            when I32_EXTRACT_I64
+              @words << (0x9340fc03 | ((c & 63) << 16) | (left << 5)) # asr x3, xLeft, #shift
+              load_constant(5, c >> 6, false)
+              emit_binary(I32_AND, 3, 3, 5)
             when I32_ADD_IMM, I64_BYTE_LOOKUP
               load_constant(5, c, false)
               emit_binary(I32_ADD, 3, left, 5)
@@ -266,6 +276,24 @@ module Wardite
             write(a, 3)
           end
           true
+        end
+
+        # Form the effective address in x4 without wrapping the 32-bit base.
+        # Check the final byte before performing an unaligned multi-byte access.
+        # @rbs base: Integer
+        # @rbs offset: Integer
+        # @rbs bytes: Integer
+        # @rbs pc: Integer
+        # @rbs return: void
+        def checked_address(base, offset, bytes, pc)
+          load_constant(5, offset, false)
+          @words << (0x8b2040a4 | (base << 16)) # add x4, x5, wBase, uxtw
+          if bytes == 1
+            check_byte(4, pc)
+          else
+            @words << (0x91000085 | ((bytes - 1) << 10)) # add x5, x4, #last
+            check_byte(5, pc)
+          end
         end
 
         # Match the atomic VM handler: on either bounds failure no output

@@ -171,6 +171,50 @@ class WarditeSpinelJITByteLoopTest < Test::Unit::TestCase
     end
   end
 
+  test "encoder lookup loops guard wide loads and byte stores at their original PCs" do
+    wat = <<~'WAT'
+      (module (memory 1)
+        (data (i32.const 8192) "A") (data (i32.const 8255) "Z") (data (i32.const 65535) "\ff")
+        (func (export "map") (param $src i32) (param $step i32) (param $table i32)
+          (param $dst i32) (param $count i32) (result i32)
+          loop $again
+            local.get $dst local.get $table
+            local.get $src i64.load offset=1 align=1 i64.const 56 i64.shr_u i32.wrap_i64
+            i32.const 63 i32.and i32.add i32.load8_u i32.store8 offset=1
+            local.get $dst i32.const 1 i32.add local.set $dst
+            local.get $src local.get $step i32.add local.set $src
+            local.get $count i32.const -1 i32.add local.tee $count br_if $again
+          end
+          local.get $dst)
+        (func (export "read") (param i32) (result i32) local.get 0 i32.load8_u))
+    WAT
+    vectors = <<~ROWS
+      map 0 0 8192 10000 1028 11028
+      map 65525 1 8192 20000 4 bounds
+      read 20002 65
+      read 20003 90
+      read 20004 0
+      map 65526 1 65500 21000 2 bounds
+      read 21002 0
+      map 0 4294967295 8192 22000 2 bounds
+      read 22001 65
+      read 22002 0
+      map 0 0 8192 65533 3 bounds
+      read 65535 65
+    ROWS
+    with_vector_traces(wat, vectors) do |jit, output, code|
+      ops = Wardite::Efflorescence::Opcode
+      assert_include code, ops::I32_EXTRACT_I64
+      table = code.index(ops::I32_TABLE_STORE8)
+      assert_not_nil table
+      load = code.index(ops::I64_LOAD)
+      latch = code.index(ops::BR_IF)
+      exits = output.scan(/lookup loop function 0: backedge \d+, native exit (\d+), iterations (\d+)/)
+      expected = [[latch + 1, 4], [load, 3], [table + 1, 1], [load, 1], [table + 2, 2]]
+      assert_equal jit ? expected : [], exits.map { |row| row.map(&:to_i) }, output
+    end
+  end
+
   private
 
   def check_vectors(wat, vectors)
