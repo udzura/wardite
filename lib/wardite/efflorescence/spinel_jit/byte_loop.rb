@@ -69,10 +69,21 @@ module Wardite
             when Opcode::I32_EQZ
               @words << 0x7100009f # cmp w4, #0
               @words << 0x1a9f17e3 # cset w3, eq
-            when Opcode::I32_ADD_IMM
+            when Opcode::I32_ADD_IMM, Opcode::I32_BYTE_MUL_ADD, Opcode::I32_DIV_U_STORE8
+              # Both fused heads replace ADD_IMM. The following three flat MIR
+              # instructions retain their operands and PCs. Emit them in order
+              # so a failed load, division or store resumes at that member.
               load_constant(5, c, false)
               emit_binary(Opcode::I32_ADD, 3, 4, 5)
-            when Opcode::I32_ADD, Opcode::I32_SUB, Opcode::I32_EQ, Opcode::I32_NE, Opcode::I32_GEU
+            when Opcode::I32_MUL_IMM
+              load_constant(5, c, false)
+              @words << 0x1b057c83 # mul w3, w4, w5
+            when Opcode::I32_DIV_U
+              return unless c.between?(0, types.size - 1) && types.fetch(c) == :i32
+              load_loop_slot(5, c)
+              exit_unless(0x35000005, pc) # cbnz w5, continue
+              @words << 0x1ac50883 # udiv w3, w4, w5
+            when Opcode::I32_ADD, Opcode::I32_SUB, Opcode::I32_EQ, Opcode::I32_NE, Opcode::I32_GEU, Opcode::I32_LEU
               return unless c.between?(0, types.size - 1) && types.fetch(c) == :i32
               load_loop_slot(5, c)
               emit_binary(op, 3, 4, 5)
