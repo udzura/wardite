@@ -8,6 +8,7 @@ module Wardite
     class Translator
       class Control
         attr_reader :kind #: Symbol
+        attr_reader :parameters #: Array[Integer]
         attr_reader :entry_stack #: Array[Integer]
         attr_reader :start_pc #: Integer
         attr_reader :result_types #: Array[Symbol]
@@ -33,6 +34,7 @@ module Wardite
           @kind, @entry_stack, @start_pc = kind, entry_stack.dup, start_pc
           @result_types, @result_registers = result_types, result_registers
           @handler_depth, @entry_reachable = handler_depth, reachable
+          @parameters = [] #: Array[Integer]
           @patches, @catch_patches = [], []
           @has_branch, @else_seen, @then_reachable = false, false, false
           @false_patch = -1
@@ -375,7 +377,7 @@ module Wardite
       # @rbs pool_index: Integer
       # @rbs return: Wardite::Efflorescence::Function
       def translate_function(wasm, index, pool_index)
-        FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}")
+        FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}") unless wasm.retsig.size > 1
         unless wasm.locals_type.all? { |type| FunctionEntry.numeric_type?(type) || type == :exnref }
           raise UnsupportedFeature, "Efflorescence: function #{index} has unsupported locals"
         end
@@ -411,12 +413,21 @@ module Wardite
           when :block, :loop, :if, :try_table
             block = operands[0]
             fail_translation("expected block signature") unless block.is_a?(Wardite::Block)
-            unless block.parameter_types.empty? && block.result_types.all? { |type| FunctionEntry.numeric_type?(type) || type == :exnref }
-              raise UnsupportedFeature, context("block parameters and unsupported block result types are not supported")
+            if code == :loop && !block.parameter_types.empty?
+              raise UnsupportedFeature, context("loop parameters are not supported")
+            end
+            unless (block.parameter_types + block.result_types).all? { |type| FunctionEntry.numeric_type?(type) || FunctionEntry.exception_ref?(type) || FunctionEntry.function_ref?(type) }
+              raise UnsupportedFeature, context("unsupported block signature")
             end
             condition = code == :if ? pop_typed(:i32) : -1
             snapshot_locals if @reachable
+            parameters = block.parameter_types.reverse.map do |type|
+              value = pop_typed(type)
+              value < 0 ? register(type) : value
+            end.reverse
             control = new_control(code, block.result_types)
+            control.parameters.concat(parameters)
+            @stack.concat(parameters)
             if code == :if && @reachable
               control.false_patch = emit([Opcode::BR_IF_ZERO, condition, -1])
             elsif code == :try_table
@@ -512,6 +523,11 @@ module Wardite
               end
               @stack << local if code == :local_tee
             end
+          when :ref_func
+            target = integer_operand(operands[0])
+            key = @source.function_types[target]
+            fail_translation("undeclared function reference") unless key && @source.declared_functions.include?(target)
+            @stack << @function.allocate_constant(target + 1, type: "ref:#{key}".to_sym)
           when :i32_const, :i64_const
             immediate = integer_operand(operands[0])
             if code == :i64_const
@@ -556,6 +572,8 @@ module Wardite
             default = label(integer_operand(operands[1]))
             types = label_types(default)
             fail_translation("inconsistent br_table label types") unless targets.all? { |target| label_types(target) == types }
+            tail = code == :return_call_indirect
+            fail_translation("tail call result type mismatch") if tail && type.retsig != @function.result_types
             selector = pop_typed(:i32)
             sources = top_values(types)
             unless @reachable
@@ -584,17 +602,28 @@ module Wardite
             skip = emit([Opcode::BR_IF_ZERO, condition, -1])
             copy_value(dst, left)
             patch(skip, @function.instructions.size)
-          when :call
+          when :call, :return_call
             index = integer_operand(operands[0])
             fail_translation("invalid call target #{index}") if index < 0
             callee = @entries[index]
             fail_translation("invalid call target #{index}") unless callee
             FunctionEntry.check_signature(callee.parameter_types, callee.result_types, "function #{index}")
+            tail = code == :return_call
+            if tail && callee.result_types != @function.result_types
+              fail_translation("tail call result type mismatch")
+            end
             @function.uses_dynamic_calls = true if callee.kind == :host
             arguments = callee.parameter_types.reverse.map { |type| pop_typed(type) }.reverse
             dst = callee.result_types.empty? ? -1 : register(callee.result_types.fetch(0))
             @stack << dst if dst >= 0
-            next unless @reachable
+            unless @reachable
+              mark_unreachable if tail
+              next
+            end
+            if tail
+              @function.uses_eh = true
+              emit([Opcode::EH_TRIM, 0])
+            end
             if callee.kind == :host
               id = @function.dynamic_sites.size
               @function.dynamic_sites << DynamicCallSite.new(callee.host_index, arguments, callee.parameter_types, callee.result_types)
@@ -602,7 +631,11 @@ module Wardite
             else
               emit([Opcode::CALL, dst, index] + arguments)
             end
-          when :call_indirect
+            if tail
+              emit([Opcode::RETURN, dst])
+              mark_unreachable
+            end
+          when :call_indirect, :return_call_indirect
             type_index = integer_operand(operands[0])
             table_index = integer_operand(operands[1])
             raise UnsupportedFeature, context("only call_indirect through table 0 is supported") unless table_index == 0
@@ -611,14 +644,27 @@ module Wardite
             fail_translation("invalid indirect call type index #{type_index}") unless type
             FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}")
             @function.uses_dynamic_calls = true
+            tail = code == :return_call_indirect
+            fail_translation("tail call result type mismatch") if tail && type.retsig != @function.result_types
             selector = pop_typed(:i32)
             arguments = type.callsig.reverse.map { |param| pop_typed(param) }.reverse
             dst = type.retsig.empty? ? -1 : register(type.retsig.fetch(0))
             @stack << dst if dst >= 0
-            next unless @reachable
+            unless @reachable
+              mark_unreachable if tail
+              next
+            end
+            if tail
+              @function.uses_eh = true
+              emit([Opcode::EH_TRIM, 0])
+            end
             id = @function.dynamic_sites.size
             @function.dynamic_sites << DynamicCallSite.new(-1, arguments, type.callsig, type.retsig, table_index: table_index)
             emit([Opcode::CALL_INDIRECT, dst, id, selector])
+            if tail
+              emit([Opcode::RETURN, dst])
+              mark_unreachable
+            end
           when :throw
             tag_index = integer_operand(operands[0])
             tag = tag_at(tag_index)
@@ -660,6 +706,7 @@ module Wardite
             @stack << dst
           end
         end
+        FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}") if wasm.retsig.size > 1
         fail_translation("missing function end") unless @controls.empty?
         @function
       end
@@ -802,7 +849,7 @@ module Wardite
       # @rbs return: void
       def copy_value(destination, source)
         fail_translation("copy type mismatch") unless type_of(destination) == type_of(source)
-        emit([type_of(source) == :exnref ? Opcode::COPY_REF : Opcode::COPY, destination, source])
+        emit([FunctionEntry.exception_ref?(type_of(source)) ? Opcode::COPY_REF : Opcode::COPY, destination, source])
       end
 
       # @rbs destinations: Array[Integer]
@@ -860,7 +907,7 @@ module Wardite
           values = @stack.last(types.size)
         end
         values.each_with_index do |value, i|
-          fail_translation("branch result type mismatch") if value >= 0 && type_of(value) != types.fetch(i)
+          fail_translation("branch result type mismatch") if value >= 0 && !FunctionEntry.assignable?(type_of(value), types.fetch(i))
         end
         values
       end
@@ -897,8 +944,8 @@ module Wardite
           target = label(depth)
           types = kind <= 1 ? tag_at(tag_index).parameter_types.dup : [] #: Array[Symbol]
           reference = kind == 1 || kind == 3
-          types << :exnref if reference
-          fail_translation("catch payload/label type mismatch") unless types == label_types(target)
+          types << :non_null_exn if reference
+          fail_translation("catch payload/label type mismatch") unless types.size == label_types(target).size && types.each_with_index.all? { |type, i| FunctionEntry.assignable?(type, label_types(target).fetch(i)) }
           destinations = target.kind == :loop ? [] : target.result_registers.dup #: Array[Integer]
           ref = reference ? (destinations.pop || raise(TranslationError, "missing reference result")) : -1
           entry = CatchTarget.new(tag_index, destinations, ref, target.kind == :loop ? target.start_pc : -1, target.handler_depth)
@@ -930,13 +977,14 @@ module Wardite
         patch(control.false_patch, @function.instructions.size) if control.false_patch >= 0
         control.else_seen = true
         control.polymorphic = false
-        @stack = control.entry_stack.dup
+        @stack = control.entry_stack + control.parameters
         @reachable = control.entry_reachable
       end
 
       # @rbs return: void
       def end_control
         control = @controls.last || raise(TranslationError, "unexpected end")
+        else_control if control.kind == :if && !control.else_seen && !control.parameters.empty?
         finish_arm(control)
         if control.kind == :try_table
           @handler_depth = control.handler_depth

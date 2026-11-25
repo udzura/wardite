@@ -27,6 +27,73 @@ class EfflorescenceM1Test < Test::Unit::TestCase
     bytes
   end
 
+  test 'if parameters survive local writes and supply the implicit else result' do
+    vm = load_bytes(validated_bytes(<<~WAT))
+      (module
+        (func (export "run") (param i32 i32) (result i32)
+          local.get 0 local.get 1
+          if (param i32) (result i32)
+            i32.const 0 local.set 0
+            i32.const 1 i32.add
+          end))
+    WAT
+    assert_equal 42, vm.call_unboxed('run', [41, 1])
+    assert_equal 41, vm.call_unboxed('run', [41, 0])
+  end
+
+  test 'direct and indirect tail calls reuse frames and forward their result' do
+    bytes = validated_bytes(<<~WAT)
+      (module
+        (type $sig (func (param i32) (result i32)))
+        (table funcref (elem $run))
+        (func $run (export "run") (type $sig)
+          local.get 0 i32.eqz
+          if i32.const 42 return end
+          local.get 0 i32.const 1 i32.sub
+          local.get 0 i32.const 1 i32.and
+          if (param i32)
+            return_call $run
+          else
+            i32.const 0 return_call_indirect (type $sig)
+          end
+          unreachable))
+    WAT
+    vm = load_bytes(bytes, mir_profile: true)
+    assert_equal 42, vm.call_unboxed('run', [10000])
+    assert_operator vm.metrics.frames_created, :<=, 2
+  end
+
+  test 'linked Wasm exceptions preserve the exporting instance of a function reference' do
+    source = validated_bytes(<<~WAT)
+      (module
+        (type $t (func))
+        (tag $e (export "e") (param (ref $t)))
+        (func $f)
+        (elem declare func $f)
+        (func (export "raise") (param i32)
+          ref.func $f throw $e))
+    WAT
+    provider = Wardite::BinaryLoader.load_from_buffer(StringIO.new(source), enable_wasi: false)
+    assert_same provider.tags.fetch(0), provider.exports['e']
+    user = validated_bytes(<<~WAT)
+      (module
+        (type $t (func))
+        (import "m" "e" (tag $e (param (ref $t))))
+        (import "m" "raise" (func $raise (param i32)))
+        (func (export "get") (result (ref null $t))
+          block $h (result (ref null $t))
+            try_table (catch $e $h) i32.const 1 call $raise end
+            unreachable
+          end))
+    WAT
+    consumer = Wardite::BinaryLoader.load_from_buffer(StringIO.new(user), enable_wasi: false,
+      import_object: {m: provider.as_import_module})
+    ref = consumer.runtime.call('get', [])
+    assert_instance_of Wardite::FunctionReference, ref
+    assert_same provider, ref.instance
+    assert_equal 0, ref.index
+  end
+
   test 'all i32 comparisons use signed or unsigned values at the boundaries' do
     ops = %w[eq ne lt_s lt_u gt_s gt_u le_s le_u ge_s ge_u]
     wat = '(module ' + ops.map { |op| "(func (export \"#{op}\") (param i32 i32) (result i32) local.get 0 local.get 1 i32.#{op})" }.join + ')'

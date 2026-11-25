@@ -3,13 +3,13 @@
 module LegacyWasmDecode
   def self.operand_of(code)
     case code
-    when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if, :throw, :data_drop
+    when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :return_call, :br, :br_if, :throw, :data_drop
       [:u32]
     when :memory_init, :memory_copy
       [:u32, :u32]
     when :memory_size, :memory_grow, :memory_fill
       [:u32]
-    when :call_indirect
+    when :call_indirect, :return_call_indirect
       [:u32, :u32]
     when :br_table
       [:u32_vec, :u32]

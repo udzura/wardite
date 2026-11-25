@@ -14,7 +14,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 15
+      CODE_VERSION = 16
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -22,7 +22,7 @@ module Wardite
       SAMPLE_STEP = 1024 * 1024
       SAMPLE_BLOCK = 4 * 1024
       MAX_BYTES = 256 * 1024 * 1024
-      TYPES = %i[i32 i64 f32 f64 exnref].freeze
+      TYPES = %i[i32 i64 f32 f64 exnref non_null_exn].freeze
       TYPE_IDS = TYPES.each_with_index.to_h.freeze
       USES_I64 = 1
       USES_FLOAT = 2
@@ -117,7 +117,13 @@ module Wardite
 
         # @rbs return: Array[Symbol]
         def types
-          vector("C", 1).map { |id| TYPES[id] || raise(Invalid) }
+          ids = vector("C", 1)
+          ids.map do |id|
+            next TYPES.fetch(id) { raise Invalid } unless id == 255
+            name = bytes(integer)
+            raise Invalid unless name.bytesize <= 128 && (name.start_with?("ref:") || name.start_with?("nullable:"))
+            name.to_sym
+          end
         end
 
         # @rbs return: void
@@ -158,7 +164,14 @@ module Wardite
         # @rbs types: Array[Symbol]
         # @rbs return: void
         def types(types)
-          vector(types.map { |type| TYPE_IDS.fetch(type) }, "C")
+          vector(types.map { |type| FunctionEntry.function_ref?(type) ? 255 : TYPE_IDS.fetch(type) }, "C")
+          types.each do |type|
+            if FunctionEntry.function_ref?(type)
+              name = type.to_s
+              integers(name.bytesize)
+              @bytes << name
+            end
+          end
         end
 
         # @rbs function: Function
@@ -249,6 +262,7 @@ module Wardite
           @reader = Reader.new(payload)
           @entries = entries
           @bodies = instance.code_section&.func_codes || []
+          @type_keys = instance.type_section&.type_keys || []
           @tags = instance.tags
           @functions = []
           @offsets = [] #: Array[Integer]
@@ -329,6 +343,9 @@ module Wardite
           raise Invalid unless flags.between?(0, FUNCTION_FLAGS)
 
           types = @reader.types
+          types.each do |type|
+            raise Invalid if FunctionEntry.function_ref?(type) && !@type_keys.include?(type.to_s.split(":", 2).fetch(1))
+          end
           params = function.parameter_types
           first_local = params.size
           function.local_count = body.locals_count.sum
@@ -362,7 +379,8 @@ module Wardite
           initial.each_with_index do |bits, slot|
             if slot == constants[constant_index]
               type = types.fetch(slot)
-              raise Invalid if type == :exnref || ((type == :i32 || type == :f32) && !bits.between?(0, 0xffffffff))
+              raise Invalid if FunctionEntry.function_ref?(type) && !bits.between?(1, @entries.size)
+              raise Invalid if FunctionEntry.exception_ref?(type) || ((type == :i32 || type == :f32) && !bits.between?(0, 0xffffffff))
               constant_index += 1
             else
               raise Invalid unless bits.zero?
@@ -446,8 +464,12 @@ module Wardite
           pc = @reader.integer
           depth = @reader.integer
           registers = @reader.vector("l<", 4)
-          check_arguments(function, registers, tag == -1 ? [] : tag_types(tag))
-          raise Invalid unless reference == -1 || at(function.register_types, reference) == :exnref
+          types = tag == -1 ? [] : tag_types(tag) #: Array[Symbol]
+          raise Invalid unless registers.size == types.size
+          registers.each_with_index do |slot, i|
+            raise Invalid unless FunctionEntry.assignable?(types.fetch(i), at(function.register_types, slot))
+          end
+          raise Invalid unless reference == -1 || FunctionEntry.exception_ref?(at(function.register_types, reference))
           raise Invalid unless depth.between?(0, handler_count - 1)
           check_target(pc, function.bytecode.size)
           CatchTarget.new(tag, registers, reference, pc, depth)
@@ -461,6 +483,10 @@ module Wardite
           pc = 0
           while pc < code.size
             opcode, a, b, c = code[pc], code[pc + 1], code[pc + 2], code[pc + 3]
+            if opcode == Lowerer::TAIL_DIRECT || opcode == Lowerer::TAIL_INDIRECT
+              raise Invalid unless pc + Lowerer::WIDTH < code.size && code[pc + Lowerer::WIDTH] == RETURN && code[pc + Lowerer::WIDTH + 1] == a
+              opcode = opcode == Lowerer::TAIL_DIRECT ? CALL : CALL_INDIRECT
+            end
             raise Invalid unless opcode.between?(0, REGISTER_MASKS.size - 1) && opcode != PROFILE
             if opcode >= I32_TABLE_STORE8
               length = ByteSequences.length(opcode)
@@ -528,7 +554,7 @@ module Wardite
         def check_arguments(function, registers, types)
           raise Invalid unless registers.size == types.size
           registers.each_with_index do |slot, index|
-            raise Invalid unless at(function.register_types, slot) == types.fetch(index)
+            raise Invalid unless FunctionEntry.assignable?(at(function.register_types, slot), types.fetch(index))
           end
         end
 

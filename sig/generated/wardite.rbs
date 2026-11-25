@@ -35,6 +35,13 @@ module Wardite
     # @rbs return: void
     def check_module_features: () -> void
 
+    # @rbs index: Integer
+    # @rbs return: Efflorescence::Tag
+    def declared_tag: (Integer index) -> Efflorescence::Tag
+
+    # @rbs return: HashModule
+    def as_import_module: () -> HashModule
+
     # @rbs &block: (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void
     # @rbs return: void
     def each_defined_function: () { (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void } -> void
@@ -264,6 +271,10 @@ module Wardite
   class Block
     VOID: nil
 
+    attr_accessor reference_code: Integer
+
+    attr_accessor heap_type: Integer
+
     attr_accessor block_types: nil | Array[Integer]
 
     attr_reader type_index: Integer
@@ -286,7 +297,7 @@ module Wardite
     def resolve: (Array[Symbol] params, Array[Symbol] results) -> void
   end
 
-  type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory
+  type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory | Efflorescence::Tag
 
   class Exports
     attr_accessor mappings: Hash[String, [ Integer, exportHandle ]]
@@ -294,7 +305,8 @@ module Wardite
     # @rbs export_section: ExportSection
     # @rbs store: Store
     # @rbs return: void
-    def initialize: (ExportSection export_section, Store store) -> void
+    # @rbs tags: Array[Efflorescence::Tag]
+    def initialize: (ExportSection export_section, Store store, ?Array[Efflorescence::Tag] tags) -> void
 
     # @rbs name: String
     # @rbs return: exportHandle|nil
@@ -334,6 +346,33 @@ module Wardite
 
   type wasmFuncReturn = Object | nil
 
+  class ExportedFunction
+    attr_reader instance: Instance
+
+    attr_reader name: String
+
+    # @rbs instance: Instance
+    # @rbs name: String
+    def initialize: (Instance instance, String name) -> untyped
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: wasmFuncReturn
+    def call: (Store store, Array[wasmValue] args) -> wasmFuncReturn
+
+    alias [] call
+  end
+
+  class FunctionReference
+    attr_reader instance: Instance
+
+    attr_reader index: Integer
+
+    # @rbs instance: Instance
+    # @rbs index: Integer
+    def initialize: (Instance instance, Integer index) -> untyped
+  end
+
   class ExternalFunction
     attr_accessor target_module: wasmModule
 
@@ -362,6 +401,12 @@ module Wardite
   end
 
   class LoadError < StandardError
+  end
+
+  class LinkError < LoadError
+  end
+
+  class InvalidModule < LoadError
   end
 
   class InvalidInitializer < LoadError

@@ -15,19 +15,21 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
 
   test 'unsupported tag and reference features are rejected including dead unexported functions' do
     [
-      '(module (import "host" "e" (tag)))',
-      '(module (tag (export "e")))',
-      '(module (type (func (result i32))) (tag (type 0)))',
       '(module (func (param exnref)))',
-      '(module (func (result exnref) unreachable))',
       '(module (func (local (ref exn))))',
-      '(module (func unreachable block (param i32) end))',
+      '(module (func unreachable loop (param i32) end))',
       '(module (func unreachable block (result funcref) end))'
     ].each { |wat| assert_raise(Wardite::LoadError, E::UnsupportedFeature) { load_wat(wat) } }
   end
 
+  test 'tag validation precedes linking' do
+    assert_raise(Wardite::LinkError) { load_wat('(module (import "host" "e" (tag)))') }
+    assert_raise(Wardite::InvalidModule) { load_wat('(module (type (func (result i32))) (tag (type 0)))') }
+  end
+
   test 'new structures validate indices depths and payload label types internally' do
     [
+      '(module (func unreachable block (param i32) end))',
       '(module (func unreachable throw 0))',
       '(module (tag) (func try_table (catch 1 0) end))',
       '(module (tag) (func try_table (catch 0 9) end))',

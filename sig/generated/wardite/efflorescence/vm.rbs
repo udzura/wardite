@@ -61,14 +61,14 @@ module Wardite
       # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::wasmValue?
-      def call: (String | Symbol name, Array[Object] arguments) -> Wardite::wasmValue?
+      # @rbs return: Wardite::wasmValue | Wardite::FunctionReference | ExceptionValue | nil
+      def call: (String | Symbol name, Array[Object] arguments) -> (Wardite::wasmValue | Wardite::FunctionReference | ExceptionValue | nil)
 
       # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: (Integer | Float)?
-      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float)?
+      # @rbs return: (Integer | Float | Wardite::FunctionReference | ExceptionValue)?
+      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float | Wardite::FunctionReference | ExceptionValue)?
 
       # @rbs return: String
       def dump_mir: () -> String
@@ -129,6 +129,16 @@ module Wardite
       # @rbs right: Integer
       # @rbs return: Integer
       def calculate: (Integer opcode, Integer left, Integer right) -> Integer
+
+      # Zero represents null. Positive handles index this instance's functions.
+      # Negative handles retain references received from a different instance.
+      # @rbs bits: Integer
+      # @rbs return: Wardite::FunctionReference?
+      def function_reference: (Integer bits) -> Wardite::FunctionReference?
+
+      # @rbs reference: Wardite::FunctionReference
+      # @rbs return: Integer
+      def reference_bits: (Wardite::FunctionReference reference) -> Integer
 
       # The pending value owns its payload before any frame is released. No
       # Ruby raise/rescue is used to unwind the explicit Wasm call stack.
@@ -223,7 +233,8 @@ module Wardite
       # @rbs selector: Integer
       # @rbs metrics: Wardite::Efflorescence::Metrics
       # @rbs return: Wardite::Efflorescence::Frame
-      def execute_indirect: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] frames, Integer destination, Integer site_id, Integer selector, Wardite::Efflorescence::Metrics metrics) -> Wardite::Efflorescence::Frame
+      # @rbs tail: bool
+      def execute_indirect: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] frames, Integer destination, Integer site_id, Integer selector, Wardite::Efflorescence::Metrics metrics, ?bool tail) -> Wardite::Efflorescence::Frame
 
       # Float instructions use the same flat words and integer registers.
       # Their dispatch stays outside the main integer switch.

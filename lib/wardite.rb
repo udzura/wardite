@@ -76,7 +76,7 @@ module Wardite
       end
       check_data_count
       @store = Store.new(self)
-      @exports = Exports.new(self.export_section, store)
+      @exports = Exports.new(self.export_section, store, @tags)
 
       @types = []
       type_section = self.type_section
@@ -108,18 +108,49 @@ module Wardite
         raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
         Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
       end
+      import_section.tag_imports.each do |desc|
+        expected = declared_tag(desc.sig_index)
+        host = @import_object.fetch(desc.module_name.to_sym, nil)
+        tag = host.tags.fetch(desc.name.to_sym, nil) if host.is_a?(HashModule)
+        raise LinkError, "unknown import" unless tag
+        raise LinkError, "incompatible import" unless tag.type_key == expected.type_key
+        @tags << tag
+      end
       tag_section = @sections.find { |section| section.is_a?(TagSection) }
       if tag_section.is_a?(TagSection)
-        tag_section.type_indices.each do |index|
-          params = types&.defined_types&.[](index)
-          results = types&.defined_results&.[](index)
-          raise LoadError, "invalid tag type index #{index}" unless params && results
-          unless params.all? { |type| Efflorescence::FunctionEntry.numeric_type?(type) } && results.empty?
-            raise LoadError, "only numeric tag payloads with no results are supported"
-          end
-          @tags << Efflorescence::Tag.new(params)
+        tag_section.type_indices.each { |index| @tags << declared_tag(index) }
+      end
+      export_section.exports.each_value do |desc|
+        raise InvalidModule, "unknown tag" if desc.kind == 4 && !@tags[desc.index]
+      end
+    end
+
+    # @rbs index: Integer
+    # @rbs return: Efflorescence::Tag
+    def declared_tag(index)
+      types = type_section
+      params = types&.defined_types&.[](index)
+      results = types&.defined_results&.[](index)
+      raise LoadError, "invalid tag type index #{index}" unless types && params && results
+      raise InvalidModule, "non-empty tag result type" unless results.empty?
+      unless params.all? { |type| Efflorescence::FunctionEntry.numeric_type?(type) || Efflorescence::FunctionEntry.function_ref?(type) }
+        raise LoadError, "unsupported tag payload type"
+      end
+      Efflorescence::Tag.new(params, types.type_keys.fetch(index))
+    end
+
+    # @rbs return: HashModule
+    def as_import_module
+      host = HashModule.new({})
+      export_section.exports.each_pair do |name, desc|
+        case desc.kind
+        when 0
+          host.register_function(name.to_sym, ExportedFunction.new(self, name))
+        when 3 then host.globals[name.to_sym] = @store.globals.fetch(desc.index)
+        when 4 then host.tags[name.to_sym] = @tags.fetch(desc.index)
         end
       end
+      host
     end
 
     # @rbs &block: (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void
@@ -364,6 +395,15 @@ module Wardite
         name = desc.name.to_sym
         wasi = inst.wasi
         wasi.validate_import(name, callsig, retsig) if wasi && wasi.equal?(target_module)
+        if target_module.is_a?(HashModule)
+          exported = target_module.exported_function(name)
+          if exported.is_a?(ExportedFunction)
+            original = exported.instance.exports[exported.name]
+            unless (original.is_a?(WasmFunction) || original.is_a?(ExternalFunction)) && original.callsig == callsig && original.retsig == retsig
+              raise LinkError, "incompatible import"
+            end
+          end
+        end
         self.funcs << ExternalFunction.new(target_module, name, callsig, retsig)
       end
 
@@ -450,6 +490,9 @@ module Wardite
 
       elem_section = inst.elem_section
       if elem_section
+        elem_section.declared_functions.each do |index|
+          raise InvalidModule, "unknown function" unless @funcs[index]
+        end
         elem_section.table_indices.each_with_index do |tidx, idx|
           table = @tables[tidx] || raise(LoadError, "invalid table index #{tidx}")
           offset = elem_section.table_offsets.fetch(idx)
@@ -761,6 +804,8 @@ module Wardite
   class Block
     VOID = nil #: nil
 
+    attr_accessor :reference_code #: Integer
+    attr_accessor :heap_type #: Integer
     attr_accessor :block_types #: nil|Array[Integer]
     attr_reader :type_index #: Integer
     attr_reader :parameter_types #: Array[Symbol]
@@ -775,6 +820,7 @@ module Wardite
     # @rbs type_index: Integer
     # @rbs return: void
     def initialize(block_types=VOID, type_index: -1)
+      @reference_code = @heap_type = 0
       @block_types = block_types
       @type_index = type_index
       @parameter_types = []
@@ -792,7 +838,7 @@ module Wardite
   end
 
   # @rbs!
-  #   type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory
+  #   type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory | Efflorescence::Tag
 
   class Exports
     attr_accessor :mappings #: Hash[String, [Integer, exportHandle]]
@@ -800,7 +846,8 @@ module Wardite
     # @rbs export_section: ExportSection
     # @rbs store: Store
     # @rbs return: void
-    def initialize(export_section, store)
+    # @rbs tags: Array[Efflorescence::Tag]
+    def initialize(export_section, store, tags = [])
       @mappings = {}
       export_section.exports.each_pair do |name, desc|
         case desc.kind
@@ -812,6 +859,8 @@ module Wardite
           @mappings[name] = [desc.kind, store.memories[desc.index]]
         when 0x3
           @mappings[name] = [desc.kind, store.globals[desc.index]]
+        when 0x4
+          @mappings[name] = [desc.kind, tags.fetch(desc.index)]
         else
         end
       end
@@ -878,6 +927,38 @@ module Wardite
   # @rbs!
   #   type wasmFuncReturn = Object|nil
 
+  class ExportedFunction
+    attr_reader :instance #: Instance
+    attr_reader :name #: String
+
+    # @rbs instance: Instance
+    # @rbs name: String
+    def initialize(instance, name)
+      @instance, @name = instance, name
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: wasmFuncReturn
+    def call(store, args)
+      @instance.runtime.call(@name, args)
+    rescue UncaughtWasmException => error
+      raise LinkedWasmException, error.exception_value
+    end
+    alias [] call
+  end
+
+  class FunctionReference
+    attr_reader :instance #: Instance
+    attr_reader :index #: Integer
+
+    # @rbs instance: Instance
+    # @rbs index: Integer
+    def initialize(instance, index)
+      @instance, @index = instance, index
+    end
+  end
+
   class ExternalFunction
     attr_accessor :target_module #: wasmModule
 
@@ -920,6 +1001,8 @@ module Wardite
 
   class GenericError < StandardError; end
   class LoadError < StandardError; end
+  class LinkError < LoadError; end
+  class InvalidModule < LoadError; end
   class InvalidInitializer < LoadError; end
   class ArgumentError < StandardError; end
   class EvalError < StandardError; end

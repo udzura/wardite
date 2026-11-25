@@ -13,10 +13,13 @@ module Wardite
     attr_reader tag: Wardite::Efflorescence::Tag
 
     # Public payloads follow tag order, with floats decoded at the boundary.
-    attr_reader payload: Array[Integer | Float]
+    attr_reader payload: Array[Integer | Float | FunctionReference | nil]
 
     # @rbs value: Wardite::Efflorescence::ExceptionValue
     def initialize: (Wardite::Efflorescence::ExceptionValue value) -> untyped
+  end
+
+  class LinkedWasmException < UncaughtWasmException
   end
 
   class IntegerOverflow < WebAssemblyError

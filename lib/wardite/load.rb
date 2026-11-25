@@ -1,5 +1,7 @@
 # rbs_inline: enabled
 
+require "digest"
+
 module Wardite
   class Section
     attr_accessor :name #: String
@@ -12,6 +14,8 @@ module Wardite
   class TypeSection < Section
     attr_accessor :defined_types #: Array[Array[Symbol]]
 
+    attr_reader :type_keys #: Array[String]
+
     attr_accessor :defined_results #: Array[Array[Symbol]]
 
     # @rbs return: void
@@ -19,6 +23,7 @@ module Wardite
       self.name = "Type"
       self.code = 0x1
 
+      @type_keys = []
       @defined_types = []
       @defined_results = []
     end
@@ -119,6 +124,8 @@ module Wardite
 
     attr_accessor :table_indices #: Array[Integer]
 
+    attr_reader :declared_functions #: Array[Integer]
+
     attr_accessor :table_offsets #: Array[Integer]
 
     # Rows are also shared with Store#elements. Keep the precise RBS type via
@@ -132,6 +139,7 @@ module Wardite
 
       @table_indices = []
       @table_offsets = []
+      @declared_functions = []
       @element_indices = []
     end
   end
@@ -262,6 +270,10 @@ module Wardite
       # @rbs types: TypeSection?
       # @rbs return: void
       def check_block(block, types)
+        if block.reference_code != 0
+          block.resolve([], [BinaryLoader.reference_type(block.reference_code, block.heap_type, types)])
+          return
+        end
         index = block.type_index
         if index >= 0
           params = types&.defined_types&.[](index)
@@ -380,6 +392,8 @@ module Wardite
       end
     end
 
+    attr_reader :tag_imports #: Array[ImportDesc]
+
     attr_reader :global_imports #: Array[GlobalImport]
 
     attr_accessor :imports #: Array[ImportDesc]
@@ -388,6 +402,7 @@ module Wardite
       self.name = "Import"
       self.code = 0x2
 
+      @tag_imports = []
       @global_imports = []
       @imports = []
     end
@@ -396,7 +411,7 @@ module Wardite
     def add_desc(&blk)
       desc = ImportDesc.new
       blk.call(desc) if blk
-      self.imports << desc
+      (desc.kind == 4 ? @tag_imports : @imports) << desc
     end
   end
 
@@ -468,6 +483,12 @@ module Wardite
           section.global_imports.each do |desc|
             host = placeholders[desc.module_name.to_sym] ||= HashModule.new({})
             host.globals[desc.name.to_sym] = Global.numeric(desc.type, desc.mutable)
+          end
+          section.tag_imports.each do |desc|
+            types = sections_.find { |item| item.is_a?(TypeSection) }
+            raise LoadError, "missing tag type" unless types.is_a?(TypeSection)
+            host = placeholders[desc.module_name.to_sym] ||= HashModule.new({})
+            host.tags[desc.name.to_sym] = Efflorescence::Tag.new(types.defined_types.fetch(desc.sig_index), types.type_keys.fetch(desc.sig_index))
           end
           section.imports.each do |desc|
             placeholder = placeholders[desc.module_name.to_sym] ||= HashModule.new({})
@@ -585,55 +606,54 @@ module Wardite
       dest.size = size
       sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
 
-      len = fetch_uleb128(sbuf)
-      len.times do |i|
-        fncode = assert_byte(sbuf)
-        if fncode != 0x60
-          raise LoadError, "not a function definition"
+      fetch_uleb128(sbuf).times do
+        code = assert_byte(sbuf)
+        grouped = code == 0x4e
+        count = grouped ? fetch_uleb128(sbuf) : 1
+        group = [] #: Array[String]
+        count.times do
+          fncode = grouped ? assert_byte(sbuf) : code
+          raise LoadError, "not a function definition" unless fncode == 0x60
+          params = [] #: Array[Symbol]
+          results = [] #: Array[Symbol]
+          fetch_uleb128(sbuf).times { params << read_signature_type(sbuf, dest) }
+          fetch_uleb128(sbuf).times { results << read_signature_type(sbuf, dest) }
+          dest.defined_types << params
+          dest.defined_results << results
+          group << "#{params.join(',')}>#{results.join(',')}"
         end
-
-        arglen = fetch_uleb128(sbuf)
-        arg = [] #: Array[Symbol]
-        arglen.times do
-          case ty = assert_byte(sbuf)
-          when 0x69
-            arg << :exnref
-          when 0x7f
-            arg << :i32
-          when 0x7e
-            arg << :i64
-          when 0x7d
-            arg << :f32
-          when 0x7c
-            arg << :f64
-          else
-            raise LoadError, "unsupported value type: #{ty.inspect}"
-          end
-        end
-        dest.defined_types << arg
-
-        retlen = fetch_uleb128(sbuf)
-        ret = [] #: Array[Symbol]
-        retlen.times do
-          case ty = assert_byte(sbuf)
-          when 0x69
-            ret << :exnref
-          when 0x7f
-            ret << :i32
-          when 0x7e
-            ret << :i64
-          when 0x7d
-            ret << :f32
-          when 0x7c
-            ret << :f64
-          else
-            raise LoadError, "unsupported value type: #{ty.inspect}"
-          end
-        end
-        dest.defined_results << ret
+        key = group.join("|")
+        # Bound nested type identities and the cost of recording a large group.
+        key = Digest::SHA256.digest(key).unpack1("H*").to_s if group.size > 1 || key.bytesize > 64
+        count.times { |i| dest.type_keys << "#{i}:#{key}" }
       end
-
+      raise LoadError, "trailing type section data" unless sbuf.eof?
       dest
+    end
+
+    # @rbs sbuf: StringIO
+    # @rbs return: Symbol
+    # @rbs section: TypeSection
+    def self.read_signature_type(sbuf, section)
+      code = assert_byte(sbuf)
+      if code == 0x63 || code == 0x64
+        heap = fetch_sleb128(sbuf, width: 33)
+        return reference_type(code, heap, section)
+      end
+      type = Op.i2type(code)
+      return type if type == :exnref || Efflorescence::FunctionEntry.numeric_type?(type)
+      raise LoadError, "unsupported value type: #{code}"
+    end
+
+    # @rbs code: Integer
+    # @rbs heap: Integer
+    # @rbs section: TypeSection?
+    # @rbs return: Symbol
+    def self.reference_type(code, heap, section)
+      return code == 0x63 ? :exnref : :non_null_exn if heap == -23
+      key = section&.type_keys&.[](heap) if heap >= 0
+      raise LoadError, "unsupported heap type #{heap}" unless key
+      "#{code == 0x63 ? 'nullable' : 'ref'}:#{key}".to_sym
     end
 
     # @rbs return: TagSection
@@ -669,8 +689,10 @@ module Wardite
           dest.global_imports << ImportSection::GlobalImport.new(module_name, name, type, mutable)
           next
         end
-        raise LoadError, "tag imports are not supported" if kind == 4
-        raise LoadError, "unsupported import kind #{kind} for #{module_name}.#{name}" unless kind == 0
+        if kind == 4
+          raise LoadError, "unsupported tag attribute" unless assert_byte(sbuf) == 0
+        end
+        raise LoadError, "unsupported import kind #{kind} for #{module_name}.#{name}" unless kind == 0 || kind == 4
         index = fetch_uleb128(sbuf)
         dest.add_desc do |desc|
           desc.module_name = module_name
@@ -731,6 +753,11 @@ module Wardite
       len = fetch_uleb128(sbuf)
       len.times do |i|
         etype = fetch_uleb128(sbuf)
+        if etype == 3
+          raise LoadError, "unsupported element type" unless assert_byte(sbuf) == 0
+          fetch_uleb128(sbuf).times { dest.declared_functions << fetch_uleb128(sbuf) }
+          next
+        end
         unless etype == 0 || etype == 2
           raise LoadError, "unsupported element segment kind #{etype}"
         end
@@ -1020,6 +1047,15 @@ module Wardite
     # @rbs return: Block
     def self.read_blocktype(buf)
       first = buf.pos
+      code = assert_byte(buf)
+      if code == 0x63 || code == 0x64
+        heap = fetch_sleb128(buf, width: 33)
+        block = Block.void
+        block.reference_code = code
+        block.heap_type = heap
+        return block
+      end
+      buf.pos = first
       value = fetch_sleb128(buf, max_level: 4)
       raise LoadError, "blocktype exceeds s33" unless value >= -4294967296 && value <= 4294967295
       if value < 0 && buf.pos - first != 1
@@ -1045,6 +1081,7 @@ module Wardite
     # @rbs buf: File|StringIO
     # @rbs return: Op::DecodeSpec
     def self.resolve_spec(opcode, buf)
+      return Op::REF_FUNC_SPEC if opcode == 0xd2
       if opcode == 0xfc
         lower = fetch_uleb128(buf)
         # Preserve the unresolved opcode for the engine's unsupported-op check.
@@ -1197,7 +1234,6 @@ module Wardite
         name = assert_read(sbuf, nlen)
         kind = assert_byte(sbuf)
 
-        raise LoadError, "tag exports are not supported" if kind == 4
         index = fetch_uleb128(sbuf)
         dest.add_desc do |desc|
           desc.name = name

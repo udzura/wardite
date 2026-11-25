@@ -12,6 +12,12 @@ module Wardite
 
         attr_reader types: Array[Wardite::Type]
 
+        attr_reader function_types: Array[String]
+
+        attr_reader declared_functions: Array[Integer]
+
+        attr_reader type_keys: Array[String]
+
         attr_reader tags: Array[Wardite::Efflorescence::Tag]
 
         attr_reader has_memory: bool

@@ -5,6 +5,7 @@ require "wardite"
 # One process owns one WAST script's instances and executes its commands in order.
 class SpecWorker
   def initialize
+    @imports = {} #: Hash[Symbol, Wardite::wasmModuleSrc]
     @instances = {} #: Hash[String, Wardite::Instance]
   end
 
@@ -14,6 +15,7 @@ class SpecWorker
     when Wardite::I64 then "i64:#{value.value_s}"
     when Wardite::F32 then "f32:#{value.raw_bits}"
     when Wardite::F64 then "f64:#{value.raw_bits}"
+    when Wardite::FunctionReference then "funcref"
     when nil then "void"
     else raise "unexpected result"
     end
@@ -21,12 +23,17 @@ class SpecWorker
 
   def execute(fields)
     op, id, operand = fields.fetch(0), fields.fetch(1), fields.fetch(2)
-    if op == "module" || op == "invalid" || op == "malformed"
+    if op == "register"
+      @imports[operand.to_sym] = @instances.fetch(id).as_import_module
+      return "registered"
+    end
+    if op == "unlinkable" || op == "module" || op == "invalid" || op == "malformed"
       global = Wardite::Global.numeric(:i32, false)
       global.value = Wardite::I32(666)
       spectest = Wardite::HashModule.new({}, {global_i32: global})
+      @imports[:spectest] ||= spectest
       instance = Wardite.new(path: operand, engine: :efflorescence, enable_wasi: false,
-        import_object: {spectest: spectest})
+        import_object: @imports)
       instance.runtime.prepare_all
       @instances[id] = instance if op == "module"
       return "loaded"
@@ -49,7 +56,9 @@ class SpecWorker
       end
     end
     encode(instance.runtime.call(operand, arguments))
-  rescue Wardite::InvalidInitializer, Wardite::Efflorescence::TranslationError => error
+  rescue Wardite::LinkError => error
+    "unlinkable:#{error.message}"
+  rescue Wardite::InvalidModule, Wardite::InvalidInitializer, Wardite::Efflorescence::TranslationError => error
     "validation:#{error.message}"
   rescue Wardite::LoadError => error
     message = error.message
@@ -63,6 +72,8 @@ class SpecWorker
       return "validation:#{message}" if message.start_with?("invalid element function index ")
       "error:#{error.class}: #{message}"
     end
+  rescue Wardite::UncaughtWasmException
+    "uncaught exception"
   rescue Wardite::IntegerOverflow
     "trap:integer overflow"
   rescue Wardite::Unreachable

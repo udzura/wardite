@@ -8,6 +8,8 @@ module Wardite
       class Control
         attr_reader kind: Symbol
 
+        attr_reader parameters: Array[Integer]
+
         attr_reader entry_stack: Array[Integer]
 
         attr_reader start_pc: Integer

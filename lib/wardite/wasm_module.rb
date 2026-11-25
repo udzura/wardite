@@ -30,13 +30,23 @@ module Wardite
   class HashModule
     attr_accessor :hash #: Hash[Symbol, _WasmCallable]
 
+    attr_reader :tags #: Hash[Symbol, Efflorescence::Tag]
+
     attr_reader :globals #: Hash[Symbol, Global]
 
     # @rbs hash: Hash[Symbol, _WasmCallable]
     # @rbs globals: Hash[Symbol, Global]
     def initialize(hash, globals = {})
+      @tags = {}
       @globals = globals
       @hash = hash
+    end
+
+    # @rbs name: Symbol
+    # @rbs return: ExportedFunction?
+    def exported_function(name)
+      function = @hash.fetch(name, nil) #: (_WasmCallable & Object)?
+      function if function.is_a?(ExportedFunction)
     end
 
     # @rbs name: Symbol

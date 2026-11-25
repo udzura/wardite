@@ -189,18 +189,24 @@ Install Spinel and WABT (`wast2json`), then run:
 
 ```sh
 bundle exec rake spec                           # basic wg-1.0 instruction suites
+SPEC_VERSION=wg-3.0 bundle exec rake spec       # corresponding 37 suites (globals -> global)
+SPEC_VERSION=wg-3.0 bundle exec rake 'spec[exceptions]'  # all four official EH scripts
+SPEC_VERSION=wg-3.0 bundle exec rake 'spec[exceptions/throw_ref]'
 bundle exec rake 'spec[i32]'                    # one official .wast file
 bundle exec rake 'spec[i32,64]'                 # execute one WAST command
 DETAILED=1 bundle exec rake 'spec[globals,257]' # show the failing WAST form
 VERBOSE=1 FILTER_FIELD=div_s bundle exec rake 'spec[i32]'
 ```
 
-The runner downloads the pinned wg-1.0 sources into a temporary directory.
+See the [37-suite comparison and exception results](docs/official-core-spec.md) for the measured coverage.
+
+The runner downloads the pinned sources for the selected version into a temporary directory.
+The wg-3.0 scripts also require `wasm-tools json-from-wast`.
 For an offline run, set `SPEC_CORE_DIR` to the `test/core` directory of a
-wg-1.0 checkout. Each script runs in order on a native Spinel worker using
+checkout of the selected version. Each script runs in order on a native Spinel worker using
 Efflorescence with JIT disabled. A line number selects the enclosing top-level
-command. For an invocation or global read, the worker loads its module fresh and
-executes only the selected action. A case that depends on an earlier write may
+command. For an invocation or global read, the worker sets up earlier registrations,
+loads its module fresh and executes the selected action. A case that depends on an earlier write may
 give a different result in isolation. Use the whole suite to reproduce its
 original state. `FILTER_FIELD` runs the whole script and filters the report.
 

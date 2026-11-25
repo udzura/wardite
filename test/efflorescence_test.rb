@@ -207,7 +207,7 @@ class EfflorescenceTest < Test::Unit::TestCase
     ['(module (func (export "f") (result i32 i32) i32.const 1 i32.const 2))',
      '(module (func (export "f") unreachable select (result f64) drop))',
      '(module (func (export "f")) (func (param exnref)))',
-     '(module (func (export "f") unreachable block (param f64) end))'].each do |wat|
+     '(module (func (export "f") unreachable loop (param f64) end))'].each do |wat|
       error = assert_raise(Wardite::Efflorescence::UnsupportedFeature) { load_efflorescence(wat) }
       assert_include error.message, "Efflorescence"
     end

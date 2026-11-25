@@ -12,6 +12,8 @@ module Wardite
   class TypeSection < Section
     attr_accessor defined_types: Array[Array[Symbol]]
 
+    attr_reader type_keys: Array[String]
+
     attr_accessor defined_results: Array[Array[Symbol]]
 
     # @rbs return: void
@@ -80,6 +82,8 @@ module Wardite
     type indexVector = Array[Integer]
 
     attr_accessor table_indices: Array[Integer]
+
+    attr_reader declared_functions: Array[Integer]
 
     attr_accessor table_offsets: Array[Integer]
 
@@ -244,6 +248,8 @@ module Wardite
       def initialize: (String module_name, String name, Symbol type, bool mutable) -> untyped
     end
 
+    attr_reader tag_imports: Array[ImportDesc]
+
     attr_reader global_imports: Array[GlobalImport]
 
     attr_accessor imports: Array[ImportDesc]
@@ -287,6 +293,17 @@ module Wardite
 
     # @rbs return: TypeSection
     def self.type_section: () -> TypeSection
+
+    # @rbs sbuf: StringIO
+    # @rbs return: Symbol
+    # @rbs section: TypeSection
+    def self.read_signature_type: (StringIO sbuf, TypeSection section) -> Symbol
+
+    # @rbs code: Integer
+    # @rbs heap: Integer
+    # @rbs section: TypeSection?
+    # @rbs return: Symbol
+    def self.reference_type: (Integer code, Integer heap, TypeSection? section) -> Symbol
 
     # @rbs return: TagSection
     def self.tag_section: () -> TagSection

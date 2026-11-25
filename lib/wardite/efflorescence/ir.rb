@@ -518,7 +518,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.may_throw?(opcode)
-        opcode == CALL || opcode == CALL_INDIRECT || opcode == THROW || opcode == THROW_REF
+        opcode == CALL || opcode == CALL_HOST || opcode == CALL_INDIRECT || opcode == THROW || opcode == THROW_REF
       end
 
       # @rbs opcode: Integer
@@ -590,19 +590,26 @@ module Wardite
       attr_reader :parameter_types #: Array[Symbol]
 
       # @rbs parameter_types: Array[Symbol]
-      def initialize(parameter_types)
+      # @rbs type_key: String?
+      def initialize(parameter_types, type_key = nil)
+        @type_key = type_key || "0:#{parameter_types.join(',')}>"
         @parameter_types = parameter_types.dup.freeze
       end
+
+      attr_reader :type_key #: String
     end
 
     class ExceptionValue
       attr_reader :tag #: Wardite::Efflorescence::Tag
+      attr_reader :references #: Hash[Integer, Wardite::FunctionReference]
       attr_reader :payload_bits #: Array[Integer]
 
       # @rbs tag: Wardite::Efflorescence::Tag
       # @rbs payload_bits: Array[Integer]
-      def initialize(tag, payload_bits)
+      # @rbs references: Hash[Integer, Wardite::FunctionReference]
+      def initialize(tag, payload_bits, references = {})
         @tag = tag
+        @references = references.freeze
         @payload_bits = payload_bits.dup.freeze
         freeze
       end
@@ -890,6 +897,7 @@ module Wardite
         @initial_registers << value
         @uses_i64 = true if type == :i64
         @uses_float = true if FloatBits.float_type?(type)
+        @uses_eh = true if FunctionEntry.exception_ref?(type)
         @register_types << type
         slot
       end
@@ -1239,9 +1247,30 @@ module Wardite
       # @rbs return: void
       def self.check_signature(params, results, label)
         unless results.size <= 1 && params.all? { |type| numeric_type?(type) } &&
-            results.all? { |type| numeric_type?(type) }
+            results.all? { |type| numeric_type?(type) || function_ref?(type) || exception_ref?(type) }
           raise UnsupportedFeature, "Efflorescence: #{label} requires a numeric signature with at most one result (i32/i64/f32/f64)"
         end
+      end
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.function_ref?(type)
+        type.to_s.start_with?("ref:", "nullable:")
+      end
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.exception_ref?(type)
+        type == :exnref || type == :non_null_exn
+      end
+
+      # @rbs actual: Symbol
+      # @rbs expected: Symbol
+      # @rbs return: bool
+      def self.assignable?(actual, expected)
+        return true if actual == expected
+        return true if actual == :non_null_exn && expected == :exnref
+        actual.to_s.start_with?("ref:") && expected.to_s == "nullable:#{actual.to_s.delete_prefix('ref:')}"
       end
 
       # @rbs type: Symbol
@@ -1322,7 +1351,7 @@ module Wardite
         # every slot in a second loop on a newly allocated frame.
         @uses_eh = function.uses_eh
         @registers = function.initial_registers.dup
-        @exception_registers = function.register_types.include?(:exnref) ? Array.new(function.register_count, nil) : []
+        @exception_registers = function.register_types.any? { |type| FunctionEntry.exception_ref?(type) } ? Array.new(function.register_count, nil) : []
         @handlers = []
         @local_start = function.parameter_count
         @local_end = @local_start + function.local_count

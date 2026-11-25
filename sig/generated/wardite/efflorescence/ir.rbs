@@ -506,17 +506,23 @@ module Wardite
       attr_reader parameter_types: Array[Symbol]
 
       # @rbs parameter_types: Array[Symbol]
-      def initialize: (Array[Symbol] parameter_types) -> untyped
+      # @rbs type_key: String?
+      def initialize: (Array[Symbol] parameter_types, ?String? type_key) -> untyped
+
+      attr_reader type_key: String
     end
 
     class ExceptionValue
       attr_reader tag: Wardite::Efflorescence::Tag
 
+      attr_reader references: Hash[Integer, Wardite::FunctionReference]
+
       attr_reader payload_bits: Array[Integer]
 
       # @rbs tag: Wardite::Efflorescence::Tag
       # @rbs payload_bits: Array[Integer]
-      def initialize: (Wardite::Efflorescence::Tag tag, Array[Integer] payload_bits) -> untyped
+      # @rbs references: Hash[Integer, Wardite::FunctionReference]
+      def initialize: (Wardite::Efflorescence::Tag tag, Array[Integer] payload_bits, ?Hash[Integer, Wardite::FunctionReference] references) -> untyped
     end
 
     class CatchTarget
@@ -885,6 +891,19 @@ module Wardite
       # @rbs label: String
       # @rbs return: void
       def self.check_signature: (Array[Symbol] params, Array[Symbol] results, String label) -> void
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.function_ref?: (Symbol type) -> bool
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.exception_ref?: (Symbol type) -> bool
+
+      # @rbs actual: Symbol
+      # @rbs expected: Symbol
+      # @rbs return: bool
+      def self.assignable?: (Symbol actual, Symbol expected) -> bool
 
       # @rbs type: Symbol
       # @rbs return: bool

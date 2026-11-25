@@ -883,6 +883,8 @@ module Wardite
 
     class Lowerer
       WIDTH = 4
+      TAIL_DIRECT = -3
+      TAIL_INDIRECT = -4
 
       # @rbs ir: Wardite::Efflorescence::IR
       # @rbs return: void
@@ -896,7 +898,7 @@ module Wardite
       def compile_function(function, ir)
         code = [] #: Array[Integer]
         calls = [] #: Array[Wardite::Efflorescence::CallSite]
-        function.instructions.each do |instruction|
+        function.instructions.each_with_index do |instruction, pc|
           opcode = instruction[0]
           a = instruction.size > 1 ? instruction[1] : 0
           b = instruction.size > 2 ? instruction[2] : 0
@@ -916,6 +918,9 @@ module Wardite
             c = arguments.size == 1 ? arguments.fetch(0) : -1
             calls << CallSite.new(callee, arguments)
           end
+          if (opcode == Opcode::CALL || opcode == Opcode::CALL_INDIRECT) && tail_transfer?(function.instructions, pc)
+            opcode = opcode == Opcode::CALL ? TAIL_DIRECT : TAIL_INDIRECT
+          end
           target_position = Opcode.target_position(instruction)
           a *= WIDTH if target_position == 1
           b *= WIDTH if target_position == 2
@@ -923,6 +928,21 @@ module Wardite
         end
         function.lower_handlers
         function.install_code(code, calls)
+      end
+
+      # The translator emits trim(0), call, return for a tail transfer.
+      # Profile counters may occur between these instructions.
+      # @rbs code: Array[Instruction]
+      # @rbs index: Integer
+      # @rbs return: bool
+      def tail_transfer?(code, index)
+        before = index - 1
+        after = index + 1
+        before -= 1 while before >= 0 && code.fetch(before)[0] == Opcode::PROFILE
+        after += 1 while after < code.size && code.fetch(after)[0] == Opcode::PROFILE
+        return false if before < 0 || after >= code.size
+        trim, ret = code.fetch(before), code.fetch(after)
+        trim[0] == Opcode::EH_TRIM && trim[1] == 0 && ret[0] == Opcode::RETURN && ret[1] == code.fetch(index)[1]
       end
     end
   end

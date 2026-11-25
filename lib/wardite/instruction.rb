@@ -524,13 +524,13 @@ module Wardite
     # @rbs return: Array[Symbol]
     def self.build_operand_types(code)
       case code
-      when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :br, :br_if, :throw, :data_drop
+      when :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :return_call, :br, :br_if, :throw, :data_drop
         [:u32]
       when :memory_init, :memory_copy
         [:u32, :u32]
       when :memory_size, :memory_grow, :memory_fill
         [:u32]
-      when :call_indirect
+      when :call_indirect, :return_call_indirect
         [:u32, :u32]
       when :br_table
         [:u32_vec, :u32]
@@ -573,6 +573,7 @@ module Wardite
       end
     end
 
+    REF_FUNC_SPEC = DecodeSpec.new(:default, :ref_func, [:u32])
     OPERAND_TYPES_BY_CODE = {} #: Hash[Symbol, Array[Symbol]]
     OPCODE_SPECS = NAMESPACES.each_with_index.map do |namespace, opcode|
       code = SYMS.fetch(opcode)
@@ -586,6 +587,7 @@ module Wardite
       OPERAND_TYPES_BY_CODE[code] = types
       DecodeSpec.new(FC_OPERANDS[opcode] || :default, code, types)
     end.freeze #: Array[DecodeSpec]
+    OPERAND_TYPES_BY_CODE[:ref_func] = REF_FUNC_SPEC.operand_types
     OPERAND_TYPES_BY_CODE.freeze
     private_constant :OPERAND_TYPES_BY_CODE
 

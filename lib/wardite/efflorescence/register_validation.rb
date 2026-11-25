@@ -351,7 +351,7 @@ module Wardite
             check_reads(function, instruction, types, 0, read_count)
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
-            unless type && FunctionEntry.numeric_type?(type)
+            unless type && (FunctionEntry.numeric_type?(type) || FunctionEntry.function_ref?(type))
               raise TranslationError, "invalid MIR numeric copy destination r#{destination}"
             end
             check_register(function, instruction[2], type)
@@ -381,7 +381,7 @@ module Wardite
             clause.payload_registers.each_with_index do |register, i|
               check_destination(function, register, types.fetch(i))
             end
-            check_destination(function, clause.reference_register, :exnref) if clause.reference_register >= 0
+            check_destination(function, clause.reference_register, :non_null_exn) if clause.reference_register >= 0
           end
         end
       end
@@ -474,7 +474,8 @@ module Wardite
       # @rbs type: Symbol
       # @rbs return: void
       def check_register(function, register, type)
-        unless register >= 0 && function.register_types[register] == type
+        actual = function.register_types[register]
+        unless register >= 0 && actual && FunctionEntry.assignable?(actual, type)
           raise TranslationError, "invalid MIR register type/index r#{register}"
         end
       end
@@ -484,7 +485,8 @@ module Wardite
       # @rbs type: Symbol
       # @rbs return: void
       def check_destination(function, register, type)
-        unless register >= 0 && function.register_types[register] == type && !function.constant_registers.include?(register)
+        dest = function.register_types[register]
+        unless register >= 0 && dest && FunctionEntry.assignable?(type, dest) && !function.constant_registers.include?(register)
           raise TranslationError, "invalid catch destination r#{register}"
         end
       end
