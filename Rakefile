@@ -27,21 +27,10 @@ task :wasm, [:name] do |t, args|
   end
 end
 
-desc "Run the official spec"
-task :spec, [:name] do |t, args|
-  sh "which git && git clean -xf spec/ || true"
-
-  Dir.chdir "spec" do
-    sh "curl -L -o ./#{args.name}.wast https://raw.githubusercontent.com/WebAssembly/spec/refs/tags/wg-1.0/test/core/#{args.name}.wast"
-    sh "wast2json ./#{args.name}.wast"
-    sh "env JSON_PATH=./#{args.name}.json ruby ./runner.rb -v"
-
-    if File.exist?("./skip.txt")
-      puts
-      puts "\e[1;36mSkipped tests:\e[0m"
-      puts IO.read("./skip.txt")
-    end
-  end
+desc "Run official wg-1.0 instruction tests with Spinel (Efflorescence, JIT off)"
+task :spec, [:name, :line] do |_, args|
+  options = args.line ? ["--line", args.line] : []
+  ruby "spec/runner.rb", *options, *[args.name].compact
 end
 
 desc "Run basic benchmark"

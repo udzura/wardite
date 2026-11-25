@@ -187,6 +187,11 @@ jobs:
           SPINEL: ${{ github.workspace }}/.github/scripts/spinel-incremental
           SPINEL_CACHE_DIR: ${{ runner.temp }}/spinel-test-objects
         run: make spinel-test RUBY="bundle exec ruby"
+      - name: Run official i32 instruction tests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y wabt
+          bundle exec rake 'spec[i32]'
       - name: Archive installed Spinel
         id: spinel-archive
         if: steps.spinel-artifact.outputs.artifact-id == '' || steps.spinel-build.outcome == 'success'
