@@ -37,6 +37,18 @@ class EfflorescenceM1Test < Test::Unit::TestCase
     assert_equal [2, 7], vm.call_unboxed('run', [])
   end
 
+  test 'if consumes a condition returned alongside its block parameter' do
+    vm = load_bytes(validated_bytes(<<~WAT))
+      (module
+        (func $pair (param i32) (result i64 i32) i64.const 40 local.get 0)
+        (func (export "run") (param i32) (result i64)
+          local.get 0 call $pair
+          if (param i64) (result i64) i64.const 2 i64.add end))
+    WAT
+    assert_equal 40, vm.call_unboxed('run', [0])
+    assert_equal 42, vm.call_unboxed('run', [1])
+  end
+
   test 'if parameters survive local writes and supply the implicit else result' do
     vm = load_bytes(validated_bytes(<<~WAT))
       (module
