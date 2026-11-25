@@ -1,0 +1,101 @@
+# Generated from lib/wardite/efflorescence/spinel_jit/lookup_loop.rb with RBS::Inline
+
+module Wardite
+  module Efflorescence
+    class SpinelJIT
+      class LookupLoop
+        attr_reader code: String
+
+        attr_reader slots: Array[Integer]
+
+        attr_reader inputs: Array[Integer]
+
+        attr_reader outputs: Hash[Integer, Array[Integer]]
+
+        # @rbs code: String
+        # @rbs slots: Array[Integer]
+        # @rbs inputs: Array[Integer]
+        # @rbs outputs: Hash[Integer, Array[Integer]]
+        def initialize: (String code, Array[Integer] slots, Array[Integer] inputs, Hash[Integer, Array[Integer]] outputs) -> untyped
+      end
+
+      class LookupSite
+        HOT_BACKEDGES: ::Integer
+
+        def initialize: () -> untyped
+
+        # @rbs frame: Frame
+        # @rbs pc: Integer
+        # @rbs memory: IO::Buffer
+        # @rbs return: Integer
+        def run: (Frame frame, Integer pc, IO::Buffer memory) -> Integer
+
+        # @rbs return: void
+        def release: () -> void
+      end
+
+      # A single taken backedge can cover an unrolled sequence of table reads
+      # with cold panic/error blocks between them. Follow forward conditional
+      # targets inside the loop; guard their fallthrough back to the VM.
+      class LookupLoopCompiler < AArch64
+        include Opcode
+
+        CACHE_REGISTERS: ::Integer
+
+        MAX_WORDS: ::Integer
+
+        MAX_FRAME: ::Integer
+
+        MAX_FUNCTION: ::Integer
+
+        MAX_SPAN: ::Integer
+
+        # @rbs function: Function
+        def initialize: (Function function) -> untyped
+
+        # @rbs head: Integer
+        # @rbs latch: Integer
+        # @rbs return: LookupLoop?
+        def compile_loop: (Integer head, Integer latch) -> LookupLoop?
+
+        private
+
+        # @rbs op: Integer
+        # @rbs return: bool
+        def supported?: (Integer op) -> bool
+
+        # @rbs slot: Integer
+        # @rbs scratch: Integer
+        # @rbs return: Integer
+        def source: (Integer slot, Integer scratch) -> Integer
+
+        # @rbs slot: Integer
+        # @rbs reg: Integer
+        # @rbs return: void
+        def write: (Integer slot, Integer reg) -> void
+
+        # @rbs word: Integer
+        # @rbs pc: Integer
+        # @rbs return: void
+        def guard: (Integer word, Integer pc) -> void
+
+        # @rbs address: Integer
+        # @rbs pc: Integer
+        # @rbs return: void
+        def check_byte: (Integer address, Integer pc) -> void
+
+        # @rbs pc: Integer
+        # @rbs latch: Integer
+        # @rbs start: Integer
+        # @rbs return: bool
+        def emit_member: (Integer pc, Integer latch, Integer start) -> bool
+
+        # Match the atomic VM handler: on either bounds failure no output
+        # slot has been written. The error comparison observes both commits.
+        # @rbs pc: Integer
+        # @rbs return: void
+        def emit_lookup: (Integer pc) -> void
+      end
+    end
+  end
+end
