@@ -250,6 +250,8 @@ module Wardite
       def initialize: (String module_name, String name, Symbol type, bool mutable) -> untyped
     end
 
+    attr_reader memory_imports: Array[[ String, String, Integer, Integer? ]]
+
     attr_reader tag_imports: Array[ImportDesc]
 
     attr_reader global_imports: Array[GlobalImport]
@@ -313,6 +315,10 @@ module Wardite
     # @rbs return: ImportSection
     def self.import_section: () -> ImportSection
 
+    # @rbs sbuf: StringIO
+    # @rbs return: [Integer, Integer?]
+    def self.read_memory_limits: (StringIO sbuf) -> [ Integer, Integer? ]
+
     # @rbs return: MemorySection
     def self.memory_section: () -> MemorySection
 
@@ -361,6 +367,12 @@ module Wardite
     # @rbs return: DecodedBody
     # @rbs expression: bool
     def self.decode_body: (File | StringIO buf, ?expression: bool) -> DecodedBody
+
+    # A memarg uses u64 even for memory32. Preserve one out-of-range sentinel
+    # so validation can check the memory type without overflowing a native word.
+    # @rbs buf: File|StringIO
+    # @rbs return: Integer
+    def self.read_memory_offset: (File | StringIO buf) -> Integer
 
     # Decode s33, distinguishing the one-byte value/void forms from indices.
     # @rbs buf: File|StringIO

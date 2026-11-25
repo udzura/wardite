@@ -91,6 +91,7 @@ module Wardite
             raise Wardite::LoadError, "start function must have no parameters or results"
           end
         end
+        instance.initialize_data_segments
         mir_cache.write_ir(instance, @ir) if mir_cache && !profile && !@mir_cache_hit
         execute(@ir.entry_at(start.func_index), []) if start && !mir_cache&.compiling_artifact?
       end

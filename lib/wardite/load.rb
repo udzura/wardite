@@ -394,6 +394,8 @@ module Wardite
       end
     end
 
+    attr_reader :memory_imports #: Array[[String, String, Integer, Integer?]]
+
     attr_reader :tag_imports #: Array[ImportDesc]
 
     attr_reader :global_imports #: Array[GlobalImport]
@@ -404,6 +406,7 @@ module Wardite
       self.name = "Import"
       self.code = 0x2
 
+      @memory_imports = []
       @tag_imports = []
       @global_imports = []
       @imports = []
@@ -482,6 +485,10 @@ module Wardite
         sections_.each do |section|
           next unless section.is_a?(ImportSection)
           placeholders = {} #: Hash[Symbol, HashModule]
+          section.memory_imports.each do |mod, name, min, max|
+            host = placeholders[mod.to_sym] ||= HashModule.new({})
+            host.memories[name.to_sym] = Memory.new(min, max)
+          end
           section.global_imports.each do |desc|
             host = placeholders[desc.module_name.to_sym] ||= HashModule.new({})
             host.globals[desc.name.to_sym] = Global.numeric(desc.type, desc.mutable)
@@ -689,6 +696,11 @@ module Wardite
         name = assert_read(sbuf, nlen)
         kind = assert_byte(sbuf)
 
+        if kind == 2
+          min, max = read_memory_limits(sbuf)
+          dest.memory_imports << [module_name, name, min, max]
+          next
+        end
         if kind == 3
           type, mutable = read_global_type(sbuf)
           dest.global_imports << ImportSection::GlobalImport.new(module_name, name, type, mutable)
@@ -710,6 +722,21 @@ module Wardite
       dest
     end
 
+    # @rbs sbuf: StringIO
+    # @rbs return: [Integer, Integer?]
+    def self.read_memory_limits(sbuf)
+      flags = fetch_uleb128(sbuf)
+      unless flags == 0 || flags == 1
+        raise LoadError, "shared/memory64/custom-page memory limits are not supported"
+      end
+      min = fetch_uleb128(sbuf)
+      max = flags == 1 ? fetch_uleb128(sbuf) : nil
+      if min > 65536 || (max && (max > 65536 || max < min))
+        raise LoadError, "invalid memory32 limits"
+      end
+      [min, max]
+    end
+
     # @rbs return: MemorySection
     def self.memory_section
       dest = MemorySection.new
@@ -722,15 +749,7 @@ module Wardite
         raise LoadError, "only one memory is supported: #{len}"
       end
       len.times do |i|
-        flags = fetch_uleb128(sbuf)
-        unless flags == 0 || flags == 1
-          raise LoadError, "shared/memory64/custom-page memory limits are not supported"
-        end
-        min = fetch_uleb128(sbuf)
-        max = flags == 1 ? fetch_uleb128(sbuf) : nil
-        if min > 65536 || (max && (max > 65536 || max < min))
-          raise LoadError, "invalid memory32 limits"
-        end
+        min, max = read_memory_limits(sbuf)
         dest.limits << [min, max]
       end
       raise LoadError, "trailing memory section bytes" unless sbuf.eof?

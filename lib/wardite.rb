@@ -100,7 +100,9 @@ module Wardite
     # Run before allocating Store/Exports or executing a start function.
     # @rbs return: void
     def check_module_features
-      check_memory_initialization
+      if import_section.memory_imports.size + (memory_section&.limits&.size || 0) > 1
+        raise LoadError, "only one memory is supported"
+      end
       types = type_section
       import_section.imports.each do |import|
         params = types&.defined_types&.[](import.sig_index)
@@ -149,6 +151,7 @@ module Wardite
         case desc.kind
         when 0
           host.register_function(name.to_sym, ExportedFunction.new(self, name))
+        when 2 then host.memories[name.to_sym] = @store.memories.fetch(desc.index)
         when 3 then host.globals[name.to_sym] = @store.globals.fetch(desc.index)
         when 4 then host.tags[name.to_sym] = @tags.fetch(desc.index)
         end
@@ -175,23 +178,17 @@ module Wardite
       end
     end
 
-    # Validate active segments before shared initialization can mutate memory.
     # @rbs return: void
-    def check_memory_initialization
+    def initialize_data_segments
       segments = data_section&.segments
       return unless segments
-      limits = memory_section&.limits
-      segments.each do |segment|
-        next unless segment.mode == :active
-        unless limits && limits.size == 1 && segment.mem_index == 0
-          raise LoadError, "active data segment requires memory 0"
-        end
-        size = limits.fetch(0).fetch(0) * 65536
-        start = segment.offset
-        unless start >= 0 && start <= size && segment.data.bytesize <= size - start
-          raise LoadError, "active data segment out of bounds"
-        end
+      active = segments.select { |segment| segment.mode == :active }
+      return if active.empty?
+      memory = store.memories[0] || raise(LoadError, "active data segment requires memory 0")
+      active.each do |segment|
+        raise LoadError, "active data segment out of bounds" unless memory.range?(segment.offset, segment.data.bytesize)
       end
+      active.each { |segment| memory.write_bytes(segment.offset, segment.data) }
     end
 
     # @rbs return: void
@@ -417,30 +414,22 @@ module Wardite
       end
 
       @memories = []
+      import_section.memory_imports.each do |mod, name, min, max|
+        host = self.modules.fetch(mod.to_sym) { self.modules.default(mod.to_sym) }
+        memory = host.is_a?(HashModule) ? host.memories.fetch(name.to_sym, nil) : nil
+        raise LinkError, "unknown import" unless memory
+        actual_max = memory.max
+        unless memory.current >= min && (!max || (actual_max && actual_max <= max))
+          raise LinkError, "incompatible import type"
+        end
+        @memories << memory
+      end
       memory_section = inst.memory_section
       if memory_section
         memory_section.limits.each do |(min, max)|
           self.memories << Memory.new(min, max)
         end
 
-        data_section = inst.data_section
-        if data_section
-          data_section.segments.each do |segment|
-            if segment.mode != :active
-              next
-            end
-            memory = self.memories[segment.mem_index]
-            if !memory
-              raise GenericError, "invalid memory index: #{segment.mem_index}"
-            end
-
-            payload = segment.data
-            unless memory.range?(segment.offset, payload.bytesize)
-              raise GenericError, "data too large for memory"
-            end
-            memory.write_bytes(segment.offset, payload)
-          end
-        end
       end
 
       # Runtime segment instances differ from their syntax declarations: active

@@ -32,12 +32,15 @@ module Wardite
 
     attr_reader :tags #: Hash[Symbol, Efflorescence::Tag]
 
+    attr_reader :memories #: Hash[Symbol, Memory]
+
     attr_reader :globals #: Hash[Symbol, Global]
 
     # @rbs hash: Hash[Symbol, _WasmCallable]
     # @rbs globals: Hash[Symbol, Global]
     def initialize(hash, globals = {})
       @tags = {}
+      @memories = {} #: Hash[Symbol, Memory]
       @globals = globals
       @hash = hash
     end

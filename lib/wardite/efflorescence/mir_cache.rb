@@ -274,7 +274,7 @@ module Wardite
           @defined_count = entries.size - @import_count
           @data_count = instance.data_section&.segments&.size || 0
           @global_count = instance.import_section.global_imports.size + (instance.global_section&.globals&.size || 0)
-          @has_memory = (instance.memory_section&.limits&.size || 0) > 0
+          @has_memory = !instance.import_section.memory_imports.empty? || (instance.memory_section&.limits&.size || 0) > 0
           @table_types = instance.table_section&.table_types || []
           @signatures = {} #: Hash[[Array[Symbol], Array[Symbol]], bool]
           types = instance.type_section
