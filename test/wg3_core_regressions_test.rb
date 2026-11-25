@@ -69,4 +69,10 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
     provider = memory_provider
     assert_same provider.exports['m'], import_memory(provider, 2).as_import_module.memories[:m]
   end
+
+  test 'memory_grow.wast 330 grows the shared memory in the consumer' do
+    provider = memory_provider
+    assert_equal 2, import_memory(provider, 2).runtime.call_unboxed('grow', [])
+    assert_equal 3, provider.exports['m'].current
+  end
 end
