@@ -82,4 +82,11 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
     first.runtime.call_unboxed('grow', [])
     assert_same first.exports['m'], import_memory(first, 3).exports['m']
   end
+
+  test 'memory_grow.wast 336 reads the size through a second import' do
+    first = import_memory(memory_provider, 2)
+    second = import_memory(first, 2)
+    first.runtime.call_unboxed('grow', [])
+    assert_equal 3, second.runtime.call_unboxed('size', [])
+  end
 end
