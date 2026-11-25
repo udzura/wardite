@@ -105,11 +105,30 @@ module Wardite
     # Run before allocating Store/Exports or executing a start function.
     # @rbs return: void
     def check_module_features
-      if import_section.memory_imports.size + (memory_section&.limits&.size || 0) > 1
+      imports = import_section
+      memory_count = imports.memory_imports.size + (memory_section&.limits&.size || 0)
+      if memory_count > 1
         raise LoadError, "only one memory is supported"
       end
+      tag_section = @sections.find { |section| section.is_a?(TagSection) }
+      exports = export_section.exports
+      unless exports.empty?
+        function_count = imports.imports.size + (function_section&.func_indices&.size || 0)
+        table_count = imports.table_imports.size + (table_section&.table_types&.size || 0)
+        global_count = imports.global_imports.size + (global_section&.globals&.size || 0)
+        tag_count = imports.tag_imports.size + (tag_section.is_a?(TagSection) ? tag_section.type_indices.size : 0)
+        exports.each_value do |desc|
+          case desc.kind
+          when 0 then raise InvalidModule, "unknown function" if desc.index >= function_count
+          when 1 then raise InvalidModule, "unknown table" if desc.index >= table_count
+          when 2 then raise InvalidModule, "unknown memory" if desc.index >= memory_count
+          when 3 then raise InvalidModule, "unknown global" if desc.index >= global_count
+          when 4 then raise InvalidModule, "unknown tag" if desc.index >= tag_count
+          end
+        end
+      end
       types = type_section
-      import_section.imports.each do |import|
+      imports.imports.each do |import|
         params = types&.defined_types&.[](import.sig_index)
         results = types&.defined_results&.[](import.sig_index)
         raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
@@ -118,7 +137,7 @@ module Wardite
         end
         Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
       end
-      import_section.tag_imports.each do |desc|
+      imports.tag_imports.each do |desc|
         expected = declared_tag(desc.sig_index)
         host = @import_object.fetch(desc.module_name.to_sym, nil)
         tag = host.tags.fetch(desc.name.to_sym, nil) if host.is_a?(HashModule)
@@ -126,15 +145,8 @@ module Wardite
         raise LinkError, "incompatible import" unless tag.type_key == expected.type_key
         @tags << tag
       end
-      tag_section = @sections.find { |section| section.is_a?(TagSection) }
       if tag_section.is_a?(TagSection)
         tag_section.type_indices.each { |index| @tags << declared_tag(index) }
-      end
-      export_section.exports.each_value do |desc|
-        if desc.kind == 1 && desc.index >= import_section.table_imports.size + (table_section&.table_types&.size || 0)
-          raise InvalidModule, "unknown table"
-        end
-        raise InvalidModule, "unknown tag" if desc.kind == 4 && !@tags[desc.index]
       end
     end
 

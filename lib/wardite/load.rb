@@ -486,7 +486,8 @@ module Wardite
     def add_desc(&blk)
       desc = ExportDesc.new
       blk.call(desc)
-      self.exports[desc.name] = desc
+      raise InvalidModule, "duplicate export name" if @exports.key?(desc.name)
+      @exports[desc.name] = desc
     end
   end
 

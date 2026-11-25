@@ -38,6 +38,20 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
     WAT
   end
 
+  test 'export names are unique across kinds, including the empty name' do
+    error = assert_raise(Wardite::InvalidModule) do
+      load_efflorescence('(module (func (export "")) (memory (export "") 0))')
+    end
+    assert_equal "duplicate export name", error.message
+  end
+
+  test 'export indices are validated before resolving tag imports' do
+    error = assert_raise(Wardite::InvalidModule) do
+      load_efflorescence('(module (import "missing" "tag" (tag)) (export "bad" (func 0)))')
+    end
+    assert_equal "unknown function", error.message
+  end
+
   test 'binary export names must be valid UTF-8' do
     bytes = compile_efflorescence_wat('(module (func (export "X")))')
     assert_not_nil bytes.sub!("X".b, "\xff".b)
