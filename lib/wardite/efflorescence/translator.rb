@@ -525,6 +525,19 @@ module Wardite
               end
               @stack << local if code == :local_tee
             end
+          when :ref_is_null
+            source = pop_value
+            type = type_of(source)
+            unless type == :unknown || type == :externref || FunctionEntry.function_ref?(type) || FunctionEntry.exception_ref?(type)
+              fail_translation("ref.is_null requires a reference")
+            end
+            dst = register
+            emit([Opcode::REF_IS_NULL, dst, source]) if @reachable
+            @stack << dst
+          when :ref_null
+            heap = integer_operand(operands[0])
+            type = BinaryLoader.reference_type(0x63, heap, @source.block_types)
+            @stack << @function.allocate_constant(0, type: type)
           when :ref_func
             target = integer_operand(operands[0])
             key = @source.function_types[target]
@@ -591,11 +604,20 @@ module Wardite
             end
             branch(default, sources)
             mark_unreachable
-          when :select
+          when :select, :select_t
             condition, right, left = pop_typed(:i32), pop_value, pop_value
-            type = right < 0 ? type_of(left) : type_of(right)
-            unless (FunctionEntry.numeric_type?(type) || type == :unknown) && (left < 0 || type_of(left) == type)
-              fail_translation("select requires matching integer operands")
+            if code == :select_t
+              signature = operands[0]
+              fail_translation("select requires one result type") unless operands.size == 1 && signature.is_a?(Wardite::Block)
+              type = signature.result_types.fetch(0)
+              unless (left < 0 || FunctionEntry.assignable?(type_of(left), type)) && (right < 0 || FunctionEntry.assignable?(type_of(right), type))
+                fail_translation("select operand type mismatch")
+              end
+            else
+              type = right < 0 ? type_of(left) : type_of(right)
+              unless (FunctionEntry.numeric_type?(type) || type == :unknown) && (left < 0 || type_of(left) == type)
+                fail_translation("select requires matching numeric operands")
+              end
             end
             dst = type == :unknown ? -1 : register(type)
             @stack << dst
@@ -642,8 +664,7 @@ module Wardite
           when :call_indirect, :return_call_indirect
             type_index = integer_operand(operands[0])
             table_index = integer_operand(operands[1])
-            raise UnsupportedFeature, context("only call_indirect through table 0 is supported") unless table_index == 0
-            fail_translation("call_indirect requires funcref table 0") unless @source.funcref_table
+            fail_translation("call_indirect requires funcref table #{table_index}") unless @source.table_types[table_index] == :funcref
             type = @source.types[type_index] if type_index >= 0
             fail_translation("invalid indirect call type index #{type_index}") unless type
             FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}")
@@ -854,7 +875,7 @@ module Wardite
       # @rbs source: Integer
       # @rbs return: void
       def copy_value(destination, source)
-        fail_translation("copy type mismatch") unless type_of(destination) == type_of(source)
+        fail_translation("copy type mismatch") unless FunctionEntry.assignable?(type_of(source), type_of(destination))
         emit([FunctionEntry.exception_ref?(type_of(source)) ? Opcode::COPY_REF : Opcode::COPY, destination, source])
       end
 

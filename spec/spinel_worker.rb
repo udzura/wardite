@@ -5,6 +5,7 @@ require "wardite"
 # One process owns one WAST script's instances and executes its commands in order.
 class SpecWorker
   def initialize
+    @externals = {} #: Hash[Integer, Wardite::ExternalReference]
     @imports = {} #: Hash[Symbol, Wardite::wasmModuleSrc]
     @instances = {} #: Hash[String, Wardite::Instance]
   end
@@ -16,6 +17,7 @@ class SpecWorker
     when Wardite::I64 then "i64:#{value.value_s}"
     when Wardite::F32 then "f32:#{value.raw_bits}"
     when Wardite::F64 then "f64:#{value.raw_bits}"
+    when Wardite::ExternalReference then "externref:#{value.value}"
     when Wardite::FunctionReference then "funcref"
     when nil then "void"
     else raise "unexpected result"
@@ -49,14 +51,25 @@ class SpecWorker
     arguments = [] #: Array[Object]
     fields.drop(3).each do |arg|
       parts = arg.split(":")
+      if arg == "refnull"
+        arguments << nil
+        next
+      end
       bits = parts.fetch(1).to_i
       case parts.fetch(0)
+      when "externref" then arguments << (@externals[bits] ||= Wardite::ExternalReference.new(bits))
       when "f32" then arguments << Wardite::F32.from_bits(bits)
       when "f64" then arguments << Wardite::F64.from_bits(bits)
       else arguments << bits
       end
     end
-    encode(instance.runtime.call(operand, arguments))
+    result = instance.runtime.call(operand, arguments)
+    if result.nil?
+      export = instance.export_section.exports.fetch(operand)
+      function = instance.store.funcs.fetch(export.index)
+      return "refnull" unless function.retsig.empty?
+    end
+    encode(result)
   rescue Wardite::LinkError => error
     "unlinkable:#{error.message}"
   rescue Wardite::InvalidModule, Wardite::InvalidInitializer, Wardite::Efflorescence::TranslationError => error

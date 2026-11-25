@@ -53,6 +53,8 @@ module CoreSpec
   end
 
   def self.value(v)
+    return "refnull" if v["type"] == "refnull" || v["value"] == "null"
+    return "externref:#{v.fetch('value')}" if v["type"] == "externref"
     return "funcref" if v == {"type" => "funcref"}
     type, bits = v.fetch_values("type", "value")
     unless bits.start_with?("nan:")
@@ -108,7 +110,7 @@ module CoreSpec
       action = cmd.fetch("action", {})
       return unless %w[invoke get].include?(action["type"])
       values = action.fetch("args", []) + cmd.fetch("expected", [])
-      return unless values.all? { |v| NUMERIC_TYPES.include?(v["type"]) || v == {"type" => "funcref"} }
+      return unless values.all? { |v| NUMERIC_TYPES.include?(v["type"]) || v == {"type" => "funcref"} || v["type"] == "externref" || v["type"] == "refnull" || v == {"type" => "funcref", "value" => "null"} }
       args = action.fetch("args", []).map { |v| value(v) }
       expected = case op
       when "action" then "action completed"

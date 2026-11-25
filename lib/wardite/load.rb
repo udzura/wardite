@@ -641,7 +641,7 @@ module Wardite
         return reference_type(code, heap, section)
       end
       type = Op.i2type(code)
-      return type if type == :exnref || Efflorescence::FunctionEntry.numeric_type?(type)
+      return type if type == :funcref || type == :externref || type == :exnref || Efflorescence::FunctionEntry.numeric_type?(type)
       raise LoadError, "unsupported value type: #{code}"
     end
 
@@ -650,6 +650,8 @@ module Wardite
     # @rbs section: TypeSection?
     # @rbs return: Symbol
     def self.reference_type(code, heap, section)
+      return :funcref if code == 0x63 && heap == -16
+      return :externref if code == 0x63 && heap == -17
       return code == 0x63 ? :exnref : :non_null_exn if heap == -23
       key = section&.type_keys&.[](heap) if heap >= 0
       raise LoadError, "unsupported heap type #{heap}" unless key
@@ -971,6 +973,15 @@ module Wardite
           when :f32, :f64
             data = assert_read(buf, typ == :f32 ? 4 : 8)
             operand << FloatImmediate.new(typ, FloatBits.read(typ, data))
+          when :heaptype
+            operand << fetch_sleb128(buf, width: 33)
+          when :select_types
+            fetch_uleb128(buf).times do
+              type = read_blocktype(buf)
+              raise LoadError, "expected select value type" if type.type_index >= 0 || (type.reference_code == 0 && type.result_types.empty?)
+              blocks << type
+              operand << type
+            end
           when :u8_block, :blocktype
             value = read_blocktype(buf)
             blocks << value
@@ -1081,6 +1092,8 @@ module Wardite
     # @rbs buf: File|StringIO
     # @rbs return: Op::DecodeSpec
     def self.resolve_spec(opcode, buf)
+      return Op::REF_NULL_SPEC if opcode == 0xd0
+      return Op::REF_IS_NULL_SPEC if opcode == 0xd1
       return Op::REF_FUNC_SPEC if opcode == 0xd2
       if opcode == 0xfc
         lower = fetch_uleb128(buf)

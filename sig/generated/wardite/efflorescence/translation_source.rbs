@@ -22,7 +22,7 @@ module Wardite
 
         attr_reader has_memory: bool
 
-        attr_reader funcref_table: bool
+        attr_reader table_types: Array[Symbol]
 
         attr_reader has_data_count: bool
 

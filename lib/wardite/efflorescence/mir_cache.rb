@@ -22,7 +22,7 @@ module Wardite
       SAMPLE_STEP = 1024 * 1024
       SAMPLE_BLOCK = 4 * 1024
       MAX_BYTES = 256 * 1024 * 1024
-      TYPES = %i[i32 i64 f32 f64 exnref non_null_exn].freeze
+      TYPES = %i[i32 i64 f32 f64 exnref non_null_exn funcref externref].freeze
       TYPE_IDS = TYPES.each_with_index.to_h.freeze
       USES_I64 = 1
       USES_FLOAT = 2
@@ -164,9 +164,9 @@ module Wardite
         # @rbs types: Array[Symbol]
         # @rbs return: void
         def types(types)
-          vector(types.map { |type| FunctionEntry.function_ref?(type) ? 255 : TYPE_IDS.fetch(type) }, "C")
+          vector(types.map { |type| TYPE_IDS.fetch(type, 255) }, "C")
           types.each do |type|
-            if FunctionEntry.function_ref?(type)
+            unless TYPE_IDS.key?(type)
               name = type.to_s
               integers(name.bytesize)
               @bytes << name
@@ -274,7 +274,7 @@ module Wardite
           @data_count = instance.data_section&.segments&.size || 0
           @global_count = instance.import_section.global_imports.size + (instance.global_section&.globals&.size || 0)
           @has_memory = (instance.memory_section&.limits&.size || 0) > 0
-          @table_type = instance.table_section&.table_types&.[](0) #: Symbol?
+          @table_types = instance.table_section&.table_types || []
           @signatures = {} #: Hash[[Array[Symbol], Array[Symbol]], bool]
           types = instance.type_section
           if types
@@ -346,7 +346,7 @@ module Wardite
 
           types = @reader.types
           types.each do |type|
-            raise Invalid if FunctionEntry.function_ref?(type) && !@type_keys.include?(type.to_s.split(":", 2).fetch(1))
+            raise Invalid if FunctionEntry.function_ref?(type) && type != :funcref && !@type_keys.include?(type.to_s.split(":", 2).fetch(1))
           end
           params = function.parameter_types
           first_local = params.size
@@ -381,7 +381,7 @@ module Wardite
           initial.each_with_index do |bits, slot|
             if slot == constants[constant_index]
               type = types.fetch(slot)
-              raise Invalid if FunctionEntry.function_ref?(type) && !bits.between?(1, @entries.size)
+              raise Invalid if FunctionEntry.function_ref?(type) && !bits.between?(type.to_s.start_with?("ref:") ? 1 : 0, @entries.size)
               raise Invalid if FunctionEntry.exception_ref?(type) || ((type == :i32 || type == :f32) && !bits.between?(0, 0xffffffff))
               constant_index += 1
             else
@@ -431,8 +431,8 @@ module Wardite
           params = @reader.types
           results = @reader.types
           if host_index == -1
-            raise Invalid unless table_index == 0 && @table_type == :funcref &&
-              @signatures.key?([params, results]) && results.size <= 1 &&
+            raise Invalid unless table_index >= 0 && @table_types[table_index] == :funcref &&
+              @signatures.key?([params, results]) &&
               (params + results).all? { |type| FunctionEntry.numeric_type?(type) }
           else
             raise Invalid unless table_index == -1 && host_index.between?(0, @import_count - 1)
@@ -522,7 +522,7 @@ module Wardite
               check_result(function, a, site.callee.result_types)
             when :dynamic_call
               site = at(function.dynamic_sites, b)
-              raise Invalid unless opcode == CALL_HOST ? (site.host_index >= 0 && c == 0) : site.table_index == 0
+              raise Invalid unless opcode == CALL_HOST ? (site.host_index >= 0 && c == 0) : site.table_index >= 0
               check_result(function, a, site.result_types)
             when :result_set
               raise Invalid unless a.between?(1, function.result_types.size - 1) && function.register_types[b] == function.result_types[a]

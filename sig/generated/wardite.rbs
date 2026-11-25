@@ -363,6 +363,13 @@ module Wardite
     alias [] call
   end
 
+  class ExternalReference
+    attr_reader value: Object
+
+    # @rbs value: Object
+    def initialize: (Object value) -> untyped
+  end
+
   class FunctionReference
     attr_reader instance: Instance
 

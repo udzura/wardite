@@ -15,7 +15,7 @@ module Wardite
         attr_reader :type_keys #: Array[String]
         attr_reader :tags #: Array[Wardite::Efflorescence::Tag]
         attr_reader :has_memory #: bool
-        attr_reader :funcref_table #: bool
+        attr_reader :table_types #: Array[Symbol]
         attr_reader :has_data_count #: bool
         attr_reader :data_segments #: Integer
 
@@ -39,7 +39,7 @@ module Wardite
           instance.export_section.exports.each_value { |desc| @declared_functions << desc.index if desc.kind == 0 }
           @tags = instance.tags.dup
           @has_memory = !instance.store.memories.empty?
-          @funcref_table = instance.store.tables[0]&.type == :funcref
+          @table_types = instance.store.tables.map(&:type)
           @has_data_count = !instance.data_count_section.nil?
           @data_segments = instance.data_section&.segments&.size || 0
         end

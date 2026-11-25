@@ -951,6 +951,15 @@ module Wardite
     alias [] call
   end
 
+  class ExternalReference
+    attr_reader :value #: Object
+
+    # @rbs value: Object
+    def initialize(value)
+      @value = value
+    end
+  end
+
   class FunctionReference
     attr_reader :instance #: Instance
     attr_reader :index #: Integer

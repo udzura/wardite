@@ -532,6 +532,8 @@ module Wardite
         [:u32]
       when :call_indirect, :return_call_indirect
         [:u32, :u32]
+      when :select_t
+        [:select_types]
       when :br_table
         [:u32_vec, :u32]
       when :i32_const
@@ -573,6 +575,8 @@ module Wardite
       end
     end
 
+    REF_NULL_SPEC = DecodeSpec.new(:default, :ref_null, [:heaptype])
+    REF_IS_NULL_SPEC = DecodeSpec.new(:default, :ref_is_null, [])
     REF_FUNC_SPEC = DecodeSpec.new(:default, :ref_func, [:u32])
     OPERAND_TYPES_BY_CODE = {} #: Hash[Symbol, Array[Symbol]]
     OPCODE_SPECS = NAMESPACES.each_with_index.map do |namespace, opcode|

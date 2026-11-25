@@ -61,14 +61,14 @@ module Wardite
       # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | ExceptionValue | nil
-      def call: (String | Symbol name, Array[Object] arguments) -> (Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | ExceptionValue | nil)
+      # @rbs return: Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue | nil
+      def call: (String | Symbol name, Array[Object] arguments) -> (Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue | nil)
 
       # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | ExceptionValue)?
-      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | ExceptionValue)?
+      # @rbs return: (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue)?
+      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue)?
 
       # @rbs return: String
       def dump_mir: () -> String
@@ -135,6 +135,10 @@ module Wardite
       # @rbs bits: Integer
       # @rbs return: Wardite::FunctionReference?
       def function_reference: (Integer bits) -> Wardite::FunctionReference?
+
+      # @rbs value: Object?
+      # @rbs return: Integer
+      def external_reference_bits: (Object? value) -> Integer
 
       # @rbs reference: Wardite::FunctionReference
       # @rbs return: Integer

@@ -314,7 +314,7 @@ module Wardite
               unless site.host_index >= 0 && site.table_index == -1 && instruction[3] == 0
                 raise TranslationError, "invalid MIR host call operands"
               end
-            elsif site.host_index != -1 || site.table_index != 0
+            elsif site.host_index != -1 || site.table_index < 0
               raise TranslationError, "invalid MIR indirect call operands"
             end
             unless site.arguments.size == site.parameter_types.size &&
@@ -350,7 +350,7 @@ module Wardite
             check_reads(function, instruction, types, 0, read_count)
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
-            unless type && (FunctionEntry.numeric_type?(type) || FunctionEntry.function_ref?(type))
+            unless type && (FunctionEntry.numeric_type?(type) || type == :externref || FunctionEntry.function_ref?(type))
               raise TranslationError, "invalid MIR numeric copy destination r#{destination}"
             end
             check_register(function, instruction[2], type)
@@ -393,7 +393,11 @@ module Wardite
       def validate_extended_instruction(function, instruction, read_count, destination)
         opcode = instruction[0]
         types = Opcode.extended_alu_types(opcode)
-        if opcode == Opcode::RESULT_SET
+        if opcode == Opcode::REF_IS_NULL
+          type = function.register_types.fetch(instruction[2])
+          raise TranslationError, "expected reference" unless FunctionEntry.function_ref?(type) || FunctionEntry.exception_ref?(type) || type == :externref
+          check_register(function, destination, :i32)
+        elsif opcode == Opcode::RESULT_SET
           index = instruction[1]
           raise TranslationError, "invalid return index" unless index.between?(1, function.result_types.size - 1)
           check_register(function, instruction[2], function.result_types.fetch(index))

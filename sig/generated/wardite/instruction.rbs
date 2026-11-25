@@ -79,6 +79,10 @@ module Wardite
       def initialize: (Symbol namespace, Symbol code, Array[Symbol] operand_types) -> untyped
     end
 
+    REF_NULL_SPEC: untyped
+
+    REF_IS_NULL_SPEC: untyped
+
     REF_FUNC_SPEC: untyped
 
     OPERAND_TYPES_BY_CODE: Hash[Symbol, Array[Symbol]]

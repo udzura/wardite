@@ -32,6 +32,7 @@ module Wardite
       def initialize(instance, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false, source_code: nil, eager_mir: false)
         @returned_exception = nil #: ExceptionValue?
         @extra_results = [] #: Array[Integer]
+        @external_references = [] #: Array[Wardite::ExternalReference]
         @foreign_references = [] #: Array[Wardite::FunctionReference]
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
@@ -131,12 +132,13 @@ module Wardite
       # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | ExceptionValue | nil
+      # @rbs return: Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue | nil
       def call(name, arguments)
         entry = export_entry(name)
         result = execute_public(entry, arguments)
         return nil if result.nil?
         type = entry.result_types.fetch(0)
+        return result.zero? ? nil : @external_references.fetch(result - 1) if type == :externref
         return function_reference(result) if FunctionEntry.function_ref?(type)
         return @returned_exception if FunctionEntry.exception_ref?(type)
         if entry.result_types.size > 1
@@ -148,12 +150,13 @@ module Wardite
       # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | ExceptionValue)?
+      # @rbs return: (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue)?
       def call_unboxed(name, arguments)
         entry = export_entry(name)
         result = execute_public(entry, arguments)
         return nil if result.nil?
         type = entry.result_types.fetch(0)
+        return result.zero? ? nil : @external_references.fetch(result - 1) if type == :externref
         return function_reference(result) if FunctionEntry.function_ref?(type)
         return @returned_exception if FunctionEntry.exception_ref?(type)
         if entry.result_types.size > 1
@@ -248,6 +251,16 @@ module Wardite
             bits = float_argument(type, value)
             raise Wardite::ArgumentError, "type mismatch: #{type}(#{value})" if bits.nil?
             values << bits
+          elsif type == :externref
+            values << external_reference_bits(value)
+          elsif FunctionEntry.function_ref?(type)
+            if value.nil? && !type.to_s.start_with?("ref:")
+              values << 0
+            elsif value.is_a?(Wardite::FunctionReference) && type == :funcref
+              values << reference_bits(value)
+            else
+              raise Wardite::ArgumentError, "expected #{type}"
+            end
           elsif type == :i32 && value.is_a?(Wardite::I32)
             values << value.value
           elsif type == :i64 && value.is_a?(Wardite::I64)
@@ -382,6 +395,17 @@ module Wardite
         return nil if bits == 0
         return @foreign_references.fetch(-bits - 1) if bits < 0
         Wardite::FunctionReference.new(@instance, bits - 1)
+      end
+
+      # @rbs value: Object?
+      # @rbs return: Integer
+      def external_reference_bits(value)
+        return 0 if value.nil?
+        raise Wardite::ArgumentError, "expected externref" unless value.is_a?(Wardite::ExternalReference)
+        index = @external_references.index(value)
+        return index + 1 if index
+        @external_references << value
+        @external_references.size
       end
 
       # @rbs reference: Wardite::FunctionReference
@@ -989,6 +1013,13 @@ module Wardite
             instructions = frame.instructions
             pc = Integer(frame.pc)
             next
+          when 205 # Opcode::REF_IS_NULL
+            b = instructions.fetch(pc + 2)
+            if FunctionEntry.exception_ref?(frame.function.register_types.fetch(b))
+              registers[a] = frame.exception_registers[b].nil? ? 1 : 0
+            else
+              registers[a] = registers.fetch(b).zero? ? 1 : 0
+            end
           when 203 # Opcode::RESULT_SET
             @extra_results[a - 1] = registers.fetch(instructions.fetch(pc + 2))
           when 204 # Opcode::RESULT_GET
