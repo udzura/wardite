@@ -75,4 +75,11 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
     assert_equal 2, import_memory(provider, 2).runtime.call_unboxed('grow', [])
     assert_equal 3, provider.exports['m'].current
   end
+
+  test 'memory_grow.wast 331 links against the current page count' do
+    first = import_memory(memory_provider, 2)
+    assert_raise(Wardite::LinkError) { import_memory(first, 3) }
+    first.runtime.call_unboxed('grow', [])
+    assert_same first.exports['m'], import_memory(first, 3).exports['m']
+  end
 end
