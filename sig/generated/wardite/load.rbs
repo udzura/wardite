@@ -306,6 +306,9 @@ module Wardite
   end
 
   module BinaryLoader
+    # Data count and exception tags precede sections with lower numeric IDs.
+    SECTION_ORDER: untyped
+
     EMPTY_OPTIMIZATIONS: Array[Symbol]
 
     extend Wardite::Leb128Helper

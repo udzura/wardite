@@ -89,6 +89,7 @@ module Wardite
               b.locals_count << Leb128Helper.fetch_uleb128(self)
               b.locals_type << BinaryLoader.read_signature_type(self, types)
             end
+            raise Wardite::LoadError, "too many locals" if b.locals_count.sum > 0xffffffff
             raise Wardite::LoadError, "empty WMIR function" if @pos == finish
             b.map_instructions(@map, @pos, finish - @pos)
           end

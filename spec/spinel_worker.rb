@@ -87,8 +87,22 @@ class SpecWorker
       "trap:out of bounds memory access"
     when "constant expression requires end", "global initializer type mismatch"
       "validation:#{message}"
-    when "malformed memop flags", "malformed UTF-8 encoding"
+    when "data count section required", "integer representation too long", "integer too large", "section size mismatch",
+         "unexpected end", "length out of bounds", "END opcode expected", "malformed section id",
+         "too many locals", "unexpected content after last section", "malformed reference type",
+         "malformed memop flags", "malformed UTF-8 encoding"
       "malformed:#{message}"
+    when "unsigned LEB128 exceeds width", "signed LEB128 exceeds width" then "malformed:integer too large"
+    when "invalid data segment count" then "malformed:data count and data section have inconsistent lengths"
+    when "function and code section lengths differ" then "malformed:function and code section have inconsistent lengths"
+    when "unsupported table limits", "shared/memory64/custom-page memory limits are not supported" then "malformed:malformed limits flags"
+    when "invalid preamble" then "malformed:magic header not detected"
+    when /\Aunsupported version:/ then "malformed:unknown binary version"
+    when /\Aunsupported import kind/ then "malformed:malformed import kind"
+    when /\Aunsupported code: (\d+)/ then "malformed:illegal opcode #{message.split.last.to_i.to_s(16)}"
+    when /\Atrailing .* (bytes|data)/ then "malformed:section size mismatch"
+    when "buffer too short", "unterminated constant expression", "unterminated structured control", "too short section size", "invalid or truncated unsigned LEB128"
+      "malformed:unexpected end"
     when "unsupported global mutability flags"
       "malformed:invalid mutability"
     else

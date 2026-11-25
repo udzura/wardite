@@ -548,6 +548,8 @@ module Wardite
   end
 
   module BinaryLoader
+    # Data count and exception tags precede sections with lower numeric IDs.
+    SECTION_ORDER = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 12, 13, 11, 6].freeze
     EMPTY_OPTIMIZATIONS = [] #: Array[Symbol]
     EMPTY_OPTIMIZATIONS.freeze
 
@@ -664,7 +666,7 @@ module Wardite
     # @rbs return: Integer
     def self.preamble
       asm = @buf.read 4
-      if !asm
+      if !asm || asm.bytesize < 4
         raise LoadError, "buffer too short"
       end
       if asm != "\u0000asm"
@@ -672,7 +674,7 @@ module Wardite
       end
 
       vstr = @buf.read(4)
-      if !vstr
+      if !vstr || vstr.bytesize < 4
         raise LoadError, "buffer too short"
       end
       version = vstr.unpack1("V")
@@ -689,11 +691,17 @@ module Wardite
     def self.sections(defer_code = false, keep_code = false, artifact = nil)
       sections = [] #: Array[Section]
       context = InitializerContext.new
+      previous = 0
 
       loop do
         code = @buf.getbyte
         break unless code
 
+        if code != 0
+          order = SECTION_ORDER[code] || raise(LoadError, "malformed section id")
+          raise LoadError, "unexpected content after last section" if order <= previous
+          previous = order
+        end
         section = case code
           when Wardite::SectionType
             context.types = type_section
@@ -752,7 +760,7 @@ module Wardite
 
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       fetch_uleb128(sbuf).times do
         code = assert_byte(sbuf)
@@ -781,6 +789,7 @@ module Wardite
             end
             shapes << "struct(#{fields.join(',')})"
           else
+            raise LoadError, "integer representation too long" if form >= 128
             raise LoadError, "unsupported composite type #{form}"
           end
           structs << (form == 0x5f)
@@ -865,7 +874,7 @@ module Wardite
       dest = ImportSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
@@ -901,18 +910,19 @@ module Wardite
         end
       end
 
+      raise LoadError, "section size mismatch" unless sbuf.eof?
       dest
     end
 
     # @rbs sbuf: StringIO
     # @rbs return: [Integer, Integer?]
     def self.read_memory_limits(sbuf)
-      flags = fetch_uleb128(sbuf)
+      flags = assert_byte(sbuf)
       unless flags == 0 || flags == 1
         raise LoadError, "shared/memory64/custom-page memory limits are not supported"
       end
-      min = fetch_uleb128(sbuf)
-      max = flags == 1 ? fetch_uleb128(sbuf) : nil
+      min = read_u64_for_i32(sbuf)
+      max = flags == 1 ? read_u64_for_i32(sbuf) : nil
       if min > 65536 || (max && (max > 65536 || max < min))
         raise LoadError, "invalid memory32 limits"
       end
@@ -943,8 +953,9 @@ module Wardite
       dest = StartSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      # StartSection won't use size
-      func_index = fetch_uleb128(@buf)
+      sbuf = StringIO.new(assert_read(@buf, size))
+      func_index = fetch_uleb128(sbuf)
+      raise LoadError, "section size mismatch" unless sbuf.eof?
       dest.func_index = func_index
       dest
     end
@@ -956,7 +967,7 @@ module Wardite
       dest = ElemSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
@@ -979,6 +990,7 @@ module Wardite
         when 4 then :funcref
         else read_signature_type(sbuf, types)
         end
+        raise LoadError, "malformed reference type" unless Efflorescence::FunctionEntry.reference?(type)
         dest.element_types << type
         dest.passive << (etype == 1 || etype == 5)
         expressions = [] #: Array[ConstantExpression]
@@ -1013,7 +1025,7 @@ module Wardite
       dest = GlobalSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
@@ -1028,6 +1040,7 @@ module Wardite
         end
         dest.globals << global
       end
+      raise LoadError, "section size mismatch" unless sbuf.eof?
       dest
     end
     
@@ -1036,13 +1049,14 @@ module Wardite
       dest = FunctionSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
         index = fetch_uleb128(sbuf)
         dest.func_indices << index
       end
+      raise LoadError, "section size mismatch" unless sbuf.eof?
       dest
     end
 
@@ -1052,7 +1066,7 @@ module Wardite
     def self.read_table_type(sbuf, types)
       type = read_signature_type(sbuf, types)
       raise InvalidModule, "expected table reference type" unless [:externref, :non_null_extern].include?(type) || Efflorescence::FunctionEntry.function_ref?(type)
-      flags = fetch_uleb128(sbuf)
+      flags = assert_byte(sbuf)
       raise LoadError, "unsupported table limits" unless flags == 0 || flags == 1
       min = read_u64_for_i32(sbuf)
       max = flags == 1 ? read_u64_for_i32(sbuf) : nil
@@ -1067,7 +1081,7 @@ module Wardite
       dest = TableSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
@@ -1108,6 +1122,7 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times { dest.func_codes << read_function_body(sbuf, defer_code, types) }
+      raise LoadError, "section size mismatch" unless sbuf.eof?
       dest
     end
 
@@ -1118,13 +1133,6 @@ module Wardite
     def self.read_function_body(sbuf, defer_code = false, types = TypeSection.new)
       ilen = fetch_uleb128(sbuf)
       code = assert_read(sbuf, ilen)
-      last_code = code.getbyte(-1)
-      if ! last_code
-        raise "[BUG] empty code fetched" # guard for steep check
-      end
-      if last_code != 0x0b
-        $stderr.puts "warning: instruction not ended with inst end(0x0b): 0x0#{last_code}"
-      end
       cbuf = StringIO.new(code)
       CodeSection::CodeBody.new do |body|
         locals_len = fetch_uleb128(cbuf)
@@ -1133,6 +1141,7 @@ module Wardite
           body.locals_type << read_signature_type(cbuf, types)
           locals_len -= 1
         end
+        raise LoadError, "too many locals" if body.locals_count.sum > 0xffffffff
         if defer_code
           body.instruction_bytes = (cbuf.read || "".b).freeze
         else
@@ -1249,6 +1258,7 @@ module Wardite
         end
       end
 
+      raise LoadError, "END opcode expected" if !expression && dest.last&.[](1) != :end
       raise LoadError, "unterminated constant expression" if expression && !ended
       raise LoadError, "unterminated structured control" unless branching_stack.empty?
       fixed_stack.each do |(sym, begin_idx, else_idx, end_idx)|
@@ -1282,7 +1292,8 @@ module Wardite
       value = 0
       10.times do |i|
         byte = assert_byte(buf)
-        raise LoadError, "unsigned LEB128 exceeds width" if i == 9 && byte > 1
+        raise LoadError, "integer representation too long" if i == 9 && byte >= 128
+        raise LoadError, "integer too large" if i == 9 && byte > 1
         part = byte & 127
         if i < 5
           value |= part << (7 * i)
@@ -1410,7 +1421,7 @@ module Wardite
       dest = ExportSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
-      sbuf = StringIO.new(@buf.read(size) || raise("buffer too short"))
+      sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
@@ -1425,6 +1436,7 @@ module Wardite
         end
       end
 
+      raise LoadError, "section size mismatch" unless sbuf.eof?
       dest
     end
 
@@ -1435,7 +1447,8 @@ module Wardite
       size = fetch_uleb128(source)
       if source.is_a?(File) && source.stat.file?
         section_end = source.pos + size
-        raise LoadError, "truncated custom section" if section_end > source.stat.size
+        raise LoadError, "length out of bounds" if section_end > source.stat.size
+        raise LoadError, "unexpected end" if size.zero?
         read_name(source, section_end)
         source.pos = section_end
       else
@@ -1450,7 +1463,7 @@ module Wardite
     def self.read_name(source, section_end = nil)
       size = fetch_uleb128(source)
       if section_end && size > section_end - source.pos
-        raise LoadError, "truncated custom section"
+        raise LoadError, "length out of bounds"
       end
       name = assert_read(source, size).force_encoding("UTF-8")
       raise LoadError, "malformed UTF-8 encoding" unless name.valid_encoding?

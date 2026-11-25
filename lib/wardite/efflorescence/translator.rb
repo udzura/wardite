@@ -401,6 +401,9 @@ module Wardite
           @wasm_pc = pc
           fail_translation("instruction after function end") if @controls.empty?
           code, operands = instruction[1], instruction[2]
+          if (code == :memory_init || code == :data_drop) && !@source.has_data_count
+            raise Wardite::LoadError, "data count section required"
+          end
           validate_store_instruction(code, operands) if STORE_CODES.include?(code)
           if BINARY.key?(code)
             right, left = pop_typed(:i32), pop_typed(:i32)
@@ -860,7 +863,6 @@ module Wardite
           fail_translation("invalid memory offset") unless offset >= 0 && offset <= 0xffffffff
         elsif code == :memory_init
           data_index = integer_operand(operands[0])
-          fail_translation("memory.init requires data count") unless @source.has_data_count
           count = @source.data_segments
           fail_translation("invalid data index #{data_index}") unless data_index >= 0 && data_index < count
           check_memory_index(integer_operand(operands[1]))

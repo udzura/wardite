@@ -12,7 +12,8 @@ module Wardite
 
         upper, lower = (c >> 7), (c & (1 << 7) - 1)
         dest |= lower << (7 * level)
-        if level >= max_level && (upper != 0 || (max_level == 4 && c > 15))
+        raise LoadError, "integer representation too long" if level == max_level && upper != 0
+        if level == 4 && max_level == 4 && c > 15
           raise LoadError, "unsigned LEB128 exceeds width"
         end
         if upper == 0
@@ -55,7 +56,7 @@ module Wardite
         end
 
         if level >= max_level
-          raise LoadError, "signed LEB128 exceeds maximum level #{max_level}"
+          raise LoadError, "integer representation too long"
         end
         level += 1
       end
