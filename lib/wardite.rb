@@ -411,6 +411,16 @@ module Wardite
       end
 
       @globals = []
+      import_section.global_imports.each do |desc|
+        module_name = desc.module_name.to_sym
+        host = self.modules.fetch(module_name) { self.modules.default(module_name) }
+        global = host.is_a?(HashModule) ? host.globals.fetch(desc.name.to_sym, nil) : nil
+        raise LoadError, "unknown global import #{desc.module_name}.#{desc.name}" unless global
+        unless global.type == desc.type && global.mutable == desc.mutable && !global.shared && global.valid_value?
+          raise LoadError, "incompatible global import #{desc.module_name}.#{desc.name}"
+        end
+        @globals << global
+      end
       global_section = inst.global_section
       if global_section
         global_section.globals.each do |g|
@@ -418,7 +428,8 @@ module Wardite
             g2.type = g.type
             g2.mutable = g.mutable
             g2.shared = g.shared
-            g2.value = g.value
+            initializer = g.value
+            g2.value = initializer.is_a?(Integer) ? @globals.fetch(initializer).value : initializer
           end
         end
       end
@@ -685,6 +696,24 @@ module Wardite
   end
 
   class Global
+    # @rbs type: Symbol
+    # @rbs mutable: bool
+    # @rbs return: Global
+    def self.numeric(type, mutable)
+      Global.new do |g|
+        g.type = type
+        g.mutable = mutable
+        g.shared = false
+        g.value = case type
+        when :i32 then Wardite::I32(0)
+        when :i64 then Wardite::I64(0)
+        when :f32 then Wardite::F32.from_bits(0)
+        when :f64 then Wardite::F64.from_bits(0)
+        else raise LoadError, "unsupported global type #{type}"
+        end
+      end
+    end
+
     attr_accessor :type #: Symbol
     
     attr_accessor :mutable #: bool
@@ -698,6 +727,17 @@ module Wardite
     # @rbs return: void
     def initialize(&blk)
       blk.call(self)
+    end
+
+    # @rbs return: bool
+    def valid_value?
+      case type
+      when :i32 then value.is_a?(I32)
+      when :i64 then value.is_a?(I64)
+      when :f32 then value.is_a?(F32)
+      when :f64 then value.is_a?(F64)
+      else false
+      end
     end
 
     alias mutable? mutable

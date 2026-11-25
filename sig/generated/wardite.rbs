@@ -223,6 +223,11 @@ module Wardite
   end
 
   class Global
+    # @rbs type: Symbol
+    # @rbs mutable: bool
+    # @rbs return: Global
+    def self.numeric: (Symbol type, bool mutable) -> Global
+
     attr_accessor type: Symbol
 
     attr_accessor mutable: bool
@@ -235,6 +240,9 @@ module Wardite
     # @rbs &blk: (Global) -> void
     # @rbs return: void
     def initialize: () { (Global) -> void } -> void
+
+    # @rbs return: bool
+    def valid_value?: () -> bool
 
     alias mutable? mutable
 

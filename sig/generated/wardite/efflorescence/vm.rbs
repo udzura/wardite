@@ -19,6 +19,8 @@ module Wardite
 
       @global_bits: Array[Integer]
 
+      @global_slots: Array[Integer]?
+
       @optimized_ir: Wardite::Efflorescence::IR?
 
       @semantic_ir: Wardite::Efflorescence::IR?

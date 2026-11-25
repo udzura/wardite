@@ -82,7 +82,7 @@ module Wardite
       # TODO: unused in wasm 1.0 spec?
       attr_accessor :shared #: bool
 
-      attr_accessor :value #: wasmValue
+      attr_accessor :value #: wasmValue | Integer
 
       # @rbs &blk: (Global) -> void
       # @rbs return: void
@@ -365,12 +365,30 @@ module Wardite
       attr_accessor :sig_index #: Integer
     end
 
+    class GlobalImport
+      attr_reader :module_name #: String
+      attr_reader :name #: String
+      attr_reader :type #: Symbol
+      attr_reader :mutable #: bool
+
+      # @rbs module_name: String
+      # @rbs name: String
+      # @rbs type: Symbol
+      # @rbs mutable: bool
+      def initialize(module_name, name, type, mutable)
+        @module_name, @name, @type, @mutable = module_name, name, type, mutable
+      end
+    end
+
+    attr_reader :global_imports #: Array[GlobalImport]
+
     attr_accessor :imports #: Array[ImportDesc]
 
     def initialize #: void
       self.name = "Import"
       self.code = 0x2
 
+      @global_imports = []
       @imports = []
     end
 
@@ -444,13 +462,18 @@ module Wardite
       if emit_wmir
         # Compilation uses import signatures only. Link actual hosts when loading the artifact.
         import_object = {} #: Hash[Symbol, wasmModuleSrc]
-        placeholder = HashModule.new({})
         sections_.each do |section|
           next unless section.is_a?(ImportSection)
+          placeholders = {} #: Hash[Symbol, HashModule]
+          section.global_imports.each do |desc|
+            host = placeholders[desc.module_name.to_sym] ||= HashModule.new({})
+            host.globals[desc.name.to_sym] = Global.numeric(desc.type, desc.mutable)
+          end
           section.imports.each do |desc|
-            import_object[desc.module_name.to_sym] = placeholder
+            placeholder = placeholders[desc.module_name.to_sym] ||= HashModule.new({})
             placeholder.hash[desc.name.to_sym] = -> (_store, _args) { raise LoadError, "host call during WMIR compilation" }
           end
+          placeholders.each { |name, host| import_object[name] = host }
         end
       elsif enable_wasi && sections_.any? { |section| section.is_a?(ImportSection) &&
           section.imports.any? { |import| import.module_name == "wasi_snapshot_preview1" } }
@@ -501,6 +524,7 @@ module Wardite
     # @rbs artifact: Efflorescence::MIRArtifact?
     def self.sections(defer_code = false, keep_code = false, artifact = nil)
       sections = [] #: Array[Section]
+      globals = [] #: Array[ImportSection::GlobalImport]
 
       loop do
         code = @buf.getbyte
@@ -510,7 +534,9 @@ module Wardite
           when Wardite::SectionType
             type_section
           when Wardite::SectionImport
-            import_section
+            imports = import_section
+            globals = imports.global_imports
+            imports
           when Wardite::SectionTag
             tag_section
           when Wardite::SectionFunction
@@ -520,7 +546,7 @@ module Wardite
           when Wardite::SectionMemory
             memory_section
           when Wardite::SectionGlobal
-            global_section
+            global_section(globals)
           when Wardite::SectionExport
             export_section
           when Wardite::SectionStart
@@ -638,6 +664,11 @@ module Wardite
         name = assert_read(sbuf, nlen)
         kind = assert_byte(sbuf)
 
+        if kind == 3
+          type, mutable = read_global_type(sbuf)
+          dest.global_imports << ImportSection::GlobalImport.new(module_name, name, type, mutable)
+          next
+        end
         raise LoadError, "tag imports are not supported" if kind == 4
         raise LoadError, "unsupported import kind #{kind} for #{module_name}.#{name}" unless kind == 0
         index = fetch_uleb128(sbuf)
@@ -720,8 +751,19 @@ module Wardite
       dest
     end
 
+    # @rbs sbuf: StringIO
+    # @rbs return: [Symbol, bool]
+    def self.read_global_type(sbuf)
+      type = Op.i2type(assert_byte(sbuf))
+      mut = assert_byte(sbuf)
+      raise LoadError, "unsupported global mutability flags" unless mut == 0 || mut == 1
+      raise LoadError, "unsupported global type #{type}" unless Efflorescence::FunctionEntry.numeric_type?(type)
+      [type, mut == 1]
+    end
+
+    # @rbs imports: Array[ImportSection::GlobalImport]
     # @rbs return: GlobalSection
-    def self.global_section
+    def self.global_section(imports)
       dest = GlobalSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
@@ -729,34 +771,33 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        gtype = Op.i2type(assert_byte(sbuf))
-        mut = sbuf.getbyte
-        if !mut
-          raise LoadError, "global section too short"
-        end
-        unless mut == 0 || mut == 1
-          raise LoadError, "unsupported global mutability flags"
-        end
-        
+        gtype, mutable = read_global_type(sbuf)
         ops = decode_body(sbuf, expression: true).instructions
         ops.each do |op|
           case op[1]
-          when :global_get
-            raise InvalidInitializer, "unknown global #{op[2].first}"
-          when :i32_const, :i64_const, :f32_const, :f64_const, :end
+          when :global_get, :i32_const, :i64_const, :f32_const, :f64_const, :end
             next
           else
             raise InvalidInitializer, "constant expression required"
           end
         end
-        unless ops.size == 2 && ops.first&.[](1).to_s == "#{gtype}_const"
-          raise InvalidInitializer, "global initializer type mismatch"
+        raise InvalidInitializer, "global initializer type mismatch" unless ops.size == 2
+        op = ops.fetch(0)
+        value = if op[1] == :global_get
+          index = op[2].fetch(0)
+          raise LoadError, "invalid global index operand" unless index.is_a?(Integer)
+          imported = imports[index] || raise(InvalidInitializer, "unknown global #{index}")
+          raise InvalidInitializer, "constant expression required" if imported.mutable
+          raise InvalidInitializer, "global initializer type mismatch" unless imported.type == gtype
+          index
+        else
+          raise InvalidInitializer, "global initializer type mismatch" unless op[1].to_s == "#{gtype}_const"
+          decode_global_expr(ops)
         end
-        value = decode_global_expr(ops)
 
         global = GlobalSection::Global.new do |g|
           g.type = gtype
-          g.mutable = (mut == 0x01)
+          g.mutable = mutable
           g.shared = false # always
           g.value = value
         end

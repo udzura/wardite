@@ -56,7 +56,7 @@ module Wardite
       # TODO: unused in wasm 1.0 spec?
       attr_accessor shared: bool
 
-      attr_accessor value: wasmValue
+      attr_accessor value: wasmValue | Integer
 
       # @rbs &blk: (Global) -> void
       # @rbs return: void
@@ -228,6 +228,24 @@ module Wardite
       attr_accessor sig_index: Integer
     end
 
+    class GlobalImport
+      attr_reader module_name: String
+
+      attr_reader name: String
+
+      attr_reader type: Symbol
+
+      attr_reader mutable: bool
+
+      # @rbs module_name: String
+      # @rbs name: String
+      # @rbs type: Symbol
+      # @rbs mutable: bool
+      def initialize: (String module_name, String name, Symbol type, bool mutable) -> untyped
+    end
+
+    attr_reader global_imports: Array[GlobalImport]
+
     attr_accessor imports: Array[ImportDesc]
 
     def initialize: () -> void
@@ -285,8 +303,13 @@ module Wardite
     # @rbs return: ElemSection
     def self.elem_section: () -> ElemSection
 
+    # @rbs sbuf: StringIO
+    # @rbs return: [Symbol, bool]
+    def self.read_global_type: (StringIO sbuf) -> [ Symbol, bool ]
+
+    # @rbs imports: Array[ImportSection::GlobalImport]
     # @rbs return: GlobalSection
-    def self.global_section: () -> GlobalSection
+    def self.global_section: (Array[ImportSection::GlobalImport] imports) -> GlobalSection
 
     # @rbs return: FunctionSection
     def self.function_section: () -> FunctionSection
