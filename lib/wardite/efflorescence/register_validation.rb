@@ -302,7 +302,7 @@ module Wardite
               raise TranslationError, "invalid MIR memory site index"
             end
             site = function.memory_site(index)
-            unless site.sources.size == 3 && site.memory_index == 0 && site.source_memory_index == 0 &&
+            unless site.sources.size == 3 && site.memory_index >= 0 && site.source_memory_index >= 0 &&
                 (opcode != Opcode::MEMORY_INIT || site.data_index >= 0)
               raise TranslationError, "invalid MIR memory site operands"
             end
@@ -403,6 +403,10 @@ module Wardite
         types = Opcode.extended_alu_types(opcode)
         if opcode.between?(Opcode::TABLE_SET, Opcode::ELEM_DROP)
           check_register(function, destination, :i32) if destination >= 0
+        elsif opcode == Opcode::INDEXED_LOAD || opcode == Opcode::INDEXED_STORE
+          access = function.indexed_accesses.fetch(instruction[3])
+          check_register(function, instruction[2], :i32)
+          check_register(function, instruction[1], access.type)
         elsif opcode == Opcode::TABLE_GET
           check_register(function, instruction[2], :i32)
           raise TranslationError, "expected function reference" unless function.register_types.fetch(destination) == :externref || FunctionEntry.function_ref?(function.register_types.fetch(destination))

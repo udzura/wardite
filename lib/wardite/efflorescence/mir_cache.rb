@@ -14,7 +14,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 20
+      CODE_VERSION = 21
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -202,6 +202,10 @@ module Wardite
             types(site.result_types)
             vector(site.arguments)
           end
+          integers(function.indexed_accesses.size)
+          function.indexed_accesses.each do |access|
+            integers(access.memory, access.offset, access.alignment, access.signed ? 1 : 0, TYPE_IDS.fetch(access.type))
+          end
           integers(function.memory_sites.size)
           function.memory_sites.each do |site|
             integers(site.memory_index, site.source_memory_index, site.data_index)
@@ -242,6 +246,7 @@ module Wardite
           when CALL then :call
           when CALL_HOST, CALL_INDIRECT then :dynamic_call
           when TABLE_SET..ELEM_DROP then :table
+          when INDEXED_LOAD, INDEXED_STORE then :indexed
           when TABLE_GET then :table_get
           when RESULT_SET then :result_set
           when RESULT_GET then :result_get
@@ -281,6 +286,7 @@ module Wardite
           @defined_count = entries.size - @import_count
           @data_count = instance.data_section&.segments&.size || 0
           @global_count = instance.import_section.global_imports.size + (instance.global_section&.globals&.size || 0)
+          @memory_count = instance.import_section.memory_imports.size + (instance.memory_section&.limits&.size || 0)
           @has_memory = !instance.import_section.memory_imports.empty? || (instance.memory_section&.limits&.size || 0) > 0
           @element_types = instance.elem_section&.element_types || []
           @table_types = instance.import_section.table_imports.map { |entry| entry[2] } + (instance.table_section&.table_types || [])
@@ -425,6 +431,13 @@ module Wardite
             function.add_call_site(site)
           end
           @reader.count(20).times { function.dynamic_sites << read_dynamic_site(function) }
+          @reader.count(20).times do
+            memory, offset, alignment, sign, type_id = @reader.integer, @reader.integer, @reader.integer, @reader.integer, @reader.integer
+            type = at(TYPES, type_id)
+            raise Invalid unless memory.between?(1, @memory_count - 1) && FunctionEntry.numeric_type?(type) && sign.between?(0, 1)
+            raise Invalid unless alignment.between?(0, type == :i32 || type == :f32 ? 2 : 3)
+            function.indexed_accesses << IndexedAccess.new(memory, offset & 0xffffffff, alignment, sign == 1, type)
+          end
           @reader.count(16).times { function.memory_sites << read_memory_site(function) }
           @reader.count(12).times do
             table, source = @reader.integer, @reader.integer
@@ -472,7 +485,7 @@ module Wardite
           source = @reader.integer
           data = @reader.integer
           registers = @reader.vector("l<", 4)
-          raise Invalid unless @has_memory && memory == 0 && source == 0 && data.between?(-1, @data_count - 1)
+          raise Invalid unless memory.between?(0, @memory_count - 1) && source.between?(0, @memory_count - 1) && data.between?(-1, @data_count - 1)
           check_arguments(function, registers, [:i32, :i32, :i32])
           MemorySite.new(registers, memory_index: memory, source_memory_index: source, data_index: data)
         end
@@ -567,6 +580,9 @@ module Wardite
               end
               check_arguments(function, site.table_operands, expected)
               check_result(function, a, opcode == TABLE_SIZE || opcode == TABLE_GROW ? [:i32] : [])
+            when :indexed
+              access = at(function.indexed_accesses, c)
+              raise Invalid unless at(function.register_types, b) == :i32 && at(function.register_types, a) == access.type
             when :table_get then raise Invalid unless at(@table_types, c) == function.register_types[a] && function.register_types[b] == :i32
             when :result_set
               raise Invalid unless a.between?(1, function.result_types.size - 1) && function.register_types[b] == function.result_types[a]
@@ -582,7 +598,7 @@ module Wardite
             when :global_get then raise Invalid unless b.between?(0, @global_count - 1)
             when :global_set then raise Invalid unless a.between?(0, @global_count - 1)
             when :address then raise Invalid unless @has_memory && c.between?(0, 0xffffffff)
-            when :memory then raise Invalid unless @has_memory
+            when :memory then raise Invalid unless c.between?(0, @memory_count - 1)
             when :immediate then raise Invalid unless c.between?(0, 0xffffffff)
             when :extract then raise Invalid unless c.between?(0, (0xffffffff << 6) | 63)
             when :shift then raise Invalid unless c.between?(0, 31)

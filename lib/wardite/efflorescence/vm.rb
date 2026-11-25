@@ -39,6 +39,8 @@ module Wardite
         @foreign_references = [] #: Array[Wardite::FunctionReference]
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
+        @memory_accesses = [] #: Array[Wardite::Efflorescence::StoreAccess]
+        instance.store.memories.each_index { |i| @memory_accesses << (i.zero? ? @store_access : StoreAccess.new(instance.store, i)) }
         @global_bits = []
         # The same host global can be imported under multiple names.
         @global_slots = nil
@@ -1433,17 +1435,28 @@ module Wardite
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
             @store_access.store(registers[b], c, 2, registers[a])
+          when 215 # Opcode::INDEXED_LOAD
+            access = frame.function.indexed_accesses.fetch(instructions.fetch(pc + 3))
+            address = registers.fetch(instructions.fetch(pc + 2))
+            registers[a] = Integer(@memory_accesses.fetch(access.memory).indexed_load(access, address))
+          when 216 # Opcode::INDEXED_STORE
+            access = frame.function.indexed_accesses.fetch(instructions.fetch(pc + 3))
+            address = registers.fetch(instructions.fetch(pc + 2))
+            @memory_accesses.fetch(access.memory).store(address, access.offset, 1 << access.alignment, registers.fetch(a))
           when 62 # Opcode::MEMORY_SIZE
-            registers[a] = @store_access.size
+            registers[a] = @memory_accesses.fetch(instructions.fetch(pc + 3)).size
           when 63 # Opcode::MEMORY_GROW
             b = instructions.fetch(pc + 2)
-            registers[a] = @store_access.grow(registers[b])
+            registers[a] = @memory_accesses.fetch(instructions.fetch(pc + 3)).grow(registers[b])
           when 64 # Opcode::MEMORY_INIT
-            @store_access.bulk(64, frame.function.memory_site(a), registers)
+            site = frame.function.memory_site(a)
+            @memory_accesses.fetch(site.memory_index).bulk(64, site, registers)
           when 65 # Opcode::MEMORY_COPY
-            @store_access.bulk(65, frame.function.memory_site(a), registers)
+            site = frame.function.memory_site(a)
+            @memory_accesses.fetch(site.memory_index).bulk(65, site, registers)
           when 66 # Opcode::MEMORY_FILL
-            @store_access.bulk(66, frame.function.memory_site(a), registers)
+            site = frame.function.memory_site(a)
+            @memory_accesses.fetch(site.memory_index).bulk(66, site, registers)
           when 69 # Opcode::I64_EQZ
             b = instructions.fetch(pc + 2)
             registers[a] = registers.fetch(b) == 0 ? 1 : 0

@@ -571,7 +571,8 @@ module Wardite
     # @rbs mir_cache_verify: Symbol
     # @rbs mir_cache_eager: bool
     # @rbs return: Instance
-    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :efflorescence, disabled_optimizations: EMPTY_OPTIMIZATIONS, enabled_optimizations: EMPTY_OPTIMIZATIONS, mir_cse: false, mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false, emit_wmir: nil)
+    # @rbs validate_only: bool
+    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :efflorescence, disabled_optimizations: EMPTY_OPTIMIZATIONS, enabled_optimizations: EMPTY_OPTIMIZATIONS, mir_cse: false, mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false, emit_wmir: nil, validate_only: false)
       start = Time.now.to_f #: Float
       unless mir_cache_verify == :checksum || mir_cache_verify == :sha256
         raise ArgumentError, "MIR cache verification must be checksum or sha256"
@@ -611,7 +612,7 @@ module Wardite
       @buf = buf if cache
 
       wasi_env = nil
-      if emit_wmir
+      if emit_wmir || validate_only
         # Compilation uses import signatures only. Link actual hosts when loading the artifact.
         import_object = {} #: Hash[Symbol, wasmModuleSrc]
         sections_.each do |section|
@@ -654,7 +655,7 @@ module Wardite
 
       return Instance.new(import_object, engine: engine, disabled_optimizations: disabled_optimizations,
         enabled_optimizations: enabled_optimizations, mir_cse: mir_cse,
-        mir_profile: mir_profile, mir_cache: cache, eager_mir: mir_cache_eager) do |i|
+        mir_profile: mir_profile, mir_cache: cache, eager_mir: mir_cache_eager, validate_only: validate_only) do |i|
         i.version = version
         i.sections = sections_
         i.wasi = wasi_env
@@ -937,9 +938,6 @@ module Wardite
       sbuf = StringIO.new(assert_read(@buf, size))
 
       len = fetch_uleb128(sbuf)
-      if len > 1
-        raise LoadError, "only one memory is supported: #{len}"
-      end
       len.times do |i|
         min, max = read_memory_limits(sbuf)
         dest.limits << [min, max]
@@ -1172,6 +1170,7 @@ module Wardite
         spec = resolve_spec(opcode, buf)
         code = spec.code
         operand = [] #: Array[operandItem]
+        memory_index = 0
         spec.operand_types.each do |typ|
           case typ
           when :u8
@@ -1186,8 +1185,7 @@ module Wardite
             end
             if operand.empty? && opcode.between?(0x28, 0x3e) && value >= 64
               raise LoadError, "malformed memop flags" if value >= 128
-              memory = fetch_uleb128(buf)
-              raise InvalidModule, "unknown memory #{memory}" unless memory.zero?
+              memory_index = fetch_uleb128(buf)
               value &= 63
             end
             operand << value
@@ -1234,6 +1232,7 @@ module Wardite
           end         
         end
 
+        operand << memory_index unless memory_index.zero?
         # HINT: [namespace, code, operand, else_pos, end_pos]
         dest << [spec.namespace, code, operand, nil, nil]
         if code == :block || code == :loop || code == :if || code == :try_table

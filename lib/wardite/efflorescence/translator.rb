@@ -472,7 +472,15 @@ module Wardite
             type = store_type || Opcode::EXTENDED_LOAD_TYPES[opcode] || :i32
             @function.uses_i64 = true if type == :i64
             @function.uses_float = true if FloatBits.float_type?(type)
-            if store_type || code == :i32_store || code == :i32_store8 || code == :i32_store16
+            writing = store_type || code == :i32_store || code == :i32_store8 || code == :i32_store16
+            if operands[2]
+              memory = integer_operand(operands[2])
+              descriptor = IndexedAccess.new(memory, offset, MEMORY_WIDTHS.fetch(code), code.to_s.end_with?("_s"), type)
+              offset = @function.indexed_accesses.size
+              @function.indexed_accesses << descriptor
+              opcode = writing ? Opcode::INDEXED_STORE : Opcode::INDEXED_LOAD
+            end
+            if writing
               value = pop_typed(type)
               address = pop_typed(:i32)
               emit([opcode, value, address, offset]) if @reachable
@@ -486,7 +494,9 @@ module Wardite
             length, source, destination = pop_typed(:i32), pop_typed(:i32), pop_typed(:i32)
             next unless @reachable
             data_index = code == :memory_init ? integer_operand(operands[0]) : -1
-            site = MemorySite.new([destination, source, length], data_index: data_index)
+            memory = integer_operand(operands[code == :memory_init ? 1 : 0])
+            other = code == :memory_copy ? integer_operand(operands[1]) : 0
+            site = MemorySite.new([destination, source, length], memory_index: memory, source_memory_index: other, data_index: data_index)
             id = @function.memory_sites.size
             @function.memory_sites << site
             opcode = case code
@@ -498,7 +508,13 @@ module Wardite
           when :memory_size, :memory_grow
             source = code == :memory_grow ? pop_typed(:i32) : -1
             dst = register
-            emit(code == :memory_grow ? [Opcode::MEMORY_GROW, dst, source] : [Opcode::MEMORY_SIZE, dst]) if @reachable
+            memory = integer_operand(operands[0])
+            words = code == :memory_grow ? [Opcode::MEMORY_GROW, dst, source] : [Opcode::MEMORY_SIZE, dst]
+            unless memory.zero?
+              words << 0 if code == :memory_size
+              words << memory
+            end
+            emit(words) if @reachable
             @stack << dst
           when :global_get, :global_set
             index = integer_operand(operands[0])
@@ -857,6 +873,7 @@ module Wardite
         fail_translation("memory instruction requires memory 0") unless @source.has_memory
         alignment = MEMORY_WIDTHS[code]
         if alignment
+          check_memory_index(integer_operand(operands[2])) if operands[2]
           hint = integer_operand(operands[0])
           offset = integer_operand(operands[1])
           fail_translation("invalid memory alignment") unless hint >= 0 && hint <= alignment
@@ -877,7 +894,7 @@ module Wardite
       # @rbs index: Integer
       # @rbs return: void
       def check_memory_index(index)
-        raise UnsupportedFeature, context("only memory 0 is supported") unless index == 0
+        fail_translation("unknown memory #{index}") unless index.between?(0, @source.memory_count - 1)
       end
 
       # @rbs value: Wardite::operandItem?

@@ -16,7 +16,8 @@ module Wardite
       def self.check_range: (Integer start, Integer length, Integer size) -> void
 
       # @rbs store: Wardite::Store
-      def initialize: (Wardite::Store store) -> untyped
+      # @rbs memory_index: Integer
+      def initialize: (Wardite::Store store, ?Integer memory_index) -> untyped
 
       # @rbs index: Integer
       # @rbs return: Wardite::Global
@@ -63,6 +64,11 @@ module Wardite
       # @rbs value: Integer
       # @rbs return: void
       def write_global_bits: (Integer index, Symbol type, Integer value) -> void
+
+      # @rbs access: Wardite::Efflorescence::IndexedAccess
+      # @rbs address: Integer
+      # @rbs return: Integer
+      def indexed_load: (Wardite::Efflorescence::IndexedAccess access, Integer address) -> Integer
 
       # Return both bytes so the VM can retain the guest-visible input byte.
       # @rbs address: Integer

@@ -9,6 +9,29 @@ class EfflorescenceM2IntegrationTest < Test::Unit::TestCase
   include EfflorescenceM2Cases
   E = Wardite::Efflorescence
 
+  test "indexed memory operations retain their target across MIR cache loads" do
+    bytes = compile_efflorescence_wat(<<~'WAT')
+      (module
+        (memory $first 1)
+        (memory $second 1 2)
+        (data (memory $second) (i32.const 0) "\ff")
+        (func (export "run") (result i64)
+          i32.const 1 memory.grow $second drop
+          i32.const 8 i64.const -42 i64.store $second
+          i32.const 0 i32.const 8 i32.const 8 memory.copy $first $second
+          i32.const 0 i64.load $first
+          i32.const 0 i64.load8_s $second i64.add
+          memory.size $second i64.extend_i32_u i64.add))
+    WAT
+    Dir.mktmpdir do |dir|
+      2.times do |i|
+        instance = Wardite.new(buffer: StringIO.new(bytes), mir_cache: dir, mir_cache_eager: true)
+        assert_equal i == 1, instance.runtime.mir_cache_hit
+        assert_equal(-41, instance.runtime.call_unboxed("run", []))
+      end
+    end
+  end
+
   test 'start exports EH updates memory traps uncaught recovery and frame reuse share one Store' do
     bytes = compile_efflorescence_wat(INTEGRATION_WAT)
     MODES.each do |mode|

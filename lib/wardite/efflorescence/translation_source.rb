@@ -14,6 +14,7 @@ module Wardite
         attr_reader :declared_functions #: Array[Integer]
         attr_reader :type_keys #: Array[String]
         attr_reader :tags #: Array[Wardite::Efflorescence::Tag]
+        attr_reader :memory_count #: Integer
         attr_reader :has_memory #: bool
         attr_reader :element_types #: Array[Symbol]
         attr_reader :table_types #: Array[Symbol]
@@ -40,6 +41,7 @@ module Wardite
           @declared_functions.concat(instance.code_section&.initializer_functions || [])
           instance.export_section.exports.each_value { |desc| @declared_functions << desc.index if desc.kind == 0 }
           @tags = instance.tags.dup
+          @memory_count = instance.store.memories.size
           @has_memory = !instance.store.memories.empty?
           @element_types = elements&.element_types || []
           @table_types = instance.store.tables.map(&:type)

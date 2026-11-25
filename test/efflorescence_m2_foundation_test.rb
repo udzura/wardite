@@ -63,7 +63,7 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
       '(module (func unreachable i32.load drop))' => 'requires memory',
       '(module (func unreachable global.get 0 drop))' => 'invalid global index',
       '(module (global i32 (i32.const 0)) (func unreachable i32.const 1 global.set 0))' => 'immutable',
-      '(module (memory 1) (func unreachable memory.size 1 drop))' => 'only memory 0',
+      '(module (memory 1) (func unreachable memory.size 1 drop))' => 'unknown memory 1',
       '(module (memory 1) (func unreachable i32.load align=8 drop))' => 'alignment',
       '(module (memory 1) (func unreachable memory.init 0))' => 'invalid data index',
       '(module (memory 1) (data "x") (func unreachable memory.init 1))' => 'invalid data index'

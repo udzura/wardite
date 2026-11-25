@@ -66,12 +66,13 @@ class EfflorescenceM2GrowTest < Test::Unit::TestCase
     assert_equal 0, memory.current
     assert_same original, memory.data
     assert_equal 0, memory.data.bytesize
-    instance.runtime.instance_variable_set(:@store_access, probe)
+    accesses = instance.runtime.instance_variable_get(:@memory_accesses)
+    accesses[0] = probe
     assert_equal 0xffffffff, instance.runtime.call_unboxed('grow', [1])
-    instance.runtime.instance_variable_set(:@store_access, BrokenAllocation.new(instance.store))
+    accesses[0] = BrokenAllocation.new(instance.store)
     assert_raise(RuntimeError) { instance.runtime.call_unboxed('grow', [1]) }
     assert_same original, memory.data
-    instance.runtime.instance_variable_set(:@store_access, E::StoreAccess.new(instance.store))
+    accesses[0] = E::StoreAccess.new(instance.store)
     assert_equal 0, instance.runtime.call_unboxed('grow', [1])
     assert_equal 65536, memory.data.bytesize
     assert_equal 1, memory.current

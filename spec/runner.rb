@@ -97,6 +97,10 @@ module CoreSpec
     case op
     when "assert_uninstantiable"
       [["instantiate", current, File.join(dir, cmd.fetch("filename"))], "trap:#{cmd.fetch('text')}"]
+    when "module_definition"
+      [["define", cmd.fetch("name", current), File.join(dir, cmd.fetch("filename"))], "defined"]
+    when "module_instance"
+      [["instance", cmd.fetch("instance", current), cmd.fetch("module", "-")], "loaded"]
     when "register"
       [["register", cmd.fetch("name", current), cmd.fetch("as")], "registered"]
     when "module", "assert_invalid", "assert_malformed", "assert_unlinkable"
@@ -161,9 +165,22 @@ module CoreSpec
       next unless action || command["type"] == "register"
       name = action ? action["module"] : command["name"]
       setup = (0...i).reverse_each.find do |j|
-        cases[j]["type"] == "module" && (!name || cases[j]["name"] == name)
+        entry = cases.fetch(j)
+        case entry["type"]
+        when "module" then !name || entry["name"] == name
+        when "module_instance" then !name || entry["instance"] == name
+        end
       end
       indices << setup if setup
+    end
+    indices.dup.each do |i|
+      command = cases.fetch(i)
+      next unless command["type"] == "module_instance"
+      name = command["module"]
+      definition = (0...i).reverse_each.find do |j|
+        cases[j]["type"] == "module_definition" && (!name || cases[j]["name"] == name)
+      end
+      indices << definition if definition
     end
     indices.uniq.sort
   end
@@ -185,7 +202,9 @@ module CoreSpec
     end
     current = "-"
     rows = cases.map.with_index do |cmd, index|
-      if cmd["type"] == "module"
+      if cmd["type"] == "module_instance"
+        current = cmd.fetch("instance", index.to_s)
+      elsif cmd["type"] == "module"
         current = cmd.fetch("name", index.to_s)
       end
       command_row(cmd, current, dir)

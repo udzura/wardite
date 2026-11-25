@@ -47,7 +47,8 @@ module Wardite
     # @rbs eager_mir: bool
     # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
-    def initialize(import_object, engine: :efflorescence, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, eager_mir: false, &blk)
+    # @rbs validate_only: bool
+    def initialize(import_object, engine: :efflorescence, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, eager_mir: false, validate_only: false, &blk)
       raise LoadError, "unknown engine: #{engine}" unless engine == :efflorescence
       @wasi = nil
 
@@ -75,7 +76,7 @@ module Wardite
         end
       end
       check_data_count
-      @store = Store.new(self)
+      @store = Store.new(self, validate_only: validate_only)
       @exports = Exports.new(self.export_section, store, @tags)
 
       @types = []
@@ -96,6 +97,7 @@ module Wardite
         enabled_optimizations: enabled_optimizations, mir_cse: mir_cse, profile: mir_profile,
         mir_cache: mir_cache, cached_functions: cached_functions, cache_checked: true, eager_mir: eager_mir)
       @runtime.prepare_all unless import_section.table_imports.empty?
+      return if validate_only
       @store.initialize_elements
       initialize_data_segments
       start = start_section
@@ -107,9 +109,6 @@ module Wardite
     def check_module_features
       imports = import_section
       memory_count = imports.memory_imports.size + (memory_section&.limits&.size || 0)
-      if memory_count > 1
-        raise LoadError, "only one memory is supported"
-      end
       tag_section = @sections.find { |section| section.is_a?(TagSection) }
       exports = export_section.exports
       unless exports.empty?
@@ -126,6 +125,9 @@ module Wardite
           when 4 then raise InvalidModule, "unknown tag" if desc.index >= tag_count
           end
         end
+      end
+      data_section&.segments&.each do |segment|
+        raise InvalidModule, "unknown memory #{segment.mem_index}" if segment.mode == :active && segment.mem_index >= memory_count
       end
       types = type_section
       imports.imports.each do |import|
@@ -219,9 +221,6 @@ module Wardite
       return unless segments
       active = segments.select { |segment| segment.mode == :active }
       return if active.empty?
-      active.each do |segment|
-        raise InvalidModule, "unknown memory #{segment.mem_index}" unless store.memories[segment.mem_index]
-      end
       active.each do |segment|
         memory = store.memories.fetch(segment.mem_index)
         expression = segment.offset || raise(LoadError, "missing active segment offset")
@@ -416,7 +415,8 @@ module Wardite
 
     # @rbs inst: Instance
     # @rbs return: void
-    def initialize(inst)
+    # @rbs validate_only: bool
+    def initialize(inst, validate_only: false)
       type_section = inst.type_section
 
       import_section = inst.import_section
@@ -472,7 +472,7 @@ module Wardite
       memory_section = inst.memory_section
       if memory_section
         memory_section.limits.each do |(min, max)|
-          self.memories << Memory.new(min, max)
+          self.memories << Memory.new(validate_only ? 0 : min, max)
         end
 
       end
@@ -536,6 +536,7 @@ module Wardite
           if !init
             raise LoadError, "empty limits"
           end
+          init = 0 if validate_only
           table = Table.new(typ, init, max)
           initializer = table_section.initializers[idx]
           if initializer

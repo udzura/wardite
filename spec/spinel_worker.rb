@@ -5,6 +5,8 @@ require_relative "spectest_host"
 # One process owns one WAST script's instances and executes its commands in order.
 class SpecWorker
   def initialize
+    @definitions = {} #: Hash[String, String]
+    @last_definition = ""
     @externals = {} #: Hash[Integer, Wardite::ExternalReference]
     @imports = {spectest: SpectestHost.new} #: Hash[Symbol, Wardite::wasmModuleSrc]
     @instances = {} #: Hash[String, Wardite::Instance]
@@ -26,6 +28,16 @@ class SpecWorker
 
   def execute(fields)
     op, id, operand = fields.fetch(0), fields.fetch(1), fields.fetch(2)
+    if op == "define"
+      Wardite.new(path: operand, enable_wasi: false, validate_only: true).runtime.prepare_all
+      @definitions[id] = operand
+      @last_definition = operand
+      return "defined"
+    end
+    if op == "instance"
+      operand = operand == "-" ? @last_definition : @definitions.fetch(operand)
+      op = "module"
+    end
     if op == "register"
       @imports[operand.to_sym] = @instances.fetch(id).as_import_module
       return "registered"

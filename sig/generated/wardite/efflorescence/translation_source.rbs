@@ -20,6 +20,8 @@ module Wardite
 
         attr_reader tags: Array[Wardite::Efflorescence::Tag]
 
+        attr_reader memory_count: Integer
+
         attr_reader has_memory: bool
 
         attr_reader element_types: Array[Symbol]

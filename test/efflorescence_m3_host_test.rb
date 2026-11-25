@@ -76,9 +76,9 @@ class EfflorescenceM3HostTest < Test::Unit::TestCase
     end
     assert_raise(Wardite::LinkError) { load_efflorescence('(module (import "env" "x" (memory 1)))') }
     assert_raise(Wardite::LinkError) { load_efflorescence('(module (import "env" "x" (table 1 funcref)))') }
-    assert_raise(Wardite::LoadError) { load_efflorescence('(module (import "env" "x" (global i32)))') }
+    assert_raise(Wardite::LinkError) { load_efflorescence('(module (import "env" "x" (global i32)))') }
     ['(param i32)', '(result i32)'].each do |signature|
-      assert_raise(Wardite::LoadError) do
+      assert_raise(Wardite::InvalidModule) do
         load_efflorescence("(module (import \"env\" \"init\" (func $init #{signature})) (start $init))",
           import_object: {env: {init: init}})
       end

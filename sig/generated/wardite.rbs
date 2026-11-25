@@ -29,7 +29,8 @@ module Wardite
     # @rbs eager_mir: bool
     # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
-    def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?enabled_optimizations: Array[Symbol], ?mir_cse: bool, ?mir_profile: bool, ?mir_cache: Efflorescence::MIRCache?, ?eager_mir: bool) { (Instance) -> void } -> untyped
+    # @rbs validate_only: bool
+    def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?enabled_optimizations: Array[Symbol], ?mir_cse: bool, ?mir_profile: bool, ?mir_cache: Efflorescence::MIRCache?, ?eager_mir: bool, ?validate_only: bool) { (Instance) -> void } -> untyped
 
     # Run before allocating Store/Exports or executing a start function.
     # @rbs return: void
@@ -121,7 +122,8 @@ module Wardite
 
     # @rbs inst: Instance
     # @rbs return: void
-    def initialize: (Instance inst) -> void
+    # @rbs validate_only: bool
+    def initialize: (Instance inst, ?validate_only: bool) -> void
 
     # Apply each segment atomically, in order, after validation and linking.
     # @rbs return: void
