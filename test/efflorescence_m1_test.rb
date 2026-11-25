@@ -27,6 +27,16 @@ class EfflorescenceM1Test < Test::Unit::TestCase
     bytes
   end
 
+  test 'an explicit return preserves branched values of different types' do
+    vm = load_bytes(validated_bytes(<<~WAT))
+      (module (func (export "run") (result i32 i64)
+        i32.const 2
+        block (result i64) i64.const 7 br 0 end
+        return))
+    WAT
+    assert_equal [2, 7], vm.call_unboxed('run', [])
+  end
+
   test 'if parameters survive local writes and supply the implicit else result' do
     vm = load_bytes(validated_bytes(<<~WAT))
       (module

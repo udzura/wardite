@@ -682,8 +682,8 @@ module Wardite
             emit([Opcode::THROW_REF, reference]) if @reachable
             mark_unreachable
           when :return
-            source = @function.result_types.empty? ? -1 : pop_typed(@function.result_types.fetch(0))
-            emit([Opcode::RETURN, source]) if @reachable
+            sources = top_values(@function.result_types)
+            emit_return(sources) if @reachable
             mark_unreachable
           when :unreachable
             emit([Opcode::TRAP]) if @reachable
