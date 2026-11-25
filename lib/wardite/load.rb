@@ -1133,6 +1133,7 @@ module Wardite
     def self.read_function_body(sbuf, defer_code = false, types = TypeSection.new)
       ilen = fetch_uleb128(sbuf)
       code = assert_read(sbuf, ilen)
+      raise LoadError, "END opcode expected" if code.empty?
       cbuf = StringIO.new(code)
       CodeSection::CodeBody.new do |body|
         locals_len = fetch_uleb128(cbuf)
@@ -1142,6 +1143,7 @@ module Wardite
           locals_len -= 1
         end
         raise LoadError, "too many locals" if body.locals_count.sum > 0xffffffff
+        raise LoadError, "END opcode expected" if cbuf.eof?
         if defer_code
           body.instruction_bytes = (cbuf.read || "".b).freeze
         else
@@ -1258,7 +1260,7 @@ module Wardite
         end
       end
 
-      raise LoadError, "END opcode expected" if !expression && dest.last&.[](1) != :end
+      raise LoadError, "END opcode expected" if !expression && !dest.empty? && dest.last&.[](1) != :end
       raise LoadError, "unterminated constant expression" if expression && !ended
       raise LoadError, "unterminated structured control" unless branching_stack.empty?
       fixed_stack.each do |(sym, begin_idx, else_idx, end_idx)|

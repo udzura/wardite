@@ -73,6 +73,9 @@ class SpecWorker
       return "refnull" unless function.retsig.empty?
     end
     encode(result)
+  rescue NameError => error
+    return "unlinkable:unknown import" if error.message.match?(/\A(?:module|function) .+ not found\z/)
+    "error:#{error.class}: #{error.message}"
   rescue Wardite::LinkError => error
     "unlinkable:#{error.message}"
   rescue Wardite::InvalidModule, Wardite::InvalidInitializer, Wardite::Efflorescence::TranslationError => error

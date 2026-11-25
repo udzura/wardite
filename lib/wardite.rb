@@ -430,7 +430,7 @@ module Wardite
 
         module_name = desc.module_name.to_sym
         target_module = self.modules.fetch(module_name) { self.modules.default(module_name) }
-        raise LinkError, "unknown import" unless target_module
+        raise ::NameError, "module #{desc.module_name} not found" unless target_module
 
         name = desc.name.to_sym
         wasi = inst.wasi

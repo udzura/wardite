@@ -13,7 +13,7 @@ module EfflorescenceInvalidCases
 
   def malformed_numeric_fixtures
     [
-      [malformed_i32_constant, "signed LEB128 exceeds"],
+      [malformed_i32_constant, "integer representation too long"],
       [compile_efflorescence_wat("(module (global f32 (f64.const 1)))"), "global initializer type mismatch"]
     ]
   end

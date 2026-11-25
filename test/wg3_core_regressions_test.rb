@@ -72,7 +72,7 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
     Dir.mktmpdir do |dir|
       path = File.join(dir, "truncated.wasm")
       File.binwrite(path, bytes)
-      assert_raise_message("truncated custom section") { Wardite.new(path: path) }
+      assert_raise_message("length out of bounds") { Wardite.new(path: path) }
     end
   end
 
