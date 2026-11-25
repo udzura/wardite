@@ -585,6 +585,13 @@ module Wardite
               skip = emit([Opcode::BR_IF_ZERO, condition, -1])
               branch(target, sources)
               patch(skip, @function.instructions.size)
+              types.each_with_index do |type, i|
+                source = sources.fetch(i)
+                next if type_of(source) == type
+                widened = register(type)
+                copy_value(widened, source)
+                @stack[@stack.size - types.size + i] = widened
+              end
             else
               branch(target, sources, condition)
             end
