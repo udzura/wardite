@@ -1,0 +1,83 @@
+# frozen_string_literal: true
+
+require "wardite"
+
+# One process owns one WAST script's instances and executes its commands in order.
+class SpecWorker
+  def initialize
+    @instances = {} #: Hash[String, Wardite::Instance]
+  end
+
+  def encode(value)
+    case value
+    when Wardite::I32 then "i32:#{value.value}"
+    when Wardite::I64 then "i64:#{value.value_s}"
+    when Wardite::F32 then "f32:#{value.raw_bits}"
+    when Wardite::F64 then "f64:#{value.raw_bits}"
+    when nil then "void"
+    else raise "unexpected result"
+    end
+  end
+
+  def execute(fields)
+    op, id, operand = fields.fetch(0), fields.fetch(1), fields.fetch(2)
+    if op == "module" || op == "invalid" || op == "malformed"
+      instance = Wardite.new(path: operand, engine: :efflorescence, enable_wasi: false)
+      instance.runtime.prepare_all
+      @instances[id] = instance if op == "module"
+      return "loaded"
+    end
+
+    instance = @instances.fetch(id)
+    if op == "get"
+      export = instance.export_section.exports.fetch(operand)
+      raise "not a global" unless export.kind == 3
+      return encode(instance.store.globals.fetch(export.index).value)
+    end
+    arguments = [] #: Array[Object]
+    fields.drop(3).each do |arg|
+      parts = arg.split(":")
+      bits = parts.fetch(1).to_i
+      case parts.fetch(0)
+      when "f32" then arguments << Wardite::F32.from_bits(bits)
+      when "f64" then arguments << Wardite::F64.from_bits(bits)
+      else arguments << bits
+      end
+    end
+    encode(instance.runtime.call(operand, arguments))
+  rescue Wardite::Efflorescence::TranslationError => error
+    "validation:#{error.message}"
+  rescue Wardite::LoadError => error
+    message = error.message
+    # These loader checks implement Core validation before MIR translation.
+    case message
+    when "constant expression requires end", "global initializer type mismatch"
+      "validation:#{message}"
+    when "unsupported global mutability flags"
+      "malformed:invalid mutability"
+    else
+      return "validation:#{message}" if message.start_with?("invalid element function index ")
+      "error:#{error.class}: #{message}"
+    end
+  rescue Wardite::IntegerOverflow
+    "trap:integer overflow"
+  rescue Wardite::Unreachable
+    "trap:unreachable"
+  rescue Wardite::EvalError => error
+    message = error.message
+    message = "undefined element" if message.start_with?("call_indirect table index out of bounds:")
+    message = "uninitialized element" if message == "call_indirect null reference"
+    message = "indirect call type mismatch" if message == "call_indirect function type mismatch"
+    "trap:#{message}"
+  rescue StandardError => error
+    "error:#{error.class}: #{error.message}"
+  end
+end
+
+worker = SpecWorker.new
+File.open(ARGV.fetch(1), "w") do |output|
+  File.foreach(ARGV.fetch(0)) do |row|
+    output.puts worker.execute(row.chomp.split("\t")).gsub("\n", " ")
+    output.flush
+  end
+end

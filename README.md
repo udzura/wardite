@@ -2,7 +2,7 @@
 
 <img src="assets/wardite.svg" alt="Wardite logo" width="160">
 
-[![Test CRuby and Spinel](https://github.com/udzura/wardite/actions/workflows/runtime-tests.yml/badge.svg)](https://github.com/udzura/wardite/actions/workflows/runtime-tests.yml) [![Test Wardite](https://github.com/udzura/wardite/actions/workflows/spec.yml/badge.svg)](https://github.com/udzura/wardite/actions/workflows/spec.yml) [![gem version](https://badge.fury.io/rb/wardite.svg)](https://rubygems.org/gems/wardite)
+[![Test CRuby and Spinel](https://github.com/udzura/wardite/actions/workflows/runtime-tests.yml/badge.svg)](https://github.com/udzura/wardite/actions/workflows/runtime-tests.yml) [![gem version](https://badge.fury.io/rb/wardite.svg)](https://rubygems.org/gems/wardite)
 
 A pure-ruby webassembly runtime.
 
@@ -182,6 +182,30 @@ baseline and three additional EH opcodes on CRuby and Spinel. Run
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `bundle exec rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
 Additionaly, you can run `bundle exec rake check` to generate rbs files from annotations and run `steep check`.
+
+### Official WebAssembly instruction tests
+
+Install Spinel and WABT (`wast2json`), then run:
+
+```sh
+bundle exec rake spec                           # basic wg-1.0 instruction suites
+bundle exec rake 'spec[i32]'                    # one official .wast file
+VERBOSE=1 FILTER_FIELD=div_s bundle exec rake 'spec[i32]'
+```
+
+The runner downloads the pinned wg-1.0 sources into a temporary directory.
+For an offline run, set `SPEC_CORE_DIR` to the `test/core` directory of a
+wg-1.0 checkout. Each script runs in order on a native Spinel worker using
+Efflorescence with JIT disabled. Filtering affects the report only.
+
+Counts include module setup, actions and assertions. Each suite shows up to
+five failures by default. Set `VERBOSE=1` for every command with its source
+line, export, arguments, expectation and observation. Floats use hexadecimal
+bits so signed zeros and NaN payloads remain visible. A mismatch or worker
+failure exits nonzero. Skips count unsupported script commands, including
+text-format parser tests and stack-exhaustion assertions. A validation pass
+means Wardite rejected the module during validation. The upstream diagnostic
+is included for context.
 
 ### Native executable with Spinel
 
