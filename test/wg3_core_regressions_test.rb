@@ -40,4 +40,15 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
       Wardite::BinaryLoader.code_body(StringIO.new([0x28, 0x80, 0x02, 0, 0x0b].pack('C*')))
     end
   end
+
+  test 'align.wast 1017 checks alignment before an oversized memory32 offset' do
+    # Encode a u64::MAX offset directly so WAT parser limits cannot narrow it.
+    body = [0, 0x41, 0, 0x28, 63, *([0xff] * 9), 1, 0x1a, 0x0b]
+    bytes = "\0asm\1\0\0\0".b + [1, 4, 1, 0x60, 0, 0, 3, 2, 1, 0,
+      5, 3, 1, 0, 1, 10, body.size + 2, 1, body.size, *body].pack('C*')
+    error = assert_raise(Wardite::Efflorescence::TranslationError) do
+      Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
+    end
+    assert_include error.message, 'invalid memory alignment'
+  end
 end
