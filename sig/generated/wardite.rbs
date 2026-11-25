@@ -119,6 +119,11 @@ module Wardite
     # @rbs return: void
     def initialize: (Instance inst) -> void
 
+    # @rbs reference: globalValue
+    # @rbs inst: Instance
+    # @rbs return: WasmFunction | ExternalFunction
+    def table_function: (globalValue reference, Instance inst) -> (WasmFunction | ExternalFunction)
+
     # @rbs idx: Integer
     def []: (Integer idx) -> untyped
   end

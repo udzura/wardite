@@ -185,10 +185,13 @@ module Wardite
       active = segments.select { |segment| segment.mode == :active }
       return if active.empty?
       memory = store.memories[0] || raise(LoadError, "active data segment requires memory 0")
-      active.each do |segment|
-        raise LoadError, "active data segment out of bounds" unless memory.range?(segment.offset, segment.data.bytesize)
+      offsets = active.map do |segment|
+        expression = segment.offset || raise(LoadError, "missing active segment offset")
+        offset = expression.offset(self, store.globals)
+        raise LoadError, "active data segment out of bounds" unless memory.range?(offset, segment.data.bytesize)
+        offset
       end
-      active.each { |segment| memory.write_bytes(segment.offset, segment.data) }
+      active.each_with_index { |segment, i| memory.write_bytes(offsets.fetch(i), segment.data) }
     end
 
     # @rbs return: void
@@ -460,7 +463,7 @@ module Wardite
             g2.type = g.type
             g2.mutable = g.mutable
             g2.shared = g.shared
-            g2.value = BinaryLoader.decode_global_expr(g.instructions, @globals)
+            g2.value = g.expression.evaluate(inst, @globals)
           end
         end
       end
@@ -475,6 +478,14 @@ module Wardite
             raise LoadError, "empty limits"
           end
           table = Table.new(typ, init, max)
+          initializer = table_section.initializers[idx]
+          if initializer
+            reference = initializer.evaluate(inst, @globals)
+            if reference
+              function = table_function(reference, inst)
+              init.times { |i| table.set(i, function) }
+            end
+          end
           @tables << table
         end
       end
@@ -486,13 +497,14 @@ module Wardite
         end
         elem_section.table_indices.each_with_index do |tidx, idx|
           table = @tables[tidx] || raise(LoadError, "invalid table index #{tidx}")
-          offset = elem_section.table_offsets.fetch(idx)
+          offset = elem_section.table_offsets.fetch(idx).offset(inst, @globals)
+          expressions = elem_section.expressions.fetch(idx)
           indices = elem_section.element_indices.fetch(idx)
           element_type = elem_section.element_types.fetch(idx)
           unless Efflorescence::FunctionEntry.function_ref?(element_type) && Efflorescence::FunctionEntry.assignable?(element_type, table.type)
             raise LoadError, "element segment requires a funcref table"
           end
-          if offset < 0 || offset > table.current || indices.size > table.current - offset
+          if offset < 0 || offset > table.current || indices.size + expressions.size > table.current - offset
             raise LoadError, "active element segment out of bounds"
           end
           indices.each_with_index do |function_index, position|
@@ -506,9 +518,22 @@ module Wardite
             end
             table.set(offset + position, function)
           end
+          expressions.each_with_index do |expression, position|
+            reference = expression.evaluate(inst, @globals)
+            table.set(offset + position, reference ? table_function(reference, inst) : nil)
+          end
           @elements << [table.type, offset, indices]
         end
       end
+    end
+
+    # @rbs reference: globalValue
+    # @rbs inst: Instance
+    # @rbs return: WasmFunction | ExternalFunction
+    def table_function(reference, inst)
+      raise InvalidInitializer, "expected function reference" unless reference.is_a?(FunctionReference)
+      raise LoadError, "foreign function table initializer is unsupported" unless reference.instance.equal?(inst)
+      @funcs.fetch(reference.index)
     end
 
     # @rbs idx: Integer

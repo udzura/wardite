@@ -36,6 +36,7 @@ module Wardite
           @function_types = indices.map { |index| @type_keys.fetch(index) }
           elements = instance.elem_section
           @declared_functions = elements ? elements.declared_functions + elements.element_indices.flatten : []
+          @declared_functions.concat(instance.code_section&.initializer_functions || [])
           instance.export_section.exports.each_value { |desc| @declared_functions << desc.index if desc.kind == 0 }
           @tags = instance.tags.dup
           @has_memory = !instance.store.memories.empty?

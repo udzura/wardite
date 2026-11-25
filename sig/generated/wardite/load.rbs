@@ -33,8 +33,45 @@ module Wardite
     def initialize: () -> void
   end
 
+  class ConstantExpression
+    include ValueHelper
+
+    # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    def initialize: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] instructions) -> untyped
+
+    # @rbs instance: Instance
+    # @rbs globals: Array[Global]
+    # @rbs return: Integer
+    def offset: (Instance instance, Array[Global] globals) -> Integer
+
+    # @rbs instance: Instance
+    # @rbs globals: Array[Global]
+    # @rbs return: globalValue
+    def evaluate: (Instance instance, Array[Global] globals) -> globalValue
+  end
+
+  # Only declarations visible at this point in section order may be referenced.
+  class InitializerContext
+    attr_reader globals: Array[[ Symbol, bool ]]
+
+    attr_reader function_types: Array[Integer]
+
+    attr_reader declared_functions: Array[Integer]
+
+    attr_accessor types: TypeSection
+
+    def initialize: () -> void
+
+    # @rbs sbuf: StringIO
+    # @rbs expected: Symbol
+    # @rbs return: ConstantExpression
+    def read: (StringIO sbuf, Symbol expected) -> ConstantExpression
+  end
+
   class TableSection < Section
     attr_accessor table_types: Array[Symbol]
+
+    attr_reader initializers: Array[ConstantExpression?]
 
     attr_accessor table_limits: Array[[ Integer, Integer? ]]
 
@@ -58,7 +95,7 @@ module Wardite
       # TODO: unused in wasm 1.0 spec?
       attr_accessor shared: bool
 
-      attr_accessor instructions: Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]]
+      attr_accessor expression: ConstantExpression
 
       # @rbs &blk: (Global) -> void
       # @rbs return: void
@@ -85,7 +122,9 @@ module Wardite
 
     attr_reader declared_functions: Array[Integer]
 
-    attr_accessor table_offsets: Array[Integer]
+    attr_reader expressions: Array[Array[ConstantExpression]]
+
+    attr_accessor table_offsets: Array[ConstantExpression]
 
     # Rows are also shared with Store#elements. Keep the precise RBS type via
     # an alias rather than pinning Spinel's specialized nested-array layout.
@@ -171,6 +210,8 @@ module Wardite
     # accessed the mutable decoded bodies or edited the store.
     attr_accessor source_bytes: String?
 
+    attr_reader initializer_functions: Array[Integer]
+
     attr_accessor func_codes: Array[CodeBody]
 
     # @rbs return: void
@@ -183,7 +224,7 @@ module Wardite
 
       attr_accessor mem_index: Integer
 
-      attr_accessor offset: Integer
+      attr_accessor offset: ConstantExpression?
 
       attr_accessor data: String
 
@@ -326,23 +367,23 @@ module Wardite
     def self.start_section: () -> StartSection
 
     # @rbs return: ElemSection
-    # @rbs types: TypeSection
-    def self.elem_section: (TypeSection types) -> ElemSection
+    # @rbs context: InitializerContext
+    def self.elem_section: (InitializerContext context) -> ElemSection
 
     # @rbs sbuf: StringIO
     # @rbs return: [Symbol, bool]
     def self.read_global_type: (StringIO sbuf) -> [ Symbol, bool ]
 
-    # @rbs imports: Array[ImportSection::GlobalImport]
+    # @rbs context: InitializerContext
     # @rbs return: GlobalSection
-    def self.global_section: (Array[ImportSection::GlobalImport] imports) -> GlobalSection
+    def self.global_section: (InitializerContext context) -> GlobalSection
 
     # @rbs return: FunctionSection
     def self.function_section: () -> FunctionSection
 
     # @rbs return: TableSection
-    # @rbs types: TypeSection
-    def self.table_section: (TypeSection types) -> TableSection
+    # @rbs context: InitializerContext
+    def self.table_section: (InitializerContext context) -> TableSection
 
     # @rbs defer_code: bool
     # @rbs keep_code: bool
@@ -390,23 +431,11 @@ module Wardite
     def self.resolve_spec: (Integer opcode, File | StringIO buf) -> Op::DecodeSpec
 
     # @rbs return: DataSection
-    def self.data_section: () -> DataSection
+    # @rbs context: InitializerContext
+    def self.data_section: (InitializerContext context) -> DataSection
 
     # @rbs return: DataCountSection
     def self.data_count_section: () -> DataCountSection
-
-    # @rbs sbuf: StringIO
-    # @rbs return: String
-    def self.fetch_insn_while_end: (StringIO sbuf) -> String
-
-    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
-    # @rbs return: Integer
-    def self.decode_expr: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] ops) -> Integer
-
-    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
-    # @rbs globals: Array[Global]
-    # @rbs return: globalValue
-    def self.decode_global_expr: (Array[[ Symbol, Symbol, Array[operandItem], Integer?, Integer? ]] ops, Array[Global] globals) -> globalValue
 
     # @rbs return: ExportSection
     def self.export_section: () -> ExportSection

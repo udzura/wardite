@@ -51,8 +51,127 @@ module Wardite
     end
   end
 
+  class ConstantExpression
+    include ValueHelper
+
+    # @rbs instructions: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+    def initialize(instructions)
+      @instructions = instructions
+    end
+
+    # @rbs instance: Instance
+    # @rbs globals: Array[Global]
+    # @rbs return: Integer
+    def offset(instance, globals)
+      value = evaluate(instance, globals)
+      raise InvalidInitializer, "expected i32 offset" unless value.is_a?(I32)
+      value.value
+    end
+
+    # @rbs instance: Instance
+    # @rbs globals: Array[Global]
+    # @rbs return: globalValue
+    def evaluate(instance, globals)
+      stack = [] #: Array[globalValue]
+      @instructions.each do |op|
+        arg = op[2][0]
+        case op[1]
+        when :i32_const, :i64_const
+          raise InvalidInitializer, "invalid integer constant" unless arg.is_a?(Integer)
+          stack << (op[1] == :i32_const ? I32(arg) : I64(arg))
+        when :f32_const, :f64_const
+          raise InvalidInitializer, "invalid float constant" unless arg.is_a?(FloatImmediate)
+          stack << (op[1] == :f32_const ? F32.from_bits(arg.bits) : F64.from_bits(arg.bits))
+        when :ref_null then stack << nil
+        when :ref_func
+          raise InvalidInitializer, "invalid function index" unless arg.is_a?(Integer)
+          stack << FunctionReference.new(instance, arg)
+        when :global_get
+          raise InvalidInitializer, "invalid global index" unless arg.is_a?(Integer)
+          stack << globals.fetch(arg).value
+        when :i32_add, :i32_sub, :i32_mul
+          right, left = stack.pop, stack.pop
+          raise InvalidInitializer, "expected i32 operands" unless left.is_a?(I32) && right.is_a?(I32)
+          a, b = left.value, right.value
+          stack << I32(op[1] == :i32_add ? a + b : op[1] == :i32_sub ? a - b : a * b)
+        when :i64_add, :i64_sub, :i64_mul
+          right, left = stack.pop, stack.pop
+          raise InvalidInitializer, "expected i64 operands" unless left.is_a?(I64) && right.is_a?(I64)
+          a, b = left.value_s, right.value_s
+          bits = case op[1]
+          when :i64_add then Efflorescence::I64Arithmetic.add_i64(a, b)
+          when :i64_sub then Efflorescence::I64Arithmetic.subtract_i64(a, b)
+          else Efflorescence::I64Arithmetic.multiply_i64(a, b)
+          end
+          stack << I64(bits)
+        end
+      end
+      stack.fetch(0)
+    end
+  end
+
+  # Only declarations visible at this point in section order may be referenced.
+  class InitializerContext
+    attr_reader :globals #: Array[[Symbol, bool]]
+    attr_reader :function_types #: Array[Integer]
+    attr_reader :declared_functions #: Array[Integer]
+    attr_accessor :types #: TypeSection
+
+    def initialize #: void
+      @globals = []
+      @function_types = []
+      @declared_functions = []
+      @types = TypeSection.new
+    end
+
+    # @rbs sbuf: StringIO
+    # @rbs expected: Symbol
+    # @rbs return: ConstantExpression
+    def read(sbuf, expected)
+      ops = BinaryLoader.decode_body(sbuf, expression: true).instructions
+      stack = [] #: Array[Symbol]
+      ops.each do |op|
+        case op[1]
+        when :global_get
+          index = op[2].fetch(0)
+          raise LoadError, "invalid global index operand" unless index.is_a?(Integer)
+          global = @globals[index]
+          raise InvalidInitializer, "unknown global #{index}" unless global
+          raise InvalidInitializer, "constant expression required" if global.fetch(1)
+          stack << global.fetch(0)
+        when :ref_func
+          index = op[2].fetch(0)
+          raise InvalidModule, "unknown function" unless index.is_a?(Integer)
+          sig = @function_types[index]
+          key = @types.type_keys[sig] if sig
+          raise InvalidModule, "unknown function" unless key
+          stack << "ref:#{key}".to_sym
+          @declared_functions << index
+        when :ref_null
+          heap = op[2].fetch(0)
+          raise InvalidInitializer, "expected heap type" unless heap.is_a?(Integer)
+          stack << BinaryLoader.reference_type(0x63, heap, @types)
+        when :i32_const, :i64_const, :f32_const, :f64_const
+          stack << op[1].to_s.delete_suffix("_const").to_sym
+        when :i32_add, :i32_sub, :i32_mul, :i64_add, :i64_sub, :i64_mul
+          type = op[1].to_s.start_with?("i32") ? :i32 : :i64
+          raise InvalidInitializer, "global initializer type mismatch" unless stack.pop == type && stack.pop == type
+          stack << type
+        when :end
+          raise InvalidInitializer, "global initializer type mismatch" unless stack.size == 1 && Efflorescence::FunctionEntry.assignable?(stack.fetch(0), expected)
+        else
+          raise InvalidInitializer, "constant expression required"
+        end
+      end
+
+      ConstantExpression.new(ops)
+    end
+  end
+
   class TableSection < Section
     attr_accessor :table_types #: Array[Symbol]
+
+    attr_reader :initializers #: Array[ConstantExpression?]
 
     attr_accessor :table_limits #: Array[[Integer, Integer?]]
 
@@ -62,6 +181,7 @@ module Wardite
       self.code = 0x4
 
       @table_types = []
+      @initializers = []
       @table_limits = []
     end
   end
@@ -87,7 +207,7 @@ module Wardite
       # TODO: unused in wasm 1.0 spec?
       attr_accessor :shared #: bool
 
-      attr_accessor :instructions #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
+      attr_accessor :expression #: ConstantExpression
 
       # @rbs &blk: (Global) -> void
       # @rbs return: void
@@ -126,7 +246,8 @@ module Wardite
 
     attr_reader :declared_functions #: Array[Integer]
 
-    attr_accessor :table_offsets #: Array[Integer]
+    attr_reader :expressions #: Array[Array[ConstantExpression]]
+    attr_accessor :table_offsets #: Array[ConstantExpression]
 
     # Rows are also shared with Store#elements. Keep the precise RBS type via
     # an alias rather than pinning Spinel's specialized nested-array layout.
@@ -140,6 +261,7 @@ module Wardite
 
       @table_indices = []
       @table_offsets = []
+      @expressions = []
       @declared_functions = []
       @element_types = []
       @element_indices = []
@@ -289,6 +411,7 @@ module Wardite
     # Keep the code section for on-demand MIR inspection after the host has
     # accessed the mutable decoded bodies or edited the store.
     attr_accessor :source_bytes #: String?
+    attr_reader :initializer_functions #: Array[Integer]
     attr_accessor :func_codes #:Array[CodeBody]
 
     # @rbs return: void
@@ -297,6 +420,7 @@ module Wardite
       self.code = 0xa
 
       @source_bytes = nil
+      @initializer_functions = []
       @func_codes = []
     end
   end
@@ -307,7 +431,7 @@ module Wardite
 
       attr_accessor :mem_index #: Integer
       
-      attr_accessor :offset #: Integer
+      attr_accessor :offset #: ConstantExpression?
 
       attr_accessor :data #: String
 
@@ -554,8 +678,7 @@ module Wardite
     # @rbs artifact: Efflorescence::MIRArtifact?
     def self.sections(defer_code = false, keep_code = false, artifact = nil)
       sections = [] #: Array[Section]
-      types = TypeSection.new
-      globals = [] #: Array[ImportSection::GlobalImport]
+      context = InitializerContext.new
 
       loop do
         code = @buf.getbyte
@@ -563,36 +686,41 @@ module Wardite
 
         section = case code
           when Wardite::SectionType
-            types = type_section
+            context.types = type_section
           when Wardite::SectionImport
             imports = import_section
-            globals = imports.global_imports
+            imports.global_imports.each { |desc| context.globals << [desc.type, desc.mutable] }
+            context.function_types.concat(imports.imports.map(&:sig_index))
             imports
           when Wardite::SectionTag
             tag_section
           when Wardite::SectionFunction
-            function_section
+            functions = function_section
+            context.function_types.concat(functions.func_indices)
+            functions
           when Wardite::SectionTable
-            table_section(types)
+            table_section(context)
           when Wardite::SectionMemory
             memory_section
           when Wardite::SectionGlobal
-            global_section(globals)
+            global_section(context)
           when Wardite::SectionExport
             export_section
           when Wardite::SectionStart
             start_section
           when Wardite::SectionElement
-            elem_section(types)
+            elem_section(context)
           when Wardite::SectionCode
             source = @buf
-            if artifact && source.is_a?(File)
+            code_section_data = if artifact && source.is_a?(File)
               artifact.code_section(source, fetch_uleb128(source))
             else
               code_section(defer_code, keep_code)
             end
+            code_section_data.initializer_functions.concat(context.declared_functions)
+            code_section_data
           when Wardite::SectionData
-            data_section
+            data_section(context)
           when Wardite::Const::SectionDataCount
             data_count_section
           when Wardite::SectionCustom
@@ -768,8 +896,9 @@ module Wardite
     end
 
     # @rbs return: ElemSection
-    # @rbs types: TypeSection
-    def self.elem_section(types)
+    # @rbs context: InitializerContext
+    def self.elem_section(context)
+      types = context.types
       dest = ElemSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
@@ -783,27 +912,28 @@ module Wardite
           fetch_uleb128(sbuf).times { dest.declared_functions << fetch_uleb128(sbuf) }
           next
         end
-        unless etype == 0 || etype == 2 || etype == 6
+        unless etype == 0 || etype == 2 || etype == 4 || etype == 6
           raise LoadError, "unsupported element segment kind #{etype}"
         end
-        dest.table_indices << (etype == 0 ? 0 : fetch_uleb128(sbuf))
+        dest.table_indices << (etype == 0 || etype == 4 ? 0 : fetch_uleb128(sbuf))
 
-        code = fetch_insn_while_end(sbuf)
-        ops = code_body(StringIO.new(code))
-        dest.table_offsets << decode_expr(ops)
+        dest.table_offsets << context.read(sbuf, :i32)
         if etype == 2 && assert_byte(sbuf) != 0
           raise LoadError, "unsupported element type"
         end
 
         elms = [] #: Array[Integer]
-        dest.element_types << (etype == 6 ? read_signature_type(sbuf, types) : :funcref)
+        type = etype == 6 ? read_signature_type(sbuf, types) : :funcref
+        dest.element_types << type
+        expressions = [] #: Array[ConstantExpression]
         fetch_uleb128(sbuf).times do
-          if etype == 6
-            raise LoadError, "expected ref.func element initializer" unless assert_byte(sbuf) == 0xd2
+          if etype == 4 || etype == 6
+            expressions << context.read(sbuf, type)
+          else
+            elms << fetch_uleb128(sbuf)
           end
-          elms << fetch_uleb128(sbuf)
-          raise InvalidInitializer, "constant expression requires end" if etype == 6 && assert_byte(sbuf) != 0x0b
         end
+        dest.expressions << expressions
         dest.element_indices << elms
       end
       raise LoadError, "trailing element section data" unless sbuf.eof?
@@ -820,9 +950,9 @@ module Wardite
       [type, mut == 1]
     end
 
-    # @rbs imports: Array[ImportSection::GlobalImport]
+    # @rbs context: InitializerContext
     # @rbs return: GlobalSection
-    def self.global_section(imports)
+    def self.global_section(context)
       dest = GlobalSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
@@ -831,39 +961,13 @@ module Wardite
       len = fetch_uleb128(sbuf)
       len.times do |i|
         gtype, mutable = read_global_type(sbuf)
-        ops = decode_body(sbuf, expression: true).instructions
-        stack = [] #: Array[Symbol]
-        ops.each do |op|
-          case op[1]
-          when :global_get
-            index = op[2].fetch(0)
-            raise LoadError, "invalid global index operand" unless index.is_a?(Integer)
-            global = index < imports.size ? imports[index] : dest.globals[index - imports.size]
-            raise InvalidInitializer, "unknown global #{index}" unless global
-            raise InvalidInitializer, "constant expression required" if global.mutable
-            stack << global.type
-          when :ref_null
-            heap = op[2].fetch(0)
-            raise InvalidInitializer, "unsupported reference initializer" unless heap == -16 || heap == -17
-            stack << (heap == -16 ? :funcref : :externref)
-          when :i32_const, :i64_const, :f32_const, :f64_const
-            stack << op[1].to_s.delete_suffix("_const").to_sym
-          when :i32_add, :i32_sub, :i32_mul, :i64_add, :i64_sub, :i64_mul
-            type = op[1].to_s.start_with?("i32") ? :i32 : :i64
-            raise InvalidInitializer, "global initializer type mismatch" unless stack.pop == type && stack.pop == type
-            stack << type
-          when :end
-            raise InvalidInitializer, "global initializer type mismatch" unless stack == [gtype]
-          else
-            raise InvalidInitializer, "constant expression required"
-          end
-        end
-
+        expression = context.read(sbuf, gtype)
+        context.globals << [gtype, mutable]
         global = GlobalSection::Global.new do |g|
           g.type = gtype
           g.mutable = mutable
           g.shared = false # always
-          g.instructions = ops
+          g.expression = expression
         end
         dest.globals << global
       end
@@ -886,8 +990,9 @@ module Wardite
     end
 
     # @rbs return: TableSection
-    # @rbs types: TypeSection
-    def self.table_section(types)
+    # @rbs context: InitializerContext
+    def self.table_section(context)
+      types = context.types
       dest = TableSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
@@ -895,6 +1000,11 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
+        explicit = sbuf.string.getbyte(sbuf.pos) == 0x40
+        if explicit
+          assert_byte(sbuf)
+          raise LoadError, "invalid table initializer prefix" unless assert_byte(sbuf).zero?
+        end
         type = read_signature_type(sbuf, types)
         raise InvalidModule, "expected table reference type" unless type == :externref || Efflorescence::FunctionEntry.function_ref?(type)
         dest.table_types << type
@@ -906,6 +1016,7 @@ module Wardite
           max = fetch_uleb128(sbuf)
         end
         dest.table_limits << [min, max]
+        dest.initializers << (explicit ? context.read(sbuf, type) : nil)
       end
       dest
     end
@@ -1169,7 +1280,8 @@ module Wardite
     private_class_method :resolve_spec
 
     # @rbs return: DataSection
-    def self.data_section
+    # @rbs context: InitializerContext
+    def self.data_section(context)
       dest = DataSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
@@ -1183,15 +1295,13 @@ module Wardite
           # Active explicit-memory segments still target memory 0 in M2.
           memory_index = data_type == 2 ? fetch_uleb128(sbuf) : 0
           raise LoadError, "only memory 0 is supported" unless memory_index == 0
-          raise LoadError, "data offset requires i32.const" unless assert_byte(sbuf) == 0x41
-          offset = fetch_sleb128(sbuf, width: 32)
-          raise LoadError, "constant expression requires end" unless assert_byte(sbuf) == 0x0b
+          offset = context.read(sbuf, :i32)
           len = fetch_uleb128(sbuf)
           data = assert_read(sbuf, len).b
           segment = DataSection::Segment.new do |seg|
             seg.mode = :active
             seg.mem_index = memory_index
-            seg.offset = offset & 0xffffffff
+            seg.offset = offset
             seg.data = data
           end
           dest.segments << segment
@@ -1202,7 +1312,7 @@ module Wardite
           segment = DataSection::Segment.new do |seg|
             seg.mode = :passive
             seg.mem_index = 0 # unused
-            seg.offset = 0 # unused
+            seg.offset = nil
             seg.data = data
           end
           dest.segments << segment
@@ -1223,82 +1333,6 @@ module Wardite
       raise LoadError, "trailing data count bytes" unless sbuf.eof?
       dest.size = size
       dest
-    end
-
-    # @rbs sbuf: StringIO
-    # @rbs return: String
-    def self.fetch_insn_while_end(sbuf)
-      first = sbuf.pos
-      opcode = assert_byte(sbuf)
-      case opcode
-      when 0x41 then fetch_sleb128(sbuf, width: 32)
-      when 0x42 then fetch_sleb128(sbuf, width: 64)
-      when 0x43 then assert_read(sbuf, 4)
-      when 0x44 then assert_read(sbuf, 8)
-      else raise LoadError, "unsupported constant expression"
-      end
-      raise LoadError, "constant expression requires end" unless assert_byte(sbuf) == 0x0b
-      length = sbuf.pos - first
-      sbuf.pos = first
-      assert_read(sbuf, length)
-    end
-
-    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
-    # @rbs return: Integer
-    def self.decode_expr(ops)
-      # sees first opcode
-      op = ops.first
-      if !op
-        raise LoadError, "empty opcodes"
-      end
-      case op[1]
-      when :i32_const
-        arg = op[2][0]
-        if !arg.is_a?(Integer)
-          raise "Invalid definition of operand"
-        end
-        return arg
-      else
-        raise "Unimplemented offset op: #{op.inspect}"
-      end
-    end
-
-    # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
-    # @rbs globals: Array[Global]
-    # @rbs return: globalValue
-    def self.decode_global_expr(ops, globals)
-      stack = [] #: Array[globalValue]
-      ops.each do |op|
-        arg = op[2][0]
-        case op[1]
-        when :i32_const, :i64_const
-          raise InvalidInitializer, "invalid integer constant" unless arg.is_a?(Integer)
-          stack << (op[1] == :i32_const ? I32(arg) : I64(arg))
-        when :f32_const, :f64_const
-          raise InvalidInitializer, "invalid float constant" unless arg.is_a?(FloatImmediate)
-          stack << (op[1] == :f32_const ? F32.from_bits(arg.bits) : F64.from_bits(arg.bits))
-        when :ref_null then stack << nil
-        when :global_get
-          raise InvalidInitializer, "invalid global index" unless arg.is_a?(Integer)
-          stack << globals.fetch(arg).value
-        when :i32_add, :i32_sub, :i32_mul
-          right, left = stack.pop, stack.pop
-          raise InvalidInitializer, "expected i32 operands" unless left.is_a?(I32) && right.is_a?(I32)
-          a, b = left.value, right.value
-          stack << I32(op[1] == :i32_add ? a + b : op[1] == :i32_sub ? a - b : a * b)
-        when :i64_add, :i64_sub, :i64_mul
-          right, left = stack.pop, stack.pop
-          raise InvalidInitializer, "expected i64 operands" unless left.is_a?(I64) && right.is_a?(I64)
-          a, b = left.value_s, right.value_s
-          bits = case op[1]
-          when :i64_add then Efflorescence::I64Arithmetic.add_i64(a, b)
-          when :i64_sub then Efflorescence::I64Arithmetic.subtract_i64(a, b)
-          else Efflorescence::I64Arithmetic.multiply_i64(a, b)
-          end
-          stack << I64(bits)
-        end
-      end
-      stack.fetch(0)
     end
 
     # @rbs return: ExportSection
