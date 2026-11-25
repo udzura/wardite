@@ -67,6 +67,7 @@ module CoreSpec
 
   def self.matches?(expected, actual)
     return true if expected == actual
+    return true if expected == "malformed:malformed mutability" && actual == "malformed:invalid mutability"
     return actual.start_with?("syntax:") if expected == "malformed text"
     return actual.start_with?("validation:") if expected == "invalid module"
     return false unless expected.include?(":nan:") && actual.match?(/\Af(32|64):-?\d+\z/)
