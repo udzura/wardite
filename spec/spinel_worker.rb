@@ -129,7 +129,8 @@ end
 worker = SpecWorker.new
 File.open(ARGV.fetch(1), "w") do |output|
   File.foreach(ARGV.fetch(0)) do |row|
-    output.puts worker.execute(row.chomp.split("\t")).gsub("\n", " ")
+    fields = row.chomp.split("\t", -1).map { |hex| [hex].pack("H*").force_encoding("UTF-8") }
+    output.puts worker.execute(fields).unpack1("H*")
     output.flush
   end
 end

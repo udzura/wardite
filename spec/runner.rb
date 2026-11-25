@@ -106,13 +106,13 @@ module CoreSpec
       if cmd["module_type"] == "text" && op != "module"
         return unless VERSION == "wg-3.0" && op == "assert_malformed"
         file = cmd.fetch("filename")
-        message, status = Open3.capture2e("wat2wasm", "--enable-all", "--no-check", file, "-o", "quoted.wasm", chdir: dir)
-        diagnostic = message.lines.find { |line| line.include?("error:") }.to_s
+        message, status = Open3.capture2e("wasm-tools", "parse", file, "-o", "quoted.wasm", chdir: dir)
+        diagnostic = message.scrub.lines.find { |line| line.match?(/error:/i) }.to_s
         # WAST diagnostics illustrate the rejection. WABT uses different wording.
         actual = if status.success?
           "parsed"
-        elsif status.exitstatus == 1 && diagnostic.match?(/:\d+:\d+: error:/)
-          "syntax:#{diagnostic.split('error:', 2).last.strip}"
+        elsif status.exitstatus == 1 && !diagnostic.empty?
+          "syntax:#{diagnostic.strip}"
         else
           "converter failed: #{message.lines.first.to_s.strip}"
         end
@@ -124,7 +124,7 @@ module CoreSpec
       when "assert_invalid" then ["invalid", "invalid module"]
       else ["malformed", "malformed:#{cmd.fetch('text')}"]
       end
-      [[operation, current, File.join(dir, cmd.fetch("filename"))], expected]
+      [[operation, current, File.join(dir, cmd.fetch("binary_filename") { cmd.fetch("filename") })], expected]
     when "action", "assert_return", "assert_trap", "assert_exception"
       action = cmd.fetch("action", {})
       return unless %w[invoke get].include?(action["type"])
@@ -191,9 +191,9 @@ module CoreSpec
     end
     plan = File.join(dir, "plan")
     output = File.join(dir, "results")
-    File.write(plan, rows.compact.filter_map { |fields, _| fields.join("\t") + "\n" if fields }.join)
+    File.write(plan, rows.compact.filter_map { |fields, _| fields.map { |field| field.unpack1("H*") }.join("\t") + "\n" if fields }.join)
     ok = system({"WARDITE_MIR_JIT" => "0"}, worker, plan, output)
-    results = File.exist?(output) ? File.readlines(output, chomp: true) : []
+    results = File.exist?(output) ? File.readlines(output, chomp: true).map { |line| [line].pack("H*").force_encoding("UTF-8").scrub } : []
     cursor = 0
     counts = Hash.new(0)
     cases.zip(rows).each_with_index do |(cmd, row), i|
