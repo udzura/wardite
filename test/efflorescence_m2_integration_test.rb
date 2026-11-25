@@ -86,6 +86,7 @@ class EfflorescenceM2IntegrationTest < Test::Unit::TestCase
       assert_raise(Wardite::LoadError) { Wardite::BinaryLoader.load_from_buffer(StringIO.new(bad), enable_wasi: false, engine: :efflorescence) }
     end
     # A valid multi-memory memarg flag cannot be mistaken for an alignment.
-    assert_raise(Wardite::LoadError) { Wardite::BinaryLoader.code_body(StringIO.new([0x28,0x40,0,0,0x0b].pack('C*'))) }
+    body = Wardite::BinaryLoader.code_body(StringIO.new([0x28,0x40,0,0,0x0b].pack('C*')))
+    assert_equal [0, 0], body.first[2]
   end
 end

@@ -972,8 +972,11 @@ module Wardite
             operand << byte
           when :u32
             value = fetch_uleb128(buf)
-            if operand.empty? && opcode >= 0x28 && opcode <= 0x3e && value >= 64
-              raise LoadError, "multi-memory memargs are not supported"
+            if operand.empty? && opcode.between?(0x28, 0x3e) && value >= 64
+              raise LoadError, "malformed memop flags" if value >= 128
+              memory = fetch_uleb128(buf)
+              raise InvalidModule, "unknown memory #{memory}" unless memory.zero?
+              value &= 63
             end
             operand << value
           when :u32_vec
