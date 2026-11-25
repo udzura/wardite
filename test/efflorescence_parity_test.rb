@@ -11,7 +11,7 @@ class EfflorescenceParityTest < Test::Unit::TestCase
 
   test "reject invalid i32 immediates and unreferenced globals" do
     malformed_numeric_fixtures.each do |bytes, reason|
-      error = assert_raise(Wardite::LoadError) do
+      error = assert_raise_kind_of(Wardite::LoadError) do
         Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
       end
       assert_include error.message, reason

@@ -67,7 +67,7 @@ class EfflorescenceM2GlobalsTest < Test::Unit::TestCase
     assert_raise(E::TranslationError) do
       load_efflorescence('(module (global (mut f64) (f64.const 0)) (func unreachable i32.const 0 global.set 0))')
     end
-    assert_raise(Wardite::LoadError) do
+    assert_raise(Wardite::InvalidInitializer) do
       load_efflorescence('(module (global i32 (i64.const 0)) (func global.get 0 drop))')
     end
   end

@@ -880,6 +880,7 @@ module Wardite
 
   class GenericError < StandardError; end
   class LoadError < StandardError; end
+  class InvalidInitializer < LoadError; end
   class ArgumentError < StandardError; end
   class EvalError < StandardError; end
   class Unreachable < StandardError; end
