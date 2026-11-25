@@ -413,9 +413,6 @@ module Wardite
           when :block, :loop, :if, :try_table
             block = operands[0]
             fail_translation("expected block signature") unless block.is_a?(Wardite::Block)
-            if code == :loop && !block.parameter_types.empty?
-              raise UnsupportedFeature, context("loop parameters are not supported")
-            end
             unless (block.parameter_types + block.result_types).all? { |type| FunctionEntry.numeric_type?(type) || FunctionEntry.exception_ref?(type) || FunctionEntry.function_ref?(type) }
               raise UnsupportedFeature, context("unsupported block signature")
             end
@@ -425,6 +422,11 @@ module Wardite
               value = pop_typed(type)
               value < 0 ? register(type) : value
             end.reverse
+            if code == :loop && !parameters.empty?
+              slots = block.parameter_types.map { |type| register(type) }
+              parallel_copy(slots, parameters) if @reachable
+              parameters = slots
+            end
             control = new_control(code, block.result_types)
             control.parameters.concat(parameters)
             @stack.concat(parameters)
@@ -553,7 +555,7 @@ module Wardite
                 mark_unreachable
               else
                 types.size.times { pop_value }
-                @stack.concat(target.result_registers) unless target.kind == :loop
+                @stack.concat(target.kind == :loop ? target.parameters : target.result_registers)
               end
               next
             end
@@ -894,7 +896,7 @@ module Wardite
       # @rbs target: Wardite::Efflorescence::Translator::Control
       # @rbs return: Array[Symbol]
       def label_types(target)
-        target.kind == :loop ? [] : target.result_types
+        target.kind == :loop ? target.parameters.map { |slot| type_of(slot) } : target.result_types
       end
 
       # @rbs types: Array[Symbol]
@@ -921,7 +923,7 @@ module Wardite
       # @rbs condition: Integer
       # @rbs return: void
       def branch(target, sources, condition = -1)
-        parallel_copy(target.result_registers, sources) unless target.kind == :loop
+        parallel_copy(target.kind == :loop ? target.parameters : target.result_registers, sources)
         emit([Opcode::EH_TRIM, target.handler_depth]) if @handler_depth != target.handler_depth
         pc = target.kind == :loop ? target.start_pc : -1
         position = emit(condition < 0 ? [Opcode::BR, pc] : [Opcode::BR_IF, condition, pc])
@@ -950,7 +952,7 @@ module Wardite
           reference = kind == 1 || kind == 3
           types << :non_null_exn if reference
           fail_translation("catch payload/label type mismatch") unless types.size == label_types(target).size && types.each_with_index.all? { |type, i| FunctionEntry.assignable?(type, label_types(target).fetch(i)) }
-          destinations = target.kind == :loop ? [] : target.result_registers.dup #: Array[Integer]
+          destinations = (target.kind == :loop ? target.parameters : target.result_registers).dup #: Array[Integer]
           ref = reference ? (destinations.pop || raise(TranslationError, "missing reference result")) : -1
           entry = CatchTarget.new(tag_index, destinations, ref, target.kind == :loop ? target.start_pc : -1, target.handler_depth)
           if target.kind != :loop
