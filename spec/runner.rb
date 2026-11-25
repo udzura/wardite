@@ -67,6 +67,7 @@ module CoreSpec
 
   def self.matches?(expected, actual)
     return true if expected == actual
+    return true if expected == "trap:uninitialized element" && actual.match?(/\Atrap:uninitialized element \d+\z/)
     return true if expected == "malformed:malformed mutability" && actual == "malformed:invalid mutability"
     return actual.start_with?("syntax:") if expected == "malformed text"
     return actual.start_with?("validation:") if expected == "invalid module"
@@ -82,9 +83,14 @@ module CoreSpec
   def self.command_row(cmd, current, dir)
     op = cmd.fetch("type")
     case op
+    when "assert_uninstantiable"
+      [["instantiate", current, File.join(dir, cmd.fetch("filename"))], "trap:#{cmd.fetch('text')}"]
     when "register"
       [["register", cmd.fetch("name", current), cmd.fetch("as")], "registered"]
     when "module", "assert_invalid", "assert_malformed", "assert_unlinkable"
+      if op == "assert_invalid" && cmd["module_type"] == "text" && cmd["binary_filename"]
+        return [["invalid", current, File.join(dir, cmd.fetch("binary_filename"))], "invalid module"]
+      end
       if cmd["module_type"] == "text" && op != "module"
         return unless VERSION == "wg-3.0" && op == "assert_malformed"
         file = cmd.fetch("filename")

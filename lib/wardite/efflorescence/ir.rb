@@ -223,6 +223,13 @@ module Wardite
       RESULT_GET = 204
       REF_IS_NULL = 205
       TABLE_GET = 206
+      TABLE_SET = 207
+      TABLE_SIZE = 208
+      TABLE_GROW = 209
+      TABLE_FILL = 210
+      TABLE_COPY = 211
+      TABLE_INIT = 212
+      ELEM_DROP = 213
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U, I32_ADD_IMM, I32_ADD_IMM].freeze #: Array[Integer]
 
@@ -256,7 +263,7 @@ module Wardite
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
                  F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
                  BR_IF_I64_EQ I32_EXTRACT_I64
-                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET].freeze
+                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET TABLE_SET TABLE_SIZE TABLE_GROW TABLE_FILL TABLE_COPY TABLE_INIT ELEM_DROP].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -432,7 +439,7 @@ module Wardite
             [1, 2]
           when THROW_REF
             [1]
-          when RESULT_GET, BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
+          when TABLE_SET..ELEM_DROP, RESULT_GET, BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
             [] #: Array[Integer]
           else
             types = extended_alu_types(opcode)
@@ -507,7 +514,7 @@ module Wardite
       # @rbs return: Integer
       def self.destination(instruction)
         opcode = instruction[0]
-        if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ) || opcode == RESULT_GET || opcode == REF_IS_NULL || opcode == TABLE_GET || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
+        if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ) || opcode == TABLE_SIZE || opcode == TABLE_GROW || opcode == RESULT_GET || opcode == REF_IS_NULL || opcode == TABLE_GET || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
             (opcode >= I32_ADD_IMM && opcode <= I32_SHR_U_IMM) ||
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
@@ -528,7 +535,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.may_trap?(opcode)
-        opcode == TRAP || opcode == TABLE_GET || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
+        opcode == TRAP || opcode == TABLE_SET || opcode.between?(TABLE_FILL, TABLE_INIT) || opcode == TABLE_GET || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
           (opcode >= I32_TRUNC_F32_S && opcode <= I64_TRUNC_F64_U) ||
           (opcode > CALL_INDIRECT && (EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode) ||
@@ -557,7 +564,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.reads_store?(opcode)
-        opcode == TABLE_GET || opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
+        opcode == TABLE_GET || opcode == TABLE_SIZE || opcode == TABLE_COPY || opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
           opcode == MEMORY_SIZE || opcode == MEMORY_GROW || opcode == MEMORY_INIT || opcode == MEMORY_COPY ||
           (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_GET_TYPES.key?(opcode) || EXTENDED_LOAD_TYPES.key?(opcode)))
       end
@@ -565,7 +572,8 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.writes_store?(opcode)
-        opcode == GLOBAL_SET || (opcode >= I32_STORE && opcode <= I32_STORE16) ||
+        opcode == TABLE_SET || opcode.between?(TABLE_GROW, ELEM_DROP) ||
+          opcode == GLOBAL_SET || (opcode >= I32_STORE && opcode <= I32_STORE16) ||
           opcode == MEMORY_GROW || memory_site?(opcode) ||
           (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_SET_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode)))
       end
@@ -688,6 +696,19 @@ module Wardite
     end
 
     # Bulk operands stay static in the Function. Values remain in Frame registers.
+    class TableSite
+      attr_reader :table #: Integer
+      attr_reader :source #: Integer
+      attr_reader :table_operands #: Array[Integer]
+
+      # @rbs table: Integer
+      # @rbs source: Integer
+      # @rbs table_operands: Array[Integer]
+      def initialize(table, source, table_operands)
+        @table, @source, @table_operands = table, source, table_operands
+      end
+    end
+
     class MemorySite
       attr_reader :sources #: Array[Integer]
       attr_reader :memory_index #: Integer
@@ -850,6 +871,11 @@ module Wardite
       # @rbs return: Array[Wardite::Efflorescence::ThrowSite]
       def throw_sites
         @throw_sites ||= [] #: Array[Wardite::Efflorescence::ThrowSite]
+      end
+
+      # @rbs return: Array[TableSite]
+      def table_sites
+        @table_sites ||= [] #: Array[TableSite]
       end
 
       # @rbs return: Array[Wardite::Efflorescence::MemorySite]
@@ -1038,6 +1064,7 @@ module Wardite
       # @rbs () { (Integer) -> Integer } -> void
       def map_side_registers!
         throw_sites.each { |site| site.payload_registers.map! { |slot| yield(slot) } }
+        table_sites.each { |site| site.table_operands.map! { |slot| yield(slot) } }
         memory_sites.each { |site| site.sources.map! { |slot| yield(slot) } }
         dynamic_sites.each { |site| site.arguments.map! { |slot| yield(slot) } }
         handlers.each do |handler|
@@ -1078,6 +1105,8 @@ module Wardite
         opcode = instruction[0]
         if opcode == Opcode::THROW
           throw_sites.fetch(instruction[1]).payload_registers
+        elsif opcode.between?(Opcode::TABLE_SET, Opcode::ELEM_DROP)
+          table_sites.fetch(instruction[2]).table_operands
         elsif Opcode.memory_site?(opcode)
           memory_site(instruction[1]).sources
         elsif Opcode.dynamic_call?(opcode)
@@ -1103,6 +1132,7 @@ module Wardite
         @handlers = body.handlers
         @flat_handlers = body.flat_handlers
         @throw_sites = body.throw_sites
+        @table_sites = body.table_sites
         @memory_sites = body.memory_sites
         @dynamic_sites = body.dynamic_sites
         @bytecode = body.bytecode
@@ -1118,6 +1148,7 @@ module Wardite
         result.uses_store = @uses_store
         result.uses_dynamic_calls = @uses_dynamic_calls
         dynamic_sites.each { |site| result.dynamic_sites << site.copy }
+        table_sites.each { |site| result.table_sites << TableSite.new(site.table, site.source, site.table_operands.dup) }
         memory_sites.each { |site| result.memory_sites << site.copy }
         handlers.each { |handler| result.handlers << handler.copy }
         throw_sites.each { |site| result.throw_sites << site.copy }
@@ -1259,7 +1290,7 @@ module Wardite
       # @rbs type: Symbol
       # @rbs return: bool
       def self.function_ref?(type)
-        type == :funcref || type.to_s.start_with?("ref:", "nullable:")
+        type == :funcref || type == :non_null_func || type.to_s.start_with?("ref:", "nullable:")
       end
 
       # @rbs type: Symbol
@@ -1273,6 +1304,8 @@ module Wardite
       # @rbs return: bool
       def self.assignable?(actual, expected)
         return true if actual == expected
+        return true if expected == :externref && actual == :non_null_extern
+        return true if expected == :non_null_func && actual.to_s.start_with?("ref:")
         return true if expected == :funcref && function_ref?(actual)
         return true if actual == :non_null_exn && expected == :exnref
         actual.to_s.start_with?("ref:") && expected.to_s == "nullable:#{actual.to_s.delete_prefix('ref:')}"

@@ -82,7 +82,8 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
     end
     cases.each do |opcode, immediate, namespace, code|
       input = immediate.pack('C*')
-      operands = {select_t: [:select_types], table_get: [:u32]}.fetch(code) { LegacyWasmDecode.operand_of(code) }
+      operands = {select_t: [:select_types], table_get: [:u32], table_set: [:u32], table_size: [:u32],
+        table_grow: [:u32], table_fill: [:u32], elem_drop: [:u32], table_copy: [:u32, :u32], table_init: [:u32, :u32]}.fetch(code) { LegacyWasmDecode.operand_of(code) }
       expected = [namespace, code, operands]
       resolved = Wardite::BinaryLoader.resolve_code(opcode.chr(Encoding::BINARY), StringIO.new(input))
       assert_equal expected, resolved

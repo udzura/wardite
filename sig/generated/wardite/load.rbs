@@ -118,16 +118,14 @@ module Wardite
   class ElemSection < Section
     type indexVector = Array[Integer]
 
-    attr_accessor table_indices: Array[Integer]
+    attr_reader passive: Array[bool]
 
-    attr_reader declared_functions: Array[Integer]
+    attr_accessor table_indices: Array[Integer]
 
     attr_reader expressions: Array[Array[ConstantExpression]]
 
-    attr_accessor table_offsets: Array[ConstantExpression]
+    attr_accessor table_offsets: Array[ConstantExpression?]
 
-    # Rows are also shared with Store#elements. Keep the precise RBS type via
-    # an alias rather than pinning Spinel's specialized nested-array layout.
     attr_reader element_types: Array[Symbol]
 
     attr_accessor element_indices: Array[indexVector]
@@ -291,6 +289,8 @@ module Wardite
       def initialize: (String module_name, String name, Symbol type, bool mutable) -> untyped
     end
 
+    attr_reader table_imports: Array[[ String, String, Symbol, Integer, Integer? ]]
+
     attr_reader memory_imports: Array[[ String, String, Integer, Integer? ]]
 
     attr_reader tag_imports: Array[ImportDesc]
@@ -354,7 +354,8 @@ module Wardite
     def self.tag_section: () -> TagSection
 
     # @rbs return: ImportSection
-    def self.import_section: () -> ImportSection
+    # @rbs types: TypeSection
+    def self.import_section: (TypeSection types) -> ImportSection
 
     # @rbs sbuf: StringIO
     # @rbs return: [Integer, Integer?]
@@ -372,7 +373,8 @@ module Wardite
 
     # @rbs sbuf: StringIO
     # @rbs return: [Symbol, bool]
-    def self.read_global_type: (StringIO sbuf) -> [ Symbol, bool ]
+    # @rbs types: TypeSection
+    def self.read_global_type: (StringIO sbuf, TypeSection types) -> [ Symbol, bool ]
 
     # @rbs context: InitializerContext
     # @rbs return: GlobalSection
@@ -380,6 +382,11 @@ module Wardite
 
     # @rbs return: FunctionSection
     def self.function_section: () -> FunctionSection
+
+    # @rbs sbuf: StringIO
+    # @rbs types: TypeSection
+    # @rbs return: [Symbol, Integer, Integer?]
+    def self.read_table_type: (StringIO sbuf, TypeSection types) -> [ Symbol, Integer, Integer? ]
 
     # @rbs return: TableSection
     # @rbs context: InitializerContext
@@ -409,11 +416,11 @@ module Wardite
     # @rbs expression: bool
     def self.decode_body: (File | StringIO buf, ?expression: bool) -> DecodedBody
 
-    # A memarg uses u64 even for memory32. Preserve one out-of-range sentinel
-    # so validation can check the memory type without overflowing a native word.
+    # Table limits and memarg offsets use u64 even for 32-bit addresses.
+    # Preserve overflow beyond i32 without overflowing a native register.
     # @rbs buf: File|StringIO
     # @rbs return: Integer
-    def self.read_memory_offset: (File | StringIO buf) -> Integer
+    def self.read_u64_for_i32: (File | StringIO buf) -> Integer
 
     # Decode s33, distinguishing the one-byte value/void forms from indices.
     # @rbs buf: File|StringIO

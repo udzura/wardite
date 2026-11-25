@@ -39,6 +39,10 @@ module Wardite
       # @rbs cache_checked: bool
       def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?enabled_optimizations: Array[Symbol], ?mir_cse: bool, ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?, ?cached_functions: Array[Function]?, ?cache_checked: bool, ?source_code: String?, ?eager_mir: bool) -> untyped
 
+      # @rbs index: Integer
+      # @rbs return: void
+      def run_start: (Integer index) -> void
+
       # Inspecting the executable IR requests every uncached function body.
       # MIR2 consumers can still inspect pending cache slots individually.
       # @rbs return: Wardite::Efflorescence::IR
@@ -57,6 +61,18 @@ module Wardite
       # @rbs name: String|Symbol
       # @rbs return: bool
       def callable?: (String | Symbol name) -> bool
+
+      # @rbs index: Integer
+      # @rbs return: FunctionEntry
+      def table_entry: (Integer index) -> FunctionEntry
+
+      attr_reader table_state_changed: bool
+
+      # Indirect calls currently admit numeric parameter and result registers.
+      # @rbs index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Array[Integer]
+      def call_table_function: (Integer index, Array[Integer] arguments) -> Array[Integer]
 
       # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
@@ -239,6 +255,24 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::Frame
       # @rbs tail: bool
       def execute_indirect: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] frames, Integer destination, Integer site_id, Integer selector, Wardite::Efflorescence::Metrics metrics, ?bool tail) -> Wardite::Efflorescence::Frame
+
+      # @rbs ref: Wardite::FunctionReference
+      # @rbs site: DynamicCallSite
+      # @rbs frame: Frame
+      # @rbs destination: Integer
+      # @rbs return: void
+      def call_foreign_table: (Wardite::FunctionReference ref, DynamicCallSite site, Frame frame, Integer destination) -> void
+
+      # @rbs table: Wardite::Table
+      # @rbs bits: Integer
+      # @rbs return: Wardite::tableValue
+      def table_value: (Wardite::Table table, Integer bits) -> Wardite::tableValue
+
+      # @rbs opcode: Integer
+      # @rbs site: TableSite
+      # @rbs registers: Array[Integer]
+      # @rbs return: Integer
+      def execute_table: (Integer opcode, TableSite site, Array[Integer] registers) -> Integer
 
       # Float instructions use the same flat words and integer registers.
       # Their dispatch stays outside the main integer switch.

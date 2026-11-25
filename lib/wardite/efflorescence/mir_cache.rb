@@ -14,7 +14,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 18
+      CODE_VERSION = 19
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -22,7 +22,7 @@ module Wardite
       SAMPLE_STEP = 1024 * 1024
       SAMPLE_BLOCK = 4 * 1024
       MAX_BYTES = 256 * 1024 * 1024
-      TYPES = %i[i32 i64 f32 f64 exnref non_null_exn funcref externref].freeze
+      TYPES = %i[i32 i64 f32 f64 exnref non_null_exn funcref externref non_null_func non_null_extern].freeze
       TYPE_IDS = TYPES.each_with_index.to_h.freeze
       USES_I64 = 1
       USES_FLOAT = 2
@@ -207,6 +207,11 @@ module Wardite
             integers(site.memory_index, site.source_memory_index, site.data_index)
             vector(site.sources)
           end
+          integers(function.table_sites.size)
+          function.table_sites.each do |site|
+            integers(site.table, site.source)
+            vector(site.table_operands)
+          end
           integers(function.throw_sites.size)
           function.throw_sites.each do |site|
             integers(site.tag_index)
@@ -236,6 +241,7 @@ module Wardite
           when BR_IF, BR_IF_ZERO, BR_IF_I64_EQ then :conditional
           when CALL then :call
           when CALL_HOST, CALL_INDIRECT then :dynamic_call
+          when TABLE_SET..ELEM_DROP then :table
           when TABLE_GET then :table_get
           when RESULT_SET then :result_set
           when RESULT_GET then :result_get
@@ -275,7 +281,8 @@ module Wardite
           @data_count = instance.data_section&.segments&.size || 0
           @global_count = instance.import_section.global_imports.size + (instance.global_section&.globals&.size || 0)
           @has_memory = !instance.import_section.memory_imports.empty? || (instance.memory_section&.limits&.size || 0) > 0
-          @table_types = instance.table_section&.table_types || []
+          @element_types = instance.elem_section&.element_types || []
+          @table_types = instance.import_section.table_imports.map { |entry| entry[2] } + (instance.table_section&.table_types || [])
           @signatures = {} #: Hash[[Array[Symbol], Array[Symbol]], bool]
           types = instance.type_section
           if types
@@ -347,7 +354,7 @@ module Wardite
 
           types = @reader.types
           types.each do |type|
-            raise Invalid if FunctionEntry.function_ref?(type) && type != :funcref && !@type_keys.include?(type.to_s.split(":", 2).fetch(1))
+            raise Invalid if FunctionEntry.function_ref?(type) && type.to_s.include?(":") && !@type_keys.include?(type.to_s.split(":", 2).fetch(1))
           end
           params = function.parameter_types
           first_local = params.size
@@ -411,6 +418,10 @@ module Wardite
           end
           @reader.count(20).times { function.dynamic_sites << read_dynamic_site(function) }
           @reader.count(16).times { function.memory_sites << read_memory_site(function) }
+          @reader.count(12).times do
+            table, source = @reader.integer, @reader.integer
+            function.table_sites << TableSite.new(table, source, @reader.vector("l<", 4))
+          end
           @reader.count(8).times do
             tag = @reader.integer
             registers = @reader.vector("l<", 4)
@@ -432,7 +443,7 @@ module Wardite
           params = @reader.types
           results = @reader.types
           if host_index == -1
-            raise Invalid unless table_index >= 0 && @table_types[table_index] == :funcref &&
+            raise Invalid unless table_index >= 0 && FunctionEntry.function_ref?(at(@table_types, table_index)) &&
               @signatures.key?([params, results]) &&
               (params + results).all? { |type| FunctionEntry.numeric_type?(type) }
           else
@@ -525,7 +536,24 @@ module Wardite
               site = at(function.dynamic_sites, b)
               raise Invalid unless opcode == CALL_HOST ? (site.host_index >= 0 && c == 0) : site.table_index >= 0
               check_result(function, a, site.result_types)
-            when :table_get then raise Invalid unless at(@table_types, c) == function.register_types[a]
+            when :table
+              site = at(function.table_sites, b)
+              type = opcode == ELEM_DROP ? :unknown : at(@table_types, site.table)
+              expected = case opcode
+              when TABLE_GROW then [type, :i32]
+              when TABLE_FILL then [:i32, type, :i32]
+              when TABLE_SET then [:i32, type]
+              when TABLE_INIT, TABLE_COPY
+                other = opcode == TABLE_INIT ? at(@element_types, site.source) : at(@table_types, site.source)
+                raise Invalid unless FunctionEntry.assignable?(other, type)
+                [:i32, :i32, :i32]
+              else
+                at(@element_types, site.source) if opcode == ELEM_DROP
+                [] #: Array[Symbol]
+              end
+              check_arguments(function, site.table_operands, expected)
+              check_result(function, a, opcode == TABLE_SIZE || opcode == TABLE_GROW ? [:i32] : [])
+            when :table_get then raise Invalid unless at(@table_types, c) == function.register_types[a] && function.register_types[b] == :i32
             when :result_set
               raise Invalid unless a.between?(1, function.result_types.size - 1) && function.register_types[b] == function.result_types[a]
             when :result_get

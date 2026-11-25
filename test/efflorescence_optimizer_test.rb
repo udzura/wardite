@@ -151,6 +151,12 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     assert_equal 1, methods.size
     methods.each do |body|
       labels = body.scan(/^          when (\d+)(?:, -\d+)? # Opcode::([A-Z_0-9]+)$/)
+      ranges = body.scan(/^          when (\d+)\.\.(\d+) # Opcode::([A-Z_0-9]+) through ([A-Z_0-9]+)$/)
+      ranges.each do |first, last, head, tail|
+        assert_equal OP.const_get(head), Integer(first)
+        assert_equal OP.const_get(tail), Integer(last)
+        (Integer(first)..Integer(last)).each { |i| labels << [i.to_s, OP::NAMES.fetch(i)] }
+      end
       expected = OP::NAMES[0..OP::I64_GLOBAL_SET] + OP::NAMES[OP::F32_GLOBAL_GET..]
       assert_equal expected.sort, labels.map(&:last).sort
       labels.each do |number, name|

@@ -95,6 +95,11 @@ module Wardite
       @runtime = Efflorescence::VM.new(self, source_code: source_code, disabled_optimizations: disabled_optimizations,
         enabled_optimizations: enabled_optimizations, mir_cse: mir_cse, profile: mir_profile,
         mir_cache: mir_cache, cached_functions: cached_functions, cache_checked: true, eager_mir: eager_mir)
+      @runtime.prepare_all unless import_section.table_imports.empty?
+      @store.initialize_elements
+      initialize_data_segments
+      start = start_section
+      @runtime.run_start(start.func_index) if start && !mir_cache&.compiling_artifact?
     end
 
     # Run before allocating Store/Exports or executing a start function.
@@ -126,6 +131,9 @@ module Wardite
         tag_section.type_indices.each { |index| @tags << declared_tag(index) }
       end
       export_section.exports.each_value do |desc|
+        if desc.kind == 1 && desc.index >= import_section.table_imports.size + (table_section&.table_types&.size || 0)
+          raise InvalidModule, "unknown table"
+        end
         raise InvalidModule, "unknown tag" if desc.kind == 4 && !@tags[desc.index]
       end
     end
@@ -151,6 +159,7 @@ module Wardite
         case desc.kind
         when 0
           host.register_function(name.to_sym, ExportedFunction.new(self, name))
+        when 1 then host.tables[name.to_sym] = @store.tables.fetch(desc.index)
         when 2 then host.memories[name.to_sym] = @store.memories.fetch(desc.index)
         when 3 then host.globals[name.to_sym] = @store.globals.fetch(desc.index)
         when 4 then host.tags[name.to_sym] = @tags.fetch(desc.index)
@@ -375,7 +384,7 @@ module Wardite
 
     attr_accessor :tables #: Array[Table]
 
-    attr_accessor :elements #: Array[[Symbol, Integer, Array[Integer]]]
+    attr_accessor :elements #: Array[Array[tableValue]]
 
     # @rbs inst: Instance
     # @rbs return: void
@@ -414,6 +423,7 @@ module Wardite
       import_section.memory_imports.each do |mod, name, min, max|
         host = self.modules.fetch(mod.to_sym) { self.modules.default(mod.to_sym) }
         memory = host.is_a?(HashModule) ? host.memories.fetch(name.to_sym, nil) : nil
+        raise LinkError, "incompatible import type" if !memory && host.is_a?(HashModule) && host.tables.key?(name.to_sym)
         raise LinkError, "unknown import" unless memory
         actual_max = memory.max
         unless memory.current >= min && (!max || (actual_max && actual_max <= max))
@@ -444,8 +454,10 @@ module Wardite
         module_name = desc.module_name.to_sym
         host = self.modules.fetch(module_name) { self.modules.default(module_name) }
         global = host.is_a?(HashModule) ? host.globals.fetch(desc.name.to_sym, nil) : nil
+        raise LinkError, "incompatible import type" if !global && host.is_a?(HashModule) && host.tables.key?(desc.name.to_sym)
         raise LoadError, "unknown global import #{desc.module_name}.#{desc.name}" unless global
-        unless global.type == desc.type && global.mutable == desc.mutable && !global.shared && global.valid_value?
+        matches = desc.mutable ? global.type == desc.type : Efflorescence::FunctionEntry.assignable?(global.type, desc.type)
+        unless matches && global.mutable == desc.mutable && !global.shared && global.valid_value?
           raise LoadError, "incompatible global import #{desc.module_name}.#{desc.name}"
         end
         @globals << global
@@ -462,7 +474,22 @@ module Wardite
         end
       end
 
-      @tables = []
+      @tables = [] #: Array[Table]
+      import_section.table_imports.each do |mod, name, type, min, max|
+        host = @modules.fetch(mod.to_sym, nil)
+        table = host.tables.fetch(name.to_sym, nil) if host.is_a?(HashModule)
+        unless table
+          if host.is_a?(HashModule) && host.export_named?(name.to_sym)
+            raise LinkError, "incompatible import type"
+          end
+          raise LinkError, "unknown import"
+        end
+        actual_max = table.max
+        unless table.type == type && table.current >= min && (!max || (actual_max && actual_max <= max))
+          raise LinkError, "incompatible import type"
+        end
+        @tables << table
+      end
       @elements = []
       table_section = inst.table_section
       if table_section
@@ -476,58 +503,57 @@ module Wardite
           if initializer
             reference = initializer.evaluate(inst, @globals)
             if reference
-              function = table_function(reference, inst)
-              init.times { |i| table.set(i, function) }
+              value = checked_table_value(reference)
+              init.times { |i| table.set(i, value) }
             end
           end
           @tables << table
         end
       end
 
+      @pending_elements = [] #: Array[[Table, Integer, Array[tableValue]]]
       elem_section = inst.elem_section
       if elem_section
-        elem_section.declared_functions.each do |index|
-          raise InvalidModule, "unknown function" unless @funcs[index]
-        end
         elem_section.table_indices.each_with_index do |tidx, idx|
-          table = @tables[tidx] || raise(LoadError, "invalid table index #{tidx}")
-          offset = elem_section.table_offsets.fetch(idx).offset(inst, @globals)
-          expressions = elem_section.expressions.fetch(idx)
-          indices = elem_section.element_indices.fetch(idx)
+          values = [] #: Array[tableValue]
           element_type = elem_section.element_types.fetch(idx)
-          unless Efflorescence::FunctionEntry.function_ref?(element_type) && Efflorescence::FunctionEntry.assignable?(element_type, table.type)
-            raise LoadError, "element segment requires a funcref table"
+          elem_section.element_indices.fetch(idx).each do |function_index|
+            raise LoadError, "invalid element function index #{function_index}" unless @funcs[function_index]
+            values << FunctionReference.new(inst, function_index)
           end
-          if offset < 0 || offset > table.current || indices.size + expressions.size > table.current - offset
-            raise LoadError, "active element segment out of bounds"
+          elem_section.expressions.fetch(idx).each do |expr|
+            values << checked_table_value(expr.evaluate(inst, @globals))
           end
-          indices.each_with_index do |function_index, position|
-            function = @funcs[function_index] if function_index >= 0
-            raise LoadError, "invalid element function index #{function_index}" unless function
-            if element_type != :funcref
-              imported = inst.import_section.imports
-              sig = function_index < imported.size ? imported.fetch(function_index).sig_index : inst.function_section&.func_indices&.fetch(function_index - imported.size)
-              key = type_section&.type_keys&.fetch(sig) if sig
-              raise InvalidModule, "element type mismatch" unless key && Efflorescence::FunctionEntry.assignable?("ref:#{key}".to_sym, element_type)
+          if tidx >= 0
+            table = @tables[tidx] || raise(InvalidModule, "unknown table")
+            unless Efflorescence::FunctionEntry.assignable?(element_type, table.type)
+              raise InvalidModule, "element type mismatch"
             end
-            table.set(offset + position, function)
+            offset = elem_section.table_offsets.fetch(idx)
+            raise InvalidInitializer, "missing element offset" unless offset
+            position = offset.offset(inst, @globals)
+            @pending_elements << [table, position, values]
           end
-          expressions.each_with_index do |expression, position|
-            reference = expression.evaluate(inst, @globals)
-            table.set(offset + position, reference ? table_function(reference, inst) : nil)
-          end
-          @elements << [table.type, offset, indices]
+          @elements << (elem_section.passive.fetch(idx) ? values : [])
         end
       end
     end
 
+    # Apply each segment atomically, in order, after validation and linking.
+    # @rbs return: void
+    def initialize_elements
+      @pending_elements.each do |table, position, values|
+        raise LoadError, "active element segment out of bounds" if position + values.size > table.current
+        values.each_with_index { |value, i| table.set(position + i, value) }
+      end
+      @pending_elements.clear
+    end
+
     # @rbs reference: globalValue
-    # @rbs inst: Instance
-    # @rbs return: WasmFunction | ExternalFunction
-    def table_function(reference, inst)
-      raise InvalidInitializer, "expected function reference" unless reference.is_a?(FunctionReference)
-      raise LoadError, "foreign function table initializer is unsupported" unless reference.instance.equal?(inst)
-      @funcs.fetch(reference.index)
+    # @rbs return: tableValue
+    def checked_table_value(reference)
+      return reference if reference.nil? || reference.is_a?(FunctionReference) || reference.is_a?(ExternalReference)
+      raise InvalidInitializer, "expected table reference"
     end
 
     # @rbs idx: Integer
@@ -725,6 +751,9 @@ module Wardite
     end
   end
 
+  # @rbs!
+  #   type tableValue = WasmFunction | ExternalFunction | FunctionReference | ExternalReference | nil
+
   class Table
     attr_accessor :type #: Symbol
     
@@ -732,7 +761,7 @@ module Wardite
 
     attr_accessor :max #: Integer|nil
     
-    attr_accessor :refs #: Array[WasmFunction|ExternalFunction|nil]
+    attr_accessor :refs #: Array[tableValue]
 
     # @rbs type: Symbol
     # @rbs init: Integer
@@ -743,11 +772,32 @@ module Wardite
       @current = init
       @max = max
 
-      @refs = Array.new(3, nil)
+      @refs = []
+    end
+
+    # @rbs index: Integer
+    # @rbs length: Integer
+    # @rbs return: void
+    def check_range(index, length)
+      raise EvalError, "out of bounds table access" if index < 0 || length < 0 || index + length > @current
+    end
+
+    # @rbs delta: Integer
+    # @rbs value: tableValue
+    # @rbs return: Integer
+    def grow(delta, value)
+      previous = @current
+      limit = @max || 0xffffffff
+      return 0xffffffff if delta > limit - previous
+      @refs.fill(value, previous, delta) if value && delta > 0
+      @current += delta
+      previous
+    rescue NoMemoryError
+      0xffffffff
     end
 
     # @rbs idx: Integer
-    # @rbs elem: WasmFunction|ExternalFunction|nil
+    # @rbs elem: tableValue
     # @rbs return: void
     def set(idx, elem)
       if idx < 0 || idx >= @current
@@ -800,7 +850,7 @@ module Wardite
       when :funcref then value.nil? || value.is_a?(FunctionReference)
       when :externref then value.nil? || value.is_a?(ExternalReference)
       when :f64 then value.is_a?(F64)
-      else false
+      else Efflorescence::FunctionEntry.function_ref?(type) && (value.is_a?(FunctionReference) || (value.nil? && type.to_s.start_with?("nullable:")))
       end
     end
 

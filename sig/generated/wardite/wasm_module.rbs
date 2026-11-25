@@ -28,6 +28,8 @@ module Wardite
 
     attr_reader tags: Hash[Symbol, Efflorescence::Tag]
 
+    attr_reader tables: Hash[Symbol, Table]
+
     attr_reader memories: Hash[Symbol, Memory]
 
     attr_reader globals: Hash[Symbol, Global]
@@ -35,6 +37,10 @@ module Wardite
     # @rbs hash: Hash[Symbol, _WasmCallable]
     # @rbs globals: Hash[Symbol, Global]
     def initialize: (Hash[Symbol, _WasmCallable] hash, ?Hash[Symbol, Global] globals) -> untyped
+
+    # @rbs name: Symbol
+    # @rbs return: bool
+    def export_named?: (Symbol name) -> bool
 
     # @rbs name: Symbol
     # @rbs return: ExportedFunction?

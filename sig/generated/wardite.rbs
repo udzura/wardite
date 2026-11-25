@@ -113,16 +113,19 @@ module Wardite
 
     attr_accessor tables: Array[Table]
 
-    attr_accessor elements: Array[[ Symbol, Integer, Array[Integer] ]]
+    attr_accessor elements: Array[Array[tableValue]]
 
     # @rbs inst: Instance
     # @rbs return: void
     def initialize: (Instance inst) -> void
 
+    # Apply each segment atomically, in order, after validation and linking.
+    # @rbs return: void
+    def initialize_elements: () -> void
+
     # @rbs reference: globalValue
-    # @rbs inst: Instance
-    # @rbs return: WasmFunction | ExternalFunction
-    def table_function: (globalValue reference, Instance inst) -> (WasmFunction | ExternalFunction)
+    # @rbs return: tableValue
+    def checked_table_value: (globalValue reference) -> tableValue
 
     # @rbs idx: Integer
     def []: (Integer idx) -> untyped
@@ -212,6 +215,8 @@ module Wardite
     def allocate_storage: (Integer pages) -> IO::Buffer?
   end
 
+  type tableValue = WasmFunction | ExternalFunction | FunctionReference | ExternalReference | nil
+
   class Table
     attr_accessor type: Symbol
 
@@ -219,7 +224,7 @@ module Wardite
 
     attr_accessor max: Integer | nil
 
-    attr_accessor refs: Array[WasmFunction | ExternalFunction | nil]
+    attr_accessor refs: Array[tableValue]
 
     # @rbs type: Symbol
     # @rbs init: Integer
@@ -227,10 +232,20 @@ module Wardite
     # @rbs return: void
     def initialize: (Symbol type, Integer init, Integer | nil max) -> void
 
-    # @rbs idx: Integer
-    # @rbs elem: WasmFunction|ExternalFunction|nil
+    # @rbs index: Integer
+    # @rbs length: Integer
     # @rbs return: void
-    def set: (Integer idx, WasmFunction | ExternalFunction | nil elem) -> void
+    def check_range: (Integer index, Integer length) -> void
+
+    # @rbs delta: Integer
+    # @rbs value: tableValue
+    # @rbs return: Integer
+    def grow: (Integer delta, tableValue value) -> Integer
+
+    # @rbs idx: Integer
+    # @rbs elem: tableValue
+    # @rbs return: void
+    def set: (Integer idx, tableValue elem) -> void
   end
 
   class Global

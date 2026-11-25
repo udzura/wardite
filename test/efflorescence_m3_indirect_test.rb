@@ -96,4 +96,54 @@ class EfflorescenceM3IndirectTest < Test::Unit::TestCase
       assert_raise(Wardite::LoadError) { load_efflorescence(wat) }
     end
   end
+
+  test "imported and re-exported tables keep the defining function instance" do
+    owner = load_efflorescence(<<~WAT)
+      (module
+        (type $t (func (result i32)))
+        (table (export "shared") 1 3 funcref)
+        (global $g i32 (i32.const 17))
+        (func $read (type $t) global.get $g)
+        (elem (i32.const 0) func $read)
+        (func (export "run") (type $t) i32.const 0 call_indirect (type $t)))
+    WAT
+    guest = load_efflorescence(<<~WAT, import_object: {provider: owner.as_import_module})
+      (module
+        (type $t (func (result i32)))
+        (table (export "again") (import "provider" "shared") 1 3 funcref)
+        (global $g i32 (i32.const 42))
+        (func $other (type $t) global.get $g)
+        (elem declare func $other)
+        (func (export "run") (type $t) i32.const 0 call_indirect (type $t))
+        (func (export "replace") i32.const 0 ref.func $other table.set))
+    WAT
+    assert_raise_message("incompatible import type") do
+      load_efflorescence('(module (table (import "owner" "run") 1 funcref))', import_object: {owner: owner.as_import_module})
+    end
+    assert_same owner.exports["shared"], guest.as_import_module.tables.fetch(:again)
+    assert_equal 17, guest.runtime.call_unboxed("run", [])
+    guest.runtime.call("replace", [])
+    assert_equal 42, owner.runtime.call_unboxed("run", [])
+  end
+
+  test "cached table instructions use fresh passive segments for each instance" do
+    bytes = compile_efflorescence_wat(<<~WAT)
+      (module
+        (type $t (func (result i32)))
+        (table 1 funcref)
+        (func $f (type $t) i32.const 31)
+        (elem $e func $f)
+        (func (export "install") i32.const 0 i32.const 0 i32.const 1 table.init $e elem.drop $e)
+        (func (export "run") (type $t) i32.const 0 call_indirect (type $t)))
+    WAT
+    Dir.mktmpdir do |dir|
+      2.times do |i|
+        instance = Wardite.new(buffer: StringIO.new(bytes), mir_cache: dir, mir_cache_eager: true)
+        assert_equal i == 1, instance.runtime.mir_cache_hit
+        instance.runtime.call("install", [])
+        assert_equal 31, instance.runtime.call_unboxed("run", [])
+        assert_raise_message("out of bounds table access") { instance.runtime.call("install", []) }
+      end
+    end
+  end
 end

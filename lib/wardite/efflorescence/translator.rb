@@ -529,11 +529,12 @@ module Wardite
             table = integer_operand(operands[0])
             element = @source.table_types[table]
             fail_translation("unknown table #{table}") unless element
-            raise UnsupportedFeature, context("table.get requires a function table") unless FunctionEntry.function_ref?(element)
             source = pop_typed(:i32)
             dst = register(element)
             emit([Opcode::TABLE_GET, dst, source, table]) if @reachable
             @stack << dst
+          when :table_set, :table_size, :table_grow, :table_fill, :table_copy, :table_init, :elem_drop
+            table_instruction(code, operands)
           when :ref_is_null
             source = pop_value
             type = type_of(source)
@@ -701,7 +702,8 @@ module Wardite
           when :call_indirect, :return_call_indirect
             type_index = integer_operand(operands[0])
             table_index = integer_operand(operands[1])
-            fail_translation("call_indirect requires funcref table #{table_index}") unless @source.table_types[table_index] == :funcref
+            table_type = @source.table_types[table_index]
+            fail_translation("call_indirect requires funcref table #{table_index}") unless table_type && FunctionEntry.function_ref?(table_type)
             type = @source.types[type_index] if type_index >= 0
             fail_translation("invalid indirect call type index #{type_index}") unless type
             FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}")
@@ -834,6 +836,56 @@ module Wardite
       def integer_operand(value)
         fail_translation("expected integer operand") unless value.is_a?(Integer)
         value
+      end
+
+      # @rbs code: Symbol
+      # @rbs operands: Array[Wardite::operandItem]
+      # @rbs return: void
+      def table_instruction(code, operands)
+        first = integer_operand(operands[0])
+        table = code == :table_init ? integer_operand(operands[1]) : first
+        element = @source.table_types[table]
+        fail_translation("unknown table #{table}") unless element || code == :elem_drop
+        source = -1
+        types = [] #: Array[Symbol]
+        opcode = case code
+        when :elem_drop, :table_init
+          source = first
+          segment = @source.element_types[source]
+          fail_translation("unknown elem segment") unless segment
+          if code == :elem_drop
+            table = -1
+            Opcode::ELEM_DROP
+          else
+            fail_translation("table.init type mismatch") unless element && FunctionEntry.assignable?(segment, element)
+            types = [:i32, :i32, :i32]
+            Opcode::TABLE_INIT
+          end
+        when :table_copy
+          source = integer_operand(operands[1])
+          other = @source.table_types[source]
+          fail_translation("table.copy type mismatch") unless element && other && FunctionEntry.assignable?(other, element)
+          types = [:i32, :i32, :i32]
+          Opcode::TABLE_COPY
+        when :table_fill
+          types = [:i32, element || :unknown, :i32]
+          Opcode::TABLE_FILL
+        when :table_grow
+          types = [element || :unknown, :i32]
+          Opcode::TABLE_GROW
+        when :table_set
+          types = [:i32, element || :unknown]
+          Opcode::TABLE_SET
+        else Opcode::TABLE_SIZE
+        end
+        sources = types.reverse.map { |type| pop_typed(type) }.reverse
+        dst = opcode == Opcode::TABLE_GROW || opcode == Opcode::TABLE_SIZE ? register : -1
+        if @reachable
+          index = @function.table_sites.size
+          @function.table_sites << TableSite.new(table, source, sources)
+          emit([opcode, dst, index])
+        end
+        @stack << dst if dst >= 0
       end
 
       # @rbs type: Symbol

@@ -524,9 +524,9 @@ module Wardite
     # @rbs return: Array[Symbol]
     def self.build_operand_types(code)
       case code
-      when :table_get, :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :return_call, :br, :br_if, :throw, :data_drop
+      when :table_get, :table_set, :table_size, :table_grow, :table_fill, :elem_drop, :local_get, :local_set, :local_tee, :global_get, :global_set, :call, :return_call, :br, :br_if, :throw, :data_drop
         [:u32]
-      when :memory_init, :memory_copy
+      when :memory_init, :memory_copy, :table_init, :table_copy
         [:u32, :u32]
       when :memory_size, :memory_grow, :memory_fill
         [:u32]

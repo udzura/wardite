@@ -242,15 +242,13 @@ module Wardite
     # @rbs!
     #   type indexVector = Array[Integer]
 
+    attr_reader :passive #: Array[bool]
+
     attr_accessor :table_indices #: Array[Integer]
 
-    attr_reader :declared_functions #: Array[Integer]
-
     attr_reader :expressions #: Array[Array[ConstantExpression]]
-    attr_accessor :table_offsets #: Array[ConstantExpression]
+    attr_accessor :table_offsets #: Array[ConstantExpression?]
 
-    # Rows are also shared with Store#elements. Keep the precise RBS type via
-    # an alias rather than pinning Spinel's specialized nested-array layout.
     attr_reader :element_types #: Array[Symbol]
     attr_accessor :element_indices #: Array[indexVector]
 
@@ -259,10 +257,10 @@ module Wardite
       self.name = "Elem"
       self.code = 0x9
 
+      @passive = []
       @table_indices = []
       @table_offsets = []
       @expressions = []
-      @declared_functions = []
       @element_types = []
       @element_indices = []
     end
@@ -518,6 +516,8 @@ module Wardite
       end
     end
 
+    attr_reader :table_imports #: Array[[String, String, Symbol, Integer, Integer?]]
+
     attr_reader :memory_imports #: Array[[String, String, Integer, Integer?]]
 
     attr_reader :tag_imports #: Array[ImportDesc]
@@ -530,6 +530,7 @@ module Wardite
       self.name = "Import"
       self.code = 0x2
 
+      @table_imports = []
       @memory_imports = []
       @tag_imports = []
       @global_imports = []
@@ -609,6 +610,10 @@ module Wardite
         sections_.each do |section|
           next unless section.is_a?(ImportSection)
           placeholders = {} #: Hash[Symbol, HashModule]
+          section.table_imports.each do |mod, name, type, min, max|
+            host = placeholders[mod.to_sym] ||= HashModule.new({})
+            host.tables[name.to_sym] = Table.new(type, min, max)
+          end
           section.memory_imports.each do |mod, name, min, max|
             host = placeholders[mod.to_sym] ||= HashModule.new({})
             host.memories[name.to_sym] = Memory.new(min, max)
@@ -688,7 +693,7 @@ module Wardite
           when Wardite::SectionType
             context.types = type_section
           when Wardite::SectionImport
-            imports = import_section
+            imports = import_section(context.types)
             imports.global_imports.each { |desc| context.globals << [desc.type, desc.mutable] }
             context.function_types.concat(imports.imports.map(&:sig_index))
             imports
@@ -788,8 +793,8 @@ module Wardite
     # @rbs section: TypeSection?
     # @rbs return: Symbol
     def self.reference_type(code, heap, section)
-      return :funcref if code == 0x63 && heap == -16
-      return :externref if code == 0x63 && heap == -17
+      return code == 0x63 ? :funcref : :non_null_func if heap == -16
+      return code == 0x63 ? :externref : :non_null_extern if heap == -17
       return code == 0x63 ? :exnref : :non_null_exn if heap == -23
       key = section&.type_keys&.[](heap) if heap >= 0
       raise LoadError, "unsupported heap type #{heap}" unless key
@@ -810,7 +815,8 @@ module Wardite
     end
 
     # @rbs return: ImportSection
-    def self.import_section
+    # @rbs types: TypeSection
+    def self.import_section(types)
       dest = ImportSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
@@ -822,13 +828,18 @@ module Wardite
         name = read_name(sbuf)
         kind = assert_byte(sbuf)
 
+        if kind == 1
+          type, min, max = read_table_type(sbuf, types)
+          dest.table_imports << [module_name, name, type, min, max]
+          next
+        end
         if kind == 2
           min, max = read_memory_limits(sbuf)
           dest.memory_imports << [module_name, name, min, max]
           next
         end
         if kind == 3
-          type, mutable = read_global_type(sbuf)
+          type, mutable = read_global_type(sbuf, types)
           dest.global_imports << ImportSection::GlobalImport.new(module_name, name, type, mutable)
           next
         end
@@ -905,27 +916,29 @@ module Wardite
       len = fetch_uleb128(sbuf)
       len.times do |i|
         etype = fetch_uleb128(sbuf)
-        if etype == 3
-          raise LoadError, "unsupported element type" unless assert_byte(sbuf) == 0
-          fetch_uleb128(sbuf).times { dest.declared_functions << fetch_uleb128(sbuf) }
-          next
+        raise LoadError, "unsupported element segment kind #{etype}" unless etype.between?(0, 7)
+        active = etype.even?
+        table_index = case etype
+        when 0, 4 then 0
+        when 2, 6 then fetch_uleb128(sbuf)
+        else -1
         end
-        unless etype == 0 || etype == 2 || etype == 4 || etype == 6
-          raise LoadError, "unsupported element segment kind #{etype}"
-        end
-        dest.table_indices << (etype == 0 || etype == 4 ? 0 : fetch_uleb128(sbuf))
-
-        dest.table_offsets << context.read(sbuf, :i32)
-        if etype == 2 && assert_byte(sbuf) != 0
+        dest.table_indices << table_index
+        dest.table_offsets << (active ? context.read(sbuf, :i32) : nil)
+        if etype.between?(1, 3) && assert_byte(sbuf) != 0
           raise LoadError, "unsupported element type"
         end
-
         elms = [] #: Array[Integer]
-        type = etype == 6 ? read_signature_type(sbuf, types) : :funcref
+        type = case etype
+        when 0..3 then :non_null_func
+        when 4 then :funcref
+        else read_signature_type(sbuf, types)
+        end
         dest.element_types << type
+        dest.passive << (etype == 1 || etype == 5)
         expressions = [] #: Array[ConstantExpression]
         fetch_uleb128(sbuf).times do
-          if etype == 4 || etype == 6
+          if etype >= 4
             expressions << context.read(sbuf, type)
           else
             elms << fetch_uleb128(sbuf)
@@ -940,11 +953,12 @@ module Wardite
 
     # @rbs sbuf: StringIO
     # @rbs return: [Symbol, bool]
-    def self.read_global_type(sbuf)
-      type = Op.i2type(assert_byte(sbuf))
+    # @rbs types: TypeSection
+    def self.read_global_type(sbuf, types)
+      type = read_signature_type(sbuf, types)
       mut = assert_byte(sbuf)
       raise LoadError, "unsupported global mutability flags" unless mut == 0 || mut == 1
-      raise LoadError, "unsupported global type #{type}" unless Efflorescence::FunctionEntry.numeric_type?(type) || type == :funcref || type == :externref
+      raise LoadError, "unsupported global type #{type}" unless Efflorescence::FunctionEntry.numeric_type?(type) || Efflorescence::FunctionEntry.function_ref?(type) || type == :externref
       [type, mut == 1]
     end
 
@@ -958,7 +972,7 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        gtype, mutable = read_global_type(sbuf)
+        gtype, mutable = read_global_type(sbuf, context.types)
         expression = context.read(sbuf, gtype)
         context.globals << [gtype, mutable]
         global = GlobalSection::Global.new do |g|
@@ -987,6 +1001,20 @@ module Wardite
       dest
     end
 
+    # @rbs sbuf: StringIO
+    # @rbs types: TypeSection
+    # @rbs return: [Symbol, Integer, Integer?]
+    def self.read_table_type(sbuf, types)
+      type = read_signature_type(sbuf, types)
+      raise InvalidModule, "expected table reference type" unless [:externref, :non_null_extern].include?(type) || Efflorescence::FunctionEntry.function_ref?(type)
+      flags = fetch_uleb128(sbuf)
+      raise LoadError, "unsupported table limits" unless flags == 0 || flags == 1
+      min = read_u64_for_i32(sbuf)
+      max = flags == 1 ? read_u64_for_i32(sbuf) : nil
+      raise InvalidModule, "invalid table limits" if min > 0xffffffff || (max && (max > 0xffffffff || max < min))
+      [type, min, max]
+    end
+
     # @rbs return: TableSection
     # @rbs context: InitializerContext
     def self.table_section(context)
@@ -1003,16 +1031,9 @@ module Wardite
           assert_byte(sbuf)
           raise LoadError, "invalid table initializer prefix" unless assert_byte(sbuf).zero?
         end
-        type = read_signature_type(sbuf, types)
-        raise InvalidModule, "expected table reference type" unless type == :externref || Efflorescence::FunctionEntry.function_ref?(type)
+        type, min, max = read_table_type(sbuf, types)
+        raise InvalidModule, "non-defaultable table" if !explicit && (type.to_s.start_with?("ref:") || type == :non_null_func || type == :non_null_extern)
         dest.table_types << type
-
-        flags = fetch_uleb128(sbuf)
-        min = fetch_uleb128(sbuf)
-        max = nil
-        if flags != 0
-          max = fetch_uleb128(sbuf)
-        end
         dest.table_limits << [min, max]
         dest.initializers << (explicit ? context.read(sbuf, type) : nil)
       end
@@ -1100,7 +1121,7 @@ module Wardite
             operand << byte
           when :u32
             value = if opcode.between?(0x28, 0x3e) && !operand.empty?
-              read_memory_offset(buf)
+              read_u64_for_i32(buf)
             else
               fetch_uleb128(buf)
             end
@@ -1205,11 +1226,11 @@ module Wardite
       raise e
     end
 
-    # A memarg uses u64 even for memory32. Preserve one out-of-range sentinel
-    # so validation can check the memory type without overflowing a native word.
+    # Table limits and memarg offsets use u64 even for 32-bit addresses.
+    # Preserve overflow beyond i32 without overflowing a native register.
     # @rbs buf: File|StringIO
     # @rbs return: Integer
-    def self.read_memory_offset(buf)
+    def self.read_u64_for_i32(buf)
       value = 0
       10.times do |i|
         byte = assert_byte(buf)

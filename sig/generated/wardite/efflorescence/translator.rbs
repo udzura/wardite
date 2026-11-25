@@ -144,6 +144,11 @@ module Wardite
       # @rbs return: Integer
       def integer_operand: (Wardite::operandItem? value) -> Integer
 
+      # @rbs code: Symbol
+      # @rbs operands: Array[Wardite::operandItem]
+      # @rbs return: void
+      def table_instruction: (Symbol code, Array[Wardite::operandItem] operands) -> void
+
       # @rbs type: Symbol
       # @rbs return: Integer
       def register: (?Symbol type) -> Integer

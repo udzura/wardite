@@ -30,9 +30,15 @@ class SpecWorker
       @imports[operand.to_sym] = @instances.fetch(id).as_import_module
       return "registered"
     end
-    if op == "unlinkable" || op == "module" || op == "invalid" || op == "malformed"
-      instance = Wardite.new(path: operand, engine: :efflorescence, enable_wasi: false,
-        import_object: @imports)
+    if op == "instantiate" || op == "unlinkable" || op == "module" || op == "invalid" || op == "malformed"
+      begin
+        instance = Wardite.new(path: operand, engine: :efflorescence, enable_wasi: false,
+          import_object: @imports)
+      rescue Wardite::LinkError
+        raise unless op == "invalid"
+        # Validate the body with its declared imports even if a host is absent.
+        instance = Wardite.new(path: operand, enable_wasi: false, emit_wmir: "#{operand}.wmir")
+      end
       instance.runtime.prepare_all
       @instances[id] = instance if op == "module"
       return "loaded"
@@ -75,6 +81,10 @@ class SpecWorker
     message = error.message
     # These loader checks implement Core validation before MIR translation.
     case message
+    when "active element segment out of bounds"
+      "trap:out of bounds table access"
+    when "active data segment out of bounds"
+      "trap:out of bounds memory access"
     when "constant expression requires end", "global initializer type mismatch"
       "validation:#{message}"
     when "malformed memop flags", "malformed UTF-8 encoding"
@@ -94,7 +104,7 @@ class SpecWorker
   rescue Wardite::EvalError => error
     message = error.message
     message = "undefined element" if message.start_with?("call_indirect table index out of bounds:")
-    message = "uninitialized element" if message == "call_indirect null reference"
+    message = message.sub("call_indirect null reference ", "uninitialized element ") if message.start_with?("call_indirect null reference ")
     message = "indirect call type mismatch" if message == "call_indirect function type mismatch"
     "trap:#{message}"
   rescue StandardError => error

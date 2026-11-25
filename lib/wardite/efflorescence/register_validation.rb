@@ -397,9 +397,11 @@ module Wardite
       def validate_extended_instruction(function, instruction, read_count, destination)
         opcode = instruction[0]
         types = Opcode.extended_alu_types(opcode)
-        if opcode == Opcode::TABLE_GET
+        if opcode.between?(Opcode::TABLE_SET, Opcode::ELEM_DROP)
+          check_register(function, destination, :i32) if destination >= 0
+        elsif opcode == Opcode::TABLE_GET
           check_register(function, instruction[2], :i32)
-          raise TranslationError, "expected function reference" unless FunctionEntry.function_ref?(function.register_types.fetch(destination))
+          raise TranslationError, "expected function reference" unless function.register_types.fetch(destination) == :externref || FunctionEntry.function_ref?(function.register_types.fetch(destination))
         elsif opcode == Opcode::REF_IS_NULL
           type = function.register_types.fetch(instruction[2])
           raise TranslationError, "expected reference" unless FunctionEntry.function_ref?(type) || FunctionEntry.exception_ref?(type) || type == :externref

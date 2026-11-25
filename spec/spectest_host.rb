@@ -15,6 +15,7 @@ class SpectestHost < Wardite::HashModule
     wide = Wardite::Global.numeric(:i64, false)
     wide.value = Wardite::I64(666)
     super({}, {global_i32: global, global_i64: wide})
+    tables[:table] = Wardite::Table.new(:funcref, 10, 20)
     printer = ->(_store, args) { args.each { |arg| puts arg.value }; nil }
     PARAMETERS.each_key { |name| register_function(name, printer) }
   end
@@ -22,7 +23,7 @@ class SpectestHost < Wardite::HashModule
   def validate_function_import(name, callsig, retsig)
     parameters = PARAMETERS[name]
     unless parameters
-      raise Wardite::LinkError, "incompatible import type" if globals.key?(name)
+      raise Wardite::LinkError, "incompatible import type" if globals.key?(name) || tables.key?(name)
       raise Wardite::LinkError, "unknown import"
     end
     unless parameters == callsig && retsig.empty?

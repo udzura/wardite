@@ -423,6 +423,20 @@ module Wardite
 
       TABLE_GET: ::Integer
 
+      TABLE_SET: ::Integer
+
+      TABLE_SIZE: ::Integer
+
+      TABLE_GROW: ::Integer
+
+      TABLE_FILL: ::Integer
+
+      TABLE_COPY: ::Integer
+
+      TABLE_INIT: ::Integer
+
+      ELEM_DROP: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 
@@ -586,6 +600,19 @@ module Wardite
     end
 
     # Bulk operands stay static in the Function. Values remain in Frame registers.
+    class TableSite
+      attr_reader table: Integer
+
+      attr_reader source: Integer
+
+      attr_reader table_operands: Array[Integer]
+
+      # @rbs table: Integer
+      # @rbs source: Integer
+      # @rbs table_operands: Array[Integer]
+      def initialize: (Integer table, Integer source, Array[Integer] table_operands) -> untyped
+    end
+
     class MemorySite
       attr_reader sources: Array[Integer]
 
@@ -693,6 +720,9 @@ module Wardite
 
       # @rbs return: Array[Wardite::Efflorescence::ThrowSite]
       def throw_sites: () -> Array[Wardite::Efflorescence::ThrowSite]
+
+      # @rbs return: Array[TableSite]
+      def table_sites: () -> Array[TableSite]
 
       # @rbs return: Array[Wardite::Efflorescence::MemorySite]
       def memory_sites: () -> Array[Wardite::Efflorescence::MemorySite]

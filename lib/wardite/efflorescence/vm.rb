@@ -32,6 +32,7 @@ module Wardite
       def initialize(instance, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false, source_code: nil, eager_mir: false)
         @returned_exception = nil #: ExceptionValue?
         @extra_results = [] #: Array[Integer]
+        @table_state_changed = false
         @external_references = [] #: Array[Wardite::ExternalReference]
         @foreign_references = [] #: Array[Wardite::FunctionReference]
         @instance = instance
@@ -91,9 +92,13 @@ module Wardite
             raise Wardite::LoadError, "start function must have no parameters or results"
           end
         end
-        instance.initialize_data_segments
         mir_cache.write_ir(instance, @ir) if mir_cache && !profile && !@mir_cache_hit
-        execute(@ir.entry_at(start.func_index), []) if start && !mir_cache&.compiling_artifact?
+      end
+
+      # @rbs index: Integer
+      # @rbs return: void
+      def run_start(index)
+        execute(@ir.entry_at(index), [])
       end
 
       # Inspecting the executable IR requests every uncached function body.
@@ -128,6 +133,29 @@ module Wardite
       def callable?(name)
         export = @instance.export_section.exports[name.to_s]
         !!export && export.kind == 0
+      end
+
+      # @rbs index: Integer
+      # @rbs return: FunctionEntry
+      def table_entry(index)
+        @ir.entry_at(index)
+      end
+
+      attr_reader :table_state_changed #: bool
+
+      # Indirect calls currently admit numeric parameter and result registers.
+      # @rbs index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Array[Integer]
+      def call_table_function(index, arguments)
+        entry = @ir.entry_at(index)
+        first = execute(entry, arguments)
+        values = [] #: Array[Integer]
+        if first
+          values << first
+          (entry.result_types.size - 1).times { |i| values << @extra_results.fetch(i) }
+        end
+        values
       end
 
       # Box the result once, at the Ruby boundary.
@@ -483,7 +511,12 @@ module Wardite
           @global_bits[index] = case global.type
           when :externref then external_reference_bits(value)
           when :funcref then value.is_a?(Wardite::FunctionReference) ? reference_bits(value) : 0
-          else @store_access.global_bits_at(index, global.type)
+          else
+            if FunctionEntry.function_ref?(global.type)
+              value.is_a?(Wardite::FunctionReference) ? reference_bits(value) : 0
+            else
+              @store_access.global_bits_at(index, global.type)
+            end
           end
         end
       end
@@ -495,7 +528,12 @@ module Wardite
           case global.type
           when :externref then global.value = bits.zero? ? nil : @external_references.fetch(bits - 1)
           when :funcref then global.value = function_reference(bits)
-          else @store_access.write_global_bits(index, global.type, bits)
+          else
+            if FunctionEntry.function_ref?(global.type)
+              global.value = function_reference(bits)
+            else
+              @store_access.write_global_bits(index, global.type, bits)
+            end
           end
         end
       end
@@ -689,16 +727,20 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::FunctionEntry
       def indirect_entry(site, selector)
         table = @instance.store.tables[site.table_index]
-        raise Wardite::EvalError, "call_indirect requires funcref table 0" unless table && table.type == :funcref
+        raise Wardite::EvalError, "call_indirect requires funcref table 0" unless table && FunctionEntry.function_ref?(table.type)
         index = selector & 0xffffffff
         raise Wardite::EvalError, "call_indirect table index out of bounds: #{index}" if index >= table.current
         function = table.refs[index]
-        raise Wardite::EvalError, "call_indirect null reference" if function.nil?
-        function_index = @function_indices[function.object_id]
-        unless function_index && @indirect_functions[function_index].equal?(function)
-          raise Wardite::EvalError, "call_indirect unknown function reference"
+        raise Wardite::EvalError, "call_indirect null reference #{index}" if function.nil?
+        if function.is_a?(Wardite::FunctionReference)
+          entry = function.instance.equal?(@instance) ? @ir.entry_at(function.index) : function.instance.runtime.table_entry(function.index)
+        else
+          function_index = @function_indices[function.object_id]
+          unless function_index && @indirect_functions[function_index].equal?(function)
+            raise Wardite::EvalError, "call_indirect unknown function reference"
+          end
+          entry = @ir.entry_at(function_index)
         end
-        entry = @ir.entry_at(function_index)
         unless entry.parameter_types == site.parameter_types && entry.result_types == site.result_types
           raise Wardite::EvalError, "call_indirect function type mismatch"
         end
@@ -729,6 +771,12 @@ module Wardite
         site = frame.function.dynamic_site(site_id)
         registers = frame.registers
         entry = indirect_entry(site, registers[selector])
+        ref = @instance.store.tables.fetch(site.table_index).refs[registers.fetch(selector)]
+        if ref.is_a?(Wardite::FunctionReference) && !ref.instance.equal?(@instance)
+          call_foreign_table(ref, site, frame, destination)
+          frame.pc += Lowerer::WIDTH
+          return frame
+        end
         if entry.kind == :host
           execute_host_site(frame, site, entry.host_index, destination, metrics)
           frame.pc += Lowerer::WIDTH
@@ -746,6 +794,79 @@ module Wardite
           metrics.enter_indirect_defined(site.arguments.size) if @profiling
           next_frame
         end
+      end
+
+      # @rbs ref: Wardite::FunctionReference
+      # @rbs site: DynamicCallSite
+      # @rbs frame: Frame
+      # @rbs destination: Integer
+      # @rbs return: void
+      def call_foreign_table(ref, site, frame, destination)
+        arguments = [] #: Array[Integer]
+        site.arguments.each { |slot| arguments << Integer(frame.registers.fetch(slot)) }
+        write_globals if @has_globals
+        values = ref.instance.runtime.call_table_function(ref.index, arguments)
+        frame.registers[destination] = Integer(values.fetch(0)) if destination >= 0
+        (values.size - 1).times { |i| @extra_results[i] = Integer(values.fetch(i + 1)) }
+      rescue Wardite::UncaughtWasmException => error
+        raise Wardite::LinkedWasmException, error.exception_value
+      ensure
+        read_globals if @has_globals
+      end
+
+      # @rbs table: Wardite::Table
+      # @rbs bits: Integer
+      # @rbs return: Wardite::tableValue
+      def table_value(table, bits)
+        return nil if bits.zero?
+        return @external_references.fetch(bits - 1) if table.type == :externref || table.type == :non_null_extern
+        function_reference(bits)
+      end
+
+      # @rbs opcode: Integer
+      # @rbs site: TableSite
+      # @rbs registers: Array[Integer]
+      # @rbs return: Integer
+      def execute_table(opcode, site, registers)
+        store = @instance.store
+        @table_state_changed = true unless opcode == Opcode::TABLE_SIZE
+        if opcode == Opcode::ELEM_DROP
+          store.elements.fetch(site.source).clear
+          return 0
+        end
+        table = store.tables.fetch(site.table)
+        return table.current if opcode == Opcode::TABLE_SIZE
+        slots = site.table_operands
+        first = registers.fetch(slots.fetch(0))
+        second = registers.fetch(slots.fetch(1))
+        case opcode
+        when Opcode::TABLE_GROW
+          return table.grow(second, table_value(table, first))
+        when Opcode::TABLE_SET
+          table.check_range(first, 1)
+          table.set(first, table_value(table, second))
+        else
+          length = registers.fetch(slots.fetch(2))
+          table.check_range(first, length)
+          case opcode
+          when Opcode::TABLE_FILL
+            value = table_value(table, second)
+            length.times { |i| table.set(first + i, value) }
+          when Opcode::TABLE_INIT
+            segment = store.elements.fetch(site.source)
+            raise Wardite::EvalError, "out of bounds table access" if second + length > segment.size
+            length.times { |i| table.set(first + i, segment.fetch(second + i)) }
+          when Opcode::TABLE_COPY
+            source = store.tables.fetch(site.source)
+            source.check_range(second, length)
+            backwards = source.equal?(table) && first > second
+            length.times do |i|
+              offset = backwards ? length - i - 1 : i
+              table.set(first + offset, source.refs[second + offset])
+            end
+          end
+        end
+        0
       end
 
       # Float instructions use the same flat words and integer registers.
@@ -1024,12 +1145,22 @@ module Wardite
             instructions = frame.instructions
             pc = Integer(frame.pc)
             next
+          when 207..213 # Opcode::TABLE_SET through ELEM_DROP
+            site = frame.function.table_sites.fetch(instructions.fetch(pc + 2))
+            result = execute_table(opcode, site, registers)
+            registers[a] = Integer(result) if a >= 0
           when 206 # Opcode::TABLE_GET
             table = @instance.store.tables.fetch(instructions.fetch(pc + 3))
             index = registers.fetch(instructions.fetch(pc + 2))
             raise Wardite::EvalError, "out of bounds table access" unless index.between?(0, table.current - 1)
             element = table.refs[index]
-            registers[a] = element ? @function_indices.fetch(element.object_id) + 1 : 0
+            reference_value = case element
+            when nil then 0
+            when Wardite::FunctionReference then reference_bits(element)
+            when Wardite::ExternalReference then external_reference_bits(element)
+            else @function_indices.fetch(element.object_id) + 1
+            end
+            registers[a] = Integer(reference_value)
           when 205 # Opcode::REF_IS_NULL
             b = instructions.fetch(pc + 2)
             if FunctionEntry.exception_ref?(frame.function.register_types.fetch(b))
