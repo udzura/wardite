@@ -232,6 +232,10 @@ module Wardite
       # @rbs return: void
       def end_control: () -> void
 
+      # @rbs types: Array[Symbol]
+      # @rbs return: void
+      def append_call_results: (Array[Symbol] types) -> void
+
       # @rbs sources: Array[Integer]
       # @rbs return: void
       def emit_return: (Array[Integer] sources) -> void

@@ -617,6 +617,7 @@ module Wardite
             dst = callee.result_types.empty? ? -1 : register(callee.result_types.fetch(0))
             @stack << dst if dst >= 0
             unless @reachable
+              append_call_results(callee.result_types) if callee.result_types.size > 1
               mark_unreachable if tail
               next
             end
@@ -631,8 +632,9 @@ module Wardite
             else
               emit([Opcode::CALL, dst, index] + arguments)
             end
+            append_call_results(callee.result_types) if callee.result_types.size > 1
             if tail
-              emit([Opcode::RETURN, dst])
+              emit_return(@stack.last(callee.result_types.size))
               mark_unreachable
             end
           when :call_indirect, :return_call_indirect
@@ -1003,6 +1005,17 @@ module Wardite
         @reachable = @reachable || control.has_branch || control.then_reachable
         if control.kind == :function
           emit_return(control.result_registers)
+        end
+      end
+
+      # @rbs types: Array[Symbol]
+      # @rbs return: void
+      def append_call_results(types)
+        types.each_with_index do |type, i|
+          next if i == 0
+          slot = register(type)
+          emit([Opcode::RESULT_GET, slot, i]) if @reachable
+          @stack << slot
         end
       end
 
