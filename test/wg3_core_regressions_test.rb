@@ -6,6 +6,19 @@ require_relative 'support/efflorescence_helper'
 class Wg3CoreRegressionsTest < Test::Unit::TestCase
   include EfflorescenceHelper
 
+  def import_memory(provider, minimum)
+    load_efflorescence(<<~WAT, import_object: {env: provider.as_import_module})
+      (module
+        (memory (export "m") (import "env" "m") #{minimum})
+        (func (export "grow") (result i32) i32.const 1 memory.grow)
+        (func (export "size") (result i32) memory.size))
+    WAT
+  end
+
+  def memory_provider
+    load_efflorescence('(module (memory (export "m") 2 4))')
+  end
+
   test 'global.wast 374 reads a preceding named immutable global' do
     instance = load_efflorescence('(module (global $g i32 (i32.const 42)) (global (export "copy") i32 (global.get $g)))')
     assert_equal 42, instance.exports['copy'].value.value
@@ -50,5 +63,10 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
       Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
     end
     assert_include error.message, 'invalid memory alignment'
+  end
+
+  test 'memory_grow.wast 329 re-exports the imported memory object' do
+    provider = memory_provider
+    assert_same provider.exports['m'], import_memory(provider, 2).as_import_module.memories[:m]
   end
 end
