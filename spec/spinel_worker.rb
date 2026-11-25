@@ -83,6 +83,8 @@ class SpecWorker
     case message
     when "constant expression requires end", "global initializer type mismatch"
       "validation:#{message}"
+    when "malformed memop flags"
+      "malformed:#{message}"
     when "unsupported global mutability flags"
       "malformed:invalid mutability"
     else
