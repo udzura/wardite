@@ -41,6 +41,12 @@ module Wardite
     def exported_function: (Symbol name) -> ExportedFunction?
 
     # @rbs name: Symbol
+    # @rbs callsig: Array[Symbol]
+    # @rbs retsig: Array[Symbol]
+    # @rbs return: void
+    def validate_function_import: (Symbol name, Array[Symbol] callsig, Array[Symbol] retsig) -> void
+
+    # @rbs name: Symbol
     # @rbs function: _WasmCallable
     # @rbs return: void
     def register_function: (Symbol name, _WasmCallable function) -> void

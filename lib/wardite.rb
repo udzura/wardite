@@ -399,13 +399,7 @@ module Wardite
         wasi = inst.wasi
         wasi.validate_import(name, callsig, retsig) if wasi && wasi.equal?(target_module)
         if target_module.is_a?(HashModule)
-          exported = target_module.exported_function(name)
-          if exported.is_a?(ExportedFunction)
-            original = exported.instance.exports[exported.name]
-            unless (original.is_a?(WasmFunction) || original.is_a?(ExternalFunction)) && original.callsig == callsig && original.retsig == retsig
-              raise LinkError, "incompatible import"
-            end
-          end
+          target_module.validate_function_import(name, callsig, retsig)
         end
         self.funcs << ExternalFunction.new(target_module, name, callsig, retsig)
       end

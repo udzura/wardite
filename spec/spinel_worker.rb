@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require "wardite"
+require_relative "spectest_host"
 
 # One process owns one WAST script's instances and executes its commands in order.
 class SpecWorker
   def initialize
     @externals = {} #: Hash[Integer, Wardite::ExternalReference]
-    @imports = {} #: Hash[Symbol, Wardite::wasmModuleSrc]
+    @imports = {spectest: SpectestHost.new} #: Hash[Symbol, Wardite::wasmModuleSrc]
     @instances = {} #: Hash[String, Wardite::Instance]
   end
 
@@ -31,12 +31,6 @@ class SpecWorker
       return "registered"
     end
     if op == "unlinkable" || op == "module" || op == "invalid" || op == "malformed"
-      global = Wardite::Global.numeric(:i32, false)
-      global.value = Wardite::I32(666)
-      wide = Wardite::Global.numeric(:i64, false)
-      wide.value = Wardite::I64(666)
-      spectest = Wardite::HashModule.new({}, {global_i32: global, global_i64: wide})
-      @imports[:spectest] ||= spectest
       instance = Wardite.new(path: operand, engine: :efflorescence, enable_wasi: false,
         import_object: @imports)
       instance.runtime.prepare_all
