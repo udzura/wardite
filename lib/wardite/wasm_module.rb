@@ -66,12 +66,14 @@ module Wardite
     # @rbs retsig: Array[Symbol]
     # @rbs return: void
     def validate_function_import(name, callsig, retsig)
-      raise LinkError, "incompatible import type" if !@hash.key?(name) && @tables.key?(name)
+      unless @hash.key?(name)
+        raise LinkError, export_named?(name) ? "incompatible import type" : "unknown import"
+      end
       exported = exported_function(name)
       return unless exported.is_a?(ExportedFunction)
       original = exported.instance.exports[exported.name]
       unless (original.is_a?(WasmFunction) || original.is_a?(ExternalFunction)) && original.callsig == callsig && original.retsig == retsig
-        raise LinkError, "incompatible import"
+        raise LinkError, "incompatible import type"
       end
     end
 

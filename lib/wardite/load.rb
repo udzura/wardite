@@ -924,7 +924,7 @@ module Wardite
       min = read_u64_for_i32(sbuf)
       max = flags == 1 ? read_u64_for_i32(sbuf) : nil
       if min > 65536 || (max && (max > 65536 || max < min))
-        raise LoadError, "invalid memory32 limits"
+        raise InvalidModule, "invalid memory32 limits"
       end
       [min, max]
     end
@@ -1375,7 +1375,6 @@ module Wardite
         when 0x0, 0x2
           # Active explicit-memory segments still target memory 0 in M2.
           memory_index = data_type == 2 ? fetch_uleb128(sbuf) : 0
-          raise LoadError, "only memory 0 is supported" unless memory_index == 0
           offset = context.read(sbuf, :i32)
           len = fetch_uleb128(sbuf)
           data = assert_read(sbuf, len).b

@@ -87,9 +87,10 @@ module Wardite
         end
         start = instance.start_section
         if start
+          raise Wardite::InvalidModule, "unknown function" if start.func_index >= @ir.entries.size
           entry = @ir.entry_at(start.func_index)
           unless entry.parameter_types.empty? && entry.result_types.empty?
-            raise Wardite::LoadError, "start function must have no parameters or results"
+            raise Wardite::InvalidModule, "start function must have no parameters or results"
           end
         end
         mir_cache.write_ir(instance, @ir) if mir_cache && !profile && !@mir_cache_hit

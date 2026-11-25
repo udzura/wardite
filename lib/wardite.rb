@@ -131,7 +131,7 @@ module Wardite
       imports.imports.each do |import|
         params = types&.defined_types&.[](import.sig_index)
         results = types&.defined_results&.[](import.sig_index)
-        raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
+        raise InvalidModule, "invalid import type index #{import.sig_index}" unless params && results
         raise InvalidModule, "expected function type" if types&.type_keys&.fetch(import.sig_index)&.start_with?("s")
         unless results.size <= 1
           raise Efflorescence::UnsupportedFeature, "unsupported host signature for #{import.module_name}.#{import.name}"
@@ -142,8 +142,9 @@ module Wardite
         expected = declared_tag(desc.sig_index)
         host = @import_object.fetch(desc.module_name.to_sym, nil)
         tag = host.tags.fetch(desc.name.to_sym, nil) if host.is_a?(HashModule)
+        raise LinkError, "incompatible import type" if !tag && host.is_a?(HashModule) && host.export_named?(desc.name.to_sym)
         raise LinkError, "unknown import" unless tag
-        raise LinkError, "incompatible import" unless tag.type_key == expected.type_key
+        raise LinkError, "incompatible import type" unless tag.type_key == expected.type_key
         @tags << tag
       end
       if tag_section.is_a?(TagSection)
@@ -206,7 +207,7 @@ module Wardite
       functions.func_indices.each_with_index do |index, position|
         params = types&.defined_types&.[](index)
         results = types&.defined_results&.[](index)
-        raise LoadError, "invalid function type index #{index}" unless params && results
+        raise InvalidModule, "invalid function type index #{index}" unless params && results
         raise InvalidModule, "expected function type" if types&.type_keys&.fetch(index)&.start_with?("s")
         block.call(params, results, codes.func_codes.fetch(position))
       end
@@ -218,14 +219,16 @@ module Wardite
       return unless segments
       active = segments.select { |segment| segment.mode == :active }
       return if active.empty?
-      memory = store.memories[0] || raise(LoadError, "active data segment requires memory 0")
-      offsets = active.map do |segment|
+      active.each do |segment|
+        raise InvalidModule, "unknown memory #{segment.mem_index}" unless store.memories[segment.mem_index]
+      end
+      active.each do |segment|
+        memory = store.memories.fetch(segment.mem_index)
         expression = segment.offset || raise(LoadError, "missing active segment offset")
         offset = expression.offset(self, store.globals)
         raise LoadError, "active data segment out of bounds" unless memory.range?(offset, segment.data.bytesize)
-        offset
+        memory.write_bytes(offset, segment.data)
       end
-      active.each_with_index { |segment, i| memory.write_bytes(offsets.fetch(i), segment.data) }
     end
 
     # @rbs return: void
@@ -423,11 +426,11 @@ module Wardite
       import_section.imports.each do |desc|
         callsig = type_section&.defined_types&.[](desc.sig_index)
         retsig = type_section&.defined_results&.[](desc.sig_index)
-        raise LoadError, "invalid import type index #{desc.sig_index}" unless callsig && retsig
+        raise InvalidModule, "invalid import type index #{desc.sig_index}" unless callsig && retsig
 
         module_name = desc.module_name.to_sym
         target_module = self.modules.fetch(module_name) { self.modules.default(module_name) }
-        raise ::NameError, "module #{desc.module_name} not found" unless target_module
+        raise LinkError, "unknown import" unless target_module
 
         name = desc.name.to_sym
         wasi = inst.wasi
@@ -458,7 +461,7 @@ module Wardite
       import_section.memory_imports.each do |mod, name, min, max|
         host = self.modules.fetch(mod.to_sym) { self.modules.default(mod.to_sym) }
         memory = host.is_a?(HashModule) ? host.memories.fetch(name.to_sym, nil) : nil
-        raise LinkError, "incompatible import type" if !memory && host.is_a?(HashModule) && host.tables.key?(name.to_sym)
+        raise LinkError, "incompatible import type" if !memory && host.is_a?(HashModule) && host.export_named?(name.to_sym)
         raise LinkError, "unknown import" unless memory
         actual_max = memory.max
         unless memory.current >= min && (!max || (actual_max && actual_max <= max))
@@ -489,11 +492,11 @@ module Wardite
         module_name = desc.module_name.to_sym
         host = self.modules.fetch(module_name) { self.modules.default(module_name) }
         global = host.is_a?(HashModule) ? host.globals.fetch(desc.name.to_sym, nil) : nil
-        raise LinkError, "incompatible import type" if !global && host.is_a?(HashModule) && host.tables.key?(desc.name.to_sym)
-        raise LoadError, "unknown global import #{desc.module_name}.#{desc.name}" unless global
+        raise LinkError, "incompatible import type" if !global && host.is_a?(HashModule) && host.export_named?(desc.name.to_sym)
+        raise LinkError, "unknown import" unless global
         matches = desc.mutable ? global.type == desc.type : Efflorescence::FunctionEntry.assignable?(global.type, desc.type)
         unless matches && global.mutable == desc.mutable && !global.shared && global.valid_value?
-          raise LoadError, "incompatible global import #{desc.module_name}.#{desc.name}"
+          raise LinkError, "incompatible import type"
         end
         @globals << global
       end
