@@ -1,8 +1,8 @@
 # Official core instruction suites
 
-Spinel / Efflorescence with JIT disabled, using Spinel 7289, WABT 1.0.42 and wasm-tools 1.218.0. The runner pins both spec revisions. The 37 scripts keep their original command order. The wg-1.0 script globals.wast is named global.wast in wg-3.0.
+Spinel / Efflorescence with JIT disabled, using Spinel 7289, WABT 1.0.42 and wasm-tools 1.236.0. The runner pins both spec revisions. The 37 scripts keep their original command order. The wg-1.0 script globals.wast is named global.wast in wg-3.0.
 
-Counts include module setup, actions and assertions. One failed module load can cause many later invocations to fail. The wg-3.0 runner checks malformed quoted text with WABT. The wg-1.0 runner retains its existing skips for text-format checks. The wasm-tools version used here required the WABT fallback for align.wast.
+Counts include module setup, actions and assertions. One failed module load can cause many later invocations to fail. The wg-3.0 runner checks malformed quoted text with WABT. The wg-1.0 runner retains its existing skips for text-format checks. The wg-3.0 run used wasm-tools 1.236.0 to preserve the full-width alignment and offset in align.wast.
 
 | Suite | wg-1.0 pass / fail / skip | wg-3.0 pass / fail / skip |
 |---|---:|---:|
@@ -20,21 +20,21 @@ Counts include module setup, actions and assertions. One failed module load can 
 | float_memory | 90 / 0 / 0 | 90 / 0 / 0 |
 | local_get | 36 / 0 / 0 | 36 / 0 / 0 |
 | local_set | 53 / 0 / 0 | 53 / 0 / 0 |
-| local_tee | 97 / 0 / 0 | 97 / 1 / 0 |
-| global | 78 / 0 / 0 | 111 / 13 / 0 |
+| local_tee | 97 / 0 / 0 | 98 / 0 / 0 |
+| global | 78 / 0 / 0 | 124 / 0 / 0 |
 | load | 84 / 0 / 13 | 97 / 0 / 0 |
 | store | 61 / 0 / 7 | 68 / 0 / 0 |
 | address | 242 / 0 / 1 | 259 / 0 / 1 |
-| align | 110 / 0 / 46 | 160 / 5 / 0 |
+| align | 110 / 0 / 46 | 165 / 0 / 0 |
 | endianness | 69 / 0 / 0 | 69 / 0 / 0 |
 | memory_size | 42 / 0 / 0 | 42 / 0 / 0 |
-| memory_grow | 94 / 0 / 0 | 101 / 5 / 0 |
+| memory_grow | 94 / 0 / 0 | 106 / 0 / 0 |
 | memory_trap | 173 / 0 / 0 | 182 / 0 / 0 |
 | block | 169 / 0 / 2 | 223 / 0 / 0 |
 | loop | 79 / 0 / 2 | 120 / 0 / 0 |
 | if | 141 / 0 / 10 | 241 / 0 / 0 |
 | br | 84 / 0 / 0 | 97 / 0 / 0 |
-| br_if | 118 / 0 / 0 | 118 / 1 / 0 |
+| br_if | 118 / 0 / 0 | 119 / 0 / 0 |
 | br_table | 168 / 0 / 0 | 186 / 0 / 0 |
 | return | 84 / 0 / 0 | 84 / 0 / 0 |
 | call | 80 / 0 / 2 | 89 / 0 / 2 |
@@ -43,13 +43,13 @@ Counts include module setup, actions and assertions. One failed module load can 
 | nop | 88 / 0 / 0 | 88 / 0 / 0 |
 | unreachable | 62 / 0 / 0 | 64 / 0 / 0 |
 | traps | 36 / 0 / 0 | 36 / 0 / 0 |
-| **Total** | **14,970 / 0 / 96** | **15,682 / 25 / 5** |
+| **Total** | **14,970 / 0 / 96** | **15,707 / 0 / 5** |
 
 Before the exception changes, Wardite at fbd8528 recorded 14,970 / 0 / 96 on wg-1.0 and 14,577 / 957 / 178 on wg-3.0. That baseline skipped script registrations, reference expectations and quoted text checks. Changes in skip policy affect the comparison with those baseline counts.
 
 At 3e03299, the same wg-3.0 scripts recorded 14,778 / 916 / 18. The first module now loads in all nine affected scripts (block, br, call, if, call_indirect, loop, select, br_table and global). The runner also checks previously skipped null and external reference arguments and results.
 
-The remaining 25 failures occur in global (13), align (5), memory_grow (5), br_if (1) and local_tee (1). The global failures start at line 373, after the first module and its actions. The memory_grow failures include two later module loads that import memory.
+At d3f3f5a the basic wg-3.0 scripts recorded 15,682 / 25 / 5. All 25 previously failing commands now pass, including module setup, registration and the dependent invocations. The five skips are the quoted invalid module at address.wast line 214 and four call-stack exhaustion assertions in call.wast and call_indirect.wast.
 
 Two intermediate native builds intermittently reported an unknown MIR optimization while validating wg-1.0 br_if.wast at line 527. The final comparison above includes a full run. The isolated script also passed 16 consecutive runs with the earlier worker.
 

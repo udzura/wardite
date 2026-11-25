@@ -134,4 +134,11 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
   test 'global.wast 664 places data at a derived global offset' do
     assert_equal 0x88888888, initialized_segments.runtime.call_unboxed('data', [8])
   end
+
+  test 'global.wast 675 validates table initializers before defined globals enter scope' do
+    error = assert_raise(Wardite::InvalidInitializer) do
+      load_efflorescence('(module (global $g funcref (ref.null func)) (table 10 funcref (global.get $g)))')
+    end
+    assert_equal 'unknown global 0', error.message
+  end
 end
