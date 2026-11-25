@@ -112,4 +112,11 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
   test 'global.wast 659 starts untouched table slots with a null reference' do
     assert_nil initialized_segments.runtime.call_unboxed('elem', [0])
   end
+
+  test 'global.wast 660 places a function at an imported global offset' do
+    instance = initialized_segments
+    reference = instance.runtime.call_unboxed('elem', [4])
+    assert_same instance, reference.instance
+    assert_equal 0, reference.index
+  end
 end
