@@ -19,6 +19,25 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
     load_efflorescence('(module (memory (export "m") 2 4))')
   end
 
+  def initialized_segments
+    provider = load_efflorescence('(module (global (export "base") i32 (i32.const 4)))')
+    load_efflorescence(<<~WAT, import_object: {provider: provider.as_import_module})
+      (module
+        (global $base (import "provider" "base") i32)
+        (global $next i32 (i32.add (global.get $base) (i32.const 4)))
+        (func $target)
+        (global $fn funcref (ref.func $target))
+        (table 10 funcref (ref.null func))
+        (elem (global.get $base) funcref (ref.func $target))
+        (elem (global.get $next) funcref (global.get $fn))
+        (memory 1)
+        (data (global.get $base) "DDDD")
+        (data (global.get $next) "\\88\\88\\88\\88")
+        (func (export "elem") (param i32) (result funcref) local.get 0 table.get)
+        (func (export "data") (param i32) (result i32) local.get 0 i32.load))
+    WAT
+  end
+
   test 'global.wast 374 reads a preceding named immutable global' do
     instance = load_efflorescence('(module (global $g i32 (i32.const 42)) (global (export "copy") i32 (global.get $g)))')
     assert_equal 42, instance.exports['copy'].value.value
@@ -88,5 +107,9 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
     second = import_memory(first, 2)
     first.runtime.call_unboxed('grow', [])
     assert_equal 3, second.runtime.call_unboxed('size', [])
+  end
+
+  test 'global.wast 659 starts untouched table slots with a null reference' do
+    assert_nil initialized_segments.runtime.call_unboxed('elem', [0])
   end
 end
