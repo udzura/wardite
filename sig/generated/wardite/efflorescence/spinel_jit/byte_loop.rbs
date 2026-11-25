@@ -11,6 +11,12 @@ module Wardite
         # @rbs code: String
         # @rbs kind: String
         def initialize: (String code, String kind) -> untyped
+
+        # @rbs return: Integer
+        def executable_page: () -> Integer
+
+        # @rbs return: void
+        def release: () -> void
       end
 
       class AArch64

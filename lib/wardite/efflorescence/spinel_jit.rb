@@ -26,7 +26,6 @@ module Wardite
         #   def self.ffi_func: (Symbol, Array[Symbol], Symbol) -> void
         #   def self.wardite_jit_supported: () -> Integer
         #   def self.wardite_jit_run: (String, Integer, IO::Buffer) -> Integer
-        #   def self.wardite_jit_run_loop: (String, Integer, IO::Buffer, IO::Buffer, Integer) -> Integer
 
         # @rbs!
         #   def self.wardite_jit_map_code: (String, Integer) -> Integer
@@ -73,21 +72,12 @@ module Wardite
             return status;
           }
 
-          // A loop returns the original flat MIR word PC at which the VM resumes.
-          int wardite_jit_run_loop(const char *bytes, size_t size, void *slots, void *memory, size_t length) {
-            void *page = wardite_jit_map(bytes, size);
-            if (!page) return -1;
-            int pc = ((int (*)(uint64_t *, void *, size_t))page)(slots, memory, length);
-            munmap(page, size);
-            return pc;
-          }
           #else
           int wardite_jit_supported(void) { return 0; }
           int64_t wardite_jit_map_code(const char *bytes, size_t size) { return 0; }
           void wardite_jit_unmap_code(int64_t page, size_t size) {}
           int wardite_jit_call_loop(int64_t page, void *slots, void *memory, size_t length) { return -1; }
           int wardite_jit_run(const char *bytes, size_t size, void *slots) { return WARDITE_JIT_MAPPING_FAILED; }
-          int wardite_jit_run_loop(const char *bytes, size_t size, void *slots, void *memory, size_t length) { return -1; }
           #endif
         C
         ffi_func :wardite_jit_map_code, [:binstr, :size_t], :int64
@@ -95,7 +85,6 @@ module Wardite
         ffi_func :wardite_jit_call_loop, [:int64, :buffer_inout, :buffer_inout, :size_t], :int
         ffi_func :wardite_jit_supported, [], :int
         ffi_func :wardite_jit_run, [:binstr, :size_t, :buffer_inout], :int
-        ffi_func :wardite_jit_run_loop, [:binstr, :size_t, :buffer_inout, :buffer_inout, :size_t], :int
       end
 
       def initialize
@@ -164,15 +153,15 @@ module Wardite
         index = instructions.fetch(pc + 3)
         return @lookup_sites.fetch(-index - 1).run(frame, pc, memory) if index < 0
         entry = @loops.fetch(index)
-        code = entry.code
-        registers = frame.registers
-        slots = IO::Buffer.new(registers.size * 8)
-        registers.each_with_index { |value, i| slots.set_value(:s64, i * 8, value) }
-        resume = Native.wardite_jit_run_loop(code, code.bytesize, slots, memory, memory.size)
-        if resume < 0
+        page = entry.executable_page
+        if page == 0
           instructions[pc] = Opcode::BR_IF
           return instructions.fetch(pc + 2)
         end
+        registers = frame.registers
+        slots = IO::Buffer.new(registers.size * 8)
+        registers.each_with_index { |value, i| slots.set_value(:s64, i * 8, value) }
+        resume = Native.wardite_jit_call_loop(page, slots, memory, memory.size)
         registers.size.times { |i| registers[i] = Integer(slots.get_value(:s64, i * 8)) }
         if ENV["WARDITE_TRACE"]
           warn "MIR JIT byte loop function #{frame.function.index}: backedge #{pc / Lowerer::WIDTH}, native exit #{resume / Lowerer::WIDTH} (#{entry.kind})"
@@ -184,6 +173,7 @@ module Wardite
       # execution. run_frames releases them even on traps and WASI exits.
       # @rbs return: void
       def release_loop_pages
+        @loops.each { |entry| entry.release }
         @lookup_sites.each { |site| site.release }
       end
 

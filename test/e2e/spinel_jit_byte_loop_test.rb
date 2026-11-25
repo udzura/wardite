@@ -23,6 +23,7 @@ class WarditeSpinelJITByteLoopTest < Test::Unit::TestCase
           end
           local.get $sum)
         (func (export "grow_scan") (result i32)
+          i32.const 0 i32.const 4 i32.const 1 call $scan drop
           i32.const 1 memory.grow drop
           i32.const 65536 i32.const 8 i32.const 1 call $scan))
     WAT
@@ -35,7 +36,10 @@ class WarditeSpinelJITByteLoopTest < Test::Unit::TestCase
           output, status = invoke(wasm, name, args, jit)
           assert_equal !!value, status.success?, output
           assert_include output, value ? "return value: #{value}" : "out of bounds memory access"
-          assert_equal jit, output.include?("MIR JIT byte loop"), output
+          entries = name == "grow_scan" ? 2 : 1
+          assert_equal jit ? entries : 0, output.scan("MIR JIT byte loop function").size, output
+          assert_equal jit ? 1 : 0, output.scan("MIR JIT mapped byte-loop page").size, output
+          assert_equal jit ? 1 : 0, output.scan("MIR JIT released byte-loop page").size, output
         end
       end
     end

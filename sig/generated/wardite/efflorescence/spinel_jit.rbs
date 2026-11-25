@@ -22,8 +22,6 @@ module Wardite
 
         def self.wardite_jit_run: (String, Integer, IO::Buffer) -> Integer
 
-        def self.wardite_jit_run_loop: (String, Integer, IO::Buffer, IO::Buffer, Integer) -> Integer
-
         def self.wardite_jit_map_code: (String, Integer) -> Integer
 
         def self.wardite_jit_unmap_code: (Integer, Integer) -> void
