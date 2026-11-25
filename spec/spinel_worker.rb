@@ -22,7 +22,11 @@ class SpecWorker
   def execute(fields)
     op, id, operand = fields.fetch(0), fields.fetch(1), fields.fetch(2)
     if op == "module" || op == "invalid" || op == "malformed"
-      instance = Wardite.new(path: operand, engine: :efflorescence, enable_wasi: false)
+      global = Wardite::Global.numeric(:i32, false)
+      global.value = Wardite::I32(666)
+      spectest = Wardite::HashModule.new({}, {global_i32: global})
+      instance = Wardite.new(path: operand, engine: :efflorescence, enable_wasi: false,
+        import_object: {spectest: spectest})
       instance.runtime.prepare_all
       @instances[id] = instance if op == "module"
       return "loaded"

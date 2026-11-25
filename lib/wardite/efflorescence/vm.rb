@@ -15,6 +15,7 @@ module Wardite
       # @rbs @inspection_links: Wardite::Efflorescence::IR?
       # @rbs @semantic_ir: Wardite::Efflorescence::IR?
       # @rbs @optimized_ir: Wardite::Efflorescence::IR?
+      # @rbs @global_slots: Array[Integer]?
       # @rbs @global_bits: Array[Integer]
       # @rbs @jit: SpinelJIT?
 
@@ -32,6 +33,13 @@ module Wardite
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
         @global_bits = []
+        # The same host global can be imported under multiple names.
+        @global_slots = nil
+        if instance.import_section.global_imports.size > 1
+          first = {} #: Hash[Integer, Integer]
+          slots = instance.store.globals.each_with_index.map { |g, i| first[g.object_id] ||= i }
+          @global_slots = slots if first.size < slots.size
+        end
         @has_globals = !instance.store.globals.empty?
         @function_indices = {} #: Hash[Integer, Integer]
         # Retain the original objects so IDs stay valid even if a host edits
@@ -407,7 +415,7 @@ module Wardite
       # @rbs return: void
       def write_globals
         @instance.store.globals.each_with_index do |global, index|
-          @store_access.write_global_bits(index, global.type, @global_bits.fetch(index))
+          @store_access.write_global_bits(index, global.type, @global_bits.fetch(@global_slots&.fetch(index) || index))
         end
       end
 
@@ -696,6 +704,7 @@ module Wardite
         frames = active_frames
         registers = frame.registers
         global_bits = @global_bits
+        slots = @global_slots
         instructions = frame.instructions
         pc = Integer(frame.pc)
         # Avoid Kernel#loop's StopIteration handler in the native hot loop.
@@ -1031,10 +1040,10 @@ module Wardite
             next
           when 52 # Opcode::GLOBAL_GET
             b = instructions.fetch(pc + 2)
-            registers[a] = global_bits[b]
+            registers[a] = global_bits[slots ? slots.fetch(b) : b]
           when 53 # Opcode::GLOBAL_SET
             b = instructions.fetch(pc + 2)
-            global_bits[a] = registers[b]
+            global_bits[slots ? slots.fetch(a) : a] = registers[b]
           when 54 # Opcode::I32_LOAD
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
@@ -1254,22 +1263,22 @@ module Wardite
             @store_access.store(registers[b], c, 4, registers[a])
           when 115 # Opcode::I64_GLOBAL_GET
             b = instructions.fetch(pc + 2)
-            registers[a] = global_bits[b]
+            registers[a] = global_bits[slots ? slots.fetch(b) : b]
           when 116 # Opcode::I64_GLOBAL_SET
             b = instructions.fetch(pc + 2)
-            global_bits[a] = registers[b]
+            global_bits[slots ? slots.fetch(a) : a] = registers[b]
           when 191 # Opcode::F32_GLOBAL_GET
             b = instructions.fetch(pc + 2)
-            registers[a] = global_bits[b]
+            registers[a] = global_bits[slots ? slots.fetch(b) : b]
           when 192 # Opcode::F64_GLOBAL_GET
             b = instructions.fetch(pc + 2)
-            registers[a] = global_bits[b]
+            registers[a] = global_bits[slots ? slots.fetch(b) : b]
           when 193 # Opcode::F32_GLOBAL_SET
             b = instructions.fetch(pc + 2)
-            global_bits[a] = registers[b]
+            global_bits[slots ? slots.fetch(a) : a] = registers[b]
           when 194 # Opcode::F64_GLOBAL_SET
             b = instructions.fetch(pc + 2)
-            global_bits[a] = registers[b]
+            global_bits[slots ? slots.fetch(a) : a] = registers[b]
           when 22 # Opcode::PROFILE
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

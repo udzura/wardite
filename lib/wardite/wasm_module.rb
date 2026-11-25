@@ -30,8 +30,12 @@ module Wardite
   class HashModule
     attr_accessor :hash #: Hash[Symbol, _WasmCallable]
 
-    # @rbs ha: Hash[Symbol, _WasmCallable]
-    def initialize(hash)
+    attr_reader :globals #: Hash[Symbol, Global]
+
+    # @rbs hash: Hash[Symbol, _WasmCallable]
+    # @rbs globals: Hash[Symbol, Global]
+    def initialize(hash, globals = {})
+      @globals = globals
       @hash = hash
     end
 

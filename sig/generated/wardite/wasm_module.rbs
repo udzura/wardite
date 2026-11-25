@@ -26,8 +26,11 @@ module Wardite
   class HashModule
     attr_accessor hash: Hash[Symbol, _WasmCallable]
 
-    # @rbs ha: Hash[Symbol, _WasmCallable]
-    def initialize: (untyped hash) -> untyped
+    attr_reader globals: Hash[Symbol, Global]
+
+    # @rbs hash: Hash[Symbol, _WasmCallable]
+    # @rbs globals: Hash[Symbol, Global]
+    def initialize: (Hash[Symbol, _WasmCallable] hash, ?Hash[Symbol, Global] globals) -> untyped
 
     # @rbs fnname: Symbol
     # @rbs store: Store
