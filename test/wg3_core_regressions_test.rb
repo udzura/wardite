@@ -130,4 +130,8 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
   test 'global.wast 663 places data at an imported global offset' do
     assert_equal 0x44444444, initialized_segments.runtime.call_unboxed('data', [4])
   end
+
+  test 'global.wast 664 places data at a derived global offset' do
+    assert_equal 0x88888888, initialized_segments.runtime.call_unboxed('data', [8])
+  end
 end
