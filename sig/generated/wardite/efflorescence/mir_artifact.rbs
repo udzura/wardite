@@ -44,13 +44,15 @@ module Wardite
         def getbyte: () -> Integer
 
         # @rbs return: CodeSection::CodeBody
-        def body: () -> CodeSection::CodeBody
+        # @rbs types: TypeSection
+        def body: (TypeSection types) -> CodeSection::CodeBody
       end
 
       # @rbs file: File
       # @rbs size: Integer
       # @rbs return: CodeSection
-      def code_section: (File file, Integer size) -> CodeSection
+      # @rbs types: TypeSection
+      def code_section: (File file, Integer size, ?TypeSection types) -> CodeSection
 
       # @rbs offset: Integer
       # @rbs length: Integer

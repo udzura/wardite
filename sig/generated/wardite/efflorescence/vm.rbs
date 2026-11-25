@@ -68,7 +68,18 @@ module Wardite
 
       attr_reader table_state_changed: bool
 
-      # Indirect calls currently admit numeric parameter and result registers.
+      # Reference handles belong to one VM. Transfer their referents across instances.
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: (Wardite::FunctionReference | Wardite::ExternalReference)?
+      def exported_reference: (Symbol type, Integer bits) -> (Wardite::FunctionReference | Wardite::ExternalReference)?
+
+      # @rbs source: VM
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: Integer
+      def transfer_value: (VM source, Symbol type, Integer bits) -> Integer
+
       # @rbs index: Integer
       # @rbs arguments: Array[Integer]
       # @rbs return: Array[Integer]
@@ -76,15 +87,15 @@ module Wardite
 
       # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
-      # @rbs arguments: Array[Object]
+      # @rbs arguments: Array[Object?]
       # @rbs return: Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue | nil
-      def call: (String | Symbol name, Array[Object] arguments) -> (Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue | nil)
+      def call: (String | Symbol name, Array[Object?] arguments) -> (Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue | nil)
 
       # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
-      # @rbs arguments: Array[Object]
+      # @rbs arguments: Array[Object?]
       # @rbs return: (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue)?
-      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue)?
+      def call_unboxed: (String | Symbol name, Array[Object?] arguments) -> (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue)?
 
       # @rbs return: String
       def dump_mir: () -> String
@@ -111,9 +122,9 @@ module Wardite
       def export_entry: (String | Symbol name) -> Wardite::Efflorescence::FunctionEntry
 
       # @rbs entry: Wardite::Efflorescence::FunctionEntry
-      # @rbs arguments: Array[Object]
+      # @rbs arguments: Array[Object?]
       # @rbs return: Integer?
-      def execute_public: (Wardite::Efflorescence::FunctionEntry entry, Array[Object] arguments) -> Integer?
+      def execute_public: (Wardite::Efflorescence::FunctionEntry entry, Array[Object?] arguments) -> Integer?
 
       # @rbs type: Symbol
       # @rbs value: Object?
@@ -199,6 +210,12 @@ module Wardite
       # @rbs sources: Array[Integer]?
       # @rbs return: Integer?
       def invoke_host: (Integer host_index, Array[Integer] arguments, Wardite::Efflorescence::Metrics metrics, Array[Integer]? sources) -> Integer?
+
+      # @rbs host: HostFunction
+      # @rbs arguments: Array[Integer]
+      # @rbs sources: Array[Integer]?
+      # @rbs return: Wardite::wasmFuncReturn
+      def boxed_host_result: (HostFunction host, Array[Integer] arguments, Array[Integer]? sources) -> Wardite::wasmFuncReturn
 
       # @rbs host: Wardite::Efflorescence::HostFunction
       # @rbs arguments: Array[Integer]

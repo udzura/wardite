@@ -175,6 +175,10 @@ module Wardite
       # @rbs return: Integer
       def pop_value: () -> Integer
 
+      # @rbs types: Array[Symbol]
+      # @rbs return: void
+      def check_tail_results: (Array[Symbol] types) -> void
+
       # @rbs register: Integer
       # @rbs return: Symbol
       def type_of: (Integer register) -> Symbol

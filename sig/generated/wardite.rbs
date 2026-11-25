@@ -39,6 +39,10 @@ module Wardite
     # @rbs return: Efflorescence::Tag
     def declared_tag: (Integer index) -> Efflorescence::Tag
 
+    # @rbs index: Integer
+    # @rbs return: String
+    def function_type_key: (Integer index) -> String
+
     # @rbs return: HashModule
     def as_import_module: () -> HashModule
 

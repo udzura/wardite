@@ -27,7 +27,7 @@ module Wardite
       raise LoadError, "invalid or truncated unsigned LEB128"
     end
 
-    # @rbs buf: File|StringIO
+    # @rbs buf: File|StringIO|Efflorescence::MIRArtifact::CodeReader
     # @rbs return: Integer
     # @rbs max_level: Integer
     # @rbs width: Integer?

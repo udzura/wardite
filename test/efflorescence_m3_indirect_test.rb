@@ -126,6 +126,47 @@ class EfflorescenceM3IndirectTest < Test::Unit::TestCase
     assert_equal 42, owner.runtime.call_unboxed("run", [])
   end
 
+  test "typed references retain their owning instance through imports and indirect calls" do
+    owner = load_efflorescence(<<~WAT)
+      (module
+        (type $f (func (result i32)))
+        (type $id (func (param (ref $f)) (result (ref $f))))
+        (table (export "table") 1 funcref)
+        (func $id (export "id") (type $id) local.get 0)
+        (elem (i32.const 0) func $id))
+    WAT
+    guest = load_efflorescence(<<~WAT, import_object: {owner: owner.as_import_module})
+      (module
+        (type $f (func (result i32)))
+        (type $id (func (param (ref $f)) (result (ref $f))))
+        (import "owner" "id" (func $id (type $id)))
+        (import "owner" "table" (table 1 funcref))
+        (func $f (type $f) i32.const 42)
+        (elem declare func $f)
+        (func (export "run") (result i32)
+          ref.func $f call $id i32.const 0 call_indirect (type $id) call_ref $f))
+    WAT
+    assert_equal 42, guest.runtime.call_unboxed("run", [])
+  end
+
+  test "cached reference calls restore typed locals and call sites" do
+    bytes = compile_efflorescence_wat(<<~WAT)
+      (module
+        (type $t (func (result i32)))
+        (func $f (type $t) i32.const 42)
+        (elem declare func $f)
+        (func (export "run") (result i32) (local (ref null $t))
+          ref.func $f local.set 0 local.get 0 ref.as_non_null return_call_ref $t))
+    WAT
+    Dir.mktmpdir do |dir|
+      2.times do |i|
+        instance = Wardite.new(buffer: StringIO.new(bytes), mir_cache: dir, mir_cache_eager: true)
+        assert_equal i == 1, instance.runtime.mir_cache_hit
+        assert_equal 42, instance.runtime.call_unboxed("run", [])
+      end
+    end
+  end
+
   test "cached table instructions use fresh passive segments for each instance" do
     bytes = compile_efflorescence_wat(<<~WAT)
       (module

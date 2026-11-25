@@ -401,6 +401,7 @@ module Wardite
           params = types&.defined_types&.[](index)
           results = types&.defined_results&.[](index)
           raise LoadError, "invalid block type index #{index}" unless params && results
+          raise InvalidModule, "expected function type" if types&.type_keys&.[](index)&.start_with?("s")
           block.resolve(params, results)
         end
       end
@@ -547,6 +548,9 @@ module Wardite
   end
 
   module BinaryLoader
+    EMPTY_OPTIMIZATIONS = [] #: Array[Symbol]
+    EMPTY_OPTIMIZATIONS.freeze
+
     extend Wardite::Leb128Helper
     extend Wardite::ValueHelper
 
@@ -565,7 +569,7 @@ module Wardite
     # @rbs mir_cache_verify: Symbol
     # @rbs mir_cache_eager: bool
     # @rbs return: Instance
-    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :efflorescence, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false, emit_wmir: nil)
+    def self.load_from_buffer(buf, import_object: {}, enable_wasi: true, engine: :efflorescence, disabled_optimizations: EMPTY_OPTIMIZATIONS, enabled_optimizations: EMPTY_OPTIMIZATIONS, mir_cse: false, mir_profile: false, mir_cache: nil, mir_cache_verify: :checksum, mir_cache_eager: false, emit_wmir: nil)
       start = Time.now.to_f #: Float
       unless mir_cache_verify == :checksum || mir_cache_verify == :sha256
         raise ArgumentError, "MIR cache verification must be checksum or sha256"
@@ -719,9 +723,9 @@ module Wardite
           when Wardite::SectionCode
             source = @buf
             code_section_data = if artifact && source.is_a?(File)
-              artifact.code_section(source, fetch_uleb128(source))
+              artifact.code_section(source, fetch_uleb128(source), context.types)
             else
-              code_section(defer_code, keep_code)
+              code_section(defer_code, keep_code, context.types)
             end
             code_section_data.initializer_functions.concat(context.declared_functions)
             code_section_data
@@ -754,28 +758,64 @@ module Wardite
         code = assert_byte(sbuf)
         grouped = code == 0x4e
         count = grouped ? fetch_uleb128(sbuf) : 1
-        group = [] #: Array[String]
+        start = dest.type_keys.size
+        raise LoadError, "truncated recursive type group" if count > size
+        count.times { |i| dest.type_keys << "@#{i}" }
+        shapes = [] #: Array[String]
+        structs = [] #: Array[bool]
         count.times do
-          fncode = grouped ? assert_byte(sbuf) : code
-          raise LoadError, "not a function definition" unless fncode == 0x60
+          form = grouped ? assert_byte(sbuf) : code
           params = [] #: Array[Symbol]
           results = [] #: Array[Symbol]
-          fetch_uleb128(sbuf).times { params << read_signature_type(sbuf, dest) }
-          fetch_uleb128(sbuf).times { results << read_signature_type(sbuf, dest) }
+          if form == 0x60
+            fetch_uleb128(sbuf).times { params << read_signature_type(sbuf, dest) }
+            fetch_uleb128(sbuf).times { results << read_signature_type(sbuf, dest) }
+            shapes << "func(#{params.join(',')})->(#{results.join(',')})"
+          elsif form == 0x5f
+            fields = [] #: Array[String]
+            fetch_uleb128(sbuf).times do
+              storage = read_signature_type(sbuf, dest)
+              mutable = assert_byte(sbuf)
+              raise LoadError, "invalid field mutability" unless mutable <= 1
+              fields << "#{storage}/#{mutable}"
+            end
+            shapes << "struct(#{fields.join(',')})"
+          else
+            raise LoadError, "unsupported composite type #{form}"
+          end
+          structs << (form == 0x5f)
           dest.defined_types << params
           dest.defined_results << results
-          group << "#{params.join(',')}>#{results.join(',')}"
         end
-        key = group.join("|")
-        # Bound nested type identities and the cost of recording a large group.
-        key = Digest::SHA256.digest(key).unpack1("H*").to_s if group.size > 1 || key.bytesize > 64
-        count.times { |i| dest.type_keys << "#{i}:#{key}" }
+        # Intra-group references are relative. Earlier groups already have stable keys.
+        shape = shapes.join("|")
+        # Simple signatures can be used directly. Hash nested or large groups
+        # to keep identity keys bounded and nested field boundaries unambiguous.
+        if count > 1 || shape.bytesize > 64 || shape.include?(":")
+          shape = Digest::SHA256.digest(shape).unpack1("H*").to_s
+        end
+        count.times do |i|
+          dest.type_keys[start + i] = "#{structs.fetch(i) ? 's' : 'f'}#{i}:#{shape}"
+        end
+        count.times do |i|
+          [dest.defined_types.fetch(start + i), dest.defined_results.fetch(start + i)].each do |signature|
+            signature.map! do |type|
+              name = type.to_s
+              if name.start_with?("ref:@", "nullable:@")
+                prefix, offset = name.split("@", 2)
+                "#{prefix}#{dest.type_keys.fetch(start + offset.to_i)}".to_sym
+              else
+                type
+              end
+            end
+          end
+        end
       end
       raise LoadError, "trailing type section data" unless sbuf.eof?
       dest
     end
 
-    # @rbs sbuf: StringIO
+    # @rbs sbuf: StringIO|Efflorescence::MIRArtifact::CodeReader
     # @rbs return: Symbol
     # @rbs section: TypeSection
     def self.read_signature_type(sbuf, section)
@@ -784,9 +824,7 @@ module Wardite
         heap = fetch_sleb128(sbuf, width: 33)
         return reference_type(code, heap, section)
       end
-      type = Op.i2type(code)
-      return type if type == :funcref || type == :externref || type == :exnref || Efflorescence::FunctionEntry.numeric_type?(type)
-      raise LoadError, "unsupported value type: #{code}"
+      Op.i2type(code)
     end
 
     # @rbs code: Integer
@@ -797,7 +835,13 @@ module Wardite
       return code == 0x63 ? :funcref : :non_null_func if heap == -16
       return code == 0x63 ? :externref : :non_null_extern if heap == -17
       return code == 0x63 ? :exnref : :non_null_exn if heap == -23
+      return code == 0x63 ? :anyref : Efflorescence::FunctionEntry.non_nullable(:anyref) if heap == -18
+      return code == 0x63 ? :nullref : Efflorescence::FunctionEntry.non_nullable(:nullref) if heap == -15
+      return code == 0x63 ? :nullexternref : Efflorescence::FunctionEntry.non_nullable(:nullexternref) if heap == -14
+      return code == 0x63 ? :nullfuncref : Efflorescence::FunctionEntry.non_nullable(:nullfuncref) if heap == -13
+      return code == 0x63 ? :nullexnref : Efflorescence::FunctionEntry.non_nullable(:nullexnref) if heap == -12
       key = section&.type_keys&.[](heap) if heap >= 0
+      raise InvalidModule, "unknown type" if heap >= 0 && !key
       raise LoadError, "unsupported heap type #{heap}" unless key
       "#{code == 0x63 ? 'nullable' : 'ref'}:#{key}".to_sym
     end
@@ -959,7 +1003,7 @@ module Wardite
       type = read_signature_type(sbuf, types)
       mut = assert_byte(sbuf)
       raise LoadError, "unsupported global mutability flags" unless mut == 0 || mut == 1
-      raise LoadError, "unsupported global type #{type}" unless Efflorescence::FunctionEntry.numeric_type?(type) || Efflorescence::FunctionEntry.function_ref?(type) || type == :externref
+      raise LoadError, "unsupported global type #{type}" unless Efflorescence::FunctionEntry.numeric_type?(type) || Efflorescence::FunctionEntry.reference?(type)
       [type, mut == 1]
     end
 
@@ -1044,10 +1088,11 @@ module Wardite
     # @rbs defer_code: bool
     # @rbs keep_code: bool
     # @rbs return: CodeSection
-    def self.code_section(defer_code = false, keep_code = false)
+    # @rbs types: TypeSection
+    def self.code_section(defer_code = false, keep_code = false, types = TypeSection.new)
       size = fetch_uleb128(@buf)
       bytes = assert_read(@buf, size)
-      section = decode_code_section(bytes, defer_code)
+      section = decode_code_section(bytes, defer_code, types)
       section.source_bytes = bytes.freeze if keep_code
       section
     end
@@ -1055,20 +1100,22 @@ module Wardite
     # @rbs bytes: String
     # @rbs defer_code: bool
     # @rbs return: CodeSection
-    def self.decode_code_section(bytes, defer_code = false)
+    # @rbs types: TypeSection
+    def self.decode_code_section(bytes, defer_code = false, types = TypeSection.new)
       dest = CodeSection.new
       dest.size = bytes.bytesize
       sbuf = StringIO.new(bytes)
 
       len = fetch_uleb128(sbuf)
-      len.times { dest.func_codes << read_function_body(sbuf, defer_code) }
+      len.times { dest.func_codes << read_function_body(sbuf, defer_code, types) }
       dest
     end
 
     # @rbs sbuf: StringIO
     # @rbs defer_code: bool
     # @rbs return: CodeSection::CodeBody
-    def self.read_function_body(sbuf, defer_code = false)
+    # @rbs types: TypeSection
+    def self.read_function_body(sbuf, defer_code = false, types = TypeSection.new)
       ilen = fetch_uleb128(sbuf)
       code = assert_read(sbuf, ilen)
       last_code = code.getbyte(-1)
@@ -1083,7 +1130,7 @@ module Wardite
         locals_len = fetch_uleb128(cbuf)
         while locals_len > 0
           body.locals_count << fetch_uleb128(cbuf)
-          body.locals_type << Op.i2type(assert_byte(cbuf))
+          body.locals_type << read_signature_type(cbuf, types)
           locals_len -= 1
         end
         if defer_code
@@ -1287,6 +1334,9 @@ module Wardite
     # @rbs return: Op::DecodeSpec
     def self.resolve_spec(opcode, buf)
       return Op::REF_NULL_SPEC if opcode == 0xd0
+      return Op::REF_AS_NON_NULL_SPEC if opcode == 0xd4
+      return Op::BR_ON_NULL_SPEC if opcode == 0xd5
+      return Op::BR_ON_NON_NULL_SPEC if opcode == 0xd6
       return Op::REF_IS_NULL_SPEC if opcode == 0xd1
       return Op::REF_FUNC_SPEC if opcode == 0xd2
       if opcode == 0xfc
@@ -1407,7 +1457,7 @@ module Wardite
       name
     end
 
-    # @rbs sbuf: File|StringIO
+    # @rbs sbuf: File|StringIO|Efflorescence::MIRArtifact::CodeReader
     # @rbs return: Integer
     def self.assert_byte(sbuf)
       sbuf.getbyte || raise(LoadError, "too short section size")

@@ -14,10 +14,8 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
   end
 
   test 'unsupported tag and reference features are rejected including dead unexported functions' do
-    [
-      '(module (func (param exnref)))',
-      '(module (func (local (ref exn))))'
-    ].each { |wat| assert_raise(Wardite::LoadError, E::UnsupportedFeature) { load_wat(wat) } }
+    assert_raise(E::UnsupportedFeature) { load_wat('(module (func (param exnref)))') }
+    assert_nothing_raised { load_wat('(module (func (local (ref exn))))') }
   end
 
   test 'tag validation precedes linking' do
@@ -82,7 +80,7 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
     end
     cases.each do |opcode, immediate, namespace, code|
       input = immediate.pack('C*')
-      operands = {select_t: [:select_types], table_get: [:u32], table_set: [:u32], table_size: [:u32],
+      operands = {call_ref: [:u32], return_call_ref: [:u32], select_t: [:select_types], table_get: [:u32], table_set: [:u32], table_size: [:u32],
         table_grow: [:u32], table_fill: [:u32], elem_drop: [:u32], table_copy: [:u32, :u32], table_init: [:u32, :u32]}.fetch(code) { LegacyWasmDecode.operand_of(code) }
       expected = [namespace, code, operands]
       resolved = Wardite::BinaryLoader.resolve_code(opcode.chr(Encoding::BINARY), StringIO.new(input))

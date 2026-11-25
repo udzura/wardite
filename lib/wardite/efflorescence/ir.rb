@@ -230,6 +230,7 @@ module Wardite
       TABLE_COPY = 211
       TABLE_INIT = 212
       ELEM_DROP = 213
+      REF_AS_NON_NULL = 214
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U, I32_ADD_IMM, I32_ADD_IMM].freeze #: Array[Integer]
 
@@ -263,7 +264,7 @@ module Wardite
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
                  F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
                  BR_IF_I64_EQ I32_EXTRACT_I64
-                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET TABLE_SET TABLE_SIZE TABLE_GROW TABLE_FILL TABLE_COPY TABLE_INIT ELEM_DROP].freeze
+                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET TABLE_SET TABLE_SIZE TABLE_GROW TABLE_FILL TABLE_COPY TABLE_INIT ELEM_DROP REF_AS_NON_NULL].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -421,7 +422,7 @@ module Wardite
       READ_POSITIONS = NAMES.each_index.map do |opcode|
         opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ)
         positions = case opcode
-          when TABLE_GET, REF_IS_NULL, RESULT_SET, GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
+          when TABLE_GET, REF_AS_NON_NULL, REF_IS_NULL, RESULT_SET, GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
                COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
                I32_XOR_IMM, I32_SHL_IMM, I32_SHR_U_IMM, I32_XOR_SHR_U_IMM, I32_XOR_SHL_IMM
             [2]
@@ -514,7 +515,7 @@ module Wardite
       # @rbs return: Integer
       def self.destination(instruction)
         opcode = instruction[0]
-        if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ) || opcode == TABLE_SIZE || opcode == TABLE_GROW || opcode == RESULT_GET || opcode == REF_IS_NULL || opcode == TABLE_GET || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
+        if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ) || opcode == TABLE_SIZE || opcode == TABLE_GROW || opcode == RESULT_GET || opcode == REF_IS_NULL || opcode == REF_AS_NON_NULL || opcode == TABLE_GET || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
             (opcode >= I32_ADD_IMM && opcode <= I32_SHR_U_IMM) ||
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
@@ -535,7 +536,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.may_trap?(opcode)
-        opcode == TRAP || opcode == TABLE_SET || opcode.between?(TABLE_FILL, TABLE_INIT) || opcode == TABLE_GET || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
+        opcode == TRAP || opcode == REF_AS_NON_NULL || opcode == TABLE_SET || opcode.between?(TABLE_FILL, TABLE_INIT) || opcode == TABLE_GET || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
           (opcode >= I32_TRUNC_F32_S && opcode <= I64_TRUNC_F64_U) ||
           (opcode > CALL_INDIRECT && (EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode) ||
@@ -1200,6 +1201,7 @@ module Wardite
     end
 
     class DynamicCallSite
+      attr_reader :type_index #: Integer
       attr_reader :host_index #: Integer
       attr_reader :table_index #: Integer
       attr_reader :arguments #: Array[Integer]
@@ -1211,7 +1213,9 @@ module Wardite
       # @rbs parameter_types: Array[Symbol]
       # @rbs result_types: Array[Symbol]
       # @rbs table_index: Integer
-      def initialize(host_index, arguments, parameter_types, result_types, table_index: -1)
+      # @rbs type_index: Integer
+      def initialize(host_index, arguments, parameter_types, result_types, table_index: -1, type_index: -1)
+        @type_index = type_index
         @host_index = host_index
         @table_index = table_index
         @arguments = [] #: Array[Integer]
@@ -1222,7 +1226,7 @@ module Wardite
 
       # @rbs return: Wardite::Efflorescence::DynamicCallSite
       def copy
-        DynamicCallSite.new(@host_index, @arguments, @parameter_types, @result_types, table_index: @table_index)
+        DynamicCallSite.new(@host_index, @arguments, @parameter_types, @result_types, table_index: @table_index, type_index: @type_index)
       end
     end
 
@@ -1281,8 +1285,8 @@ module Wardite
       # @rbs label: String
       # @rbs return: void
       def self.check_signature(params, results, label)
-        unless (results.size <= 1 || results.all? { |type| numeric_type?(type) }) && params.all? { |type| numeric_type?(type) || type == :externref || function_ref?(type) } &&
-            results.all? { |type| numeric_type?(type) || type == :externref || function_ref?(type) || exception_ref?(type) }
+        unless (results.size <= 1 || results.all? { |type| numeric_type?(type) }) && params.all? { |type| numeric_type?(type) || (reference?(type) && !exception_ref?(type)) } &&
+            results.all? { |type| numeric_type?(type) || reference?(type) }
           raise UnsupportedFeature, "Efflorescence: #{label} has an unsupported parameter or result type"
         end
       end
@@ -1290,13 +1294,33 @@ module Wardite
       # @rbs type: Symbol
       # @rbs return: bool
       def self.function_ref?(type)
-        type == :funcref || type == :non_null_func || type.to_s.start_with?("ref:", "nullable:")
+        [:funcref, :non_null_func, :nullfuncref, :non_null_nofunc].include?(type) || type.to_s.start_with?("ref:f", "nullable:f")
       end
 
       # @rbs type: Symbol
       # @rbs return: bool
       def self.exception_ref?(type)
-        type == :exnref || type == :non_null_exn
+        [:exnref, :non_null_exn, :nullexnref, :non_null_noexn].include?(type)
+      end
+
+      NON_NULL = {
+        funcref: :non_null_func, externref: :non_null_extern, exnref: :non_null_exn,
+        anyref: :non_null_any, nullref: :non_null_none, nullfuncref: :non_null_nofunc,
+        nullexternref: :non_null_noextern, nullexnref: :non_null_noexn
+      }.freeze
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.reference?(type)
+        NON_NULL.key?(type) || type.to_s.start_with?("ref:", "nullable:", "non_null_")
+      end
+
+      # @rbs type: Symbol
+      # @rbs return: Symbol
+      def self.non_nullable(type)
+        return :non_null_bottom if type == :unknown
+        return "ref:#{type.to_s.delete_prefix('nullable:')}".to_sym if type.to_s.start_with?("nullable:")
+        NON_NULL.fetch(type, type)
       end
 
       # @rbs actual: Symbol
@@ -1304,10 +1328,19 @@ module Wardite
       # @rbs return: bool
       def self.assignable?(actual, expected)
         return true if actual == expected
-        return true if expected == :externref && actual == :non_null_extern
-        return true if expected == :non_null_func && actual.to_s.start_with?("ref:")
+        return true if actual == :non_null_bottom && reference?(expected)
+        return true if actual == :non_null_nofunc && function_ref?(expected)
+        return true if actual == :non_null_noextern && [:externref, :non_null_extern, :nullexternref].include?(expected)
+        return true if actual == :non_null_noexn && exception_ref?(expected)
+        return true if expected == :anyref && (actual == :non_null_none || actual.to_s.start_with?("ref:s", "nullable:s"))
+        nullable = expected != non_nullable(expected)
+        return true if actual == :nullfuncref && nullable && function_ref?(expected)
+        return true if actual == :nullexternref && expected == :externref
+        return true if actual == :nullexnref && expected == :exnref
+        return true if actual == :nullref && (expected == :anyref || expected.to_s.start_with?("nullable:s"))
+        return true if NON_NULL[expected] == actual
+        return true if expected == :non_null_func && actual.to_s.start_with?("ref:f")
         return true if expected == :funcref && function_ref?(actual)
-        return true if actual == :non_null_exn && expected == :exnref
         actual.to_s.start_with?("ref:") && expected.to_s == "nullable:#{actual.to_s.delete_prefix('ref:')}"
       end
 

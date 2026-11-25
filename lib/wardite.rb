@@ -132,7 +132,8 @@ module Wardite
         params = types&.defined_types&.[](import.sig_index)
         results = types&.defined_results&.[](import.sig_index)
         raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
-        unless params.all? { |type| Efflorescence::FunctionEntry.numeric_type?(type) } && results.size <= 1
+        raise InvalidModule, "expected function type" if types&.type_keys&.fetch(import.sig_index)&.start_with?("s")
+        unless results.size <= 1
           raise Efflorescence::UnsupportedFeature, "unsupported host signature for #{import.module_name}.#{import.name}"
         end
         Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
@@ -157,11 +158,22 @@ module Wardite
       params = types&.defined_types&.[](index)
       results = types&.defined_results&.[](index)
       raise LoadError, "invalid tag type index #{index}" unless types && params && results
+      raise InvalidModule, "expected function type" unless types.type_keys.fetch(index).start_with?("f")
       raise InvalidModule, "non-empty tag result type" unless results.empty?
       unless params.all? { |type| Efflorescence::FunctionEntry.numeric_type?(type) || Efflorescence::FunctionEntry.function_ref?(type) }
         raise LoadError, "unsupported tag payload type"
       end
       Efflorescence::Tag.new(params, types.type_keys.fetch(index))
+    end
+
+    # @rbs index: Integer
+    # @rbs return: String
+    def function_type_key(index)
+      imports = import_section.imports
+      sig = index < imports.size ? imports.fetch(index).sig_index : function_section&.func_indices&.fetch(index - imports.size)
+      key = type_section&.type_keys&.fetch(sig) if sig
+      raise InvalidModule, "expected function type" unless key && key.start_with?("f")
+      key
     end
 
     # @rbs return: HashModule
@@ -195,6 +207,7 @@ module Wardite
         params = types&.defined_types&.[](index)
         results = types&.defined_results&.[](index)
         raise LoadError, "invalid function type index #{index}" unless params && results
+        raise InvalidModule, "expected function type" if types&.type_keys&.fetch(index)&.start_with?("s")
         block.call(params, results, codes.func_codes.fetch(position))
       end
     end
@@ -420,7 +433,17 @@ module Wardite
         wasi = inst.wasi
         wasi.validate_import(name, callsig, retsig) if wasi && wasi.equal?(target_module)
         if target_module.is_a?(HashModule)
+          exported = target_module.exported_function(name)
+          if exported
+            index = exported.instance.export_section.exports.fetch(exported.name).index
+            unless exported.instance.function_type_key(index) == type_section&.type_keys&.fetch(desc.sig_index)
+              raise LinkError, "incompatible import type"
+            end
+          end
           target_module.validate_function_import(name, callsig, retsig)
+        end
+        if callsig.any? { |type| Efflorescence::FunctionEntry.reference?(type) } && !(target_module.is_a?(HashModule) && target_module.exported_function(name))
+          raise Efflorescence::UnsupportedFeature, "unsupported host reference parameters"
         end
         self.funcs << ExternalFunction.new(target_module, name, callsig, retsig)
       end
@@ -862,7 +885,12 @@ module Wardite
       when :funcref then value.nil? || value.is_a?(FunctionReference)
       when :externref then value.nil? || value.is_a?(ExternalReference)
       when :f64 then value.is_a?(F64)
-      else Efflorescence::FunctionEntry.function_ref?(type) && (value.is_a?(FunctionReference) || (value.nil? && type.to_s.start_with?("nullable:")))
+      else
+        return true if value.nil? && Efflorescence::FunctionEntry.non_nullable(type) != type
+        return true if value.is_a?(ExternalReference) && type == :non_null_extern
+        return true if value.is_a?(Efflorescence::ExceptionValue) && [:exnref, :non_null_exn].include?(type)
+        ref = value
+        ref.is_a?(FunctionReference) && Efflorescence::FunctionEntry.assignable?("ref:#{ref.instance.function_type_key(ref.index)}".to_sym, type)
       end
     end
 

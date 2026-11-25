@@ -359,7 +359,7 @@ module Wardite
       # @rbs return: IR
       def translate_source(linked, bytes)
         @entries = linked.entries
-        bodies = BinaryLoader.decode_code_section(bytes).func_codes
+        bodies = BinaryLoader.decode_code_section(bytes, false, @source.block_types).func_codes
         types = @source.block_types
         functions = [] #: Array[Wardite::Efflorescence::Function]
         linked.entries.each_with_index do |entry, index|
@@ -378,11 +378,17 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::Function
       def translate_function(wasm, index, pool_index)
         FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}") unless wasm.retsig.size > 1
-        unless wasm.locals_type.all? { |type| FunctionEntry.numeric_type?(type) || type == :exnref || type == :externref || type == :funcref }
+        unless wasm.locals_type.all? { |type| FunctionEntry.numeric_type?(type) || FunctionEntry.reference?(type) }
           raise UnsupportedFeature, "Efflorescence: function #{index} has unsupported locals"
         end
         locals = [] #: Array[Symbol]
         wasm.locals_type.each_with_index { |type, i| wasm.locals_count.fetch(i).times { locals << type } }
+        initialized = (wasm.callsig + locals).each_with_index.map do |type, i|
+          i < wasm.callsig.size || !FunctionEntry.reference?(type) || type != FunctionEntry.non_nullable(type)
+        end
+        # Newly initialized locals cease to be definite at else/end.
+        assignments = [] #: Array[Integer]
+        scopes = [] #: Array[Integer]
         @function = Function.new(index, wasm.callsig, wasm.retsig, locals.size, local_types: locals, pool_index: pool_index)
         @stack, @controls = [], []
         @constants = {}
@@ -411,9 +417,10 @@ module Wardite
           end
           case code
           when :block, :loop, :if, :try_table
+            scopes << assignments.size
             block = operands[0]
             fail_translation("expected block signature") unless block.is_a?(Wardite::Block)
-            unless (block.parameter_types + block.result_types).all? { |type| FunctionEntry.numeric_type?(type) || type == :externref || FunctionEntry.exception_ref?(type) || FunctionEntry.function_ref?(type) }
+            unless (block.parameter_types + block.result_types).all? { |type| FunctionEntry.numeric_type?(type) || FunctionEntry.reference?(type) }
               raise UnsupportedFeature, context("unsupported block signature")
             end
             condition = code == :if ? pop_typed(:i32) : -1
@@ -445,8 +452,11 @@ module Wardite
             @function.uses_eh = true if block.result_types.include?(:exnref)
             @controls << control
           when :else
+            initialized[assignments.pop || raise] = false while assignments.size > scopes.fetch(-1)
             else_control
           when :end
+            boundary = scopes.pop || 0
+            initialized[assignments.pop || raise] = false while assignments.size > boundary
             end_control
           when :i32_load, :i32_load8_s, :i32_load8_u, :i32_load16_s, :i32_load16_u,
                :i32_store, :i32_store8, :i32_store16,
@@ -516,8 +526,11 @@ module Wardite
             local = integer_operand(operands[0])
             fail_translation("invalid local index #{local}") unless local >= 0 && local < @function.parameter_count + @function.local_count
             if code == :local_get
+              fail_translation("uninitialized local #{local}") unless initialized.fetch(local)
               @stack << local
             else
+              assignments << local unless initialized.fetch(local)
+              initialized[local] = true
               source = pop_typed(type_of(local))
               if @reachable
                 preserve_local(local)
@@ -535,10 +548,43 @@ module Wardite
             @stack << dst
           when :table_set, :table_size, :table_grow, :table_fill, :table_copy, :table_init, :elem_drop
             table_instruction(code, operands)
+          when :ref_as_non_null, :br_on_null, :br_on_non_null
+            source = pop_value
+            type = type_of(source)
+            fail_translation("expected reference") unless type == :unknown || FunctionEntry.reference?(type)
+            refined = register(FunctionEntry.non_nullable(type))
+            if code == :ref_as_non_null
+              emit([Opcode::REF_AS_NON_NULL, refined, source]) if @reachable
+              @stack << refined
+            else
+              target = label(integer_operand(operands[0]))
+              non_null_branch = code == :br_on_non_null
+              fail_translation("expected reference branch result") if non_null_branch && label_types(target).empty?
+              @stack << refined if non_null_branch
+              sources = top_values(label_types(target))
+              @stack.pop if non_null_branch
+              if @reachable
+                condition = register
+                emit([Opcode::REF_IS_NULL, condition, source])
+                skip = emit([non_null_branch ? Opcode::BR_IF : Opcode::BR_IF_ZERO, condition, -1])
+                emit([Opcode::REF_AS_NON_NULL, refined, source]) if non_null_branch
+                branch(target, sources)
+                patch(skip, @function.instructions.size)
+                emit([Opcode::REF_AS_NON_NULL, refined, source]) unless non_null_branch
+              end
+              payload = non_null_branch ? label_types(target).take(sources.size - 1) : label_types(target)
+              payload.reverse_each { |t| pop_typed(t) }
+              payload.each_with_index do |t, i|
+                value = register(t)
+                copy_value(value, sources.fetch(i)) if @reachable
+                @stack << value
+              end
+              @stack << refined unless non_null_branch
+            end
           when :ref_is_null
             source = pop_value
             type = type_of(source)
-            unless type == :unknown || type == :externref || FunctionEntry.function_ref?(type) || FunctionEntry.exception_ref?(type)
+            unless type == :unknown || FunctionEntry.reference?(type)
               fail_translation("ref.is_null requires a reference")
             end
             dst = register
@@ -671,9 +717,7 @@ module Wardite
             fail_translation("invalid call target #{index}") unless callee
             FunctionEntry.check_signature(callee.parameter_types, callee.result_types, "function #{index}")
             tail = code == :return_call
-            if tail && callee.result_types != @function.result_types
-              fail_translation("tail call result type mismatch")
-            end
+            check_tail_results(callee.result_types) if tail
             @function.uses_dynamic_calls = true if callee.kind == :host
             arguments = callee.parameter_types.reverse.map { |type| pop_typed(type) }.reverse
             dst = callee.result_types.empty? ? -1 : register(callee.result_types.fetch(0))
@@ -699,18 +743,21 @@ module Wardite
               emit_return(@stack.last(callee.result_types.size))
               mark_unreachable
             end
-          when :call_indirect, :return_call_indirect
+          when :call_indirect, :return_call_indirect, :call_ref, :return_call_ref
             type_index = integer_operand(operands[0])
-            table_index = integer_operand(operands[1])
-            table_type = @source.table_types[table_index]
-            fail_translation("call_indirect requires funcref table #{table_index}") unless table_type && FunctionEntry.function_ref?(table_type)
+            by_ref = code == :call_ref || code == :return_call_ref
+            table_index = by_ref ? -1 : integer_operand(operands[1])
+            unless by_ref
+              table_type = @source.table_types[table_index]
+              fail_translation("call_indirect requires funcref table #{table_index}") unless table_type && FunctionEntry.function_ref?(table_type)
+            end
             type = @source.types[type_index] if type_index >= 0
-            fail_translation("invalid indirect call type index #{type_index}") unless type
+            fail_translation("invalid indirect call type index #{type_index}") unless type && @source.type_keys.fetch(type_index).start_with?("f")
             FunctionEntry.check_signature(type.callsig, type.retsig, "type #{type_index}")
             @function.uses_dynamic_calls = true
-            tail = code == :return_call_indirect
-            fail_translation("tail call result type mismatch") if tail && type.retsig != @function.result_types
-            selector = pop_typed(:i32)
+            tail = code == :return_call_indirect || code == :return_call_ref
+            check_tail_results(type.retsig) if tail
+            selector = pop_typed(by_ref ? "nullable:#{@source.type_keys.fetch(type_index)}".to_sym : :i32)
             arguments = type.callsig.reverse.map { |param| pop_typed(param) }.reverse
             dst = type.retsig.empty? ? -1 : register(type.retsig.fetch(0))
             @stack << dst if dst >= 0
@@ -724,7 +771,7 @@ module Wardite
               emit([Opcode::EH_TRIM, 0])
             end
             id = @function.dynamic_sites.size
-            @function.dynamic_sites << DynamicCallSite.new(-1, arguments, type.callsig, type.retsig, table_index: table_index)
+            @function.dynamic_sites << DynamicCallSite.new(-1, arguments, type.callsig, type.retsig, table_index: table_index, type_index: type_index)
             emit([Opcode::CALL_INDIRECT, dst, id, selector])
             append_call_results(type.retsig) if type.retsig.size > 1
             if tail
@@ -944,6 +991,15 @@ module Wardite
           fail_translation("operand stack underflow")
         end
         @stack.pop || raise(TranslationError, "missing operand")
+      end
+
+      # @rbs types: Array[Symbol]
+      # @rbs return: void
+      def check_tail_results(types)
+        expected = @function.result_types
+        unless types.size == expected.size && types.each_with_index.all? { |t, i| FunctionEntry.assignable?(t, expected.fetch(i)) }
+          fail_translation("tail call result type mismatch")
+        end
       end
 
       # @rbs register: Integer

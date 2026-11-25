@@ -2,7 +2,7 @@
 
 module Wardite
   # @rbs!
-  #   type globalValue = wasmValue | FunctionReference | ExternalReference | nil
+  #   type globalValue = wasmValue | FunctionReference | ExternalReference | Efflorescence::ExceptionValue | nil
   #   type wasmValue = I32 | I64 | F32 | F64
 
   module ValueHelper

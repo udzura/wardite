@@ -8,10 +8,10 @@ module Wardite
     # @rbs return: Integer
     def self?.fetch_uleb128: (File | StringIO | Efflorescence::MIRArtifact::CodeReader buf, ?max_level: Integer) -> Integer
 
-    # @rbs buf: File|StringIO
+    # @rbs buf: File|StringIO|Efflorescence::MIRArtifact::CodeReader
     # @rbs return: Integer
     # @rbs max_level: Integer
     # @rbs width: Integer?
-    def fetch_sleb128: (File | StringIO buf, ?max_level: Integer, ?width: Integer?) -> Integer
+    def fetch_sleb128: (File | StringIO | Efflorescence::MIRArtifact::CodeReader buf, ?max_level: Integer, ?width: Integer?) -> Integer
   end
 end

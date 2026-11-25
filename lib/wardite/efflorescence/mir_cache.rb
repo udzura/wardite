@@ -14,7 +14,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 19
+      CODE_VERSION = 20
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -22,7 +22,7 @@ module Wardite
       SAMPLE_STEP = 1024 * 1024
       SAMPLE_BLOCK = 4 * 1024
       MAX_BYTES = 256 * 1024 * 1024
-      TYPES = %i[i32 i64 f32 f64 exnref non_null_exn funcref externref non_null_func non_null_extern].freeze
+      TYPES = %i[i32 i64 f32 f64 exnref non_null_exn funcref externref non_null_func non_null_extern anyref nullref nullfuncref nullexternref nullexnref non_null_any non_null_none non_null_nofunc non_null_noextern non_null_noexn non_null_bottom].freeze
       TYPE_IDS = TYPES.each_with_index.to_h.freeze
       USES_I64 = 1
       USES_FLOAT = 2
@@ -197,7 +197,7 @@ module Wardite
           end
           integers(function.dynamic_sites.size)
           function.dynamic_sites.each do |site|
-            integers(site.host_index, site.table_index)
+            integers(site.host_index, site.table_index, site.type_index)
             types(site.parameter_types)
             types(site.result_types)
             vector(site.arguments)
@@ -271,6 +271,7 @@ module Wardite
           @reader = Reader.new(payload)
           @entries = entries
           @bodies = instance.code_section&.func_codes || []
+          @function_indices = instance.import_section.imports.map(&:sig_index) + (instance.function_section&.func_indices || [])
           @type_keys = instance.type_section&.type_keys || []
           @tags = instance.tags
           @functions = []
@@ -283,11 +284,11 @@ module Wardite
           @has_memory = !instance.import_section.memory_imports.empty? || (instance.memory_section&.limits&.size || 0) > 0
           @element_types = instance.elem_section&.element_types || []
           @table_types = instance.import_section.table_imports.map { |entry| entry[2] } + (instance.table_section&.table_types || [])
-          @signatures = {} #: Hash[[Array[Symbol], Array[Symbol]], bool]
+          @declared_signatures = [] #: Array[[Array[Symbol], Array[Symbol]]]
           types = instance.type_section
           if types
             types.defined_types.each_with_index do |params, index|
-              @signatures[[params, types.defined_results.fetch(index)]] = true
+              @declared_signatures << [params, types.defined_results.fetch(index)]
             end
           end
         end
@@ -354,7 +355,7 @@ module Wardite
 
           types = @reader.types
           types.each do |type|
-            raise Invalid if FunctionEntry.function_ref?(type) && type.to_s.include?(":") && !@type_keys.include?(type.to_s.split(":", 2).fetch(1))
+            raise Invalid if type.to_s.start_with?("ref:", "nullable:") && !@type_keys.include?(type.to_s.split(":", 2).fetch(1))
           end
           params = function.parameter_types
           first_local = params.size
@@ -389,8 +390,15 @@ module Wardite
           initial.each_with_index do |bits, slot|
             if slot == constants[constant_index]
               type = types.fetch(slot)
-              raise Invalid if FunctionEntry.function_ref?(type) && !bits.between?(type.to_s.start_with?("ref:") ? 1 : 0, @entries.size)
-              raise Invalid if FunctionEntry.exception_ref?(type) || ((type == :i32 || type == :f32) && !bits.between?(0, 0xffffffff))
+              if FunctionEntry.reference?(type)
+                if bits.zero?
+                  raise Invalid if FunctionEntry.non_nullable(type) == type
+                else
+                  key = at(@type_keys, at(@function_indices, bits - 1))
+                  raise Invalid unless FunctionEntry.assignable?("ref:#{key}".to_sym, type)
+                end
+              end
+              raise Invalid if (type == :i32 || type == :f32) && !bits.between?(0, 0xffffffff)
               constant_index += 1
             else
               raise Invalid unless bits.zero?
@@ -440,18 +448,18 @@ module Wardite
         def read_dynamic_site(function)
           host_index = @reader.integer
           table_index = @reader.integer
+          type_index = @reader.integer
           params = @reader.types
           results = @reader.types
           if host_index == -1
-            raise Invalid unless table_index >= 0 && FunctionEntry.function_ref?(at(@table_types, table_index)) &&
-              @signatures.key?([params, results]) &&
-              (params + results).all? { |type| FunctionEntry.numeric_type?(type) }
+            raise Invalid unless (table_index == -1 || table_index >= 0 && FunctionEntry.function_ref?(at(@table_types, table_index))) &&
+              type_index >= 0 && at(@type_keys, type_index).start_with?("f") && @declared_signatures[type_index] == [params, results]
           else
-            raise Invalid unless table_index == -1 && host_index.between?(0, @import_count - 1)
+            raise Invalid unless type_index == -1 && table_index == -1 && host_index.between?(0, @import_count - 1)
             host = @entries.fetch(host_index)
             raise Invalid unless params == host.parameter_types && results == host.result_types
           end
-          site = DynamicCallSite.new(host_index, [], params, results, table_index: table_index)
+          site = DynamicCallSite.new(host_index, [], params, results, table_index: table_index, type_index: type_index)
           @reader.read_into(site.arguments, "l<", 4)
           check_arguments(function, site.arguments, params)
           site
@@ -534,7 +542,13 @@ module Wardite
               check_result(function, a, site.callee.result_types)
             when :dynamic_call
               site = at(function.dynamic_sites, b)
-              raise Invalid unless opcode == CALL_HOST ? (site.host_index >= 0 && c == 0) : site.table_index >= 0
+              if opcode == CALL_HOST
+                raise Invalid unless site.host_index >= 0 && c == 0
+              else
+                raise Invalid unless site.host_index == -1
+                expected_type = site.table_index >= 0 ? :i32 : "nullable:#{@type_keys.fetch(site.type_index)}".to_sym
+                raise Invalid unless FunctionEntry.assignable?(at(function.register_types, c), expected_type)
+              end
               check_result(function, a, site.result_types)
             when :table
               site = at(function.table_sites, b)

@@ -530,6 +530,8 @@ module Wardite
         [:u32, :u32]
       when :memory_size, :memory_grow, :memory_fill
         [:u32]
+      when :call_ref, :return_call_ref
+        [:u32]
       when :call_indirect, :return_call_indirect
         [:u32, :u32]
       when :select_t
@@ -575,6 +577,9 @@ module Wardite
       end
     end
 
+    REF_AS_NON_NULL_SPEC = DecodeSpec.new(:default, :ref_as_non_null, [])
+    BR_ON_NULL_SPEC = DecodeSpec.new(:default, :br_on_null, [:u32])
+    BR_ON_NON_NULL_SPEC = DecodeSpec.new(:default, :br_on_non_null, [:u32])
     REF_NULL_SPEC = DecodeSpec.new(:default, :ref_null, [:heaptype])
     REF_IS_NULL_SPEC = DecodeSpec.new(:default, :ref_is_null, [])
     REF_FUNC_SPEC = DecodeSpec.new(:default, :ref_func, [:u32])
@@ -608,6 +613,11 @@ module Wardite
     # @rbs return: Symbol
     def self.i2type(code)
       case code
+      when 0x6e then :anyref
+      when 0x71 then :nullref
+      when 0x72 then :nullexternref
+      when 0x73 then :nullfuncref
+      when 0x74 then :nullexnref
       when 0x69
         :exnref
       when 0x6f

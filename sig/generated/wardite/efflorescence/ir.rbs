@@ -437,6 +437,8 @@ module Wardite
 
       ELEM_DROP: ::Integer
 
+      REF_AS_NON_NULL: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 
@@ -860,6 +862,8 @@ module Wardite
     end
 
     class DynamicCallSite
+      attr_reader type_index: Integer
+
       attr_reader host_index: Integer
 
       attr_reader table_index: Integer
@@ -875,7 +879,8 @@ module Wardite
       # @rbs parameter_types: Array[Symbol]
       # @rbs result_types: Array[Symbol]
       # @rbs table_index: Integer
-      def initialize: (Integer host_index, Array[Integer] arguments, Array[Symbol] parameter_types, Array[Symbol] result_types, ?table_index: Integer) -> untyped
+      # @rbs type_index: Integer
+      def initialize: (Integer host_index, Array[Integer] arguments, Array[Symbol] parameter_types, Array[Symbol] result_types, ?table_index: Integer, ?type_index: Integer) -> untyped
 
       # @rbs return: Wardite::Efflorescence::DynamicCallSite
       def copy: () -> Wardite::Efflorescence::DynamicCallSite
@@ -937,6 +942,16 @@ module Wardite
       # @rbs type: Symbol
       # @rbs return: bool
       def self.exception_ref?: (Symbol type) -> bool
+
+      NON_NULL: untyped
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.reference?: (Symbol type) -> bool
+
+      # @rbs type: Symbol
+      # @rbs return: Symbol
+      def self.non_nullable: (Symbol type) -> Symbol
 
       # @rbs actual: Symbol
       # @rbs expected: Symbol
