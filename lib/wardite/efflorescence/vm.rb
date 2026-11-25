@@ -31,6 +31,7 @@ module Wardite
       # @rbs cache_checked: bool
       def initialize(instance, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false, source_code: nil, eager_mir: false)
         @returned_exception = nil #: ExceptionValue?
+        @extra_results = [] #: Array[Integer]
         @foreign_references = [] #: Array[Wardite::FunctionReference]
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
@@ -130,7 +131,7 @@ module Wardite
       # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::wasmValue | Wardite::FunctionReference | ExceptionValue | nil
+      # @rbs return: Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | ExceptionValue | nil
       def call(name, arguments)
         entry = export_entry(name)
         result = execute_public(entry, arguments)
@@ -138,13 +139,16 @@ module Wardite
         type = entry.result_types.fetch(0)
         return function_reference(result) if FunctionEntry.function_ref?(type)
         return @returned_exception if FunctionEntry.exception_ref?(type)
+        if entry.result_types.size > 1
+          return entry.result_types.map.with_index { |t, i| box_result(t, i == 0 ? result : @extra_results.fetch(i - 1)) }
+        end
         box_result(type, result)
       end
 
       # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: (Integer | Float | Wardite::FunctionReference | ExceptionValue)?
+      # @rbs return: (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | ExceptionValue)?
       def call_unboxed(name, arguments)
         entry = export_entry(name)
         result = execute_public(entry, arguments)
@@ -152,6 +156,9 @@ module Wardite
         type = entry.result_types.fetch(0)
         return function_reference(result) if FunctionEntry.function_ref?(type)
         return @returned_exception if FunctionEntry.exception_ref?(type)
+        if entry.result_types.size > 1
+          return entry.result_types.map.with_index { |t, i| unbox_result(t, i == 0 ? result : @extra_results.fetch(i - 1)) }
+        end
         unbox_result(type, result)
       end
 
@@ -982,6 +989,10 @@ module Wardite
             instructions = frame.instructions
             pc = Integer(frame.pc)
             next
+          when 203 # Opcode::RESULT_SET
+            @extra_results[a - 1] = registers.fetch(instructions.fetch(pc + 2))
+          when 204 # Opcode::RESULT_GET
+            registers[a] = @extra_results.fetch(instructions.fetch(pc + 2) - 1)
           when 11 # Opcode::RETURN
             # Verified RETURN reads an initialized integer. Keep its native type
             # separate from the nullable array reads used by the ALU cases.

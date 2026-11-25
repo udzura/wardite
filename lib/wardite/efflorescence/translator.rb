@@ -1002,8 +1002,15 @@ module Wardite
         @stack = control.entry_stack.dup + control.result_registers
         @reachable = @reachable || control.has_branch || control.then_reachable
         if control.kind == :function
-          emit([Opcode::RETURN, control.result_registers.empty? ? -1 : control.result_registers.fetch(0)])
+          emit_return(control.result_registers)
         end
+      end
+
+      # @rbs sources: Array[Integer]
+      # @rbs return: void
+      def emit_return(sources)
+        sources.each_with_index { |source, i| emit([Opcode::RESULT_SET, i, source]) if i > 0 }
+        emit([Opcode::RETURN, sources.fetch(0, -1)])
       end
 
       # @rbs return: void

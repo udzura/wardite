@@ -232,6 +232,10 @@ module Wardite
       # @rbs return: void
       def end_control: () -> void
 
+      # @rbs sources: Array[Integer]
+      # @rbs return: void
+      def emit_return: (Array[Integer] sources) -> void
+
       # @rbs return: void
       def mark_unreachable: () -> void
 

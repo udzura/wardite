@@ -106,6 +106,9 @@ module Wardite
         params = types&.defined_types&.[](import.sig_index)
         results = types&.defined_results&.[](import.sig_index)
         raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
+        unless params.all? { |type| Efflorescence::FunctionEntry.numeric_type?(type) } && results.size <= 1
+          raise Efflorescence::UnsupportedFeature, "unsupported host signature for #{import.module_name}.#{import.name}"
+        end
         Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
       end
       import_section.tag_imports.each do |desc|

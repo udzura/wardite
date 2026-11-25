@@ -236,6 +236,8 @@ module Wardite
           when BR_IF, BR_IF_ZERO, BR_IF_I64_EQ then :conditional
           when CALL then :call
           when CALL_HOST, CALL_INDIRECT then :dynamic_call
+          when RESULT_SET then :result_set
+          when RESULT_GET then :result_get
           when RETURN then :return
           when EH_ENTER then :handler
           when EH_TRIM then :depth
@@ -488,7 +490,7 @@ module Wardite
               opcode = opcode == Lowerer::TAIL_DIRECT ? CALL : CALL_INDIRECT
             end
             raise Invalid unless opcode.between?(0, REGISTER_MASKS.size - 1) && opcode != PROFILE
-            if opcode >= I32_TABLE_STORE8
+            if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ)
               length = ByteSequences.length(opcode)
               raise Invalid unless pc + length * Lowerer::WIDTH <= code.size
               head = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8)
@@ -522,6 +524,10 @@ module Wardite
               site = at(function.dynamic_sites, b)
               raise Invalid unless opcode == CALL_HOST ? (site.host_index >= 0 && c == 0) : site.table_index == 0
               check_result(function, a, site.result_types)
+            when :result_set
+              raise Invalid unless a.between?(1, function.result_types.size - 1) && function.register_types[b] == function.result_types[a]
+            when :result_get
+              raise Invalid unless b.positive?
             when :return then check_result(function, a, function.result_types)
             when :handler then at(function.flat_handlers, a)
             when :depth then raise Invalid unless a.between?(0, function.flat_handlers.size)

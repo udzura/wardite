@@ -11,6 +11,7 @@ class SpecWorker
 
   def encode(value)
     case value
+    when Array then value.map { |item| encode(item) }.join(",")
     when Wardite::I32 then "i32:#{value.value}"
     when Wardite::I64 then "i64:#{value.value_s}"
     when Wardite::F32 then "f32:#{value.raw_bits}"

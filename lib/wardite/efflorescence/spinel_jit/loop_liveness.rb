@@ -27,7 +27,7 @@ module Wardite
               @successors << [i + ByteSequences.length(op), code.fetch(pc + 18) / width]
               next
             end
-            op = SEQUENCE_HEADS.fetch(op - I32_TABLE_STORE8) if op >= I32_TABLE_STORE8
+            op = SEQUENCE_HEADS.fetch(op - I32_TABLE_STORE8) if op.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ)
             insn = Instruction.new([op, a, b, c])
             @reads << (op == CALL ? function.call_site(b).arguments : function.reads(insn))
             dest = Opcode.destination(insn)

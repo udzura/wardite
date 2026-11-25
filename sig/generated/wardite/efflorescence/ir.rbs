@@ -415,6 +415,10 @@ module Wardite
 
       I64_BYTE_LOOKUP_BR_EQ: ::Integer
 
+      RESULT_SET: ::Integer
+
+      RESULT_GET: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 

@@ -61,14 +61,14 @@ module Wardite
       # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::wasmValue | Wardite::FunctionReference | ExceptionValue | nil
-      def call: (String | Symbol name, Array[Object] arguments) -> (Wardite::wasmValue | Wardite::FunctionReference | ExceptionValue | nil)
+      # @rbs return: Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | ExceptionValue | nil
+      def call: (String | Symbol name, Array[Object] arguments) -> (Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | ExceptionValue | nil)
 
       # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
       # @rbs arguments: Array[Object]
-      # @rbs return: (Integer | Float | Wardite::FunctionReference | ExceptionValue)?
-      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float | Wardite::FunctionReference | ExceptionValue)?
+      # @rbs return: (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | ExceptionValue)?
+      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | ExceptionValue)?
 
       # @rbs return: String
       def dump_mir: () -> String

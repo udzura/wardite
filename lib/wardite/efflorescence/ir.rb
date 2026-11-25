@@ -219,6 +219,8 @@ module Wardite
       I32_BYTE_ADD_STORE = 200
       I32_DIV_U_STORE8 = 201
       I64_BYTE_LOOKUP_BR_EQ = 202
+      RESULT_SET = 203
+      RESULT_GET = 204
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U, I32_ADD_IMM, I32_ADD_IMM].freeze #: Array[Integer]
 
@@ -252,7 +254,7 @@ module Wardite
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
                  F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
                  BR_IF_I64_EQ I32_EXTRACT_I64
-                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ].freeze
+                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -408,9 +410,9 @@ module Wardite
 
       # Semantic register operand positions, excluding frame initialization.
       READ_POSITIONS = NAMES.each_index.map do |opcode|
-        opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode >= I32_TABLE_STORE8
+        opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ)
         positions = case opcode
-          when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
+          when RESULT_SET, GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
                COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
                I32_XOR_IMM, I32_SHL_IMM, I32_SHR_U_IMM, I32_XOR_SHR_U_IMM, I32_XOR_SHL_IMM
             [2]
@@ -428,7 +430,7 @@ module Wardite
             [1, 2]
           when THROW_REF
             [1]
-          when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
+          when RESULT_GET, BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
             [] #: Array[Integer]
           else
             types = extended_alu_types(opcode)
@@ -503,7 +505,7 @@ module Wardite
       # @rbs return: Integer
       def self.destination(instruction)
         opcode = instruction[0]
-        if opcode >= I32_TABLE_STORE8 || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
+        if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ) || opcode == RESULT_GET || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
             (opcode >= I32_ADD_IMM && opcode <= I32_SHR_U_IMM) ||
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
@@ -1246,9 +1248,9 @@ module Wardite
       # @rbs label: String
       # @rbs return: void
       def self.check_signature(params, results, label)
-        unless results.size <= 1 && params.all? { |type| numeric_type?(type) } &&
+        unless (results.size <= 1 || results.all? { |type| numeric_type?(type) }) && params.all? { |type| numeric_type?(type) } &&
             results.all? { |type| numeric_type?(type) || function_ref?(type) || exception_ref?(type) }
-          raise UnsupportedFeature, "Efflorescence: #{label} requires a numeric signature with at most one result (i32/i64/f32/f64)"
+          raise UnsupportedFeature, "Efflorescence: #{label} has an unsupported parameter or result type"
         end
       end
 

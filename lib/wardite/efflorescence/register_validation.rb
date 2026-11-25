@@ -394,7 +394,13 @@ module Wardite
       def validate_extended_instruction(function, instruction, read_count, destination)
         opcode = instruction[0]
         types = Opcode.extended_alu_types(opcode)
-        if opcode == Opcode::BR_IF_I64_EQ
+        if opcode == Opcode::RESULT_SET
+          index = instruction[1]
+          raise TranslationError, "invalid return index" unless index.between?(1, function.result_types.size - 1)
+          check_register(function, instruction[2], function.result_types.fetch(index))
+        elsif opcode == Opcode::RESULT_GET
+          raise TranslationError, "invalid call result" unless instruction[2] > 0 && destination >= 0
+        elsif opcode == Opcode::BR_IF_I64_EQ
           check_reads_of_type(function, instruction, :i64, read_count)
         elsif types
           check_register(function, destination, types.fetch(0))
