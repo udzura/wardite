@@ -52,8 +52,10 @@ module CoreSpec
     [JSON.parse(File.read(File.join(dir, "suite.json"))).fetch("commands"), source]
   end
 
+  NULL_REF_TYPES = %w[refnull nullref nullfuncref nullexnref nullexternref].freeze
+
   def self.value(v)
-    return "refnull" if v["type"] == "refnull" || v["value"] == "null"
+    return "refnull" if NULL_REF_TYPES.include?(v["type"]) || v["value"] == "null"
     return "externref:#{v.fetch('value')}" if v["type"] == "externref"
     return "funcref" if v == {"type" => "funcref"}
     type, bits = v.fetch_values("type", "value")
@@ -117,7 +119,7 @@ module CoreSpec
       action = cmd.fetch("action", {})
       return unless %w[invoke get].include?(action["type"])
       values = action.fetch("args", []) + cmd.fetch("expected", [])
-      return unless values.all? { |v| NUMERIC_TYPES.include?(v["type"]) || v == {"type" => "funcref"} || v["type"] == "externref" || v["type"] == "refnull" || v == {"type" => "funcref", "value" => "null"} }
+      return unless values.all? { |v| NUMERIC_TYPES.include?(v["type"]) || v == {"type" => "funcref"} || v["type"] == "externref" || NULL_REF_TYPES.include?(v["type"]) || v["value"] == "null" && v["type"].end_with?("ref") }
       args = action.fetch("args", []).map { |v| value(v) }
       expected = case op
       when "action" then "action completed"
