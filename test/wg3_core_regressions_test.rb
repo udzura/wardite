@@ -119,4 +119,11 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
     assert_same instance, reference.instance
     assert_equal 0, reference.index
   end
+
+  test 'global.wast 661 places a function obtained from an immutable global' do
+    instance = initialized_segments
+    reference = instance.runtime.call_unboxed('elem', [8])
+    assert_same instance, reference.instance
+    assert_equal 0, reference.index
+  end
 end
