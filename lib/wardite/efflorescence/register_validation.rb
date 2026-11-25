@@ -319,8 +319,7 @@ module Wardite
             end
             unless site.arguments.size == site.parameter_types.size &&
                 site.parameter_types.all? { |type| FunctionEntry.numeric_type?(type) } &&
-                (site.result_types.empty? ? destination == -1 : site.result_types.size == 1 &&
-                  FunctionEntry.numeric_type?(site.result_types.fetch(0)) && destination >= 0)
+                (site.result_types.empty? ? destination == -1 : site.result_types.all? { |type| FunctionEntry.numeric_type?(type) } && destination >= 0)
               raise TranslationError, "invalid MIR dynamic call signature"
             end
             if ir && opcode == Opcode::CALL_HOST

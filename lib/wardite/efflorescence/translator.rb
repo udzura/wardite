@@ -653,6 +653,7 @@ module Wardite
             dst = type.retsig.empty? ? -1 : register(type.retsig.fetch(0))
             @stack << dst if dst >= 0
             unless @reachable
+              append_call_results(type.retsig) if type.retsig.size > 1
               mark_unreachable if tail
               next
             end
@@ -663,8 +664,9 @@ module Wardite
             id = @function.dynamic_sites.size
             @function.dynamic_sites << DynamicCallSite.new(-1, arguments, type.callsig, type.retsig, table_index: table_index)
             emit([Opcode::CALL_INDIRECT, dst, id, selector])
+            append_call_results(type.retsig) if type.retsig.size > 1
             if tail
-              emit([Opcode::RETURN, dst])
+              emit_return(@stack.last(type.retsig.size))
               mark_unreachable
             end
           when :throw
