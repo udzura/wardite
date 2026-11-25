@@ -130,6 +130,7 @@ module Wardite
 
     # Rows are also shared with Store#elements. Keep the precise RBS type via
     # an alias rather than pinning Spinel's specialized nested-array layout.
+    attr_reader :element_types #: Array[Symbol]
     attr_accessor :element_indices #: Array[indexVector]
 
     # @rbs return: void
@@ -140,6 +141,7 @@ module Wardite
       @table_indices = []
       @table_offsets = []
       @declared_functions = []
+      @element_types = []
       @element_indices = []
     end
   end
@@ -545,6 +547,7 @@ module Wardite
     # @rbs artifact: Efflorescence::MIRArtifact?
     def self.sections(defer_code = false, keep_code = false, artifact = nil)
       sections = [] #: Array[Section]
+      types = TypeSection.new
       globals = [] #: Array[ImportSection::GlobalImport]
 
       loop do
@@ -553,7 +556,7 @@ module Wardite
 
         section = case code
           when Wardite::SectionType
-            type_section
+            types = type_section
           when Wardite::SectionImport
             imports = import_section
             globals = imports.global_imports
@@ -563,7 +566,7 @@ module Wardite
           when Wardite::SectionFunction
             function_section
           when Wardite::SectionTable
-            table_section
+            table_section(types)
           when Wardite::SectionMemory
             memory_section
           when Wardite::SectionGlobal
@@ -573,7 +576,7 @@ module Wardite
           when Wardite::SectionStart
             start_section
           when Wardite::SectionElement
-            elem_section
+            elem_section(types)
           when Wardite::SectionCode
             source = @buf
             if artifact && source.is_a?(File)
@@ -746,7 +749,8 @@ module Wardite
     end
 
     # @rbs return: ElemSection
-    def self.elem_section
+    # @rbs types: TypeSection
+    def self.elem_section(types)
       dest = ElemSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
@@ -760,7 +764,7 @@ module Wardite
           fetch_uleb128(sbuf).times { dest.declared_functions << fetch_uleb128(sbuf) }
           next
         end
-        unless etype == 0 || etype == 2
+        unless etype == 0 || etype == 2 || etype == 6
           raise LoadError, "unsupported element segment kind #{etype}"
         end
         dest.table_indices << (etype == 0 ? 0 : fetch_uleb128(sbuf))
@@ -773,7 +777,14 @@ module Wardite
         end
 
         elms = [] #: Array[Integer]
-        fetch_uleb128(sbuf).times { elms << fetch_uleb128(sbuf) }
+        dest.element_types << (etype == 6 ? read_signature_type(sbuf, types) : :funcref)
+        fetch_uleb128(sbuf).times do
+          if etype == 6
+            raise LoadError, "expected ref.func element initializer" unless assert_byte(sbuf) == 0xd2
+          end
+          elms << fetch_uleb128(sbuf)
+          raise InvalidInitializer, "constant expression requires end" if etype == 6 && assert_byte(sbuf) != 0x0b
+        end
         dest.element_indices << elms
       end
       raise LoadError, "trailing element section data" unless sbuf.eof?
@@ -851,7 +862,8 @@ module Wardite
     end
 
     # @rbs return: TableSection
-    def self.table_section
+    # @rbs types: TypeSection
+    def self.table_section(types)
       dest = TableSection.new
       size = fetch_uleb128(@buf)
       dest.size = size
@@ -859,8 +871,8 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        code = fetch_uleb128(sbuf)
-        type = Op.i2type(code)
+        type = read_signature_type(sbuf, types)
+        raise InvalidModule, "expected table reference type" unless type == :externref || Efflorescence::FunctionEntry.function_ref?(type)
         dest.table_types << type
 
         flags = fetch_uleb128(sbuf)

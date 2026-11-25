@@ -6,9 +6,9 @@ module LegacyMIRReads
   def self.positions(instruction)
     opcode = instruction[0]
     # A sequence header has the operand roles of the first instruction.
-    opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode >= I32_TABLE_STORE8
+    opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ)
     case opcode
-    when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
+    when RESULT_SET, TABLE_GET, REF_IS_NULL, GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
          COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
          I32_XOR_IMM, I32_SHL_IMM, I32_SHR_U_IMM, I32_XOR_SHR_U_IMM, I32_XOR_SHL_IMM
       [2]
@@ -30,7 +30,7 @@ module LegacyMIRReads
       [1, 2]
     when THROW_REF
       [1]
-    when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
+    when RESULT_GET, BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
       []
     else
       types = Wardite::Efflorescence::Opcode.extended_alu_types(opcode)

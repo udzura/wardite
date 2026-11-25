@@ -14,7 +14,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 16
+      CODE_VERSION = 17
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -236,6 +236,7 @@ module Wardite
           when BR_IF, BR_IF_ZERO, BR_IF_I64_EQ then :conditional
           when CALL then :call
           when CALL_HOST, CALL_INDIRECT then :dynamic_call
+          when TABLE_GET then :table_get
           when RESULT_SET then :result_set
           when RESULT_GET then :result_get
           when RETURN then :return
@@ -524,6 +525,7 @@ module Wardite
               site = at(function.dynamic_sites, b)
               raise Invalid unless opcode == CALL_HOST ? (site.host_index >= 0 && c == 0) : site.table_index >= 0
               check_result(function, a, site.result_types)
+            when :table_get then raise Invalid unless at(@table_types, c) == function.register_types[a]
             when :result_set
               raise Invalid unless a.between?(1, function.result_types.size - 1) && function.register_types[b] == function.result_types[a]
             when :result_get

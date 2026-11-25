@@ -413,7 +413,7 @@ module Wardite
           when :block, :loop, :if, :try_table
             block = operands[0]
             fail_translation("expected block signature") unless block.is_a?(Wardite::Block)
-            unless (block.parameter_types + block.result_types).all? { |type| FunctionEntry.numeric_type?(type) || FunctionEntry.exception_ref?(type) || FunctionEntry.function_ref?(type) }
+            unless (block.parameter_types + block.result_types).all? { |type| FunctionEntry.numeric_type?(type) || type == :externref || FunctionEntry.exception_ref?(type) || FunctionEntry.function_ref?(type) }
               raise UnsupportedFeature, context("unsupported block signature")
             end
             condition = code == :if ? pop_typed(:i32) : -1
@@ -525,6 +525,15 @@ module Wardite
               end
               @stack << local if code == :local_tee
             end
+          when :table_get
+            table = integer_operand(operands[0])
+            element = @source.table_types[table]
+            fail_translation("unknown table #{table}") unless element
+            raise UnsupportedFeature, context("table.get requires a function table") unless FunctionEntry.function_ref?(element)
+            source = pop_typed(:i32)
+            dst = register(element)
+            emit([Opcode::TABLE_GET, dst, source, table]) if @reachable
+            @stack << dst
           when :ref_is_null
             source = pop_value
             type = type_of(source)
@@ -586,16 +595,37 @@ module Wardite
             targets = depths.entries.map { |depth| label(depth) }
             default = label(integer_operand(operands[1]))
             types = label_types(default)
-            fail_translation("inconsistent br_table label types") unless targets.all? { |target| label_types(target) == types }
-            tail = code == :return_call_indirect
-            fail_translation("tail call result type mismatch") if tail && type.retsig != @function.result_types
             selector = pop_typed(:i32)
             sources = top_values(types)
+            targets.each do |target|
+              signature = label_types(target)
+              fail_translation("inconsistent br_table label arity") unless signature.size == types.size
+              top_values(signature)
+            end
             unless @reachable
               mark_unreachable
               next
             end
+            # Fold repeated power-of-two prefixes before expanding comparisons.
+            # Keep the original length check because out-of-range indices take the default.
+            period = 1
+            while period * 2 <= targets.size
+              if targets.each_with_index.all? { |target, i| target.equal?(targets.fetch(i % period)) }
+                in_range = register
+                emit([Opcode::I32_LTU, in_range, selector, constant(targets.size)])
+                skip = emit([Opcode::BR_IF, in_range, -1])
+                branch(default, sources)
+                patch(skip, @function.instructions.size)
+                reduced = register
+                emit([Opcode::I32_AND, reduced, selector, constant(period - 1)])
+                selector = reduced
+                targets = targets.take(period)
+                break
+              end
+              period *= 2
+            end
             targets.each_with_index do |target, i|
+              next if target.equal?(default)
               comparison = register
               emit([Opcode::I32_EQ, comparison, selector, constant(i)])
               skip = emit([Opcode::BR_IF_ZERO, comparison, -1])

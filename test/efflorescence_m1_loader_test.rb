@@ -16,9 +16,7 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
   test 'unsupported tag and reference features are rejected including dead unexported functions' do
     [
       '(module (func (param exnref)))',
-      '(module (func (local (ref exn))))',
-      '(module (func unreachable loop (param i32) end))',
-      '(module (func unreachable block (result funcref) end))'
+      '(module (func (local (ref exn))))'
     ].each { |wat| assert_raise(Wardite::LoadError, E::UnsupportedFeature) { load_wat(wat) } }
   end
 
@@ -29,6 +27,8 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
 
   test 'new structures validate indices depths and payload label types internally' do
     [
+      '(module (func unreachable loop (param i32) end))',
+      '(module (func unreachable block (result funcref) end))',
       '(module (func unreachable block (param i32) end))',
       '(module (func unreachable throw 0))',
       '(module (tag) (func try_table (catch 1 0) end))',
@@ -82,7 +82,8 @@ class EfflorescenceM1LoaderTest < Test::Unit::TestCase
     end
     cases.each do |opcode, immediate, namespace, code|
       input = immediate.pack('C*')
-      expected = [namespace, code, LegacyWasmDecode.operand_of(code)]
+      operands = {select_t: [:select_types], table_get: [:u32]}.fetch(code) { LegacyWasmDecode.operand_of(code) }
+      expected = [namespace, code, operands]
       resolved = Wardite::BinaryLoader.resolve_code(opcode.chr(Encoding::BINARY), StringIO.new(input))
       assert_equal expected, resolved
       resolved.last << :u8

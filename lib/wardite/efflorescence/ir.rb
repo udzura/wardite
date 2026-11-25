@@ -222,6 +222,7 @@ module Wardite
       RESULT_SET = 203
       RESULT_GET = 204
       REF_IS_NULL = 205
+      TABLE_GET = 206
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U, I32_ADD_IMM, I32_ADD_IMM].freeze #: Array[Integer]
 
@@ -255,7 +256,7 @@ module Wardite
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
                  F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
                  BR_IF_I64_EQ I32_EXTRACT_I64
-                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL].freeze
+                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -413,7 +414,7 @@ module Wardite
       READ_POSITIONS = NAMES.each_index.map do |opcode|
         opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ)
         positions = case opcode
-          when REF_IS_NULL, RESULT_SET, GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
+          when TABLE_GET, REF_IS_NULL, RESULT_SET, GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
                COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
                I32_XOR_IMM, I32_SHL_IMM, I32_SHR_U_IMM, I32_XOR_SHR_U_IMM, I32_XOR_SHL_IMM
             [2]
@@ -506,7 +507,7 @@ module Wardite
       # @rbs return: Integer
       def self.destination(instruction)
         opcode = instruction[0]
-        if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ) || opcode == RESULT_GET || opcode == REF_IS_NULL || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
+        if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ) || opcode == RESULT_GET || opcode == REF_IS_NULL || opcode == TABLE_GET || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
             (opcode >= I32_ADD_IMM && opcode <= I32_SHR_U_IMM) ||
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
@@ -527,7 +528,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.may_trap?(opcode)
-        opcode == TRAP || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
+        opcode == TRAP || opcode == TABLE_GET || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
           (opcode >= I32_TRUNC_F32_S && opcode <= I64_TRUNC_F64_U) ||
           (opcode > CALL_INDIRECT && (EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode) ||
@@ -556,7 +557,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.reads_store?(opcode)
-        opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
+        opcode == TABLE_GET || opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
           opcode == MEMORY_SIZE || opcode == MEMORY_GROW || opcode == MEMORY_INIT || opcode == MEMORY_COPY ||
           (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_GET_TYPES.key?(opcode) || EXTENDED_LOAD_TYPES.key?(opcode)))
       end

@@ -1013,6 +1013,12 @@ module Wardite
             instructions = frame.instructions
             pc = Integer(frame.pc)
             next
+          when 206 # Opcode::TABLE_GET
+            table = @instance.store.tables.fetch(instructions.fetch(pc + 3))
+            index = registers.fetch(instructions.fetch(pc + 2))
+            raise Wardite::EvalError, "out of bounds table access" unless index.between?(0, table.current - 1)
+            element = table.refs[index]
+            registers[a] = element ? @function_indices.fetch(element.object_id) + 1 : 0
           when 205 # Opcode::REF_IS_NULL
             b = instructions.fetch(pc + 2)
             if FunctionEntry.exception_ref?(frame.function.register_types.fetch(b))

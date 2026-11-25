@@ -421,6 +421,8 @@ module Wardite
 
       REF_IS_NULL: ::Integer
 
+      TABLE_GET: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 

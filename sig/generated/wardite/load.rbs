@@ -89,6 +89,8 @@ module Wardite
 
     # Rows are also shared with Store#elements. Keep the precise RBS type via
     # an alias rather than pinning Spinel's specialized nested-array layout.
+    attr_reader element_types: Array[Symbol]
+
     attr_accessor element_indices: Array[indexVector]
 
     # @rbs return: void
@@ -318,7 +320,8 @@ module Wardite
     def self.start_section: () -> StartSection
 
     # @rbs return: ElemSection
-    def self.elem_section: () -> ElemSection
+    # @rbs types: TypeSection
+    def self.elem_section: (TypeSection types) -> ElemSection
 
     # @rbs sbuf: StringIO
     # @rbs return: [Symbol, bool]
@@ -332,7 +335,8 @@ module Wardite
     def self.function_section: () -> FunctionSection
 
     # @rbs return: TableSection
-    def self.table_section: () -> TableSection
+    # @rbs types: TypeSection
+    def self.table_section: (TypeSection types) -> TableSection
 
     # @rbs defer_code: bool
     # @rbs keep_code: bool

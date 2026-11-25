@@ -500,13 +500,22 @@ module Wardite
           table = @tables[tidx] || raise(LoadError, "invalid table index #{tidx}")
           offset = elem_section.table_offsets.fetch(idx)
           indices = elem_section.element_indices.fetch(idx)
-          raise LoadError, "element segment requires a funcref table" unless table.type == :funcref
+          element_type = elem_section.element_types.fetch(idx)
+          unless Efflorescence::FunctionEntry.function_ref?(element_type) && Efflorescence::FunctionEntry.assignable?(element_type, table.type)
+            raise LoadError, "element segment requires a funcref table"
+          end
           if offset < 0 || offset > table.current || indices.size > table.current - offset
             raise LoadError, "active element segment out of bounds"
           end
           indices.each_with_index do |function_index, position|
             function = @funcs[function_index] if function_index >= 0
             raise LoadError, "invalid element function index #{function_index}" unless function
+            if element_type != :funcref
+              imported = inst.import_section.imports
+              sig = function_index < imported.size ? imported.fetch(function_index).sig_index : inst.function_section&.func_indices&.fetch(function_index - imported.size)
+              key = type_section&.type_keys&.fetch(sig) if sig
+              raise InvalidModule, "element type mismatch" unless key && Efflorescence::FunctionEntry.assignable?("ref:#{key}".to_sym, element_type)
+            end
             table.set(offset + position, function)
           end
           @elements << [table.type, offset, indices]
