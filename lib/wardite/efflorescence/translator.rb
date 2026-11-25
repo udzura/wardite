@@ -790,7 +790,7 @@ module Wardite
           when :f64
             fail_translation("global initializer type mismatch") unless global.value.is_a?(Wardite::F64)
           else
-            raise UnsupportedFeature, context("only numeric global access is supported")
+            fail_translation("global initializer type mismatch") unless global.valid_value?
           end
           fail_translation("global.set on immutable global #{index}") if code == :global_set && !global.mutable
           return

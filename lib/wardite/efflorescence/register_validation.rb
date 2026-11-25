@@ -348,6 +348,10 @@ module Wardite
             site = function.throw_sites.fetch(instruction[1])
             types = payload_types(tags, site.tag_index, read_count)
             check_reads(function, instruction, types, 0, read_count)
+          when Opcode::GLOBAL_GET, Opcode::GLOBAL_SET
+            slot = opcode == Opcode::GLOBAL_GET ? destination : instruction[2]
+            type = function.register_types.fetch(slot)
+            raise TranslationError, "invalid global register" unless type == :i32 || type == :externref || FunctionEntry.function_ref?(type)
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
             unless type && (FunctionEntry.numeric_type?(type) || type == :externref || FunctionEntry.function_ref?(type))

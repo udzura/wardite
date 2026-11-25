@@ -33,7 +33,9 @@ class SpecWorker
     if op == "unlinkable" || op == "module" || op == "invalid" || op == "malformed"
       global = Wardite::Global.numeric(:i32, false)
       global.value = Wardite::I32(666)
-      spectest = Wardite::HashModule.new({}, {global_i32: global})
+      wide = Wardite::Global.numeric(:i64, false)
+      wide.value = Wardite::I64(666)
+      spectest = Wardite::HashModule.new({}, {global_i32: global, global_i64: wide})
       @imports[:spectest] ||= spectest
       instance = Wardite.new(path: operand, engine: :efflorescence, enable_wasi: false,
         import_object: @imports)
@@ -46,7 +48,8 @@ class SpecWorker
     if op == "get"
       export = instance.export_section.exports.fetch(operand)
       raise "not a global" unless export.kind == 3
-      return encode(instance.store.globals.fetch(export.index).value)
+      value = instance.store.globals.fetch(export.index).value
+      return value.nil? ? "refnull" : encode(value)
     end
     arguments = [] #: Array[Object]
     fields.drop(3).each do |arg|

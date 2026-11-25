@@ -87,7 +87,7 @@ module Wardite
       # TODO: unused in wasm 1.0 spec?
       attr_accessor :shared #: bool
 
-      attr_accessor :value #: wasmValue | Integer
+      attr_accessor :instructions #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
 
       # @rbs &blk: (Global) -> void
       # @rbs return: void
@@ -797,7 +797,7 @@ module Wardite
       type = Op.i2type(assert_byte(sbuf))
       mut = assert_byte(sbuf)
       raise LoadError, "unsupported global mutability flags" unless mut == 0 || mut == 1
-      raise LoadError, "unsupported global type #{type}" unless Efflorescence::FunctionEntry.numeric_type?(type)
+      raise LoadError, "unsupported global type #{type}" unless Efflorescence::FunctionEntry.numeric_type?(type) || type == :funcref || type == :externref
       [type, mut == 1]
     end
 
@@ -813,33 +813,37 @@ module Wardite
       len.times do |i|
         gtype, mutable = read_global_type(sbuf)
         ops = decode_body(sbuf, expression: true).instructions
+        stack = [] #: Array[Symbol]
         ops.each do |op|
           case op[1]
-          when :global_get, :i32_const, :i64_const, :f32_const, :f64_const, :end
-            next
+          when :global_get
+            index = op[2].fetch(0)
+            raise LoadError, "invalid global index operand" unless index.is_a?(Integer)
+            imported = imports[index] || raise(InvalidInitializer, "unknown global #{index}")
+            raise InvalidInitializer, "constant expression required" if imported.mutable
+            stack << imported.type
+          when :ref_null
+            heap = op[2].fetch(0)
+            raise InvalidInitializer, "unsupported reference initializer" unless heap == -16 || heap == -17
+            stack << (heap == -16 ? :funcref : :externref)
+          when :i32_const, :i64_const, :f32_const, :f64_const
+            stack << op[1].to_s.delete_suffix("_const").to_sym
+          when :i32_add, :i32_sub, :i32_mul, :i64_add, :i64_sub, :i64_mul
+            type = op[1].to_s.start_with?("i32") ? :i32 : :i64
+            raise InvalidInitializer, "global initializer type mismatch" unless stack.pop == type && stack.pop == type
+            stack << type
+          when :end
+            raise InvalidInitializer, "global initializer type mismatch" unless stack == [gtype]
           else
             raise InvalidInitializer, "constant expression required"
           end
-        end
-        raise InvalidInitializer, "global initializer type mismatch" unless ops.size == 2
-        op = ops.fetch(0)
-        value = if op[1] == :global_get
-          index = op[2].fetch(0)
-          raise LoadError, "invalid global index operand" unless index.is_a?(Integer)
-          imported = imports[index] || raise(InvalidInitializer, "unknown global #{index}")
-          raise InvalidInitializer, "constant expression required" if imported.mutable
-          raise InvalidInitializer, "global initializer type mismatch" unless imported.type == gtype
-          index
-        else
-          raise InvalidInitializer, "global initializer type mismatch" unless op[1].to_s == "#{gtype}_const"
-          decode_global_expr(ops)
         end
 
         global = GlobalSection::Global.new do |g|
           g.type = gtype
           g.mutable = mutable
           g.shared = false # always
-          g.value = value
+          g.instructions = ops
         end
         dest.globals << global
       end
@@ -1213,37 +1217,41 @@ module Wardite
     end
 
     # @rbs ops: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
-    # @rbs return: wasmValue
-    def self.decode_global_expr(ops)
-      # sees first opcode
-      op = ops.first
-      if !op
-        raise LoadError, "empty opcodes"
-      end
-      case op[1]
-      when :i32_const
+    # @rbs globals: Array[Global]
+    # @rbs return: globalValue
+    def self.decode_global_expr(ops, globals)
+      stack = [] #: Array[globalValue]
+      ops.each do |op|
         arg = op[2][0]
-        if !arg.is_a?(Integer)
-          raise "Invalid definition of operand"
+        case op[1]
+        when :i32_const, :i64_const
+          raise InvalidInitializer, "invalid integer constant" unless arg.is_a?(Integer)
+          stack << (op[1] == :i32_const ? I32(arg) : I64(arg))
+        when :f32_const, :f64_const
+          raise InvalidInitializer, "invalid float constant" unless arg.is_a?(FloatImmediate)
+          stack << (op[1] == :f32_const ? F32.from_bits(arg.bits) : F64.from_bits(arg.bits))
+        when :ref_null then stack << nil
+        when :global_get
+          raise InvalidInitializer, "invalid global index" unless arg.is_a?(Integer)
+          stack << globals.fetch(arg).value
+        when :i32_add, :i32_sub, :i32_mul
+          right, left = stack.pop, stack.pop
+          raise InvalidInitializer, "expected i32 operands" unless left.is_a?(I32) && right.is_a?(I32)
+          a, b = left.value, right.value
+          stack << I32(op[1] == :i32_add ? a + b : op[1] == :i32_sub ? a - b : a * b)
+        when :i64_add, :i64_sub, :i64_mul
+          right, left = stack.pop, stack.pop
+          raise InvalidInitializer, "expected i64 operands" unless left.is_a?(I64) && right.is_a?(I64)
+          a, b = left.value_s, right.value_s
+          bits = case op[1]
+          when :i64_add then Efflorescence::I64Arithmetic.add_i64(a, b)
+          when :i64_sub then Efflorescence::I64Arithmetic.subtract_i64(a, b)
+          else Efflorescence::I64Arithmetic.multiply_i64(a, b)
+          end
+          stack << I64(bits)
         end
-        return I32(arg)
-      when :i64_const
-        arg = op[2][0]
-        if !arg.is_a?(Integer)
-          raise "Invalid definition of operand"
-        end
-        return I64(arg)
-      when :f32_const
-        arg = op[2][0]
-        raise "Invalid definition of operand" unless arg.is_a?(FloatImmediate)
-        return F32.from_bits(arg.bits)
-      when :f64_const
-        arg = op[2][0]
-        raise "Invalid definition of operand" unless arg.is_a?(FloatImmediate)
-        return F64.from_bits(arg.bits)
-      else
-        raise "Unimplemented offset op: #{op.inspect}"
       end
+      stack.fetch(0)
     end
 
     # @rbs return: ExportSection

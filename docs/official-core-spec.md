@@ -21,7 +21,7 @@ Counts include module setup, actions and assertions. One failed module load can 
 | local_get | 36 / 0 / 0 | 36 / 0 / 0 |
 | local_set | 53 / 0 / 0 | 53 / 0 / 0 |
 | local_tee | 97 / 0 / 0 | 97 / 1 / 0 |
-| global | 78 / 0 / 0 | 47 / 72 / 5 |
+| global | 78 / 0 / 0 | 111 / 13 / 0 |
 | load | 84 / 0 / 13 | 97 / 0 / 0 |
 | store | 61 / 0 / 7 | 68 / 0 / 0 |
 | address | 242 / 0 / 1 | 259 / 0 / 1 |
@@ -30,24 +30,26 @@ Counts include module setup, actions and assertions. One failed module load can 
 | memory_size | 42 / 0 / 0 | 42 / 0 / 0 |
 | memory_grow | 94 / 0 / 0 | 101 / 5 / 0 |
 | memory_trap | 173 / 0 / 0 | 182 / 0 / 0 |
-| block | 169 / 0 / 2 | 170 / 53 / 0 |
-| loop | 79 / 0 / 2 | 34 / 86 / 0 |
-| if | 141 / 0 / 10 | 116 / 125 / 0 |
-| br | 84 / 0 / 0 | 20 / 77 / 0 |
+| block | 169 / 0 / 2 | 223 / 0 / 0 |
+| loop | 79 / 0 / 2 | 120 / 0 / 0 |
+| if | 141 / 0 / 10 | 241 / 0 / 0 |
+| br | 84 / 0 / 0 | 97 / 0 / 0 |
 | br_if | 118 / 0 / 0 | 118 / 1 / 0 |
-| br_table | 168 / 0 / 0 | 24 / 159 / 3 |
+| br_table | 168 / 0 / 0 | 186 / 0 / 0 |
 | return | 84 / 0 / 0 | 84 / 0 / 0 |
-| call | 80 / 0 / 2 | 18 / 71 / 2 |
-| call_indirect | 139 / 0 / 13 | 36 / 134 / 2 |
-| select | 111 / 0 / 0 | 25 / 127 / 5 |
+| call | 80 / 0 / 2 | 89 / 0 / 2 |
+| call_indirect | 139 / 0 / 13 | 170 / 0 / 2 |
+| select | 111 / 0 / 0 | 157 / 0 / 0 |
 | nop | 88 / 0 / 0 | 88 / 0 / 0 |
 | unreachable | 62 / 0 / 0 | 64 / 0 / 0 |
 | traps | 36 / 0 / 0 | 36 / 0 / 0 |
-| **Total** | **14,970 / 0 / 96** | **14,778 / 916 / 18** |
+| **Total** | **14,970 / 0 / 96** | **15,682 / 25 / 5** |
 
 Before the exception changes, Wardite at fbd8528 recorded 14,970 / 0 / 96 on wg-1.0 and 14,577 / 957 / 178 on wg-3.0. That baseline skipped script registrations, reference expectations and quoted text checks. Changes in skip policy affect the comparison with those baseline counts.
 
-The first module in block, if, br, call and call_indirect requires multiple function results. Loop parameters block the first module in loop. Reference types block the first modules in global, br_table and select. Other failures include memory imports and memory alignment/offset validation.
+At 3e03299, the same wg-3.0 scripts recorded 14,778 / 916 / 18. The first module now loads in all nine affected scripts (block, br, call, if, call_indirect, loop, select, br_table and global). The runner also checks previously skipped null and external reference arguments and results.
+
+The remaining 25 failures occur in global (13), align (5), memory_grow (5), br_if (1) and local_tee (1). The global failures start at line 373, after the first module and its actions. The memory_grow failures include two later module loads that import memory.
 
 Two intermediate native builds intermittently reported an unknown MIR optimization while validating wg-1.0 br_if.wast at line 527. The final comparison above includes a full run. The isolated script also passed 16 consecutive runs with the earlier worker.
 

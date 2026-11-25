@@ -471,8 +471,7 @@ module Wardite
             g2.type = g.type
             g2.mutable = g.mutable
             g2.shared = g.shared
-            initializer = g.value
-            g2.value = initializer.is_a?(Integer) ? @globals.fetch(initializer).value : initializer
+            g2.value = BinaryLoader.decode_global_expr(g.instructions, @globals)
           end
         end
       end
@@ -776,7 +775,7 @@ module Wardite
     # TODO: unused in wasm 1.0 spec?
     attr_accessor :shared #: bool
 
-    attr_accessor :value #: wasmValue
+    attr_accessor :value #: globalValue
 
     # @rbs &blk: (Global) -> void
     # @rbs return: void
@@ -790,6 +789,8 @@ module Wardite
       when :i32 then value.is_a?(I32)
       when :i64 then value.is_a?(I64)
       when :f32 then value.is_a?(F32)
+      when :funcref then value.nil? || value.is_a?(FunctionReference)
+      when :externref then value.nil? || value.is_a?(ExternalReference)
       when :f64 then value.is_a?(F64)
       else false
       end

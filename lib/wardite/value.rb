@@ -2,6 +2,7 @@
 
 module Wardite
   # @rbs!
+  #   type globalValue = wasmValue | FunctionReference | ExternalReference | nil
   #   type wasmValue = I32 | I64 | F32 | F64
 
   module ValueHelper

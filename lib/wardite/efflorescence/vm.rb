@@ -478,14 +478,24 @@ module Wardite
       # @rbs return: void
       def read_globals
         @instance.store.globals.each_with_index do |global, index|
-          @global_bits[index] = @store_access.global_bits_at(index, global.type)
+          value = global.value
+          @global_bits[index] = case global.type
+          when :externref then external_reference_bits(value)
+          when :funcref then value.is_a?(Wardite::FunctionReference) ? reference_bits(value) : 0
+          else @store_access.global_bits_at(index, global.type)
+          end
         end
       end
 
       # @rbs return: void
       def write_globals
         @instance.store.globals.each_with_index do |global, index|
-          @store_access.write_global_bits(index, global.type, @global_bits.fetch(@global_slots&.fetch(index) || index))
+          bits = @global_bits.fetch(@global_slots&.fetch(index) || index)
+          case global.type
+          when :externref then global.value = bits.zero? ? nil : @external_references.fetch(bits - 1)
+          when :funcref then global.value = function_reference(bits)
+          else @store_access.write_global_bits(index, global.type, bits)
+          end
         end
       end
 
