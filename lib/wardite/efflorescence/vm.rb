@@ -4,7 +4,8 @@
 module Wardite
   module Efflorescence
     class VM
-      MAX_CALL_FRAMES = 1024
+      MAX_CALL_FRAMES = 8192
+      MAX_CALLER_SLOTS = 512 * 1024
       attr_reader :instance #: Wardite::Instance
       # @rbs @preparer: FunctionPreparer?
       attr_reader :metrics #: Wardite::Efflorescence::Metrics
@@ -237,6 +238,8 @@ module Wardite
           state.registers.each_with_index { |value, i| registers[i] = value }
           state.handlers.each { |handler| frame.handlers << handler }
           frame.pc = state.pc
+          parent = frames.last
+          frame.caller_slots = parent ? parent.caller_slots + parent.registers.size : 0
           frames << frame
         end
         run_frames(pools, frames, 0)
@@ -841,12 +844,13 @@ module Wardite
           frame
         else
           frame.pc += Lowerer::WIDTH
-          raise Wardite::StackExhausted, "call stack exhausted" if !tail && frames.size >= MAX_CALL_FRAMES
+          raise Wardite::StackExhausted, "call stack exhausted" if !tail && (frames.size >= MAX_CALL_FRAMES || frame.caller_slots + registers.size >= MAX_CALLER_SLOTS)
           next_frame = pool_at(pools, entry.defined_index).acquire(tail ? frame.return_register : destination)
           if tail
             frames.pop
             pool_at(pools, frame.pool_index).release(frame)
           end
+          next_frame.caller_slots = frame.caller_slots + (tail ? 0 : registers.size)
           frames << next_frame
           target = next_frame.registers
           site.arguments.each_with_index { |register, i| target[i] = registers[register] }
@@ -1167,7 +1171,7 @@ module Wardite
             pool = pools[site.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
             tail = opcode == Lowerer::TAIL_DIRECT && frame.handlers.empty?
-            raise Wardite::StackExhausted, "call stack exhausted" if !tail && frames.size >= MAX_CALL_FRAMES
+            raise Wardite::StackExhausted, "call stack exhausted" if !tail && (frames.size >= MAX_CALL_FRAMES || frame.caller_slots + registers.size >= MAX_CALLER_SLOTS)
             next_frame = pool.acquire(tail ? frame.return_register : a)
             if c >= 0
               next_frame.registers[0] = registers[c]
@@ -1178,6 +1182,7 @@ module Wardite
               frames.pop
               pool_at(pools, frame.pool_index).release(frame)
             end
+            next_frame.caller_slots = frame.caller_slots + (tail ? 0 : registers.size)
             frames << next_frame
             frame = next_frame
             registers = frame.registers

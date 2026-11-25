@@ -5,6 +5,8 @@ module Wardite
     class VM
       MAX_CALL_FRAMES: ::Integer
 
+      MAX_CALLER_SLOTS: untyped
+
       attr_reader instance: Wardite::Instance
 
       # @rbs @preparer: FunctionPreparer?

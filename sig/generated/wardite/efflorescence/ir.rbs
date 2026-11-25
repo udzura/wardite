@@ -995,6 +995,8 @@ module Wardite
     end
 
     class Frame
+      attr_accessor caller_slots: Integer
+
       attr_reader instructions: Array[Integer]
 
       attr_reader function: Wardite::Efflorescence::Function

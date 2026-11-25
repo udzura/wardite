@@ -1401,6 +1401,7 @@ module Wardite
     end
 
     class Frame
+      attr_accessor :caller_slots #: Integer
       attr_reader :instructions #: Array[Integer]
       attr_reader :function #: Wardite::Efflorescence::Function
       attr_reader :pool_index #: Integer
@@ -1420,6 +1421,7 @@ module Wardite
         # Constants are initialized once and never written by verified MIR.
         # Copying the template also avoids zero-filling and then overwriting
         # every slot in a second loop on a newly allocated frame.
+        @caller_slots = 0
         @uses_eh = function.uses_eh
         @registers = function.initial_registers.dup
         @exception_registers = function.register_types.any? { |type| FunctionEntry.exception_ref?(type) } ? Array.new(function.register_count, nil) : []
