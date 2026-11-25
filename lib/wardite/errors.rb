@@ -31,5 +31,7 @@ module Wardite
 
   class LinkedWasmException < UncaughtWasmException; end
 
+  class StackExhausted < WebAssemblyError; end
+
   class IntegerOverflow < WebAssemblyError; end
 end

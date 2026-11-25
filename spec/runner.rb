@@ -125,7 +125,7 @@ module CoreSpec
       else ["malformed", "malformed:#{cmd.fetch('text')}"]
       end
       [[operation, current, File.join(dir, cmd.fetch("binary_filename") { cmd.fetch("filename") })], expected]
-    when "action", "assert_return", "assert_trap", "assert_exception"
+    when "action", "assert_return", "assert_trap", "assert_exception", "assert_exhaustion"
       action = cmd.fetch("action", {})
       return unless %w[invoke get].include?(action["type"])
       values = action.fetch("args", []) + cmd.fetch("expected", [])
@@ -133,6 +133,7 @@ module CoreSpec
       args = action.fetch("args", []).map { |v| value(v) }
       expected = case op
       when "action" then "action completed"
+      when "assert_exhaustion" then "exhaustion:#{cmd.fetch('text')}"
       when "assert_exception" then "uncaught exception"
       when "assert_trap" then "trap:#{cmd.fetch('text')}"
       else cmd.fetch("expected").map { |v| value(v) }.join(",")

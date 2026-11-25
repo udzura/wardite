@@ -4,6 +4,7 @@
 module Wardite
   module Efflorescence
     class VM
+      MAX_CALL_FRAMES = 1024
       attr_reader :instance #: Wardite::Instance
       # @rbs @preparer: FunctionPreparer?
       attr_reader :metrics #: Wardite::Efflorescence::Metrics
@@ -840,6 +841,7 @@ module Wardite
           frame
         else
           frame.pc += Lowerer::WIDTH
+          raise Wardite::StackExhausted, "call stack exhausted" if !tail && frames.size >= MAX_CALL_FRAMES
           next_frame = pool_at(pools, entry.defined_index).acquire(tail ? frame.return_register : destination)
           if tail
             frames.pop
@@ -1165,6 +1167,7 @@ module Wardite
             pool = pools[site.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
             tail = opcode == Lowerer::TAIL_DIRECT && frame.handlers.empty?
+            raise Wardite::StackExhausted, "call stack exhausted" if !tail && frames.size >= MAX_CALL_FRAMES
             next_frame = pool.acquire(tail ? frame.return_register : a)
             if c >= 0
               next_frame.registers[0] = registers[c]

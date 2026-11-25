@@ -3,6 +3,8 @@
 module Wardite
   module Efflorescence
     class VM
+      MAX_CALL_FRAMES: ::Integer
+
       attr_reader instance: Wardite::Instance
 
       # @rbs @preparer: FunctionPreparer?

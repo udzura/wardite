@@ -114,6 +114,8 @@ class SpecWorker
     end
   rescue Wardite::UncaughtWasmException
     "uncaught exception"
+  rescue Wardite::StackExhausted => error
+    "exhaustion:#{error.message}"
   rescue Wardite::IntegerOverflow
     "trap:integer overflow"
   rescue Wardite::Unreachable
