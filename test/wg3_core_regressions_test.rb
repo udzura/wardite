@@ -34,4 +34,10 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
       Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
     end
   end
+
+  test 'align.wast 987 rejects reserved flags above the low byte' do
+    assert_raise_message("malformed memop flags") do
+      Wardite::BinaryLoader.code_body(StringIO.new([0x28, 0x80, 0x02, 0, 0x0b].pack('C*')))
+    end
+  end
 end
