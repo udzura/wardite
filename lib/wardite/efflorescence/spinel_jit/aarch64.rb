@@ -260,6 +260,7 @@ module Wardite
           case op
           when Opcode::I32_ADD then @words << (0x0b000000 | operands)
           when Opcode::I32_SUB then @words << (0x4b000000 | operands)
+          when Opcode::I32_AND then @words << (0x0a000000 | operands)
           when Opcode::I32_OR then @words << (0x2a000000 | operands)
           when Opcode::I64_ADD then @words << (0x8b000000 | operands)
           when Opcode::I64_SUB then @words << (0xcb000000 | operands)

@@ -22,7 +22,8 @@ module Wardite
       class LookupSite
         HOT_BACKEDGES: ::Integer
 
-        def initialize: () -> untyped
+        # @rbs label: String
+        def initialize: (String label) -> untyped
 
         # @rbs frame: Frame
         # @rbs pc: Integer
@@ -39,6 +40,8 @@ module Wardite
       # targets inside the loop; guard their fallthrough back to the VM.
       class LookupLoopCompiler < AArch64
         include Opcode
+
+        MARKERS: Array[Integer]
 
         CACHE_REGISTERS: ::Integer
 
@@ -89,6 +92,15 @@ module Wardite
         # @rbs start: Integer
         # @rbs return: bool
         def emit_member: (Integer pc, Integer latch, Integer start) -> bool
+
+        # Form the effective address in x4 without wrapping the 32-bit base.
+        # Check the final byte before performing an unaligned multi-byte access.
+        # @rbs base: Integer
+        # @rbs offset: Integer
+        # @rbs bytes: Integer
+        # @rbs pc: Integer
+        # @rbs return: void
+        def checked_address: (Integer base, Integer offset, Integer bytes, Integer pc) -> void
 
         # Match the atomic VM handler: on either bounds failure no output
         # slot has been written. The error comparison observes both commits.
