@@ -190,13 +190,23 @@ Install Spinel and WABT (`wast2json`), then run:
 ```sh
 bundle exec rake spec                           # basic wg-1.0 instruction suites
 bundle exec rake 'spec[i32]'                    # one official .wast file
+bundle exec rake 'spec[i32,64]'                 # execute one WAST command
+DETAILED=1 bundle exec rake 'spec[globals,257]' # show the failing WAST form
 VERBOSE=1 FILTER_FIELD=div_s bundle exec rake 'spec[i32]'
 ```
 
 The runner downloads the pinned wg-1.0 sources into a temporary directory.
 For an offline run, set `SPEC_CORE_DIR` to the `test/core` directory of a
 wg-1.0 checkout. Each script runs in order on a native Spinel worker using
-Efflorescence with JIT disabled. Filtering affects the report only.
+Efflorescence with JIT disabled. A line number selects the enclosing top-level
+command. For an invocation or global read, the worker loads its module fresh and
+executes only the selected action. A case that depends on an earlier write may
+give a different result in isolation. Use the whole suite to reproduce its
+original state. `FILTER_FIELD` runs the whole script and filters the report.
+
+Set `DETAILED=1` to print every failure with its complete, line-numbered WAST
+form. The runner also accepts these options directly, for example
+`ruby spec/runner.rb --detailed --line 257 globals`.
 
 Counts include module setup, actions and assertions. Each suite shows up to
 five failures by default. Set `VERBOSE=1` for every command with its source

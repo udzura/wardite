@@ -28,8 +28,9 @@ task :wasm, [:name] do |t, args|
 end
 
 desc "Run official wg-1.0 instruction tests with Spinel (Efflorescence, JIT off)"
-task :spec, [:name] do |_, args|
-  ruby "spec/runner.rb", *[args.name].compact
+task :spec, [:name, :line] do |_, args|
+  options = args.line ? ["--line", args.line] : []
+  ruby "spec/runner.rb", *options, *[args.name].compact
 end
 
 desc "Run basic benchmark"

@@ -3,6 +3,8 @@
 require "json"
 require "open3"
 require "tmpdir"
+require "optparse"
+require_relative "wast_source"
 
 module CoreSpec
   REV = "977f97014c962f7bd1291fcc6d28b41a924882bf" # wg-1.0
@@ -22,15 +24,15 @@ module CoreSpec
       data
     end
     # wg-1.0 predates WABT's typed NaN expectations. Keep one line per assertion.
-    source = source.gsub(/^\(assert_return_(canonical|arithmetic)_nan (\(invoke "([^"]+)".*\))\)$/) do
+    normalized = source.gsub(/^\(assert_return_(canonical|arithmetic)_nan (\(invoke "([^"]+)".*\))\)$/) do
       kind, action, field = Regexp.last_match.captures
       type = [name, field.split(".").first].find { |s| %w[f32 f64].include?(s) }
       raise "unknown NaN result type for #{field}" unless type
       "(assert_return #{action} (#{type}.const nan:#{kind}))"
     end
-    File.write(File.join(dir, filename), source)
+    File.write(File.join(dir, filename), normalized)
     system("wast2json", filename, "-o", "#{name}.json", chdir: dir, exception: true)
-    JSON.parse(File.read(File.join(dir, "#{name}.json"))).fetch("commands")
+    [JSON.parse(File.read(File.join(dir, "#{name}.json"))).fetch("commands"), source]
   end
 
   def self.value(v)
@@ -86,8 +88,30 @@ module CoreSpec
     end
   end
 
-  def self.run(name, dir, worker)
-    cases = commands(name, dir)
+  def self.single_case(cases, target)
+    cmd = cases.fetch(target)
+    action = cmd["action"]
+    return [target] unless action
+    setup = (0...target).reverse_each.find do |i|
+      cases[i]["type"] == "module" && (!action["module"] || cases[i]["name"] == action["module"])
+    end
+    [setup, target].compact
+  end
+
+  def self.run(name, dir, worker, line: nil, detailed: false)
+    cases, source = commands(name, dir)
+    if detailed || line
+      forms = source_forms(source)
+      raise "#{name}: WAST command count differs from wast2json" unless forms.size == cases.size
+    end
+    if line
+      matches = forms.each_index.select { |i| (forms[i].first_line..forms[i].last_line).cover?(line) }
+      abort "#{name}.wast:#{line}: expected one WAST command, found #{matches.size}" unless matches.one?
+      target = matches.first
+      indices = single_case(cases, target)
+      cases = cases.values_at(*indices)
+      forms = forms.values_at(*indices)
+    end
     current = "-"
     rows = cases.map.with_index do |cmd, index|
       if cmd["type"] == "module"
@@ -102,7 +126,7 @@ module CoreSpec
     results = File.exist?(output) ? File.readlines(output, chomp: true) : []
     cursor = 0
     counts = Hash.new(0)
-    cases.zip(rows).each do |cmd, row|
+    cases.zip(rows).each_with_index do |(cmd, row), i|
       action = cmd.fetch("action", {})
       field = action.fetch("field", cmd["type"])
       actual = row ? results[cursor] : "unsupported #{cmd['type']}"
@@ -116,8 +140,10 @@ module CoreSpec
         actual && matches?(expected, actual)
       end
       status = row.nil? ? "SKIP" : passed ? "PASS" : "FAIL"
+      # Report setup separately only when loading the selected module failed.
+      next if line && i < cases.size - 1 && passed
       counts[status] += 1
-      if ENV["VERBOSE"] == "1" || status == "FAIL" && counts["FAIL"] <= 5
+      if line || ENV["VERBOSE"] == "1" || status == "FAIL" && (detailed || counts["FAIL"] <= 5)
         label = field
         if action["type"] == "invoke"
           args = action.fetch("args").map { |v| display(value(v)) }
@@ -125,6 +151,10 @@ module CoreSpec
         end
         expectation = expected == "invalid module" ? "#{expected} (#{cmd['text']})" : display(expected)
         puts "  #{status}  #{name}.wast:#{cmd['line']}  #{label}  expected #{expectation}  got #{display(actual || 'worker stopped')}"
+        if detailed && status == "FAIL"
+          form = forms.fetch(i)
+          form.text.each_line.with_index(form.first_line) { |text, n| puts "    %5d | %s" % [n, text.chomp] }
+        end
       end
     end
     unless ok && results.size == cursor
@@ -137,6 +167,15 @@ module CoreSpec
 end
 
 if $PROGRAM_NAME == __FILE__
+  line = nil
+  detailed = ENV["DETAILED"] == "1"
+  OptionParser.new do |options|
+    options.banner = "Usage: ruby spec/runner.rb [--detailed] [--line N] [SUITE ...]"
+    options.on("--line N", Integer, "Execute one command with a fresh module") { |n| line = n }
+    options.on("--detailed", "Print original WAST for every failure") { detailed = true }
+  end.parse!
+  abort "--line requires one suite and a positive line number" if line && (ARGV.size != 1 || line < 1)
+  abort "choose --line or FILTER_FIELD" if line && ENV["FILTER_FIELD"]
   names = ARGV.empty? ? CoreSpec::BASIC : ARGV
   abort "invalid suite name" unless names.all? { |n| n.match?(/\A[a-z0-9_-]+\z/) }
   Dir.mktmpdir("wardite-spec") do |dir|
@@ -147,7 +186,7 @@ if $PROGRAM_NAME == __FILE__
     puts "WebAssembly wg-1.0  |  Spinel / Efflorescence  |  JIT off"
     totals = Hash.new(0)
     names.each do |name|
-      CoreSpec.run(name, dir, worker).each { |key, n| totals[key] += n }
+      CoreSpec.run(name, dir, worker, line: line, detailed: detailed).each { |key, n| totals[key] += n }
     end
     puts "Total: #{totals['PASS']} pass, #{totals['FAIL']} fail, #{totals['SKIP']} skip"
     exit(totals["FAIL"].zero? && totals["PASS"].positive?)
