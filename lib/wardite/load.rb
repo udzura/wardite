@@ -971,7 +971,11 @@ module Wardite
             raise LoadError, "buffer too short" unless byte
             operand << byte
           when :u32
-            value = fetch_uleb128(buf)
+            value = if opcode.between?(0x28, 0x3e) && !operand.empty?
+              read_memory_offset(buf)
+            else
+              fetch_uleb128(buf)
+            end
             if operand.empty? && opcode.between?(0x28, 0x3e) && value >= 64
               raise LoadError, "malformed memop flags" if value >= 128
               memory = fetch_uleb128(buf)
@@ -1071,6 +1075,26 @@ module Wardite
       $stderr.puts "#{dest.pretty_inspect}"
       $stderr.puts "code = #{code}"
       raise e
+    end
+
+    # A memarg uses u64 even for memory32. Preserve one out-of-range sentinel
+    # so validation can check the memory type without overflowing a native word.
+    # @rbs buf: File|StringIO
+    # @rbs return: Integer
+    def self.read_memory_offset(buf)
+      value = 0
+      10.times do |i|
+        byte = assert_byte(buf)
+        raise LoadError, "unsigned LEB128 exceeds width" if i == 9 && byte > 1
+        part = byte & 127
+        if i < 5
+          value |= part << (7 * i)
+        elsif part != 0
+          value = 0x100000000
+        end
+        return value if byte < 128
+      end
+      raise LoadError, "unsigned LEB128 exceeds width"
     end
 
     # Decode s33, distinguishing the one-byte value/void forms from indices.
