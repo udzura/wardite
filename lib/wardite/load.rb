@@ -724,7 +724,7 @@ module Wardite
           when Wardite::Const::SectionDataCount
             data_count_section
           when Wardite::SectionCustom
-            unimplemented_skip_section(code)
+            custom_section
           else
             raise LoadError, "unknown code: #{code}(\"#{code.to_s 16}\")"
           end
@@ -818,10 +818,8 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        mlen = fetch_uleb128(sbuf)
-        module_name = assert_read(sbuf, mlen)
-        nlen = fetch_uleb128(sbuf)
-        name = assert_read(sbuf, nlen)
+        module_name = read_name(sbuf)
+        name = read_name(sbuf)
         kind = assert_byte(sbuf)
 
         if kind == 2
@@ -1344,8 +1342,7 @@ module Wardite
 
       len = fetch_uleb128(sbuf)
       len.times do |i|
-        nlen = fetch_uleb128(sbuf)
-        name = assert_read(sbuf, nlen)
+        name = read_name(sbuf)
         kind = assert_byte(sbuf)
 
         index = fetch_uleb128(sbuf)
@@ -1359,19 +1356,33 @@ module Wardite
       dest
     end
 
-    # @rbs code: Integer
     # @rbs return: nil
-    def self.unimplemented_skip_section(code)
-      $stderr.puts "warning: unimplemented section: 0x0#{code}" if ENV['WARN_UNIMPLEMENTED_SECTION']
-      size = fetch_uleb128(@buf)
+    def self.custom_section
+      $stderr.puts "warning: unimplemented section: 0x00" if ENV['WARN_UNIMPLEMENTED_SECTION']
       source = @buf
+      size = fetch_uleb128(source)
       if source.is_a?(File) && source.stat.file?
-        raise LoadError, "truncated custom section" if size > source.stat.size - source.pos
-        source.pos += size
+        section_end = source.pos + size
+        raise LoadError, "truncated custom section" if section_end > source.stat.size
+        read_name(source, section_end)
+        source.pos = section_end
       else
-        assert_read(source, size)
+        read_name(StringIO.new(assert_read(source, size)))
       end
       nil
+    end
+
+    # @rbs source: File|StringIO
+    # @rbs section_end: Integer?
+    # @rbs return: String
+    def self.read_name(source, section_end = nil)
+      size = fetch_uleb128(source)
+      if section_end && size > section_end - source.pos
+        raise LoadError, "truncated custom section"
+      end
+      name = assert_read(source, size).force_encoding("UTF-8")
+      raise LoadError, "malformed UTF-8 encoding" unless name.valid_encoding?
+      name
     end
 
     # @rbs sbuf: File|StringIO

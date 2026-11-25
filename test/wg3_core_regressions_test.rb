@@ -38,6 +38,30 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
     WAT
   end
 
+  test 'binary export names must be valid UTF-8' do
+    bytes = compile_efflorescence_wat('(module (func (export "X")))')
+    assert_not_nil bytes.sub!("X".b, "\xff".b)
+    assert_raise_message("malformed UTF-8 encoding") do
+      Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
+    end
+  end
+
+  test 'custom payload is opaque and Unicode export names are preserved' do
+    bytes = compile_efflorescence_wat('(module (global (export "λ🌱") i32 (i32.const 7)))')
+    bytes << "\x00\x04\x02".b << "é".b << "\xff".b
+    instance = Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
+    assert_equal 7, instance.exports["λ🌱"].value.value
+  end
+
+  test 'a custom section name must fit inside its section' do
+    bytes = "\0asm\x01\0\0\0\x00\x01\x02\x01\x00".b
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "truncated.wasm")
+      File.binwrite(path, bytes)
+      assert_raise_message("truncated custom section") { Wardite.new(path: path) }
+    end
+  end
+
   test 'global.wast 374 reads a preceding named immutable global' do
     instance = load_efflorescence('(module (global $g i32 (i32.const 42)) (global (export "copy") i32 (global.get $g)))')
     assert_equal 42, instance.exports['copy'].value.value

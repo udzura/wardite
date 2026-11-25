@@ -440,9 +440,13 @@ module Wardite
     # @rbs return: ExportSection
     def self.export_section: () -> ExportSection
 
-    # @rbs code: Integer
     # @rbs return: nil
-    def self.unimplemented_skip_section: (Integer code) -> nil
+    def self.custom_section: () -> nil
+
+    # @rbs source: File|StringIO
+    # @rbs section_end: Integer?
+    # @rbs return: String
+    def self.read_name: (File | StringIO source, ?Integer? section_end) -> String
 
     # @rbs sbuf: File|StringIO
     # @rbs return: Integer
