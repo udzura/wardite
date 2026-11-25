@@ -471,7 +471,7 @@ module Wardite
           end
           section.imports.each do |desc|
             placeholder = placeholders[desc.module_name.to_sym] ||= HashModule.new({})
-            placeholder.hash[desc.name.to_sym] = -> (_store, _args) { raise LoadError, "host call during WMIR compilation" }
+            placeholder.register_function(desc.name.to_sym, -> (_store, _args) { raise LoadError, "host call during WMIR compilation" })
           end
           placeholders.each { |name, host| import_object[name] = host }
         end

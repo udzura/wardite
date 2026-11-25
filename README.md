@@ -205,7 +205,8 @@ give a different result in isolation. Use the whole suite to reproduce its
 original state. `FILTER_FIELD` runs the whole script and filters the report.
 
 Set `DETAILED=1` to print every failure with its complete, line-numbered WAST
-form. The runner also accepts these options directly, for example
+form. Set `DETAILED=2` to include skipped commands and their WAST forms as well.
+The runner also accepts these options directly, for example
 `ruby spec/runner.rb --detailed --line 257 globals`.
 
 Counts include module setup, actions and assertions. Each suite shows up to

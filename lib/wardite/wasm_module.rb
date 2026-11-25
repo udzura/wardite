@@ -39,6 +39,13 @@ module Wardite
       @hash = hash
     end
 
+    # @rbs name: Symbol
+    # @rbs function: _WasmCallable
+    # @rbs return: void
+    def register_function(name, function)
+      @hash[name] = function
+    end
+
     # @rbs fnname: Symbol
     # @rbs store: Store
     # @rbs args: Array[wasmValue]

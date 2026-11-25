@@ -32,6 +32,11 @@ module Wardite
     # @rbs globals: Hash[Symbol, Global]
     def initialize: (Hash[Symbol, _WasmCallable] hash, ?Hash[Symbol, Global] globals) -> untyped
 
+    # @rbs name: Symbol
+    # @rbs function: _WasmCallable
+    # @rbs return: void
+    def register_function: (Symbol name, _WasmCallable function) -> void
+
     # @rbs fnname: Symbol
     # @rbs store: Store
     # @rbs args: Array[wasmValue]
