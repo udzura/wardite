@@ -98,9 +98,9 @@ module CoreSpec
     [setup, target].compact
   end
 
-  def self.run(name, dir, worker, line: nil, detailed: false)
+  def self.run(name, dir, worker, line: nil, detailed: 0)
     cases, source = commands(name, dir)
-    if detailed || line
+    if detailed.positive? || line
       forms = source_forms(source)
       raise "#{name}: WAST command count differs from wast2json" unless forms.size == cases.size
     end
@@ -143,7 +143,8 @@ module CoreSpec
       # Report setup separately only when loading the selected module failed.
       next if line && i < cases.size - 1 && passed
       counts[status] += 1
-      if line || ENV["VERBOSE"] == "1" || status == "FAIL" && (detailed || counts["FAIL"] <= 5)
+      show_source = (status == "FAIL" && detailed >= 1) || (status == "SKIP" && detailed >= 2)
+      if line || ENV["VERBOSE"] == "1" || show_source || (status == "FAIL" && counts["FAIL"] <= 5)
         label = field
         if action["type"] == "invoke"
           args = action.fetch("args").map { |v| display(value(v)) }
@@ -151,7 +152,7 @@ module CoreSpec
         end
         expectation = expected == "invalid module" ? "#{expected} (#{cmd['text']})" : display(expected)
         puts "  #{status}  #{name}.wast:#{cmd['line']}  #{label}  expected #{expectation}  got #{display(actual || 'worker stopped')}"
-        if detailed && status == "FAIL"
+        if show_source
           form = forms.fetch(i)
           form.text.each_line.with_index(form.first_line) { |text, n| puts "    %5d | %s" % [n, text.chomp] }
         end
@@ -168,11 +169,11 @@ end
 
 if $PROGRAM_NAME == __FILE__
   line = nil
-  detailed = ENV["DETAILED"] == "1"
+  detailed = {"1" => 1, "2" => 2}.fetch(ENV["DETAILED"], 0)
   OptionParser.new do |options|
     options.banner = "Usage: ruby spec/runner.rb [--detailed] [--line N] [SUITE ...]"
     options.on("--line N", Integer, "Execute one command with a fresh module") { |n| line = n }
-    options.on("--detailed", "Print original WAST for every failure") { detailed = true }
+    options.on("--detailed", "Print original WAST for every failure") { detailed = [detailed, 1].max }
   end.parse!
   abort "--line requires one suite and a positive line number" if line && (ARGV.size != 1 || line < 1)
   abort "choose --line or FILTER_FIELD" if line && ENV["FILTER_FIELD"]
