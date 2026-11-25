@@ -378,7 +378,7 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::Function
       def translate_function(wasm, index, pool_index)
         FunctionEntry.check_signature(wasm.callsig, wasm.retsig, "function #{index}") unless wasm.retsig.size > 1
-        unless wasm.locals_type.all? { |type| FunctionEntry.numeric_type?(type) || type == :exnref }
+        unless wasm.locals_type.all? { |type| FunctionEntry.numeric_type?(type) || type == :exnref || type == :externref || type == :funcref }
           raise UnsupportedFeature, "Efflorescence: function #{index} has unsupported locals"
         end
         locals = [] #: Array[Symbol]
@@ -897,7 +897,7 @@ module Wardite
       # @rbs return: Integer
       def pop_typed(type)
         value = pop_value
-        fail_translation("expected #{type}, got #{type_of(value)}") unless value < 0 || type_of(value) == type
+        fail_translation("expected #{type}, got #{type_of(value)}") unless value < 0 || FunctionEntry.assignable?(type_of(value), type)
         value
       end
 
