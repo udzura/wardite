@@ -102,7 +102,7 @@ class SpecWorker
       "trap:out of bounds memory access"
     when "constant expression requires end", "global initializer type mismatch"
       "validation:#{message}"
-    when "data count section required", "integer representation too long", "integer too large", "section size mismatch",
+    when "truncated integer representation", "data count section required", "integer representation too long", "integer too large", "section size mismatch",
          "unexpected end", "length out of bounds", "END opcode expected", "malformed section id",
          "too many locals", "unexpected content after last section", "malformed reference type",
          "malformed memop flags", "malformed UTF-8 encoding"

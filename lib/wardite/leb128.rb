@@ -25,6 +25,7 @@ module Wardite
         end
         level += 1
       end
+      raise LoadError, "truncated integer representation" if level > 0
       raise LoadError, "invalid or truncated unsigned LEB128"
     end
 

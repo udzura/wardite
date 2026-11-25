@@ -1292,7 +1292,7 @@ module Wardite
     def self.read_u64_for_i32(buf)
       value = 0
       10.times do |i|
-        byte = assert_byte(buf)
+        byte = buf.getbyte || raise(LoadError, i.zero? ? "too short section size" : "truncated integer representation")
         raise LoadError, "integer representation too long" if i == 9 && byte >= 128
         raise LoadError, "integer too large" if i == 9 && byte > 1
         part = byte & 127
