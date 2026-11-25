@@ -290,7 +290,7 @@ module Wardite
               @words << (size | div | (right << 16) | (left << 5) | SCRATCH)
               @words << (size | 0x1b008000 | (right << 16) | (left << 10) | (SCRATCH << 5) | dest) # msub
             end
-          when Opcode::I32_EQ, Opcode::I32_NE, Opcode::I32_LTU, Opcode::I32_GEU, Opcode::I32_GTU,
+          when Opcode::I32_EQ, Opcode::I32_NE, Opcode::I32_LTU, Opcode::I32_LEU, Opcode::I32_GEU, Opcode::I32_GTU,
                Opcode::I64_EQ, Opcode::I64_NE, Opcode::I64_LTS, Opcode::I64_LTU, Opcode::I64_GTS,
                Opcode::I64_GTU, Opcode::I64_LES, Opcode::I64_LEU, Opcode::I64_GES, Opcode::I64_GEU
             base = op >= Opcode::I64_EQ ? 0xeb00001f : 0x6b00001f
@@ -301,7 +301,7 @@ module Wardite
             when Opcode::I32_GEU, Opcode::I64_GEU then 2 # hs
             when Opcode::I32_LTU, Opcode::I64_LTU then 3 # lo
             when Opcode::I32_GTU, Opcode::I64_GTU then 8 # hi
-            when Opcode::I64_LEU then 9  # ls
+            when Opcode::I32_LEU, Opcode::I64_LEU then 9 # ls
             when Opcode::I64_GES then 10 # ge
             when Opcode::I64_LTS then 11 # lt
             when Opcode::I64_GTS then 12 # gt
