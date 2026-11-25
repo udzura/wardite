@@ -738,16 +738,20 @@ module Wardite
           raise LoadError, "unsupported global mutability flags"
         end
         
-        code = fetch_insn_while_end(sbuf)
-        ops = code_body(StringIO.new(code))
-        expected = case gtype
-                   when :i32 then :i32_const
-                   when :i64 then :i64_const
-                   when :f32 then :f32_const
-                   when :f64 then :f64_const
-                   else raise LoadError, "unsupported global type #{gtype}"
-                   end
-        raise LoadError, "global initializer type mismatch" unless ops.first&.[](1) == expected
+        ops = decode_body(sbuf, expression: true).instructions
+        ops.each do |op|
+          case op[1]
+          when :global_get
+            raise InvalidInitializer, "unknown global #{op[2].first}"
+          when :i32_const, :i64_const, :f32_const, :f64_const, :end
+            next
+          else
+            raise InvalidInitializer, "constant expression required"
+          end
+        end
+        unless ops.size == 2 && ops.first&.[](1).to_s == "#{gtype}_const"
+          raise InvalidInitializer, "global initializer type mismatch"
+        end
         value = decode_global_expr(ops)
 
         global = GlobalSection::Global.new do |g|
@@ -861,12 +865,14 @@ module Wardite
 
     # @rbs buf: File|StringIO
     # @rbs return: DecodedBody
-    def self.decode_body(buf)
+    # @rbs expression: bool
+    def self.decode_body(buf, expression: false)
       dest = [] #: Array[[Symbol, Symbol, Array[operandItem], Integer?, Integer?]]
       blocks = [] #: Array[Block]
       # HINT: [symname, index of op, index of else, index of end]
       branching_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
       fixed_stack = [] #: Array[[Symbol, Integer, Integer, Integer]]
+      ended = false
       while opcode = buf.getbyte
         spec = resolve_spec(opcode, buf)
         code = spec.code
@@ -932,6 +938,10 @@ module Wardite
             branching_stack << [last[0], last[1], dest.size - 1, -1]
           end
         elsif code == :end
+          if expression && branching_stack.empty?
+            ended = true
+            break
+          end
           unless branching_stack.empty?
             last = branching_stack.pop || raise("[BUG] empty pop")
             fixed_stack << [last[0], last[1], last[2], dest.size - 1]
@@ -939,6 +949,7 @@ module Wardite
         end
       end
 
+      raise LoadError, "unterminated constant expression" if expression && !ended
       raise LoadError, "unterminated structured control" unless branching_stack.empty?
       fixed_stack.each do |(sym, begin_idx, else_idx, end_idx)|
         if end_idx == -1

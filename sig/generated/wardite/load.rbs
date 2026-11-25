@@ -315,7 +315,8 @@ module Wardite
 
     # @rbs buf: File|StringIO
     # @rbs return: DecodedBody
-    def self.decode_body: (File | StringIO buf) -> DecodedBody
+    # @rbs expression: bool
+    def self.decode_body: (File | StringIO buf, ?expression: bool) -> DecodedBody
 
     # Decode s33, distinguishing the one-byte value/void forms from indices.
     # @rbs buf: File|StringIO

@@ -356,6 +356,9 @@ module Wardite
   class LoadError < StandardError
   end
 
+  class InvalidInitializer < LoadError
+  end
+
   class ArgumentError < StandardError
   end
 

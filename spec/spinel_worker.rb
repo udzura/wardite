@@ -45,7 +45,7 @@ class SpecWorker
       end
     end
     encode(instance.runtime.call(operand, arguments))
-  rescue Wardite::Efflorescence::TranslationError => error
+  rescue Wardite::InvalidInitializer, Wardite::Efflorescence::TranslationError => error
     "validation:#{error.message}"
   rescue Wardite::LoadError => error
     message = error.message
