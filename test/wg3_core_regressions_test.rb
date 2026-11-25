@@ -26,4 +26,12 @@ class Wg3CoreRegressionsTest < Test::Unit::TestCase
       Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
     end
   end
+
+  test 'global.wast 427 rejects mutability 255 in a global definition' do
+    bytes = compile_efflorescence_wat('(module (global i32 (i32.const 0)))')
+    assert_not_nil bytes.sub!("\x7f\x00\x41".b, "\x7f\xff\x41".b)
+    assert_raise_message("unsupported global mutability flags") do
+      Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
+    end
+  end
 end
