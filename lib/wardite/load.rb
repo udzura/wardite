@@ -819,9 +819,10 @@ module Wardite
           when :global_get
             index = op[2].fetch(0)
             raise LoadError, "invalid global index operand" unless index.is_a?(Integer)
-            imported = imports[index] || raise(InvalidInitializer, "unknown global #{index}")
-            raise InvalidInitializer, "constant expression required" if imported.mutable
-            stack << imported.type
+            global = index < imports.size ? imports[index] : dest.globals[index - imports.size]
+            raise InvalidInitializer, "unknown global #{index}" unless global
+            raise InvalidInitializer, "constant expression required" if global.mutable
+            stack << global.type
           when :ref_null
             heap = op[2].fetch(0)
             raise InvalidInitializer, "unsupported reference initializer" unless heap == -16 || heap == -17
