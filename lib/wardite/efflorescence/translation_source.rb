@@ -10,9 +10,14 @@ module Wardite
         attr_reader :code #: String?
         attr_reader :globals #: Array[Wardite::Global]
         attr_reader :types #: Array[Wardite::Type]
+        attr_reader :function_types #: Array[String]
+        attr_reader :declared_functions #: Array[Integer]
+        attr_reader :type_keys #: Array[String]
         attr_reader :tags #: Array[Wardite::Efflorescence::Tag]
+        attr_reader :memory_count #: Integer
         attr_reader :has_memory #: bool
-        attr_reader :funcref_table #: bool
+        attr_reader :element_types #: Array[Symbol]
+        attr_reader :table_types #: Array[Symbol]
         attr_reader :has_data_count #: bool
         attr_reader :data_segments #: Integer
 
@@ -28,9 +33,18 @@ module Wardite
             end
           end
           @types = instance.types.map { |type| Wardite::Type.new(type.callsig.dup, type.retsig.dup) }
+          @type_keys = instance.type_section&.type_keys&.dup || []
+          indices = instance.import_section.imports.map(&:sig_index) + (instance.function_section&.func_indices || [])
+          @function_types = indices.map { |index| @type_keys.fetch(index) }
+          elements = instance.elem_section
+          @declared_functions = elements ? elements.element_indices.flatten : []
+          @declared_functions.concat(instance.code_section&.initializer_functions || [])
+          instance.export_section.exports.each_value { |desc| @declared_functions << desc.index if desc.kind == 0 }
           @tags = instance.tags.dup
+          @memory_count = instance.store.memories.size
           @has_memory = !instance.store.memories.empty?
-          @funcref_table = instance.store.tables[0]&.type == :funcref
+          @element_types = elements&.element_types || []
+          @table_types = instance.store.tables.map(&:type)
           @has_data_count = !instance.data_count_section.nil?
           @data_segments = instance.data_section&.segments&.size || 0
         end
@@ -38,6 +52,7 @@ module Wardite
         # @rbs return: Wardite::TypeSection
         def block_types
           section = Wardite::TypeSection.new
+          section.type_keys.concat(@type_keys)
           @types.each do |type|
             section.defined_types << type.callsig
             section.defined_results << type.retsig

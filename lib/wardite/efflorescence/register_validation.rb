@@ -302,7 +302,7 @@ module Wardite
               raise TranslationError, "invalid MIR memory site index"
             end
             site = function.memory_site(index)
-            unless site.sources.size == 3 && site.memory_index == 0 && site.source_memory_index == 0 &&
+            unless site.sources.size == 3 && site.memory_index >= 0 && site.source_memory_index >= 0 &&
                 (opcode != Opcode::MEMORY_INIT || site.data_index >= 0)
               raise TranslationError, "invalid MIR memory site operands"
             end
@@ -314,13 +314,11 @@ module Wardite
               unless site.host_index >= 0 && site.table_index == -1 && instruction[3] == 0
                 raise TranslationError, "invalid MIR host call operands"
               end
-            elsif site.host_index != -1 || site.table_index != 0
+            elsif site.host_index != -1 || site.table_index < -1
               raise TranslationError, "invalid MIR indirect call operands"
             end
             unless site.arguments.size == site.parameter_types.size &&
-                site.parameter_types.all? { |type| FunctionEntry.numeric_type?(type) } &&
-                (site.result_types.empty? ? destination == -1 : site.result_types.size == 1 &&
-                  FunctionEntry.numeric_type?(site.result_types.fetch(0)) && destination >= 0)
+                (site.result_types.empty? ? destination == -1 : destination >= 0)
               raise TranslationError, "invalid MIR dynamic call signature"
             end
             if ir && opcode == Opcode::CALL_HOST
@@ -331,7 +329,12 @@ module Wardite
             end
             ordinal = 0
             if opcode == Opcode::CALL_INDIRECT
-              check_register(function, function.read_at(instruction, ordinal), :i32)
+              selector = function.read_at(instruction, ordinal)
+              if site.table_index < 0
+                raise TranslationError, "invalid reference call" unless FunctionEntry.function_ref?(function.register_types.fetch(selector))
+              else
+                check_register(function, selector, :i32)
+              end
               ordinal += 1
             end
             check_reads(function, instruction, site.parameter_types, ordinal, function.read_count(instruction))
@@ -349,9 +352,13 @@ module Wardite
             site = function.throw_sites.fetch(instruction[1])
             types = payload_types(tags, site.tag_index, read_count)
             check_reads(function, instruction, types, 0, read_count)
+          when Opcode::GLOBAL_GET, Opcode::GLOBAL_SET
+            slot = opcode == Opcode::GLOBAL_GET ? destination : instruction[2]
+            type = function.register_types.fetch(slot)
+            raise TranslationError, "invalid global register" unless type == :i32 || (FunctionEntry.reference?(type) && !FunctionEntry.exception_ref?(type))
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
-            unless type && FunctionEntry.numeric_type?(type)
+            unless type && (FunctionEntry.numeric_type?(type) || FunctionEntry.reference?(type))
               raise TranslationError, "invalid MIR numeric copy destination r#{destination}"
             end
             check_register(function, instruction[2], type)
@@ -381,7 +388,7 @@ module Wardite
             clause.payload_registers.each_with_index do |register, i|
               check_destination(function, register, types.fetch(i))
             end
-            check_destination(function, clause.reference_register, :exnref) if clause.reference_register >= 0
+            check_destination(function, clause.reference_register, :non_null_exn) if clause.reference_register >= 0
           end
         end
       end
@@ -394,7 +401,31 @@ module Wardite
       def validate_extended_instruction(function, instruction, read_count, destination)
         opcode = instruction[0]
         types = Opcode.extended_alu_types(opcode)
-        if opcode == Opcode::BR_IF_I64_EQ
+        if opcode.between?(Opcode::TABLE_SET, Opcode::ELEM_DROP)
+          check_register(function, destination, :i32) if destination >= 0
+        elsif opcode == Opcode::INDEXED_LOAD || opcode == Opcode::INDEXED_STORE
+          access = function.indexed_accesses.fetch(instruction[3])
+          check_register(function, instruction[2], :i32)
+          check_register(function, instruction[1], access.type)
+        elsif opcode == Opcode::TABLE_GET
+          check_register(function, instruction[2], :i32)
+          raise TranslationError, "expected function reference" unless function.register_types.fetch(destination) == :externref || FunctionEntry.function_ref?(function.register_types.fetch(destination))
+        elsif opcode == Opcode::REF_AS_NON_NULL
+          type = function.register_types.fetch(instruction[2])
+          unless FunctionEntry.reference?(type) && FunctionEntry.assignable?(FunctionEntry.non_nullable(type), function.register_types.fetch(destination))
+            raise TranslationError, "invalid reference refinement"
+          end
+        elsif opcode == Opcode::REF_IS_NULL
+          type = function.register_types.fetch(instruction[2])
+          raise TranslationError, "expected reference" unless FunctionEntry.reference?(type)
+          check_register(function, destination, :i32)
+        elsif opcode == Opcode::RESULT_SET
+          index = instruction[1]
+          raise TranslationError, "invalid return index" unless index.between?(1, function.result_types.size - 1)
+          check_register(function, instruction[2], function.result_types.fetch(index))
+        elsif opcode == Opcode::RESULT_GET
+          raise TranslationError, "invalid call result" unless instruction[2] > 0 && destination >= 0
+        elsif opcode == Opcode::BR_IF_I64_EQ
           check_reads_of_type(function, instruction, :i64, read_count)
         elsif types
           check_register(function, destination, types.fetch(0))
@@ -474,7 +505,8 @@ module Wardite
       # @rbs type: Symbol
       # @rbs return: void
       def check_register(function, register, type)
-        unless register >= 0 && function.register_types[register] == type
+        actual = function.register_types[register]
+        unless register >= 0 && actual && FunctionEntry.assignable?(actual, type)
           raise TranslationError, "invalid MIR register type/index r#{register}"
         end
       end
@@ -484,7 +516,8 @@ module Wardite
       # @rbs type: Symbol
       # @rbs return: void
       def check_destination(function, register, type)
-        unless register >= 0 && function.register_types[register] == type && !function.constant_registers.include?(register)
+        dest = function.register_types[register]
+        unless register >= 0 && dest && FunctionEntry.assignable?(type, dest) && !function.constant_registers.include?(register)
           raise TranslationError, "invalid catch destination r#{register}"
         end
       end

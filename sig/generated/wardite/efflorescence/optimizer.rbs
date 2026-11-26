@@ -282,6 +282,10 @@ module Wardite
     class Lowerer
       WIDTH: ::Integer
 
+      TAIL_DIRECT: ::Integer
+
+      TAIL_INDIRECT: ::Integer
+
       # @rbs ir: Wardite::Efflorescence::IR
       # @rbs return: void
       def compile: (Wardite::Efflorescence::IR ir) -> void
@@ -290,6 +294,13 @@ module Wardite
       # @rbs ir: Wardite::Efflorescence::IR
       # @rbs return: void
       def compile_function: (Wardite::Efflorescence::Function function, Wardite::Efflorescence::IR ir) -> void
+
+      # The translator emits trim(0), call, return for a tail transfer.
+      # Profile counters may occur between these instructions.
+      # @rbs code: Array[Instruction]
+      # @rbs index: Integer
+      # @rbs return: bool
+      def tail_transfer?: (Array[Instruction] code, Integer index) -> bool
     end
   end
 end

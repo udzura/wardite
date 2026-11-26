@@ -29,19 +29,30 @@ module Wardite
     # @rbs eager_mir: bool
     # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
-    def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?enabled_optimizations: Array[Symbol], ?mir_cse: bool, ?mir_profile: bool, ?mir_cache: Efflorescence::MIRCache?, ?eager_mir: bool) { (Instance) -> void } -> untyped
+    # @rbs validate_only: bool
+    def initialize: (Hash[Symbol, wasmModuleSrc] import_object, ?engine: Symbol, ?disabled_optimizations: Array[Symbol], ?enabled_optimizations: Array[Symbol], ?mir_cse: bool, ?mir_profile: bool, ?mir_cache: Efflorescence::MIRCache?, ?eager_mir: bool, ?validate_only: bool) { (Instance) -> void } -> untyped
 
     # Run before allocating Store/Exports or executing a start function.
     # @rbs return: void
     def check_module_features: () -> void
 
+    # @rbs index: Integer
+    # @rbs return: Efflorescence::Tag
+    def declared_tag: (Integer index) -> Efflorescence::Tag
+
+    # @rbs index: Integer
+    # @rbs return: String
+    def function_type_key: (Integer index) -> String
+
+    # @rbs return: HashModule
+    def as_import_module: () -> HashModule
+
     # @rbs &block: (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void
     # @rbs return: void
     def each_defined_function: () { (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void } -> void
 
-    # Validate active segments before shared initialization can mutate memory.
     # @rbs return: void
-    def check_memory_initialization: () -> void
+    def initialize_data_segments: () -> void
 
     # @rbs return: void
     def check_data_count: () -> void
@@ -107,11 +118,20 @@ module Wardite
 
     attr_accessor tables: Array[Table]
 
-    attr_accessor elements: Array[[ Symbol, Integer, Array[Integer] ]]
+    attr_accessor elements: Array[Array[tableValue]]
 
     # @rbs inst: Instance
     # @rbs return: void
-    def initialize: (Instance inst) -> void
+    # @rbs validate_only: bool
+    def initialize: (Instance inst, ?validate_only: bool) -> void
+
+    # Apply each segment atomically, in order, after validation and linking.
+    # @rbs return: void
+    def initialize_elements: () -> void
+
+    # @rbs reference: globalValue
+    # @rbs return: tableValue
+    def checked_table_value: (globalValue reference) -> tableValue
 
     # @rbs idx: Integer
     def []: (Integer idx) -> untyped
@@ -201,6 +221,8 @@ module Wardite
     def allocate_storage: (Integer pages) -> IO::Buffer?
   end
 
+  type tableValue = WasmFunction | ExternalFunction | FunctionReference | ExternalReference | nil
+
   class Table
     attr_accessor type: Symbol
 
@@ -208,7 +230,7 @@ module Wardite
 
     attr_accessor max: Integer | nil
 
-    attr_accessor refs: Array[WasmFunction | ExternalFunction | nil]
+    attr_accessor refs: Array[tableValue]
 
     # @rbs type: Symbol
     # @rbs init: Integer
@@ -216,10 +238,20 @@ module Wardite
     # @rbs return: void
     def initialize: (Symbol type, Integer init, Integer | nil max) -> void
 
-    # @rbs idx: Integer
-    # @rbs elem: WasmFunction|ExternalFunction|nil
+    # @rbs index: Integer
+    # @rbs length: Integer
     # @rbs return: void
-    def set: (Integer idx, WasmFunction | ExternalFunction | nil elem) -> void
+    def check_range: (Integer index, Integer length) -> void
+
+    # @rbs delta: Integer
+    # @rbs value: tableValue
+    # @rbs return: Integer
+    def grow: (Integer delta, tableValue value) -> Integer
+
+    # @rbs idx: Integer
+    # @rbs elem: tableValue
+    # @rbs return: void
+    def set: (Integer idx, tableValue elem) -> void
   end
 
   class Global
@@ -235,7 +267,7 @@ module Wardite
     # TODO: unused in wasm 1.0 spec?
     attr_accessor shared: bool
 
-    attr_accessor value: wasmValue
+    attr_accessor value: globalValue
 
     # @rbs &blk: (Global) -> void
     # @rbs return: void
@@ -264,6 +296,10 @@ module Wardite
   class Block
     VOID: nil
 
+    attr_accessor reference_code: Integer
+
+    attr_accessor heap_type: Integer
+
     attr_accessor block_types: nil | Array[Integer]
 
     attr_reader type_index: Integer
@@ -286,7 +322,7 @@ module Wardite
     def resolve: (Array[Symbol] params, Array[Symbol] results) -> void
   end
 
-  type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory
+  type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory | Efflorescence::Tag
 
   class Exports
     attr_accessor mappings: Hash[String, [ Integer, exportHandle ]]
@@ -294,7 +330,8 @@ module Wardite
     # @rbs export_section: ExportSection
     # @rbs store: Store
     # @rbs return: void
-    def initialize: (ExportSection export_section, Store store) -> void
+    # @rbs tags: Array[Efflorescence::Tag]
+    def initialize: (ExportSection export_section, Store store, ?Array[Efflorescence::Tag] tags) -> void
 
     # @rbs name: String
     # @rbs return: exportHandle|nil
@@ -334,6 +371,40 @@ module Wardite
 
   type wasmFuncReturn = Object | nil
 
+  class ExportedFunction
+    attr_reader instance: Instance
+
+    attr_reader name: String
+
+    # @rbs instance: Instance
+    # @rbs name: String
+    def initialize: (Instance instance, String name) -> untyped
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: wasmFuncReturn
+    def call: (Store store, Array[wasmValue] args) -> wasmFuncReturn
+
+    alias [] call
+  end
+
+  class ExternalReference
+    attr_reader value: Object
+
+    # @rbs value: Object
+    def initialize: (Object value) -> untyped
+  end
+
+  class FunctionReference
+    attr_reader instance: Instance
+
+    attr_reader index: Integer
+
+    # @rbs instance: Instance
+    # @rbs index: Integer
+    def initialize: (Instance instance, Integer index) -> untyped
+  end
+
   class ExternalFunction
     attr_accessor target_module: wasmModule
 
@@ -362,6 +433,12 @@ module Wardite
   end
 
   class LoadError < StandardError
+  end
+
+  class LinkError < LoadError
+  end
+
+  class InvalidModule < LoadError
   end
 
   class InvalidInitializer < LoadError

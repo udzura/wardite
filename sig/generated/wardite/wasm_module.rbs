@@ -26,11 +26,31 @@ module Wardite
   class HashModule
     attr_accessor hash: Hash[Symbol, _WasmCallable]
 
+    attr_reader tags: Hash[Symbol, Efflorescence::Tag]
+
+    attr_reader tables: Hash[Symbol, Table]
+
+    attr_reader memories: Hash[Symbol, Memory]
+
     attr_reader globals: Hash[Symbol, Global]
 
     # @rbs hash: Hash[Symbol, _WasmCallable]
     # @rbs globals: Hash[Symbol, Global]
     def initialize: (Hash[Symbol, _WasmCallable] hash, ?Hash[Symbol, Global] globals) -> untyped
+
+    # @rbs name: Symbol
+    # @rbs return: bool
+    def export_named?: (Symbol name) -> bool
+
+    # @rbs name: Symbol
+    # @rbs return: ExportedFunction?
+    def exported_function: (Symbol name) -> ExportedFunction?
+
+    # @rbs name: Symbol
+    # @rbs callsig: Array[Symbol]
+    # @rbs retsig: Array[Symbol]
+    # @rbs return: void
+    def validate_function_import: (Symbol name, Array[Symbol] callsig, Array[Symbol] retsig) -> void
 
     # @rbs name: Symbol
     # @rbs function: _WasmCallable

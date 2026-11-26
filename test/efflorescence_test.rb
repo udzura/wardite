@@ -204,10 +204,8 @@ class EfflorescenceTest < Test::Unit::TestCase
   end
 
   test "unsupported features fail explicitly even in dead or unexported functions" do
-    ['(module (func (export "f") (result i32 i32) i32.const 1 i32.const 2))',
-     '(module (func (export "f") unreachable select (result f64) drop))',
-     '(module (func (export "f")) (func (param exnref)))',
-     '(module (func (export "f") unreachable block (param f64) end))'].each do |wat|
+    ['(module (func (export "f")) (func (param exnref)))',
+     '(module (memory 1) (data $d "") (func (export "f") unreachable data.drop $d))'].each do |wat|
       error = assert_raise(Wardite::Efflorescence::UnsupportedFeature) { load_efflorescence(wat) }
       assert_include error.message, "Efflorescence"
     end
@@ -217,8 +215,7 @@ class EfflorescenceTest < Test::Unit::TestCase
     Dir.mktmpdir("wardite-efflorescence-unsupported") do |dir|
       file = File.join(dir, "unsupported.wasm")
       File.binwrite(file, compile_efflorescence_wat(<<~WAT))
-        (module (func (export "run") (result i32)
-          i32.const 3 i32.const 4 i32.const 1 select (result i32)))
+        (module (memory 1) (data $d "") (func (export "run") data.drop $d))
       WAT
       stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-I#{File.expand_path('../lib', __dir__)}",
         File.expand_path("../exe/wardite", __dir__), "--no-wasi", "--invoke", "run", file)

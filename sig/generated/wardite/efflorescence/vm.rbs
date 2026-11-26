@@ -3,6 +3,10 @@
 module Wardite
   module Efflorescence
     class VM
+      MAX_CALL_FRAMES: ::Integer
+
+      MAX_CALLER_SLOTS: untyped
+
       attr_reader instance: Wardite::Instance
 
       # @rbs @preparer: FunctionPreparer?
@@ -18,6 +22,8 @@ module Wardite
       @jit: SpinelJIT?
 
       @global_bits: Array[Integer]
+
+      @memory_accesses: Array[Wardite::Efflorescence::StoreAccess]
 
       @global_slots: Array[Integer]?
 
@@ -39,6 +45,10 @@ module Wardite
       # @rbs cache_checked: bool
       def initialize: (Wardite::Instance instance, ?disabled_optimizations: Array[Symbol], ?enabled_optimizations: Array[Symbol], ?mir_cse: bool, ?profile: bool, ?mir_cache: Wardite::Efflorescence::MIRCache?, ?cached_functions: Array[Function]?, ?cache_checked: bool, ?source_code: String?, ?eager_mir: bool) -> untyped
 
+      # @rbs index: Integer
+      # @rbs return: void
+      def run_start: (Integer index) -> void
+
       # Inspecting the executable IR requests every uncached function body.
       # MIR2 consumers can still inspect pending cache slots individually.
       # @rbs return: Wardite::Efflorescence::IR
@@ -58,17 +68,40 @@ module Wardite
       # @rbs return: bool
       def callable?: (String | Symbol name) -> bool
 
+      # @rbs index: Integer
+      # @rbs return: FunctionEntry
+      def table_entry: (Integer index) -> FunctionEntry
+
+      attr_reader table_state_changed: bool
+
+      # Reference handles belong to one VM. Transfer their referents across instances.
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: (Wardite::FunctionReference | Wardite::ExternalReference)?
+      def exported_reference: (Symbol type, Integer bits) -> (Wardite::FunctionReference | Wardite::ExternalReference)?
+
+      # @rbs source: VM
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: Integer
+      def transfer_value: (VM source, Symbol type, Integer bits) -> Integer
+
+      # @rbs index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Array[Integer]
+      def call_table_function: (Integer index, Array[Integer] arguments) -> Array[Integer]
+
       # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
-      # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::wasmValue?
-      def call: (String | Symbol name, Array[Object] arguments) -> Wardite::wasmValue?
+      # @rbs arguments: Array[Object?]
+      # @rbs return: Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue | nil
+      def call: (String | Symbol name, Array[Object?] arguments) -> (Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue | nil)
 
       # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
-      # @rbs arguments: Array[Object]
-      # @rbs return: (Integer | Float)?
-      def call_unboxed: (String | Symbol name, Array[Object] arguments) -> (Integer | Float)?
+      # @rbs arguments: Array[Object?]
+      # @rbs return: (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue)?
+      def call_unboxed: (String | Symbol name, Array[Object?] arguments) -> (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue)?
 
       # @rbs return: String
       def dump_mir: () -> String
@@ -95,9 +128,9 @@ module Wardite
       def export_entry: (String | Symbol name) -> Wardite::Efflorescence::FunctionEntry
 
       # @rbs entry: Wardite::Efflorescence::FunctionEntry
-      # @rbs arguments: Array[Object]
+      # @rbs arguments: Array[Object?]
       # @rbs return: Integer?
-      def execute_public: (Wardite::Efflorescence::FunctionEntry entry, Array[Object] arguments) -> Integer?
+      def execute_public: (Wardite::Efflorescence::FunctionEntry entry, Array[Object?] arguments) -> Integer?
 
       # @rbs type: Symbol
       # @rbs value: Object?
@@ -129,6 +162,20 @@ module Wardite
       # @rbs right: Integer
       # @rbs return: Integer
       def calculate: (Integer opcode, Integer left, Integer right) -> Integer
+
+      # Zero represents null. Positive handles index this instance's functions.
+      # Negative handles retain references received from a different instance.
+      # @rbs bits: Integer
+      # @rbs return: Wardite::FunctionReference?
+      def function_reference: (Integer bits) -> Wardite::FunctionReference?
+
+      # @rbs value: Object?
+      # @rbs return: Integer
+      def external_reference_bits: (Object? value) -> Integer
+
+      # @rbs reference: Wardite::FunctionReference
+      # @rbs return: Integer
+      def reference_bits: (Wardite::FunctionReference reference) -> Integer
 
       # The pending value owns its payload before any frame is released. No
       # Ruby raise/rescue is used to unwind the explicit Wasm call stack.
@@ -169,6 +216,12 @@ module Wardite
       # @rbs sources: Array[Integer]?
       # @rbs return: Integer?
       def invoke_host: (Integer host_index, Array[Integer] arguments, Wardite::Efflorescence::Metrics metrics, Array[Integer]? sources) -> Integer?
+
+      # @rbs host: HostFunction
+      # @rbs arguments: Array[Integer]
+      # @rbs sources: Array[Integer]?
+      # @rbs return: Wardite::wasmFuncReturn
+      def boxed_host_result: (HostFunction host, Array[Integer] arguments, Array[Integer]? sources) -> Wardite::wasmFuncReturn
 
       # @rbs host: Wardite::Efflorescence::HostFunction
       # @rbs arguments: Array[Integer]
@@ -211,8 +264,10 @@ module Wardite
       # @rbs site_id: Integer
       # @rbs destination: Integer
       # @rbs metrics: Wardite::Efflorescence::Metrics
-      # @rbs return: void
-      def execute_direct_host: (Wardite::Efflorescence::Frame frame, Integer site_id, Integer destination, Wardite::Efflorescence::Metrics metrics) -> void
+      # @rbs frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs return: Wardite::Efflorescence::Frame?
+      def execute_direct_host: (Wardite::Efflorescence::Frame frame, Integer site_id, Integer destination, Wardite::Efflorescence::Metrics metrics, Array[Wardite::Efflorescence::Frame] frames, Array[Wardite::Efflorescence::FramePool] pools) -> Wardite::Efflorescence::Frame?
 
       # Keep table resolution and the additional call locals off the hot path.
       # @rbs frame: Wardite::Efflorescence::Frame
@@ -223,7 +278,30 @@ module Wardite
       # @rbs selector: Integer
       # @rbs metrics: Wardite::Efflorescence::Metrics
       # @rbs return: Wardite::Efflorescence::Frame
-      def execute_indirect: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] frames, Integer destination, Integer site_id, Integer selector, Wardite::Efflorescence::Metrics metrics) -> Wardite::Efflorescence::Frame
+      # @rbs tail: bool
+      def execute_indirect: (Wardite::Efflorescence::Frame frame, Array[Wardite::Efflorescence::FramePool] pools, Array[Wardite::Efflorescence::Frame] frames, Integer destination, Integer site_id, Integer selector, Wardite::Efflorescence::Metrics metrics, ?bool tail) -> Wardite::Efflorescence::Frame
+
+      # @rbs ref: Wardite::FunctionReference
+      # @rbs site: DynamicCallSite
+      # @rbs frame: Frame
+      # @rbs destination: Integer
+      # @rbs return: void
+      def call_foreign_table: (Wardite::FunctionReference ref, DynamicCallSite site, Frame frame, Integer destination) -> void
+
+      # @rbs table: Wardite::Table
+      # @rbs bits: Integer
+      # @rbs return: Wardite::tableValue
+      def table_value: (Wardite::Table table, Integer bits) -> Wardite::tableValue
+
+      # @rbs index: Integer
+      # @rbs return: StoreAccess
+      def memory_access: (Integer index) -> StoreAccess
+
+      # @rbs opcode: Integer
+      # @rbs site: TableSite
+      # @rbs registers: Array[Integer]
+      # @rbs return: Integer
+      def execute_table: (Integer opcode, TableSite site, Array[Integer] registers) -> Integer
 
       # Float instructions use the same flat words and integer registers.
       # Their dispatch stays outside the main integer switch.

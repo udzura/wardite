@@ -47,7 +47,8 @@ module Wardite
     # @rbs eager_mir: bool
     # @rbs mir_cache: Efflorescence::MIRCache?
     # @rbs &blk: (Instance) -> void
-    def initialize(import_object, engine: :efflorescence, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, eager_mir: false, &blk)
+    # @rbs validate_only: bool
+    def initialize(import_object, engine: :efflorescence, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, mir_profile: false, mir_cache: nil, eager_mir: false, validate_only: false, &blk)
       raise LoadError, "unknown engine: #{engine}" unless engine == :efflorescence
       @wasi = nil
 
@@ -75,8 +76,8 @@ module Wardite
         end
       end
       check_data_count
-      @store = Store.new(self)
-      @exports = Exports.new(self.export_section, store)
+      @store = Store.new(self, validate_only: validate_only)
+      @exports = Exports.new(self.export_section, store, @tags)
 
       @types = []
       type_section = self.type_section
@@ -95,31 +96,103 @@ module Wardite
       @runtime = Efflorescence::VM.new(self, source_code: source_code, disabled_optimizations: disabled_optimizations,
         enabled_optimizations: enabled_optimizations, mir_cse: mir_cse, profile: mir_profile,
         mir_cache: mir_cache, cached_functions: cached_functions, cache_checked: true, eager_mir: eager_mir)
+      @runtime.prepare_all unless import_section.table_imports.empty?
+      return if validate_only
+      @store.initialize_elements
+      initialize_data_segments
+      start = start_section
+      @runtime.run_start(start.func_index) if start && !mir_cache&.compiling_artifact?
     end
 
     # Run before allocating Store/Exports or executing a start function.
     # @rbs return: void
     def check_module_features
-      check_memory_initialization
-      types = type_section
-      import_section.imports.each do |import|
-        params = types&.defined_types&.[](import.sig_index)
-        results = types&.defined_results&.[](import.sig_index)
-        raise LoadError, "invalid import type index #{import.sig_index}" unless params && results
-        Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
-      end
+      imports = import_section
+      memory_count = imports.memory_imports.size + (memory_section&.limits&.size || 0)
       tag_section = @sections.find { |section| section.is_a?(TagSection) }
-      if tag_section.is_a?(TagSection)
-        tag_section.type_indices.each do |index|
-          params = types&.defined_types&.[](index)
-          results = types&.defined_results&.[](index)
-          raise LoadError, "invalid tag type index #{index}" unless params && results
-          unless params.all? { |type| Efflorescence::FunctionEntry.numeric_type?(type) } && results.empty?
-            raise LoadError, "only numeric tag payloads with no results are supported"
+      exports = export_section.exports
+      unless exports.empty?
+        function_count = imports.imports.size + (function_section&.func_indices&.size || 0)
+        table_count = imports.table_imports.size + (table_section&.table_types&.size || 0)
+        global_count = imports.global_imports.size + (global_section&.globals&.size || 0)
+        tag_count = imports.tag_imports.size + (tag_section.is_a?(TagSection) ? tag_section.type_indices.size : 0)
+        exports.each_value do |desc|
+          case desc.kind
+          when 0 then raise InvalidModule, "unknown function" if desc.index >= function_count
+          when 1 then raise InvalidModule, "unknown table" if desc.index >= table_count
+          when 2 then raise InvalidModule, "unknown memory" if desc.index >= memory_count
+          when 3 then raise InvalidModule, "unknown global" if desc.index >= global_count
+          when 4 then raise InvalidModule, "unknown tag" if desc.index >= tag_count
           end
-          @tags << Efflorescence::Tag.new(params)
         end
       end
+      data_section&.segments&.each do |segment|
+        raise InvalidModule, "unknown memory #{segment.mem_index}" if segment.mode == :active && segment.mem_index >= memory_count
+      end
+      types = type_section
+      imports.imports.each do |import|
+        params = types&.defined_types&.[](import.sig_index)
+        results = types&.defined_results&.[](import.sig_index)
+        raise InvalidModule, "invalid import type index #{import.sig_index}" unless params && results
+        raise InvalidModule, "expected function type" if types&.type_keys&.fetch(import.sig_index)&.start_with?("s")
+        unless results.size <= 1
+          raise Efflorescence::UnsupportedFeature, "unsupported host signature for #{import.module_name}.#{import.name}"
+        end
+        Efflorescence::FunctionEntry.check_signature(params, results, "#{import.module_name}.#{import.name}")
+      end
+      imports.tag_imports.each do |desc|
+        expected = declared_tag(desc.sig_index)
+        host = @import_object.fetch(desc.module_name.to_sym, nil)
+        tag = host.tags.fetch(desc.name.to_sym, nil) if host.is_a?(HashModule)
+        raise LinkError, "incompatible import type" if !tag && host.is_a?(HashModule) && host.export_named?(desc.name.to_sym)
+        raise LinkError, "unknown import" unless tag
+        raise LinkError, "incompatible import type" unless tag.type_key == expected.type_key
+        @tags << tag
+      end
+      if tag_section.is_a?(TagSection)
+        tag_section.type_indices.each { |index| @tags << declared_tag(index) }
+      end
+    end
+
+    # @rbs index: Integer
+    # @rbs return: Efflorescence::Tag
+    def declared_tag(index)
+      types = type_section
+      params = types&.defined_types&.[](index)
+      results = types&.defined_results&.[](index)
+      raise LoadError, "invalid tag type index #{index}" unless types && params && results
+      raise InvalidModule, "expected function type" unless types.type_keys.fetch(index).start_with?("f")
+      raise InvalidModule, "non-empty tag result type" unless results.empty?
+      unless params.all? { |type| Efflorescence::FunctionEntry.numeric_type?(type) || Efflorescence::FunctionEntry.function_ref?(type) }
+        raise LoadError, "unsupported tag payload type"
+      end
+      Efflorescence::Tag.new(params, types.type_keys.fetch(index))
+    end
+
+    # @rbs index: Integer
+    # @rbs return: String
+    def function_type_key(index)
+      imports = import_section.imports
+      sig = index < imports.size ? imports.fetch(index).sig_index : function_section&.func_indices&.fetch(index - imports.size)
+      key = type_section&.type_keys&.fetch(sig) if sig
+      raise InvalidModule, "expected function type" unless key && key.start_with?("f")
+      key
+    end
+
+    # @rbs return: HashModule
+    def as_import_module
+      host = HashModule.new({})
+      export_section.exports.each_pair do |name, desc|
+        case desc.kind
+        when 0
+          host.register_function(name.to_sym, ExportedFunction.new(self, name))
+        when 1 then host.tables[name.to_sym] = @store.tables.fetch(desc.index)
+        when 2 then host.memories[name.to_sym] = @store.memories.fetch(desc.index)
+        when 3 then host.globals[name.to_sym] = @store.globals.fetch(desc.index)
+        when 4 then host.tags[name.to_sym] = @tags.fetch(desc.index)
+        end
+      end
+      host
     end
 
     # @rbs &block: (Array[Symbol], Array[Symbol], CodeSection::CodeBody) -> void
@@ -136,27 +209,24 @@ module Wardite
       functions.func_indices.each_with_index do |index, position|
         params = types&.defined_types&.[](index)
         results = types&.defined_results&.[](index)
-        raise LoadError, "invalid function type index #{index}" unless params && results
+        raise InvalidModule, "invalid function type index #{index}" unless params && results
+        raise InvalidModule, "expected function type" if types&.type_keys&.fetch(index)&.start_with?("s")
         block.call(params, results, codes.func_codes.fetch(position))
       end
     end
 
-    # Validate active segments before shared initialization can mutate memory.
     # @rbs return: void
-    def check_memory_initialization
+    def initialize_data_segments
       segments = data_section&.segments
       return unless segments
-      limits = memory_section&.limits
-      segments.each do |segment|
-        next unless segment.mode == :active
-        unless limits && limits.size == 1 && segment.mem_index == 0
-          raise LoadError, "active data segment requires memory 0"
-        end
-        size = limits.fetch(0).fetch(0) * 65536
-        start = segment.offset
-        unless start >= 0 && start <= size && segment.data.bytesize <= size - start
-          raise LoadError, "active data segment out of bounds"
-        end
+      active = segments.select { |segment| segment.mode == :active }
+      return if active.empty?
+      active.each do |segment|
+        memory = store.memories.fetch(segment.mem_index)
+        expression = segment.offset || raise(LoadError, "missing active segment offset")
+        offset = expression.offset(self, store.globals)
+        raise LoadError, "active data segment out of bounds" unless memory.range?(offset, segment.data.bytesize)
+        memory.write_bytes(offset, segment.data)
       end
     end
 
@@ -341,11 +411,12 @@ module Wardite
 
     attr_accessor :tables #: Array[Table]
 
-    attr_accessor :elements #: Array[[Symbol, Integer, Array[Integer]]]
+    attr_accessor :elements #: Array[Array[tableValue]]
 
     # @rbs inst: Instance
     # @rbs return: void
-    def initialize(inst)
+    # @rbs validate_only: bool
+    def initialize(inst, validate_only: false)
       type_section = inst.type_section
 
       import_section = inst.import_section
@@ -355,7 +426,7 @@ module Wardite
       import_section.imports.each do |desc|
         callsig = type_section&.defined_types&.[](desc.sig_index)
         retsig = type_section&.defined_results&.[](desc.sig_index)
-        raise LoadError, "invalid import type index #{desc.sig_index}" unless callsig && retsig
+        raise InvalidModule, "invalid import type index #{desc.sig_index}" unless callsig && retsig
 
         module_name = desc.module_name.to_sym
         target_module = self.modules.fetch(module_name) { self.modules.default(module_name) }
@@ -364,6 +435,19 @@ module Wardite
         name = desc.name.to_sym
         wasi = inst.wasi
         wasi.validate_import(name, callsig, retsig) if wasi && wasi.equal?(target_module)
+        if target_module.is_a?(HashModule)
+          exported = target_module.exported_function(name)
+          if exported
+            index = exported.instance.export_section.exports.fetch(exported.name).index
+            unless exported.instance.function_type_key(index) == type_section&.type_keys&.fetch(desc.sig_index)
+              raise LinkError, "incompatible import type"
+            end
+          end
+          target_module.validate_function_import(name, callsig, retsig)
+        end
+        if callsig.any? { |type| Efflorescence::FunctionEntry.reference?(type) } && !(target_module.is_a?(HashModule) && target_module.exported_function(name))
+          raise Efflorescence::UnsupportedFeature, "unsupported host reference parameters"
+        end
         self.funcs << ExternalFunction.new(target_module, name, callsig, retsig)
       end
 
@@ -374,30 +458,23 @@ module Wardite
       end
 
       @memories = []
+      import_section.memory_imports.each do |mod, name, min, max|
+        host = self.modules.fetch(mod.to_sym) { self.modules.default(mod.to_sym) }
+        memory = host.is_a?(HashModule) ? host.memories.fetch(name.to_sym, nil) : nil
+        raise LinkError, "incompatible import type" if !memory && host.is_a?(HashModule) && host.export_named?(name.to_sym)
+        raise LinkError, "unknown import" unless memory
+        actual_max = memory.max
+        unless memory.current >= min && (!max || (actual_max && actual_max <= max))
+          raise LinkError, "incompatible import type"
+        end
+        @memories << memory
+      end
       memory_section = inst.memory_section
       if memory_section
         memory_section.limits.each do |(min, max)|
-          self.memories << Memory.new(min, max)
+          self.memories << Memory.new(validate_only ? 0 : min, max)
         end
 
-        data_section = inst.data_section
-        if data_section
-          data_section.segments.each do |segment|
-            if segment.mode != :active
-              next
-            end
-            memory = self.memories[segment.mem_index]
-            if !memory
-              raise GenericError, "invalid memory index: #{segment.mem_index}"
-            end
-
-            payload = segment.data
-            unless memory.range?(segment.offset, payload.bytesize)
-              raise GenericError, "data too large for memory"
-            end
-            memory.write_bytes(segment.offset, payload)
-          end
-        end
       end
 
       # Runtime segment instances differ from their syntax declarations: active
@@ -415,9 +492,11 @@ module Wardite
         module_name = desc.module_name.to_sym
         host = self.modules.fetch(module_name) { self.modules.default(module_name) }
         global = host.is_a?(HashModule) ? host.globals.fetch(desc.name.to_sym, nil) : nil
-        raise LoadError, "unknown global import #{desc.module_name}.#{desc.name}" unless global
-        unless global.type == desc.type && global.mutable == desc.mutable && !global.shared && global.valid_value?
-          raise LoadError, "incompatible global import #{desc.module_name}.#{desc.name}"
+        raise LinkError, "incompatible import type" if !global && host.is_a?(HashModule) && host.export_named?(desc.name.to_sym)
+        raise LinkError, "unknown import" unless global
+        matches = desc.mutable ? global.type == desc.type : Efflorescence::FunctionEntry.assignable?(global.type, desc.type)
+        unless matches && global.mutable == desc.mutable && !global.shared && global.valid_value?
+          raise LinkError, "incompatible import type"
         end
         @globals << global
       end
@@ -428,13 +507,27 @@ module Wardite
             g2.type = g.type
             g2.mutable = g.mutable
             g2.shared = g.shared
-            initializer = g.value
-            g2.value = initializer.is_a?(Integer) ? @globals.fetch(initializer).value : initializer
+            g2.value = g.expression.evaluate(inst, @globals)
           end
         end
       end
 
-      @tables = []
+      @tables = [] #: Array[Table]
+      import_section.table_imports.each do |mod, name, type, min, max|
+        host = @modules.fetch(mod.to_sym, nil)
+        table = host.tables.fetch(name.to_sym, nil) if host.is_a?(HashModule)
+        unless table
+          if host.is_a?(HashModule) && host.export_named?(name.to_sym)
+            raise LinkError, "incompatible import type"
+          end
+          raise LinkError, "unknown import"
+        end
+        actual_max = table.max
+        unless table.type == type && table.current >= min && (!max || (actual_max && actual_max <= max))
+          raise LinkError, "incompatible import type"
+        end
+        @tables << table
+      end
       @elements = []
       table_section = inst.table_section
       if table_section
@@ -443,29 +536,63 @@ module Wardite
           if !init
             raise LoadError, "empty limits"
           end
+          init = 0 if validate_only
           table = Table.new(typ, init, max)
+          initializer = table_section.initializers[idx]
+          if initializer
+            reference = initializer.evaluate(inst, @globals)
+            if reference
+              value = checked_table_value(reference)
+              init.times { |i| table.set(i, value) }
+            end
+          end
           @tables << table
         end
       end
 
+      @pending_elements = [] #: Array[[Table, Integer, Array[tableValue]]]
       elem_section = inst.elem_section
       if elem_section
         elem_section.table_indices.each_with_index do |tidx, idx|
-          table = @tables[tidx] || raise(LoadError, "invalid table index #{tidx}")
-          offset = elem_section.table_offsets.fetch(idx)
-          indices = elem_section.element_indices.fetch(idx)
-          raise LoadError, "element segment requires a funcref table" unless table.type == :funcref
-          if offset < 0 || offset > table.current || indices.size > table.current - offset
-            raise LoadError, "active element segment out of bounds"
+          values = [] #: Array[tableValue]
+          element_type = elem_section.element_types.fetch(idx)
+          elem_section.element_indices.fetch(idx).each do |function_index|
+            raise LoadError, "invalid element function index #{function_index}" unless @funcs[function_index]
+            values << FunctionReference.new(inst, function_index)
           end
-          indices.each_with_index do |function_index, position|
-            function = @funcs[function_index] if function_index >= 0
-            raise LoadError, "invalid element function index #{function_index}" unless function
-            table.set(offset + position, function)
+          elem_section.expressions.fetch(idx).each do |expr|
+            values << checked_table_value(expr.evaluate(inst, @globals))
           end
-          @elements << [table.type, offset, indices]
+          if tidx >= 0
+            table = @tables[tidx] || raise(InvalidModule, "unknown table")
+            unless Efflorescence::FunctionEntry.assignable?(element_type, table.type)
+              raise InvalidModule, "element type mismatch"
+            end
+            offset = elem_section.table_offsets.fetch(idx)
+            raise InvalidInitializer, "missing element offset" unless offset
+            position = offset.offset(inst, @globals)
+            @pending_elements << [table, position, values]
+          end
+          @elements << (elem_section.passive.fetch(idx) ? values : [])
         end
       end
+    end
+
+    # Apply each segment atomically, in order, after validation and linking.
+    # @rbs return: void
+    def initialize_elements
+      @pending_elements.each do |table, position, values|
+        raise LoadError, "active element segment out of bounds" if position + values.size > table.current
+        values.each_with_index { |value, i| table.set(position + i, value) }
+      end
+      @pending_elements.clear
+    end
+
+    # @rbs reference: globalValue
+    # @rbs return: tableValue
+    def checked_table_value(reference)
+      return reference if reference.nil? || reference.is_a?(FunctionReference) || reference.is_a?(ExternalReference)
+      raise InvalidInitializer, "expected table reference"
     end
 
     # @rbs idx: Integer
@@ -663,6 +790,9 @@ module Wardite
     end
   end
 
+  # @rbs!
+  #   type tableValue = WasmFunction | ExternalFunction | FunctionReference | ExternalReference | nil
+
   class Table
     attr_accessor :type #: Symbol
     
@@ -670,7 +800,7 @@ module Wardite
 
     attr_accessor :max #: Integer|nil
     
-    attr_accessor :refs #: Array[WasmFunction|ExternalFunction|nil]
+    attr_accessor :refs #: Array[tableValue]
 
     # @rbs type: Symbol
     # @rbs init: Integer
@@ -681,11 +811,32 @@ module Wardite
       @current = init
       @max = max
 
-      @refs = Array.new(3, nil)
+      @refs = []
+    end
+
+    # @rbs index: Integer
+    # @rbs length: Integer
+    # @rbs return: void
+    def check_range(index, length)
+      raise EvalError, "out of bounds table access" if index < 0 || length < 0 || index + length > @current
+    end
+
+    # @rbs delta: Integer
+    # @rbs value: tableValue
+    # @rbs return: Integer
+    def grow(delta, value)
+      previous = @current
+      limit = @max || 0xffffffff
+      return 0xffffffff if delta > limit - previous
+      @refs.fill(value, previous, delta) if value && delta > 0
+      @current += delta
+      previous
+    rescue NoMemoryError
+      0xffffffff
     end
 
     # @rbs idx: Integer
-    # @rbs elem: WasmFunction|ExternalFunction|nil
+    # @rbs elem: tableValue
     # @rbs return: void
     def set(idx, elem)
       if idx < 0 || idx >= @current
@@ -721,7 +872,7 @@ module Wardite
     # TODO: unused in wasm 1.0 spec?
     attr_accessor :shared #: bool
 
-    attr_accessor :value #: wasmValue
+    attr_accessor :value #: globalValue
 
     # @rbs &blk: (Global) -> void
     # @rbs return: void
@@ -735,8 +886,15 @@ module Wardite
       when :i32 then value.is_a?(I32)
       when :i64 then value.is_a?(I64)
       when :f32 then value.is_a?(F32)
+      when :funcref then value.nil? || value.is_a?(FunctionReference)
+      when :externref then value.nil? || value.is_a?(ExternalReference)
       when :f64 then value.is_a?(F64)
-      else false
+      else
+        return true if value.nil? && Efflorescence::FunctionEntry.non_nullable(type) != type
+        return true if value.is_a?(ExternalReference) && type == :non_null_extern
+        return true if value.is_a?(Efflorescence::ExceptionValue) && [:exnref, :non_null_exn].include?(type)
+        ref = value
+        ref.is_a?(FunctionReference) && Efflorescence::FunctionEntry.assignable?("ref:#{ref.instance.function_type_key(ref.index)}".to_sym, type)
       end
     end
 
@@ -761,6 +919,8 @@ module Wardite
   class Block
     VOID = nil #: nil
 
+    attr_accessor :reference_code #: Integer
+    attr_accessor :heap_type #: Integer
     attr_accessor :block_types #: nil|Array[Integer]
     attr_reader :type_index #: Integer
     attr_reader :parameter_types #: Array[Symbol]
@@ -775,6 +935,7 @@ module Wardite
     # @rbs type_index: Integer
     # @rbs return: void
     def initialize(block_types=VOID, type_index: -1)
+      @reference_code = @heap_type = 0
       @block_types = block_types
       @type_index = type_index
       @parameter_types = []
@@ -792,7 +953,7 @@ module Wardite
   end
 
   # @rbs!
-  #   type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory
+  #   type exportHandle = WasmFunction | ExternalFunction | Table | Global | Memory | Efflorescence::Tag
 
   class Exports
     attr_accessor :mappings #: Hash[String, [Integer, exportHandle]]
@@ -800,7 +961,8 @@ module Wardite
     # @rbs export_section: ExportSection
     # @rbs store: Store
     # @rbs return: void
-    def initialize(export_section, store)
+    # @rbs tags: Array[Efflorescence::Tag]
+    def initialize(export_section, store, tags = [])
       @mappings = {}
       export_section.exports.each_pair do |name, desc|
         case desc.kind
@@ -812,6 +974,8 @@ module Wardite
           @mappings[name] = [desc.kind, store.memories[desc.index]]
         when 0x3
           @mappings[name] = [desc.kind, store.globals[desc.index]]
+        when 0x4
+          @mappings[name] = [desc.kind, tags.fetch(desc.index)]
         else
         end
       end
@@ -878,6 +1042,47 @@ module Wardite
   # @rbs!
   #   type wasmFuncReturn = Object|nil
 
+  class ExportedFunction
+    attr_reader :instance #: Instance
+    attr_reader :name #: String
+
+    # @rbs instance: Instance
+    # @rbs name: String
+    def initialize(instance, name)
+      @instance, @name = instance, name
+    end
+
+    # @rbs store: Store
+    # @rbs args: Array[wasmValue]
+    # @rbs return: wasmFuncReturn
+    def call(store, args)
+      @instance.runtime.call(@name, args)
+    rescue UncaughtWasmException => error
+      raise LinkedWasmException, error.exception_value
+    end
+    alias [] call
+  end
+
+  class ExternalReference
+    attr_reader :value #: Object
+
+    # @rbs value: Object
+    def initialize(value)
+      @value = value
+    end
+  end
+
+  class FunctionReference
+    attr_reader :instance #: Instance
+    attr_reader :index #: Integer
+
+    # @rbs instance: Instance
+    # @rbs index: Integer
+    def initialize(instance, index)
+      @instance, @index = instance, index
+    end
+  end
+
   class ExternalFunction
     attr_accessor :target_module #: wasmModule
 
@@ -920,6 +1125,8 @@ module Wardite
 
   class GenericError < StandardError; end
   class LoadError < StandardError; end
+  class LinkError < LoadError; end
+  class InvalidModule < LoadError; end
   class InvalidInitializer < LoadError; end
   class ArgumentError < StandardError; end
   class EvalError < StandardError; end

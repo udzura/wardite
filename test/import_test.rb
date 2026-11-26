@@ -53,7 +53,7 @@ class WarditeImportTest < Test::Unit::TestCase
     bytes = make_buffer_from_wat('(module (import "env" "x" (global i64)))').string
     [Wardite::Global.numeric(:i32, false), Wardite::Global.numeric(:i64, true)].each do |wrong|
       host = Wardite::HashModule.new({}, {x: wrong})
-      assert_raise(Wardite::LoadError) do
+      assert_raise(Wardite::LinkError) do
         Wardite.new(buffer: StringIO.new(bytes), import_object: {env: host}, enable_wasi: false)
       end
     end

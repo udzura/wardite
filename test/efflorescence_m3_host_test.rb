@@ -74,11 +74,11 @@ class EfflorescenceM3HostTest < Test::Unit::TestCase
     assert_raise(Wardite::Efflorescence::UnsupportedFeature) do
       load_efflorescence('(module (import "env" "unused" (func (result f64 i64))))')
     end
-    ['(memory 1)', '(table 1 funcref)', '(global i32)'].each do |kind|
-      assert_raise(Wardite::LoadError) { load_efflorescence("(module (import \"env\" \"x\" #{kind}))") }
-    end
+    assert_raise(Wardite::LinkError) { load_efflorescence('(module (import "env" "x" (memory 1)))') }
+    assert_raise(Wardite::LinkError) { load_efflorescence('(module (import "env" "x" (table 1 funcref)))') }
+    assert_raise(Wardite::LinkError) { load_efflorescence('(module (import "env" "x" (global i32)))') }
     ['(param i32)', '(result i32)'].each do |signature|
-      assert_raise(Wardite::LoadError) do
+      assert_raise(Wardite::InvalidModule) do
         load_efflorescence("(module (import \"env\" \"init\" (func $init #{signature})) (start $init))",
           import_object: {env: {init: init}})
       end

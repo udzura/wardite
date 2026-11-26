@@ -8,6 +8,8 @@ module Wardite
       class Control
         attr_reader kind: Symbol
 
+        attr_reader parameters: Array[Integer]
+
         attr_reader entry_stack: Array[Integer]
 
         attr_reader start_pc: Integer
@@ -142,6 +144,11 @@ module Wardite
       # @rbs return: Integer
       def integer_operand: (Wardite::operandItem? value) -> Integer
 
+      # @rbs code: Symbol
+      # @rbs operands: Array[Wardite::operandItem]
+      # @rbs return: void
+      def table_instruction: (Symbol code, Array[Wardite::operandItem] operands) -> void
+
       # @rbs type: Symbol
       # @rbs return: Integer
       def register: (?Symbol type) -> Integer
@@ -167,6 +174,10 @@ module Wardite
 
       # @rbs return: Integer
       def pop_value: () -> Integer
+
+      # @rbs types: Array[Symbol]
+      # @rbs return: void
+      def check_tail_results: (Array[Symbol] types) -> void
 
       # @rbs register: Integer
       # @rbs return: Symbol
@@ -229,6 +240,14 @@ module Wardite
 
       # @rbs return: void
       def end_control: () -> void
+
+      # @rbs types: Array[Symbol]
+      # @rbs return: void
+      def append_call_results: (Array[Symbol] types) -> void
+
+      # @rbs sources: Array[Integer]
+      # @rbs return: void
+      def emit_return: (Array[Integer] sources) -> void
 
       # @rbs return: void
       def mark_unreachable: () -> void

@@ -30,13 +30,49 @@ module Wardite
   class HashModule
     attr_accessor :hash #: Hash[Symbol, _WasmCallable]
 
+    attr_reader :tags #: Hash[Symbol, Efflorescence::Tag]
+
+    attr_reader :tables #: Hash[Symbol, Table]
+
+    attr_reader :memories #: Hash[Symbol, Memory]
+
     attr_reader :globals #: Hash[Symbol, Global]
 
     # @rbs hash: Hash[Symbol, _WasmCallable]
     # @rbs globals: Hash[Symbol, Global]
     def initialize(hash, globals = {})
+      @tags = {}
+      @tables = {} #: Hash[Symbol, Table]
+      @memories = {} #: Hash[Symbol, Memory]
       @globals = globals
       @hash = hash
+    end
+
+    # @rbs name: Symbol
+    # @rbs return: bool
+    def export_named?(name)
+      @hash.key?(name) || @tables.key?(name) || @memories.key?(name) || @globals.key?(name) || @tags.key?(name)
+    end
+
+    # @rbs name: Symbol
+    # @rbs return: ExportedFunction?
+    def exported_function(name)
+      function = @hash.fetch(name, nil) #: (_WasmCallable & Object)?
+      function if function.is_a?(ExportedFunction)
+    end
+
+    # @rbs name: Symbol
+    # @rbs callsig: Array[Symbol]
+    # @rbs retsig: Array[Symbol]
+    # @rbs return: void
+    def validate_function_import(name, callsig, retsig)
+      raise LinkError, "incompatible import type" if !@hash.key?(name) && export_named?(name)
+      exported = exported_function(name)
+      return unless exported.is_a?(ExportedFunction)
+      original = exported.instance.exports[exported.name]
+      unless (original.is_a?(WasmFunction) || original.is_a?(ExternalFunction)) && original.callsig == callsig && original.retsig == retsig
+        raise LinkError, "incompatible import type"
+      end
     end
 
     # @rbs name: Symbol

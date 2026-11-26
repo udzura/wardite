@@ -32,8 +32,8 @@ class WarditeLeb128Test < Test::Unit::TestCase
       ["00", 0, nil],
       ["ffffffff0f", 0xffffffff, nil],
       ["8080808010", nil, "unsigned LEB128 exceeds width"],
-      ["8080808080", nil, "unsigned LEB128 exceeds width"],
-      ["80", nil, "invalid or truncated unsigned LEB128"],
+      ["8080808080", nil, "integer representation too long"],
+      ["80", nil, "truncated integer representation"],
       ["", nil, "invalid or truncated unsigned LEB128"]
     ]
     cases.each do |hex, expected, error|

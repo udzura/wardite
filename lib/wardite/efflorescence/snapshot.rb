@@ -81,6 +81,7 @@ module Wardite
         started = Time.now.to_f
         return trace("skipped (open descriptors changed)") unless @wasi.fd_table.keys.sort == @fds && @wasi.fd_count == @fd_count
         store = instance.store
+        return trace("skipped (table state changed)") if instance.runtime.table_state_changed || !instance.import_section.table_imports.empty?
         return trace("skipped (multiple memories)") if store.memories.size > 1
         writer = MIRCache::Writer.new
         writer.integers(@fd_count)

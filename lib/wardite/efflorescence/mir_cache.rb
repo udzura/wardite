@@ -14,7 +14,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 15
+      CODE_VERSION = 22
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -22,7 +22,7 @@ module Wardite
       SAMPLE_STEP = 1024 * 1024
       SAMPLE_BLOCK = 4 * 1024
       MAX_BYTES = 256 * 1024 * 1024
-      TYPES = %i[i32 i64 f32 f64 exnref].freeze
+      TYPES = %i[i32 i64 f32 f64 exnref non_null_exn funcref externref non_null_func non_null_extern anyref nullref nullfuncref nullexternref nullexnref non_null_any non_null_none non_null_nofunc non_null_noextern non_null_noexn non_null_bottom].freeze
       TYPE_IDS = TYPES.each_with_index.to_h.freeze
       USES_I64 = 1
       USES_FLOAT = 2
@@ -117,7 +117,13 @@ module Wardite
 
         # @rbs return: Array[Symbol]
         def types
-          vector("C", 1).map { |id| TYPES[id] || raise(Invalid) }
+          ids = vector("C", 1)
+          ids.map do |id|
+            next TYPES.fetch(id) { raise Invalid } unless id == 255
+            name = bytes(integer)
+            raise Invalid unless name.bytesize <= 128 && (name.start_with?("ref:") || name.start_with?("nullable:"))
+            name.to_sym
+          end
         end
 
         # @rbs return: void
@@ -158,7 +164,14 @@ module Wardite
         # @rbs types: Array[Symbol]
         # @rbs return: void
         def types(types)
-          vector(types.map { |type| TYPE_IDS.fetch(type) }, "C")
+          vector(types.map { |type| TYPE_IDS.fetch(type, 255) }, "C")
+          types.each do |type|
+            unless TYPE_IDS.key?(type)
+              name = type.to_s
+              integers(name.bytesize)
+              @bytes << name
+            end
+          end
         end
 
         # @rbs function: Function
@@ -184,15 +197,24 @@ module Wardite
           end
           integers(function.dynamic_sites.size)
           function.dynamic_sites.each do |site|
-            integers(site.host_index, site.table_index)
+            integers(site.host_index, site.table_index, site.type_index)
             types(site.parameter_types)
             types(site.result_types)
             vector(site.arguments)
+          end
+          integers(function.indexed_accesses.size)
+          function.indexed_accesses.each do |access|
+            integers(access.memory, access.offset, access.alignment, access.signed ? 1 : 0, TYPE_IDS.fetch(access.type))
           end
           integers(function.memory_sites.size)
           function.memory_sites.each do |site|
             integers(site.memory_index, site.source_memory_index, site.data_index)
             vector(site.sources)
+          end
+          integers(function.table_sites.size)
+          function.table_sites.each do |site|
+            integers(site.table, site.source)
+            vector(site.table_operands)
           end
           integers(function.throw_sites.size)
           function.throw_sites.each do |site|
@@ -223,14 +245,19 @@ module Wardite
           when BR_IF, BR_IF_ZERO, BR_IF_I64_EQ then :conditional
           when CALL then :call
           when CALL_HOST, CALL_INDIRECT then :dynamic_call
+          when TABLE_SET..ELEM_DROP then :table
+          when INDEXED_LOAD, INDEXED_STORE then :indexed
+          when TABLE_GET then :table_get
+          when RESULT_SET then :result_set
+          when RESULT_GET then :result_get
           when RETURN then :return
           when EH_ENTER then :handler
           when EH_TRIM then :depth
           when THROW then :throw
           when MEMORY_INIT, MEMORY_COPY, MEMORY_FILL then :bulk
           when MEMORY_SIZE, MEMORY_GROW then :memory
-          when GLOBAL_GET, I64_GLOBAL_GET, F32_GLOBAL_GET, F64_GLOBAL_GET then :global_get
-          when GLOBAL_SET, I64_GLOBAL_SET, F32_GLOBAL_SET, F64_GLOBAL_SET then :global_set
+          when GLOBAL_GET, I64_GLOBAL_GET, F32_GLOBAL_GET, F64_GLOBAL_GET, EXN_GLOBAL_GET then :global_get
+          when GLOBAL_SET, I64_GLOBAL_SET, F32_GLOBAL_SET, F64_GLOBAL_SET, EXN_GLOBAL_SET then :global_set
           when I32_LOAD..I32_STORE16, I64_LOAD..I64_STORE32, F32_LOAD..F64_STORE then :address
           when I32_EXTRACT_I64 then :extract
           when I32_ADD_IMM..I32_SHR_U_IMM then :immediate
@@ -249,6 +276,8 @@ module Wardite
           @reader = Reader.new(payload)
           @entries = entries
           @bodies = instance.code_section&.func_codes || []
+          @function_indices = instance.import_section.imports.map(&:sig_index) + (instance.function_section&.func_indices || [])
+          @type_keys = instance.type_section&.type_keys || []
           @tags = instance.tags
           @functions = []
           @offsets = [] #: Array[Integer]
@@ -257,13 +286,15 @@ module Wardite
           @defined_count = entries.size - @import_count
           @data_count = instance.data_section&.segments&.size || 0
           @global_count = instance.import_section.global_imports.size + (instance.global_section&.globals&.size || 0)
-          @has_memory = (instance.memory_section&.limits&.size || 0) > 0
-          @table_type = instance.table_section&.table_types&.[](0) #: Symbol?
-          @signatures = {} #: Hash[[Array[Symbol], Array[Symbol]], bool]
+          @memory_count = instance.import_section.memory_imports.size + (instance.memory_section&.limits&.size || 0)
+          @has_memory = !instance.import_section.memory_imports.empty? || (instance.memory_section&.limits&.size || 0) > 0
+          @element_types = instance.elem_section&.element_types || []
+          @table_types = instance.import_section.table_imports.map { |entry| entry[2] } + (instance.table_section&.table_types || [])
+          @declared_signatures = [] #: Array[[Array[Symbol], Array[Symbol]]]
           types = instance.type_section
           if types
             types.defined_types.each_with_index do |params, index|
-              @signatures[[params, types.defined_results.fetch(index)]] = true
+              @declared_signatures << [params, types.defined_results.fetch(index)]
             end
           end
         end
@@ -329,6 +360,9 @@ module Wardite
           raise Invalid unless flags.between?(0, FUNCTION_FLAGS)
 
           types = @reader.types
+          types.each do |type|
+            raise Invalid if type.to_s.start_with?("ref:", "nullable:") && !@type_keys.include?(type.to_s.split(":", 2).fetch(1))
+          end
           params = function.parameter_types
           first_local = params.size
           function.local_count = body.locals_count.sum
@@ -362,7 +396,15 @@ module Wardite
           initial.each_with_index do |bits, slot|
             if slot == constants[constant_index]
               type = types.fetch(slot)
-              raise Invalid if type == :exnref || ((type == :i32 || type == :f32) && !bits.between?(0, 0xffffffff))
+              if FunctionEntry.reference?(type)
+                if bits.zero?
+                  raise Invalid if FunctionEntry.non_nullable(type) == type
+                else
+                  key = at(@type_keys, at(@function_indices, bits - 1))
+                  raise Invalid unless FunctionEntry.assignable?("ref:#{key}".to_sym, type)
+                end
+              end
+              raise Invalid if (type == :i32 || type == :f32) && !bits.between?(0, 0xffffffff)
               constant_index += 1
             else
               raise Invalid unless bits.zero?
@@ -389,7 +431,18 @@ module Wardite
             function.add_call_site(site)
           end
           @reader.count(20).times { function.dynamic_sites << read_dynamic_site(function) }
+          @reader.count(20).times do
+            memory, offset, alignment, sign, type_id = @reader.integer, @reader.integer, @reader.integer, @reader.integer, @reader.integer
+            type = at(TYPES, type_id)
+            raise Invalid unless memory.between?(1, @memory_count - 1) && FunctionEntry.numeric_type?(type) && sign.between?(0, 1)
+            raise Invalid unless alignment.between?(0, type == :i32 || type == :f32 ? 2 : 3)
+            function.indexed_accesses << IndexedAccess.new(memory, offset & 0xffffffff, alignment, sign == 1, type)
+          end
           @reader.count(16).times { function.memory_sites << read_memory_site(function) }
+          @reader.count(12).times do
+            table, source = @reader.integer, @reader.integer
+            function.table_sites << TableSite.new(table, source, @reader.vector("l<", 4))
+          end
           @reader.count(8).times do
             tag = @reader.integer
             registers = @reader.vector("l<", 4)
@@ -408,18 +461,18 @@ module Wardite
         def read_dynamic_site(function)
           host_index = @reader.integer
           table_index = @reader.integer
+          type_index = @reader.integer
           params = @reader.types
           results = @reader.types
           if host_index == -1
-            raise Invalid unless table_index == 0 && @table_type == :funcref &&
-              @signatures.key?([params, results]) && results.size <= 1 &&
-              (params + results).all? { |type| FunctionEntry.numeric_type?(type) }
+            raise Invalid unless (table_index == -1 || table_index >= 0 && FunctionEntry.function_ref?(at(@table_types, table_index))) &&
+              type_index >= 0 && at(@type_keys, type_index).start_with?("f") && @declared_signatures[type_index] == [params, results]
           else
-            raise Invalid unless table_index == -1 && host_index.between?(0, @import_count - 1)
+            raise Invalid unless type_index == -1 && table_index == -1 && host_index.between?(0, @import_count - 1)
             host = @entries.fetch(host_index)
             raise Invalid unless params == host.parameter_types && results == host.result_types
           end
-          site = DynamicCallSite.new(host_index, [], params, results, table_index: table_index)
+          site = DynamicCallSite.new(host_index, [], params, results, table_index: table_index, type_index: type_index)
           @reader.read_into(site.arguments, "l<", 4)
           check_arguments(function, site.arguments, params)
           site
@@ -432,7 +485,7 @@ module Wardite
           source = @reader.integer
           data = @reader.integer
           registers = @reader.vector("l<", 4)
-          raise Invalid unless @has_memory && memory == 0 && source == 0 && data.between?(-1, @data_count - 1)
+          raise Invalid unless memory.between?(0, @memory_count - 1) && source.between?(0, @memory_count - 1) && data.between?(-1, @data_count - 1)
           check_arguments(function, registers, [:i32, :i32, :i32])
           MemorySite.new(registers, memory_index: memory, source_memory_index: source, data_index: data)
         end
@@ -446,8 +499,12 @@ module Wardite
           pc = @reader.integer
           depth = @reader.integer
           registers = @reader.vector("l<", 4)
-          check_arguments(function, registers, tag == -1 ? [] : tag_types(tag))
-          raise Invalid unless reference == -1 || at(function.register_types, reference) == :exnref
+          types = tag == -1 ? [] : tag_types(tag) #: Array[Symbol]
+          raise Invalid unless registers.size == types.size
+          registers.each_with_index do |slot, i|
+            raise Invalid unless FunctionEntry.assignable?(types.fetch(i), at(function.register_types, slot))
+          end
+          raise Invalid unless reference == -1 || FunctionEntry.exception_ref?(at(function.register_types, reference))
           raise Invalid unless depth.between?(0, handler_count - 1)
           check_target(pc, function.bytecode.size)
           CatchTarget.new(tag, registers, reference, pc, depth)
@@ -461,8 +518,12 @@ module Wardite
           pc = 0
           while pc < code.size
             opcode, a, b, c = code[pc], code[pc + 1], code[pc + 2], code[pc + 3]
+            if opcode == Lowerer::TAIL_DIRECT || opcode == Lowerer::TAIL_INDIRECT
+              raise Invalid unless pc + Lowerer::WIDTH < code.size && code[pc + Lowerer::WIDTH] == RETURN && code[pc + Lowerer::WIDTH + 1] == a
+              opcode = opcode == Lowerer::TAIL_DIRECT ? CALL : CALL_INDIRECT
+            end
             raise Invalid unless opcode.between?(0, REGISTER_MASKS.size - 1) && opcode != PROFILE
-            if opcode >= I32_TABLE_STORE8
+            if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ)
               length = ByteSequences.length(opcode)
               raise Invalid unless pc + length * Lowerer::WIDTH <= code.size
               head = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8)
@@ -494,8 +555,39 @@ module Wardite
               check_result(function, a, site.callee.result_types)
             when :dynamic_call
               site = at(function.dynamic_sites, b)
-              raise Invalid unless opcode == CALL_HOST ? (site.host_index >= 0 && c == 0) : site.table_index == 0
+              if opcode == CALL_HOST
+                raise Invalid unless site.host_index >= 0 && c == 0
+              else
+                raise Invalid unless site.host_index == -1
+                expected_type = site.table_index >= 0 ? :i32 : "nullable:#{@type_keys.fetch(site.type_index)}".to_sym
+                raise Invalid unless FunctionEntry.assignable?(at(function.register_types, c), expected_type)
+              end
               check_result(function, a, site.result_types)
+            when :table
+              site = at(function.table_sites, b)
+              type = opcode == ELEM_DROP ? :unknown : at(@table_types, site.table)
+              expected = case opcode
+              when TABLE_GROW then [type, :i32]
+              when TABLE_FILL then [:i32, type, :i32]
+              when TABLE_SET then [:i32, type]
+              when TABLE_INIT, TABLE_COPY
+                other = opcode == TABLE_INIT ? at(@element_types, site.source) : at(@table_types, site.source)
+                raise Invalid unless FunctionEntry.assignable?(other, type)
+                [:i32, :i32, :i32]
+              else
+                at(@element_types, site.source) if opcode == ELEM_DROP
+                [] #: Array[Symbol]
+              end
+              check_arguments(function, site.table_operands, expected)
+              check_result(function, a, opcode == TABLE_SIZE || opcode == TABLE_GROW ? [:i32] : [])
+            when :indexed
+              access = at(function.indexed_accesses, c)
+              raise Invalid unless at(function.register_types, b) == :i32 && at(function.register_types, a) == access.type
+            when :table_get then raise Invalid unless at(@table_types, c) == function.register_types[a] && function.register_types[b] == :i32
+            when :result_set
+              raise Invalid unless a.between?(1, function.result_types.size - 1) && function.register_types[b] == function.result_types[a]
+            when :result_get
+              raise Invalid unless b.positive?
             when :return then check_result(function, a, function.result_types)
             when :handler then at(function.flat_handlers, a)
             when :depth then raise Invalid unless a.between?(0, function.flat_handlers.size)
@@ -506,7 +598,7 @@ module Wardite
             when :global_get then raise Invalid unless b.between?(0, @global_count - 1)
             when :global_set then raise Invalid unless a.between?(0, @global_count - 1)
             when :address then raise Invalid unless @has_memory && c.between?(0, 0xffffffff)
-            when :memory then raise Invalid unless @has_memory
+            when :memory then raise Invalid unless c.between?(0, @memory_count - 1)
             when :immediate then raise Invalid unless c.between?(0, 0xffffffff)
             when :extract then raise Invalid unless c.between?(0, (0xffffffff << 6) | 63)
             when :shift then raise Invalid unless c.between?(0, 31)
@@ -528,7 +620,7 @@ module Wardite
         def check_arguments(function, registers, types)
           raise Invalid unless registers.size == types.size
           registers.each_with_index do |slot, index|
-            raise Invalid unless at(function.register_types, slot) == types.fetch(index)
+            raise Invalid unless FunctionEntry.assignable?(at(function.register_types, slot), types.fetch(index))
           end
         end
 

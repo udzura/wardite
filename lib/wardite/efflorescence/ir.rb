@@ -219,6 +219,22 @@ module Wardite
       I32_BYTE_ADD_STORE = 200
       I32_DIV_U_STORE8 = 201
       I64_BYTE_LOOKUP_BR_EQ = 202
+      RESULT_SET = 203
+      RESULT_GET = 204
+      REF_IS_NULL = 205
+      TABLE_GET = 206
+      TABLE_SET = 207
+      TABLE_SIZE = 208
+      TABLE_GROW = 209
+      TABLE_FILL = 210
+      TABLE_COPY = 211
+      TABLE_INIT = 212
+      ELEM_DROP = 213
+      REF_AS_NON_NULL = 214
+      INDEXED_LOAD = 215
+      INDEXED_STORE = 216
+      EXN_GLOBAL_GET = 217
+      EXN_GLOBAL_SET = 218
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U, I32_ADD_IMM, I32_ADD_IMM].freeze #: Array[Integer]
 
@@ -252,7 +268,7 @@ module Wardite
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
                  F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
                  BR_IF_I64_EQ I32_EXTRACT_I64
-                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ].freeze
+                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET TABLE_SET TABLE_SIZE TABLE_GROW TABLE_FILL TABLE_COPY TABLE_INIT ELEM_DROP REF_AS_NON_NULL INDEXED_LOAD INDEXED_STORE EXN_GLOBAL_GET EXN_GLOBAL_SET].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -398,19 +414,21 @@ module Wardite
         I64_GLOBAL_GET => :i64,
         F32_GLOBAL_GET => :f32,
         F64_GLOBAL_GET => :f64,
+        EXN_GLOBAL_GET => :exnref,
       }.freeze #: Hash[Integer, Symbol]
 
       EXTENDED_GLOBAL_SET_TYPES = {
         I64_GLOBAL_SET => :i64,
         F32_GLOBAL_SET => :f32,
         F64_GLOBAL_SET => :f64,
+        EXN_GLOBAL_SET => :exnref,
       }.freeze #: Hash[Integer, Symbol]
 
       # Semantic register operand positions, excluding frame initialization.
       READ_POSITIONS = NAMES.each_index.map do |opcode|
-        opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode >= I32_TABLE_STORE8
+        opcode = SEQUENCE_HEADS.fetch(opcode - I32_TABLE_STORE8) if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ)
         positions = case opcode
-          when GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
+          when INDEXED_LOAD, TABLE_GET, REF_AS_NON_NULL, REF_IS_NULL, RESULT_SET, GLOBAL_SET, I32_LOAD, I32_LOAD8_S, I32_LOAD8_U, I32_LOAD16_S, I32_LOAD16_U, MEMORY_GROW,
                COPY, COPY_REF, I32_EQZ, I32_CLZ, I32_CTZ, I32_POPCNT, I32_EXTEND8_S, I32_EXTEND16_S, I32_ADD_IMM, I32_SUB_IMM, I32_MUL_IMM,
                I32_XOR_IMM, I32_SHL_IMM, I32_SHR_U_IMM, I32_XOR_SHR_U_IMM, I32_XOR_SHL_IMM
             [2]
@@ -424,11 +442,11 @@ module Wardite
             [1]
           when CALL_INDIRECT
             [3]
-          when I32_STORE, I32_STORE8, I32_STORE16
+          when INDEXED_STORE, I32_STORE, I32_STORE8, I32_STORE16
             [1, 2]
           when THROW_REF
             [1]
-          when BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
+          when TABLE_SET..ELEM_DROP, RESULT_GET, BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
             [] #: Array[Integer]
           else
             types = extended_alu_types(opcode)
@@ -503,7 +521,7 @@ module Wardite
       # @rbs return: Integer
       def self.destination(instruction)
         opcode = instruction[0]
-        if opcode >= I32_TABLE_STORE8 || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
+        if opcode.between?(I32_TABLE_STORE8, I64_BYTE_LOOKUP_BR_EQ) || opcode == TABLE_SIZE || opcode == TABLE_GROW || opcode == INDEXED_LOAD || opcode == RESULT_GET || opcode == REF_IS_NULL || opcode == REF_AS_NON_NULL || opcode == TABLE_GET || opcode <= I32_EQZ || opcode == CALL || dynamic_call?(opcode) ||
             (opcode >= I32_ADD_IMM && opcode <= I32_SHR_U_IMM) ||
             opcode == I32_XOR_SHR_U_IMM || opcode == I32_XOR_SHL_IMM ||
             (opcode >= I32_EQ && opcode <= COPY_REF) || opcode == GLOBAL_GET ||
@@ -518,13 +536,13 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.may_throw?(opcode)
-        opcode == CALL || opcode == CALL_INDIRECT || opcode == THROW || opcode == THROW_REF
+        opcode == CALL || opcode == CALL_HOST || opcode == CALL_INDIRECT || opcode == THROW || opcode == THROW_REF
       end
 
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.may_trap?(opcode)
-        opcode == TRAP || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
+        opcode == INDEXED_LOAD || opcode == INDEXED_STORE || opcode == TRAP || opcode == REF_AS_NON_NULL || opcode == TABLE_SET || opcode.between?(TABLE_FILL, TABLE_INIT) || opcode == TABLE_GET || opcode == CALL_INDIRECT || opcode == THROW_REF || (opcode >= I32_DIV_S && opcode <= I32_REM_U) ||
           (opcode >= I32_LOAD && opcode <= I32_STORE16) || memory_site?(opcode) ||
           (opcode >= I32_TRUNC_F32_S && opcode <= I64_TRUNC_F64_U) ||
           (opcode > CALL_INDIRECT && (EXTENDED_LOAD_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode) ||
@@ -553,7 +571,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.reads_store?(opcode)
-        opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
+        opcode == INDEXED_LOAD || opcode == TABLE_GET || opcode == TABLE_SIZE || opcode == TABLE_COPY || opcode == GLOBAL_GET || (opcode >= I32_LOAD && opcode <= I32_LOAD16_U) ||
           opcode == MEMORY_SIZE || opcode == MEMORY_GROW || opcode == MEMORY_INIT || opcode == MEMORY_COPY ||
           (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_GET_TYPES.key?(opcode) || EXTENDED_LOAD_TYPES.key?(opcode)))
       end
@@ -561,7 +579,8 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.writes_store?(opcode)
-        opcode == GLOBAL_SET || (opcode >= I32_STORE && opcode <= I32_STORE16) ||
+        opcode == INDEXED_STORE || opcode == TABLE_SET || opcode.between?(TABLE_GROW, ELEM_DROP) ||
+          opcode == GLOBAL_SET || (opcode >= I32_STORE && opcode <= I32_STORE16) ||
           opcode == MEMORY_GROW || memory_site?(opcode) ||
           (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_SET_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode)))
       end
@@ -590,19 +609,26 @@ module Wardite
       attr_reader :parameter_types #: Array[Symbol]
 
       # @rbs parameter_types: Array[Symbol]
-      def initialize(parameter_types)
+      # @rbs type_key: String?
+      def initialize(parameter_types, type_key = nil)
+        @type_key = type_key || "0:#{parameter_types.join(',')}>"
         @parameter_types = parameter_types.dup.freeze
       end
+
+      attr_reader :type_key #: String
     end
 
     class ExceptionValue
       attr_reader :tag #: Wardite::Efflorescence::Tag
+      attr_reader :references #: Hash[Integer, Wardite::FunctionReference]
       attr_reader :payload_bits #: Array[Integer]
 
       # @rbs tag: Wardite::Efflorescence::Tag
       # @rbs payload_bits: Array[Integer]
-      def initialize(tag, payload_bits)
+      # @rbs references: Hash[Integer, Wardite::FunctionReference]
+      def initialize(tag, payload_bits, references = {})
         @tag = tag
+        @references = references.freeze
         @payload_bits = payload_bits.dup.freeze
         freeze
       end
@@ -677,6 +703,36 @@ module Wardite
     end
 
     # Bulk operands stay static in the Function. Values remain in Frame registers.
+    class TableSite
+      attr_reader :table #: Integer
+      attr_reader :source #: Integer
+      attr_reader :table_operands #: Array[Integer]
+
+      # @rbs table: Integer
+      # @rbs source: Integer
+      # @rbs table_operands: Array[Integer]
+      def initialize(table, source, table_operands)
+        @table, @source, @table_operands = table, source, table_operands
+      end
+    end
+
+    class IndexedAccess
+      attr_reader :memory #: Integer
+      attr_reader :offset #: Integer
+      attr_reader :alignment #: Integer
+      attr_reader :signed #: bool
+      attr_reader :type #: Symbol
+
+      # @rbs memory: Integer
+      # @rbs offset: Integer
+      # @rbs alignment: Integer
+      # @rbs signed: bool
+      # @rbs type: Symbol
+      def initialize(memory, offset, alignment, signed, type)
+        @memory, @offset, @alignment, @signed, @type = memory, offset, alignment, signed, type
+      end
+    end
+
     class MemorySite
       attr_reader :sources #: Array[Integer]
       attr_reader :memory_index #: Integer
@@ -841,6 +897,16 @@ module Wardite
         @throw_sites ||= [] #: Array[Wardite::Efflorescence::ThrowSite]
       end
 
+      # @rbs return: Array[Wardite::Efflorescence::IndexedAccess]
+      def indexed_accesses
+        @indexed_accesses ||= [] #: Array[Wardite::Efflorescence::IndexedAccess]
+      end
+
+      # @rbs return: Array[TableSite]
+      def table_sites
+        @table_sites ||= [] #: Array[TableSite]
+      end
+
       # @rbs return: Array[Wardite::Efflorescence::MemorySite]
       def memory_sites
         @memory_sites ||= [] #: Array[Wardite::Efflorescence::MemorySite]
@@ -890,6 +956,7 @@ module Wardite
         @initial_registers << value
         @uses_i64 = true if type == :i64
         @uses_float = true if FloatBits.float_type?(type)
+        @uses_eh = true if FunctionEntry.exception_ref?(type)
         @register_types << type
         slot
       end
@@ -1026,6 +1093,7 @@ module Wardite
       # @rbs () { (Integer) -> Integer } -> void
       def map_side_registers!
         throw_sites.each { |site| site.payload_registers.map! { |slot| yield(slot) } }
+        table_sites.each { |site| site.table_operands.map! { |slot| yield(slot) } }
         memory_sites.each { |site| site.sources.map! { |slot| yield(slot) } }
         dynamic_sites.each { |site| site.arguments.map! { |slot| yield(slot) } }
         handlers.each do |handler|
@@ -1066,6 +1134,8 @@ module Wardite
         opcode = instruction[0]
         if opcode == Opcode::THROW
           throw_sites.fetch(instruction[1]).payload_registers
+        elsif opcode.between?(Opcode::TABLE_SET, Opcode::ELEM_DROP)
+          table_sites.fetch(instruction[2]).table_operands
         elsif Opcode.memory_site?(opcode)
           memory_site(instruction[1]).sources
         elsif Opcode.dynamic_call?(opcode)
@@ -1091,6 +1161,8 @@ module Wardite
         @handlers = body.handlers
         @flat_handlers = body.flat_handlers
         @throw_sites = body.throw_sites
+        @indexed_accesses = body.indexed_accesses
+        @table_sites = body.table_sites
         @memory_sites = body.memory_sites
         @dynamic_sites = body.dynamic_sites
         @bytecode = body.bytecode
@@ -1106,6 +1178,8 @@ module Wardite
         result.uses_store = @uses_store
         result.uses_dynamic_calls = @uses_dynamic_calls
         dynamic_sites.each { |site| result.dynamic_sites << site.copy }
+        result.indexed_accesses.concat(indexed_accesses)
+        table_sites.each { |site| result.table_sites << TableSite.new(site.table, site.source, site.table_operands.dup) }
         memory_sites.each { |site| result.memory_sites << site.copy }
         handlers.each { |handler| result.handlers << handler.copy }
         throw_sites.each { |site| result.throw_sites << site.copy }
@@ -1157,6 +1231,7 @@ module Wardite
     end
 
     class DynamicCallSite
+      attr_reader :type_index #: Integer
       attr_reader :host_index #: Integer
       attr_reader :table_index #: Integer
       attr_reader :arguments #: Array[Integer]
@@ -1168,7 +1243,9 @@ module Wardite
       # @rbs parameter_types: Array[Symbol]
       # @rbs result_types: Array[Symbol]
       # @rbs table_index: Integer
-      def initialize(host_index, arguments, parameter_types, result_types, table_index: -1)
+      # @rbs type_index: Integer
+      def initialize(host_index, arguments, parameter_types, result_types, table_index: -1, type_index: -1)
+        @type_index = type_index
         @host_index = host_index
         @table_index = table_index
         @arguments = [] #: Array[Integer]
@@ -1179,7 +1256,7 @@ module Wardite
 
       # @rbs return: Wardite::Efflorescence::DynamicCallSite
       def copy
-        DynamicCallSite.new(@host_index, @arguments, @parameter_types, @result_types, table_index: @table_index)
+        DynamicCallSite.new(@host_index, @arguments, @parameter_types, @result_types, table_index: @table_index, type_index: @type_index)
       end
     end
 
@@ -1238,10 +1315,63 @@ module Wardite
       # @rbs label: String
       # @rbs return: void
       def self.check_signature(params, results, label)
-        unless results.size <= 1 && params.all? { |type| numeric_type?(type) } &&
-            results.all? { |type| numeric_type?(type) }
-          raise UnsupportedFeature, "Efflorescence: #{label} requires a numeric signature with at most one result (i32/i64/f32/f64)"
+        unless (results.size <= 1 || results.all? { |type| numeric_type?(type) }) && params.all? { |type| numeric_type?(type) || (reference?(type) && !exception_ref?(type)) } &&
+            results.all? { |type| numeric_type?(type) || reference?(type) }
+          raise UnsupportedFeature, "Efflorescence: #{label} has an unsupported parameter or result type"
         end
+      end
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.function_ref?(type)
+        [:funcref, :non_null_func, :nullfuncref, :non_null_nofunc].include?(type) || type.to_s.start_with?("ref:f", "nullable:f")
+      end
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.exception_ref?(type)
+        [:exnref, :non_null_exn, :nullexnref, :non_null_noexn].include?(type)
+      end
+
+      NON_NULL = {
+        funcref: :non_null_func, externref: :non_null_extern, exnref: :non_null_exn,
+        anyref: :non_null_any, nullref: :non_null_none, nullfuncref: :non_null_nofunc,
+        nullexternref: :non_null_noextern, nullexnref: :non_null_noexn
+      }.freeze
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.reference?(type)
+        NON_NULL.key?(type) || type.to_s.start_with?("ref:", "nullable:", "non_null_")
+      end
+
+      # @rbs type: Symbol
+      # @rbs return: Symbol
+      def self.non_nullable(type)
+        return :non_null_bottom if type == :unknown
+        return "ref:#{type.to_s.delete_prefix('nullable:')}".to_sym if type.to_s.start_with?("nullable:")
+        NON_NULL.fetch(type, type)
+      end
+
+      # @rbs actual: Symbol
+      # @rbs expected: Symbol
+      # @rbs return: bool
+      def self.assignable?(actual, expected)
+        return true if actual == expected
+        return true if actual == :non_null_bottom && reference?(expected)
+        return true if actual == :non_null_nofunc && function_ref?(expected)
+        return true if actual == :non_null_noextern && [:externref, :non_null_extern, :nullexternref].include?(expected)
+        return true if actual == :non_null_noexn && exception_ref?(expected)
+        return true if expected == :anyref && (actual == :non_null_none || actual.to_s.start_with?("ref:s", "nullable:s"))
+        nullable = expected != non_nullable(expected)
+        return true if actual == :nullfuncref && nullable && function_ref?(expected)
+        return true if actual == :nullexternref && expected == :externref
+        return true if actual == :nullexnref && expected == :exnref
+        return true if actual == :nullref && (expected == :anyref || expected.to_s.start_with?("nullable:s"))
+        return true if NON_NULL[expected] == actual
+        return true if expected == :non_null_func && actual.to_s.start_with?("ref:f")
+        return true if expected == :funcref && function_ref?(actual)
+        actual.to_s.start_with?("ref:") && expected.to_s == "nullable:#{actual.to_s.delete_prefix('ref:')}"
       end
 
       # @rbs type: Symbol
@@ -1301,6 +1431,7 @@ module Wardite
     end
 
     class Frame
+      attr_accessor :caller_slots #: Integer
       attr_reader :instructions #: Array[Integer]
       attr_reader :function #: Wardite::Efflorescence::Function
       attr_reader :pool_index #: Integer
@@ -1320,9 +1451,10 @@ module Wardite
         # Constants are initialized once and never written by verified MIR.
         # Copying the template also avoids zero-filling and then overwriting
         # every slot in a second loop on a newly allocated frame.
+        @caller_slots = 0
         @uses_eh = function.uses_eh
         @registers = function.initial_registers.dup
-        @exception_registers = function.register_types.include?(:exnref) ? Array.new(function.register_count, nil) : []
+        @exception_registers = function.register_types.any? { |type| FunctionEntry.exception_ref?(type) } ? Array.new(function.register_count, nil) : []
         @handlers = []
         @local_start = function.parameter_count
         @local_end = @local_start + function.local_count

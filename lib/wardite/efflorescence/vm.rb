@@ -4,6 +4,8 @@
 module Wardite
   module Efflorescence
     class VM
+      MAX_CALL_FRAMES = 8192
+      MAX_CALLER_SLOTS = 512 * 1024
       attr_reader :instance #: Wardite::Instance
       # @rbs @preparer: FunctionPreparer?
       attr_reader :metrics #: Wardite::Efflorescence::Metrics
@@ -16,6 +18,7 @@ module Wardite
       # @rbs @semantic_ir: Wardite::Efflorescence::IR?
       # @rbs @optimized_ir: Wardite::Efflorescence::IR?
       # @rbs @global_slots: Array[Integer]?
+      # @rbs @memory_accesses: Array[Wardite::Efflorescence::StoreAccess]
       # @rbs @global_bits: Array[Integer]
       # @rbs @jit: SpinelJIT?
 
@@ -30,8 +33,15 @@ module Wardite
       # @rbs eager_mir: bool
       # @rbs cache_checked: bool
       def initialize(instance, disabled_optimizations: [], enabled_optimizations: [], mir_cse: false, profile: false, mir_cache: nil, cached_functions: nil, cache_checked: false, source_code: nil, eager_mir: false)
+        @returned_exception = nil #: ExceptionValue?
+        @extra_results = [] #: Array[Integer]
+        @table_state_changed = false
+        @external_references = [] #: Array[Wardite::ExternalReference]
+        @foreign_references = [] #: Array[Wardite::FunctionReference]
         @instance = instance
         @store_access = StoreAccess.new(instance.store)
+        @memory_accesses = [] #: Array[Wardite::Efflorescence::StoreAccess]
+        instance.store.memories.each_index { |i| @memory_accesses << (i.zero? ? @store_access : StoreAccess.new(instance.store, i)) }
         @global_bits = []
         # The same host global can be imported under multiple names.
         @global_slots = nil
@@ -82,13 +92,19 @@ module Wardite
         end
         start = instance.start_section
         if start
+          raise Wardite::InvalidModule, "unknown function" if start.func_index >= @ir.entries.size
           entry = @ir.entry_at(start.func_index)
           unless entry.parameter_types.empty? && entry.result_types.empty?
-            raise Wardite::LoadError, "start function must have no parameters or results"
+            raise Wardite::InvalidModule, "start function must have no parameters or results"
           end
         end
         mir_cache.write_ir(instance, @ir) if mir_cache && !profile && !@mir_cache_hit
-        execute(@ir.entry_at(start.func_index), []) if start && !mir_cache&.compiling_artifact?
+      end
+
+      # @rbs index: Integer
+      # @rbs return: void
+      def run_start(index)
+        execute(@ir.entry_at(index), [])
       end
 
       # Inspecting the executable IR requests every uncached function body.
@@ -125,26 +141,84 @@ module Wardite
         !!export && export.kind == 0
       end
 
+      # @rbs index: Integer
+      # @rbs return: FunctionEntry
+      def table_entry(index)
+        @ir.entry_at(index)
+      end
+
+      attr_reader :table_state_changed #: bool
+
+      # Reference handles belong to one VM. Transfer their referents across instances.
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: (Wardite::FunctionReference | Wardite::ExternalReference)?
+      def exported_reference(type, bits)
+        return nil if bits.zero?
+        return function_reference(bits) if FunctionEntry.function_ref?(type)
+        @external_references.fetch(bits - 1)
+      end
+
+      # @rbs source: VM
+      # @rbs type: Symbol
+      # @rbs bits: Integer
+      # @rbs return: Integer
+      def transfer_value(source, type, bits)
+        return bits if bits.zero? || !FunctionEntry.reference?(type)
+        value = source.exported_reference(type, bits)
+        value.is_a?(Wardite::FunctionReference) ? reference_bits(value) : external_reference_bits(value)
+      end
+
+      # @rbs index: Integer
+      # @rbs arguments: Array[Integer]
+      # @rbs return: Array[Integer]
+      def call_table_function(index, arguments)
+        entry = @ir.entry_at(index)
+        first = execute(entry, arguments)
+        values = [] #: Array[Integer]
+        if first
+          values << first
+          (entry.result_types.size - 1).times { |i| values << @extra_results.fetch(i) }
+        end
+        values
+      end
+
       # Box the result once, at the Ruby boundary.
       # @rbs name: String|Symbol
-      # @rbs arguments: Array[Object]
-      # @rbs return: Wardite::wasmValue?
+      # @rbs arguments: Array[Object?]
+      # @rbs return: Wardite::wasmValue | Array[Wardite::wasmValue] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue | nil
       def call(name, arguments)
         entry = export_entry(name)
         result = execute_public(entry, arguments)
         return nil if result.nil?
-        box_result(entry.result_types.fetch(0), result)
+        type = entry.result_types.fetch(0)
+        return result.zero? ? nil : @external_references.fetch(result - 1) if type == :externref || type == :non_null_extern
+        return function_reference(result) if FunctionEntry.function_ref?(type)
+        return @returned_exception if FunctionEntry.exception_ref?(type)
+        return nil if FunctionEntry.reference?(type)
+        if entry.result_types.size > 1
+          return entry.result_types.map.with_index { |t, i| box_result(t, i == 0 ? result : @extra_results.fetch(i - 1)) }
+        end
+        box_result(type, result)
       end
 
       # Integers retain their register representation. Floats cross as Ruby Float.
       # @rbs name: String|Symbol
-      # @rbs arguments: Array[Object]
-      # @rbs return: (Integer | Float)?
+      # @rbs arguments: Array[Object?]
+      # @rbs return: (Integer | Float | Array[Integer | Float] | Wardite::FunctionReference | Wardite::ExternalReference | ExceptionValue)?
       def call_unboxed(name, arguments)
         entry = export_entry(name)
         result = execute_public(entry, arguments)
         return nil if result.nil?
-        unbox_result(entry.result_types.fetch(0), result)
+        type = entry.result_types.fetch(0)
+        return result.zero? ? nil : @external_references.fetch(result - 1) if type == :externref || type == :non_null_extern
+        return function_reference(result) if FunctionEntry.function_ref?(type)
+        return @returned_exception if FunctionEntry.exception_ref?(type)
+        return nil if FunctionEntry.reference?(type)
+        if entry.result_types.size > 1
+          return entry.result_types.map.with_index { |t, i| unbox_result(t, i == 0 ? result : @extra_results.fetch(i - 1)) }
+        end
+        unbox_result(type, result)
       end
 
       # @rbs return: String
@@ -167,6 +241,8 @@ module Wardite
           state.registers.each_with_index { |value, i| registers[i] = value }
           state.handlers.each { |handler| frame.handlers << handler }
           frame.pc = state.pc
+          parent = frames.last
+          frame.caller_slots = parent ? parent.caller_slots + parent.registers.size : 0
           frames << frame
         end
         run_frames(pools, frames, 0)
@@ -220,7 +296,7 @@ module Wardite
       end
 
       # @rbs entry: Wardite::Efflorescence::FunctionEntry
-      # @rbs arguments: Array[Object]
+      # @rbs arguments: Array[Object?]
       # @rbs return: Integer?
       def execute_public(entry, arguments)
         unless arguments.size == entry.parameter_types.size
@@ -233,6 +309,22 @@ module Wardite
             bits = float_argument(type, value)
             raise Wardite::ArgumentError, "type mismatch: #{type}(#{value})" if bits.nil?
             values << bits
+          elsif type == :externref || type == :non_null_extern
+            raise Wardite::ArgumentError, "expected non-null externref" if type == :non_null_extern && value.nil?
+            values << external_reference_bits(value)
+          elsif FunctionEntry.function_ref?(type)
+            if value.nil? && FunctionEntry.non_nullable(type) != type
+              values << 0
+            elsif value.is_a?(Wardite::FunctionReference) && FunctionEntry.assignable?("ref:#{value.instance.function_type_key(value.index)}".to_sym, type)
+              values << reference_bits(value)
+            else
+              raise Wardite::ArgumentError, "expected #{type}"
+            end
+          elsif FunctionEntry.reference?(type)
+            raise Wardite::ArgumentError, "expected #{type}" unless value.nil? && FunctionEntry.non_nullable(type) != type
+            values << 0
+          elsif type == :i32 && value.is_a?(Wardite::I32)
+            values << value.value
           elsif type == :i64 && value.is_a?(Wardite::I64)
             values << value.value_s
           elsif value.is_a?(Integer)
@@ -357,6 +449,37 @@ module Wardite
         end
       end
 
+      # Zero represents null. Positive handles index this instance's functions.
+      # Negative handles retain references received from a different instance.
+      # @rbs bits: Integer
+      # @rbs return: Wardite::FunctionReference?
+      def function_reference(bits)
+        return nil if bits == 0
+        return @foreign_references.fetch(-bits - 1) if bits < 0
+        Wardite::FunctionReference.new(@instance, bits - 1)
+      end
+
+      # @rbs value: Object?
+      # @rbs return: Integer
+      def external_reference_bits(value)
+        return 0 if value.nil?
+        raise Wardite::ArgumentError, "expected externref" unless value.is_a?(Wardite::ExternalReference)
+        index = @external_references.index(value)
+        return index + 1 if index
+        @external_references << value
+        @external_references.size
+      end
+
+      # @rbs reference: Wardite::FunctionReference
+      # @rbs return: Integer
+      def reference_bits(reference)
+        return reference.index + 1 if reference.instance.equal?(@instance)
+        index = @foreign_references.index { |ref| ref.instance.equal?(reference.instance) && ref.index == reference.index }
+        return -index - 1 if index
+        @foreign_references << reference
+        -@foreign_references.size
+      end
+
       # The pending value owns its payload before any frame is released. No
       # Ruby raise/rescue is used to unwind the explicit Wasm call stack.
       # @rbs value: Wardite::Efflorescence::ExceptionValue
@@ -373,7 +496,8 @@ module Wardite
               if clause.tag_index < 0 || @instance.tags.fetch(clause.tag_index).equal?(value.tag)
                 frame.trim_handlers(clause.handler_depth)
                 clause.payload_registers.each_with_index do |register, i|
-                  frame.registers[register] = value.payload_bits.fetch(i)
+                  reference = value.references.fetch(i, nil)
+                  frame.registers[register] = reference ? reference_bits(reference) : value.payload_bits.fetch(i)
                 end
                 frame.exception_registers[clause.reference_register] = value if clause.reference_register >= 0
                 frame.pc = Integer(clause.target_pc)
@@ -393,7 +517,15 @@ module Wardite
       def exception_at(frame, id)
         site = frame.function.throw_sites.fetch(id)
         payload = site.payload_registers.map { |register| frame.registers[register] }
-        ExceptionValue.new(@instance.tags.fetch(site.tag_index), payload)
+        tag = @instance.tags.fetch(site.tag_index)
+        references = {} #: Hash[Integer, Wardite::FunctionReference]
+        tag.parameter_types.each_with_index do |type, i|
+          if FunctionEntry.function_ref?(type)
+            ref = function_reference(payload.fetch(i))
+            references[i] = ref if ref
+          end
+        end
+        ExceptionValue.new(tag, payload, references)
       end
 
       # @rbs pools: Array[Wardite::Efflorescence::FramePool]
@@ -408,14 +540,34 @@ module Wardite
       # @rbs return: void
       def read_globals
         @instance.store.globals.each_with_index do |global, index|
-          @global_bits[index] = @store_access.global_bits_at(index, global.type)
+          value = global.value
+          @global_bits[index] = case global.type
+          when :externref, :non_null_extern then external_reference_bits(value)
+          when :funcref then value.is_a?(Wardite::FunctionReference) ? reference_bits(value) : 0
+          else
+            if FunctionEntry.function_ref?(global.type)
+              value.is_a?(Wardite::FunctionReference) ? reference_bits(value) : 0
+            else
+              FunctionEntry.reference?(global.type) ? 0 : @store_access.global_bits_at(index, global.type)
+            end
+          end
         end
       end
 
       # @rbs return: void
       def write_globals
         @instance.store.globals.each_with_index do |global, index|
-          @store_access.write_global_bits(index, global.type, @global_bits.fetch(@global_slots&.fetch(index) || index))
+          bits = @global_bits.fetch(@global_slots&.fetch(index) || index)
+          case global.type
+          when :externref, :non_null_extern then global.value = bits.zero? ? nil : @external_references.fetch(bits - 1)
+          when :funcref then global.value = function_reference(bits)
+          else
+            if FunctionEntry.function_ref?(global.type)
+              global.value = function_reference(bits)
+            else
+              @store_access.write_global_bits(index, global.type, bits) unless FunctionEntry.reference?(global.type)
+            end
+          end
         end
       end
 
@@ -464,19 +616,50 @@ module Wardite
         raise Wardite::EvalError, "host ABI result mismatch for #{host.external.name}"
       end
 
+      # @rbs host: HostFunction
+      # @rbs arguments: Array[Integer]
+      # @rbs sources: Array[Integer]?
+      # @rbs return: Wardite::wasmFuncReturn
+      def boxed_host_result(host, arguments, sources)
+        boxed = [] #: Array[Wardite::wasmValue]
+        host.entry.parameter_types.each_with_index do |type, i|
+          boxed << box_result(type, arguments.fetch(sources ? sources.fetch(i) : i))
+        end
+        host.callable.call(@instance.store, boxed)
+      end
+
       # @rbs host: Wardite::Efflorescence::HostFunction
       # @rbs arguments: Array[Integer]
       # @rbs sources: Array[Integer]?
       # @rbs return: Integer?
       def invoke_typed_host(host, arguments, sources)
-        boxed = [] #: Array[Wardite::wasmValue]
-        host.entry.parameter_types.each_with_index do |type, i|
-          index = sources ? sources.fetch(i) : i
-          value = arguments.fetch(index)
-          boxed << box_result(type, value)
+        callable = host.callable #: (Wardite::_WasmCallable & Object)
+        if callable.is_a?(Wardite::ExportedFunction) && host.entry.parameter_types.any? { |t| FunctionEntry.reference?(t) }
+          linked_args = [] #: Array[Object?]
+          host.entry.parameter_types.each_with_index do |t, i|
+            bits = arguments.fetch(sources ? sources.fetch(i) : i)
+            linked_args << (FunctionEntry.reference?(t) ? exported_reference(t, bits) : box_result(t, bits))
+          end
+          begin
+            result = callable.instance.runtime.call(callable.name, linked_args)
+          rescue Wardite::UncaughtWasmException => error
+            raise Wardite::LinkedWasmException, error.exception_value
+          end
+        else
+          result = boxed_host_result(host, arguments, sources)
         end
-        result = host.callable.call(@instance.store, boxed)
         type = host.entry.result_types[0]
+        if type && FunctionEntry.function_ref?(type)
+          return reference_bits(result) if result.is_a?(Wardite::FunctionReference)
+          return 0 if result.nil? && FunctionEntry.non_nullable(type) != type
+        elsif type == :externref || type == :non_null_extern
+          return external_reference_bits(result)
+        elsif type && FunctionEntry.exception_ref?(type)
+          if result.is_a?(ExceptionValue) || (result.nil? && type == :exnref)
+            @returned_exception = result
+            return 0
+          end
+        end
         case type
         when nil
           return nil if result.nil?
@@ -586,7 +769,12 @@ module Wardite
         else
           invoke_host_with_globals(host_index, registers, metrics, site.arguments)
         end
-        registers[destination] = result if destination >= 0 && result
+        if destination >= 0 && result
+          registers[destination] = result
+          if !frame.exception_registers.empty? && FunctionEntry.exception_ref?(frame.function.register_types.fetch(destination))
+            frame.exception_registers[destination] = @returned_exception
+          end
+        end
       end
 
       # @rbs site: Wardite::Efflorescence::DynamicCallSite
@@ -594,17 +782,23 @@ module Wardite
       # @rbs return: Wardite::Efflorescence::FunctionEntry
       def indirect_entry(site, selector)
         table = @instance.store.tables[site.table_index]
-        raise Wardite::EvalError, "call_indirect requires funcref table 0" unless table && table.type == :funcref
+        raise Wardite::EvalError, "call_indirect requires funcref table 0" unless table && FunctionEntry.function_ref?(table.type)
         index = selector & 0xffffffff
         raise Wardite::EvalError, "call_indirect table index out of bounds: #{index}" if index >= table.current
         function = table.refs[index]
-        raise Wardite::EvalError, "call_indirect null reference" if function.nil?
-        function_index = @function_indices[function.object_id]
-        unless function_index && @indirect_functions[function_index].equal?(function)
-          raise Wardite::EvalError, "call_indirect unknown function reference"
+        raise Wardite::EvalError, "call_indirect null reference #{index}" if function.nil?
+        if function.is_a?(Wardite::FunctionReference)
+          key = function.instance.equal?(@instance) ? @module_source.function_types.fetch(function.index) : function.instance.function_type_key(function.index)
+          entry = function.instance.equal?(@instance) ? @ir.entry_at(function.index) : function.instance.runtime.table_entry(function.index)
+        else
+          function_index = @function_indices[function.object_id]
+          unless function_index && @indirect_functions[function_index].equal?(function)
+            raise Wardite::EvalError, "call_indirect unknown function reference"
+          end
+          key = @module_source.function_types.fetch(function_index)
+          entry = @ir.entry_at(function_index)
         end
-        entry = @ir.entry_at(function_index)
-        unless entry.parameter_types == site.parameter_types && entry.result_types == site.result_types
+        unless key == @module_source.type_keys.fetch(site.type_index) && entry.parameter_types == site.parameter_types && entry.result_types == site.result_types
           raise Wardite::EvalError, "call_indirect function type mismatch"
         end
         entry
@@ -614,10 +808,15 @@ module Wardite
       # @rbs site_id: Integer
       # @rbs destination: Integer
       # @rbs metrics: Wardite::Efflorescence::Metrics
-      # @rbs return: void
-      def execute_direct_host(frame, site_id, destination, metrics)
+      # @rbs frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs return: Wardite::Efflorescence::Frame?
+      def execute_direct_host(frame, site_id, destination, metrics, frames, pools)
         site = frame.function.dynamic_site(site_id)
         execute_host_site(frame, site, site.host_index, destination, metrics)
+        nil
+      rescue Wardite::LinkedWasmException => error
+        propagate(error.exception_value, frames, pools)
       end
 
       # Keep table resolution and the additional call locals off the hot path.
@@ -629,23 +828,127 @@ module Wardite
       # @rbs selector: Integer
       # @rbs metrics: Wardite::Efflorescence::Metrics
       # @rbs return: Wardite::Efflorescence::Frame
-      def execute_indirect(frame, pools, frames, destination, site_id, selector, metrics)
+      # @rbs tail: bool
+      def execute_indirect(frame, pools, frames, destination, site_id, selector, metrics, tail = false)
         site = frame.function.dynamic_site(site_id)
         registers = frame.registers
-        entry = indirect_entry(site, registers[selector])
+        bits = registers.fetch(selector)
+        if site.table_index == -1
+          raise Wardite::EvalError, "null function reference" if bits.zero?
+          ref = @foreign_references.fetch(-bits - 1) if bits < 0
+          entry = ref ? ref.instance.runtime.table_entry(ref.index) : @ir.entry_at(bits - 1)
+        else
+          entry = indirect_entry(site, bits)
+          ref = @instance.store.tables.fetch(site.table_index).refs[bits]
+        end
+        if ref.is_a?(Wardite::FunctionReference) && !ref.instance.equal?(@instance)
+          call_foreign_table(ref, site, frame, destination)
+          frame.pc += Lowerer::WIDTH
+          return frame
+        end
         if entry.kind == :host
           execute_host_site(frame, site, entry.host_index, destination, metrics)
           frame.pc += Lowerer::WIDTH
           frame
         else
           frame.pc += Lowerer::WIDTH
-          next_frame = pool_at(pools, entry.defined_index).acquire(destination)
+          raise Wardite::StackExhausted, "call stack exhausted" if !tail && (frames.size >= MAX_CALL_FRAMES || frame.caller_slots + registers.size >= MAX_CALLER_SLOTS)
+          next_frame = pool_at(pools, entry.defined_index).acquire(tail ? frame.return_register : destination)
+          if tail
+            frames.pop
+            pool_at(pools, frame.pool_index).release(frame)
+          end
+          next_frame.caller_slots = frame.caller_slots + (tail ? 0 : registers.size)
           frames << next_frame
           target = next_frame.registers
           site.arguments.each_with_index { |register, i| target[i] = registers[register] }
           metrics.enter_indirect_defined(site.arguments.size) if @profiling
           next_frame
         end
+      rescue Wardite::LinkedWasmException => error
+        propagate(error.exception_value, frames, pools)
+      end
+
+      # @rbs ref: Wardite::FunctionReference
+      # @rbs site: DynamicCallSite
+      # @rbs frame: Frame
+      # @rbs destination: Integer
+      # @rbs return: void
+      def call_foreign_table(ref, site, frame, destination)
+        arguments = [] #: Array[Integer]
+        target = ref.instance.runtime
+        site.arguments.each_with_index do |slot, i|
+          arguments << target.transfer_value(self, site.parameter_types.fetch(i), frame.registers.fetch(slot))
+        end
+        write_globals if @has_globals
+        values = ref.instance.runtime.call_table_function(ref.index, arguments)
+        frame.registers[destination] = transfer_value(target, site.result_types.fetch(0), values.fetch(0)) if destination >= 0
+        (values.size - 1).times { |i| @extra_results[i] = Integer(values.fetch(i + 1)) }
+      rescue Wardite::UncaughtWasmException => error
+        raise Wardite::LinkedWasmException, error.exception_value
+      ensure
+        read_globals if @has_globals
+      end
+
+      # @rbs table: Wardite::Table
+      # @rbs bits: Integer
+      # @rbs return: Wardite::tableValue
+      def table_value(table, bits)
+        return nil if bits.zero?
+        return @external_references.fetch(bits - 1) if table.type == :externref || table.type == :non_null_extern
+        function_reference(bits)
+      end
+
+      # @rbs index: Integer
+      # @rbs return: StoreAccess
+      def memory_access(index)
+        @memory_accesses[index] || raise(IndexError, "invalid memory index")
+      end
+
+      # @rbs opcode: Integer
+      # @rbs site: TableSite
+      # @rbs registers: Array[Integer]
+      # @rbs return: Integer
+      def execute_table(opcode, site, registers)
+        store = @instance.store
+        @table_state_changed = true unless opcode == Opcode::TABLE_SIZE
+        if opcode == Opcode::ELEM_DROP
+          store.elements.fetch(site.source).clear
+          return 0
+        end
+        table = store.tables.fetch(site.table)
+        return table.current if opcode == Opcode::TABLE_SIZE
+        slots = site.table_operands
+        first = registers.fetch(slots.fetch(0))
+        second = registers.fetch(slots.fetch(1))
+        case opcode
+        when Opcode::TABLE_GROW
+          return table.grow(second, table_value(table, first))
+        when Opcode::TABLE_SET
+          table.check_range(first, 1)
+          table.set(first, table_value(table, second))
+        else
+          length = registers.fetch(slots.fetch(2))
+          table.check_range(first, length)
+          case opcode
+          when Opcode::TABLE_FILL
+            value = table_value(table, second)
+            length.times { |i| table.set(first + i, value) }
+          when Opcode::TABLE_INIT
+            segment = store.elements.fetch(site.source)
+            raise Wardite::EvalError, "out of bounds table access" if second + length > segment.size
+            length.times { |i| table.set(first + i, segment.fetch(second + i)) }
+          when Opcode::TABLE_COPY
+            source = store.tables.fetch(site.source)
+            source.check_range(second, length)
+            backwards = source.equal?(table) && first > second
+            length.times do |i|
+              offset = backwards ? length - i - 1 : i
+              table.set(first + offset, source.refs[second + offset])
+            end
+          end
+        end
+        0
       end
 
       # Float instructions use the same flat words and integer registers.
@@ -743,8 +1046,8 @@ module Wardite
             pc += 3 * Lowerer::WIDTH
           when 202 # Opcode::I64_BYTE_LOOKUP_BR_EQ
             address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
-            table = registers.fetch(instructions.fetch(pc + 10))
-            pair = @store_access.byte_lookup(address, table)
+            table_base = registers.fetch(instructions.fetch(pc + 10))
+            pair = @store_access.byte_lookup(address, table_base)
             registers[instructions.fetch(pc + 5)] = pair >> 8
             decoded = pair & 255
             registers[instructions.fetch(pc + 13)] = decoded
@@ -876,19 +1179,26 @@ module Wardite
               pc = Integer(b)
               next
             end
-          when 10 # Opcode::CALL
+          when 10, -3 # Opcode::CALL
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
             frame.pc = pc + Lowerer::WIDTH
-            site = frame.function.call_site(b)
-            pool = pools[site.pool_index]
+            call_site = frame.function.call_site(b)
+            pool = pools[call_site.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
-            next_frame = pool.acquire(a)
+            tail = opcode == Lowerer::TAIL_DIRECT && frame.handlers.empty?
+            raise Wardite::StackExhausted, "call stack exhausted" if !tail && (frames.size >= MAX_CALL_FRAMES || frame.caller_slots + registers.size >= MAX_CALLER_SLOTS)
+            next_frame = pool.acquire(tail ? frame.return_register : a)
             if c >= 0
               next_frame.registers[0] = registers[c]
             else
-              site.copy_arguments(next_frame.registers, registers)
+              call_site.copy_arguments(next_frame.registers, registers)
             end
+            if tail
+              frames.pop
+              pool_at(pools, frame.pool_index).release(frame)
+            end
+            next_frame.caller_slots = frame.caller_slots + (tail ? 0 : registers.size)
             frames << next_frame
             frame = next_frame
             registers = frame.registers
@@ -897,29 +1207,80 @@ module Wardite
             next
           when 67 # Opcode::CALL_HOST
             frame.pc = pc
-            execute_direct_host(frame, instructions.fetch(pc + 2), a, metrics)
-          when 68 # Opcode::CALL_INDIRECT
+            handler_frame = execute_direct_host(frame, instructions.fetch(pc + 2), a, metrics, frames, pools)
+            if handler_frame
+              frame = handler_frame
+              registers = frame.registers
+              instructions = frame.instructions
+              pc = Integer(frame.pc)
+              next
+            end
+          when 68, -4 # Opcode::CALL_INDIRECT
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
             frame.pc = pc
-            frame = execute_indirect(frame, pools, frames, a, b, c, metrics)
+            frame = execute_indirect(frame, pools, frames, a, b, c, metrics, opcode == Lowerer::TAIL_INDIRECT && frame.handlers.empty?)
             registers = frame.registers
             instructions = frame.instructions
             pc = Integer(frame.pc)
             next
+          when 207, 208, 209, 210, 211, 212, 213 # Opcode::TABLE_SET through ELEM_DROP
+            site = frame.function.table_sites.fetch(instructions.fetch(pc + 2))
+            result = execute_table(opcode, site, registers)
+            registers[a] = Integer(result) if a >= 0
+          when 206 # Opcode::TABLE_GET
+            table = @instance.store.tables.fetch(instructions.fetch(pc + 3))
+            index = registers.fetch(instructions.fetch(pc + 2))
+            raise Wardite::EvalError, "out of bounds table access" unless index.between?(0, table.current - 1)
+            element = table.refs[index]
+            reference_value = case element
+            when nil then 0
+            when Wardite::FunctionReference then reference_bits(element)
+            when Wardite::ExternalReference then external_reference_bits(element)
+            else @function_indices.fetch(element.object_id) + 1
+            end
+            registers[a] = Integer(reference_value)
+          when 214 # Opcode::REF_AS_NON_NULL
+            b = instructions.fetch(pc + 2)
+            if FunctionEntry.exception_ref?(frame.function.register_types.fetch(b))
+              frame.exception_registers[a] = frame.exception_registers[b] || raise(Wardite::EvalError, "null reference")
+            else
+              bits = registers.fetch(b)
+              raise Wardite::EvalError, "null reference" if bits.zero?
+              registers[a] = bits
+            end
+          when 205 # Opcode::REF_IS_NULL
+            b = instructions.fetch(pc + 2)
+            if FunctionEntry.exception_ref?(frame.function.register_types.fetch(b))
+              registers[a] = frame.exception_registers[b].nil? ? 1 : 0
+            else
+              registers[a] = registers.fetch(b).zero? ? 1 : 0
+            end
+          when 203 # Opcode::RESULT_SET
+            @extra_results[a - 1] = registers.fetch(instructions.fetch(pc + 2))
+          when 204 # Opcode::RESULT_GET
+            registers[a] = @extra_results.fetch(instructions.fetch(pc + 2) - 1)
           when 11 # Opcode::RETURN
             # Verified RETURN reads an initialized integer. Keep its native type
             # separate from the nullable array reads used by the ALU cases.
             return_value = a < 0 ? 0 : Integer(registers[a])
             destination = frame.return_register
+            returning_exception = a >= 0 && !frame.exception_registers.empty? && FunctionEntry.exception_ref?(frame.function.register_types.fetch(a))
+            exception_result = frame.exception_registers[a] if returning_exception
             frames.pop
             pool = pools[frame.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
             pool.release(frame)
-            return return_value if frames.empty?
+            if frames.empty?
+              @returned_exception = exception_result
+              return return_value
+            end
             frame = current_frame(frames)
             registers = frame.registers
-            registers[destination] = return_value if destination >= 0
+            if destination >= 0
+              registers[destination] = return_value
+              frame.exception_registers[destination] = exception_result if returning_exception
+            end
             instructions = frame.instructions
             pc = Integer(frame.pc)
             next
@@ -1044,6 +1405,14 @@ module Wardite
           when 53 # Opcode::GLOBAL_SET
             b = instructions.fetch(pc + 2)
             global_bits[slots ? slots.fetch(a) : a] = registers[b]
+          when 217 # Opcode::EXN_GLOBAL_GET
+            b = instructions.fetch(pc + 2)
+            exn = @instance.store.globals.fetch(b).value
+            frame.exception_registers[a] = exn.is_a?(ExceptionValue) ? exn : nil
+            registers[a] = 0
+          when 218 # Opcode::EXN_GLOBAL_SET
+            b = instructions.fetch(pc + 2)
+            @instance.store.globals.fetch(a).value = frame.exception_registers[b]
           when 54 # Opcode::I32_LOAD
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
@@ -1076,17 +1445,28 @@ module Wardite
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
             @store_access.store(registers[b], c, 2, registers[a])
+          when 215 # Opcode::INDEXED_LOAD
+            access = frame.function.indexed_accesses.fetch(instructions.fetch(pc + 3))
+            address = registers.fetch(instructions.fetch(pc + 2))
+            registers[a] = Integer(memory_access(access.memory).indexed_load(access, address))
+          when 216 # Opcode::INDEXED_STORE
+            access = frame.function.indexed_accesses.fetch(instructions.fetch(pc + 3))
+            address = registers.fetch(instructions.fetch(pc + 2))
+            memory_access(access.memory).store(address, access.offset, 1 << access.alignment, registers.fetch(a))
           when 62 # Opcode::MEMORY_SIZE
-            registers[a] = @store_access.size
+            registers[a] = memory_access(instructions.fetch(pc + 3)).size
           when 63 # Opcode::MEMORY_GROW
             b = instructions.fetch(pc + 2)
-            registers[a] = @store_access.grow(registers[b])
+            registers[a] = memory_access(instructions.fetch(pc + 3)).grow(registers[b])
           when 64 # Opcode::MEMORY_INIT
-            @store_access.bulk(64, frame.function.memory_site(a), registers)
+            site = frame.function.memory_site(a)
+            memory_access(site.memory_index).bulk(64, site, registers)
           when 65 # Opcode::MEMORY_COPY
-            @store_access.bulk(65, frame.function.memory_site(a), registers)
+            site = frame.function.memory_site(a)
+            memory_access(site.memory_index).bulk(65, site, registers)
           when 66 # Opcode::MEMORY_FILL
-            @store_access.bulk(66, frame.function.memory_site(a), registers)
+            site = frame.function.memory_site(a)
+            memory_access(site.memory_index).bulk(66, site, registers)
           when 69 # Opcode::I64_EQZ
             b = instructions.fetch(pc + 2)
             registers[a] = registers.fetch(b) == 0 ? 1 : 0

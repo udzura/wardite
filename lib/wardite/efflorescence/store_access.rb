@@ -20,7 +20,9 @@ module Wardite
       end
 
       # @rbs store: Wardite::Store
-      def initialize(store)
+      # @rbs memory_index: Integer
+      def initialize(store, memory_index = 0)
+        @memory_index = memory_index
         @store = store
       end
 
@@ -106,6 +108,18 @@ module Wardite
         when :i32 then global_set(index, value)
         when :i64 then global_set_i64(index, value)
         else global_set_float(index, type, value)
+        end
+      end
+
+      # @rbs access: Wardite::Efflorescence::IndexedAccess
+      # @rbs address: Integer
+      # @rbs return: Integer
+      def indexed_load(access, address)
+        width = 1 << access.alignment
+        if access.type == :i64 || access.type == :f64
+          load_i64(address, access.offset, width, access.signed)
+        else
+          load(address, access.offset, width, access.signed)
         end
       end
 
@@ -275,7 +289,15 @@ module Wardite
         length = registers.fetch(site.sources.fetch(2))
         case opcode
         when Opcode::MEMORY_INIT then init(site.data_index, destination, source, length)
-        when Opcode::MEMORY_COPY then copy(destination, source, length)
+        when Opcode::MEMORY_COPY
+          origin = @store.memories.fetch(site.source_memory_index)
+          if origin.equal?(memory)
+            copy(destination, source, length)
+          else
+            StoreAccess.check_range(source, length, origin.current * PAGE_SIZE)
+            StoreAccess.check_range(destination, length, memory.current * PAGE_SIZE)
+            memory.write_bytes(destination, origin.read_bytes(source, length))
+          end
         when Opcode::MEMORY_FILL then fill(destination, source, length)
         else raise Wardite::EvalError, "invalid bulk memory opcode"
         end
@@ -391,7 +413,7 @@ module Wardite
 
       # @rbs return: Wardite::Memory
       def memory
-        @store.memories[0] || raise(Wardite::EvalError, "missing memory 0")
+        @store.memories[@memory_index] || raise(Wardite::EvalError, "missing memory 0")
       end
     end
   end

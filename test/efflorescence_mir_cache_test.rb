@@ -85,6 +85,39 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     assert_equal 7, hit.call_unboxed(:run, [])
   end
 
+  test "exception globals preserve a caught exception across calls and cache hits" do
+    wasm = compile_efflorescence_wat(<<~WAT)
+      (module
+        (tag $e)
+        (global $exception (mut exnref) (ref.null exn))
+        (global $number (mut i32) (i32.const 0))
+        (func (export "save")
+          (block $caught (result exnref)
+            (try_table (catch_ref $e $caught) (throw $e))
+            unreachable)
+          global.set $exception
+          i32.const 37 global.set $number)
+        (func (export "read") (result i32)
+          (block $caught
+            (try_table (catch $e $caught) (throw_ref (global.get $exception)))
+            unreachable)
+          global.get $number))
+    WAT
+    [false, true].each do |cached|
+      instance = load_bytes(wasm)
+      assert_equal cached, instance.mir_cache_hit
+      instance.call_unboxed("save", [])
+      assert_equal 37, instance.call_unboxed("read", [])
+      op = Wardite::Efflorescence::Opcode
+      writes = instance.ir.function_at(0).bytecode.each_slice(4).map(&:first)
+      reads = instance.ir.function_at(1).bytecode.each_slice(4).map(&:first)
+      assert_include writes, op::GLOBAL_SET
+      assert_include writes, op::EXN_GLOBAL_SET
+      assert_include reads, op::GLOBAL_GET
+      assert_include reads, op::EXN_GLOBAL_GET
+    end
+  end
+
   test "round trips signed i64, f32 and f64 bits, direct calls, and catch_ref metadata" do
     fixture = File.join(__dir__, "fixtures/efflorescence/m5_store_eh.wat")
     wasm = compile_efflorescence_wat(File.read(fixture))

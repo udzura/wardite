@@ -150,7 +150,13 @@ class EfflorescenceOptimizerTest < Test::Unit::TestCase
     methods = source.split(/^      def execute_flat\(frame, pools, active_frames, metrics\)$/).drop(1)
     assert_equal 1, methods.size
     methods.each do |body|
-      labels = body.scan(/^          when (\d+) # Opcode::([A-Z_0-9]+)$/)
+      labels = body.scan(/^          when (\d+)(?:, -\d+)? # Opcode::([A-Z_0-9]+)$/)
+      groups = body.scan(/^          when (\d+(?:, \d+)+) # Opcode::([A-Z_0-9]+) through ([A-Z_0-9]+)$/)
+      groups.each do |numbers, head, tail|
+        opcodes = numbers.split(", ").map(&:to_i)
+        assert_equal (OP.const_get(head)..OP.const_get(tail)).to_a, opcodes
+        opcodes.each { |i| labels << [i.to_s, OP::NAMES.fetch(i)] }
+      end
       expected = OP::NAMES[0..OP::I64_GLOBAL_SET] + OP::NAMES[OP::F32_GLOBAL_GET..]
       assert_equal expected.sort, labels.map(&:last).sort
       labels.each do |number, name|

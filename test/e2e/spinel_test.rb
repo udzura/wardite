@@ -15,6 +15,12 @@ class WarditeSpinelTest < Test::Unit::TestCase
     assert File.executable?(@binary), "Native executable not found: #{@binary}"
   end
 
+  def dispatch_case(body, opcode)
+    branch = body[/^    case #{opcode}LL:.*?(?=^    (?:case \d+LL|default):)/m]
+    assert_not_nil branch, "Missing #{Wardite::Efflorescence::Opcode::NAMES.fetch(opcode)} case"
+    branch
+  end
+
   test "Efflorescence opcode dispatch lowers to C switches" do
     Dir.mktmpdir("wardite-spinel-dispatch") do |dir|
       generated = File.join(dir, "wardite.c")
@@ -28,13 +34,12 @@ class WarditeSpinelTest < Test::Unit::TestCase
       opcodes = Wardite::Efflorescence::Opcode
       global_get = [opcodes::GLOBAL_GET, opcodes::I64_GLOBAL_GET, opcodes::F32_GLOBAL_GET, opcodes::F64_GLOBAL_GET]
       global_set = [opcodes::GLOBAL_SET, opcodes::I64_GLOBAL_SET, opcodes::F32_GLOBAL_SET, opcodes::F64_GLOBAL_SET]
-      assert_equal (0..opcodes::I64_GLOBAL_SET).to_a + (opcodes::F32_GLOBAL_GET...opcodes::NAMES.size).to_a,
-        body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
+      hot_opcodes = (0..opcodes::I64_GLOBAL_SET).to_a + (opcodes::F32_GLOBAL_GET...opcodes::NAMES.size).to_a
+      assert_equal hot_opcodes, body.scan(/^\s*case (\d+)LL:$/).flatten.map(&:to_i).sort,
         "execute_flat should dispatch integer, control, global and fused opcodes through the literal switch"
       assert_match(/sp_IntArray \* lv_global_bits\b/, body)
       (global_get + global_set).each do |opcode|
-        branch = body[/^\s*case #{opcode}LL:.*?(?=^\s*case \d+LL:|^\s*default:)/m]
-        assert_not_nil branch, "Missing #{opcodes::NAMES.fetch(opcode)} case"
+        branch = dispatch_case(body, opcode)
         assert_match(/\blv_global_bits\b/, branch)
         assert_not_match(/\bsp_(?:poly|box)_\w+\s*\(/, branch)
       end
@@ -48,12 +53,31 @@ class WarditeSpinelTest < Test::Unit::TestCase
         "execute_flat must retain the concrete current frame and pool element types")
       assert_match(/sp_PtrArray \* lv_frames =/, body,
         "execute_flat must keep an unboxed frame stack")
-      # Object references may be boxed inside the EH-only cases. Ordinary
-      # CALL/RETURN and arithmetic must retain their existing array layout.
-      ordinary = body.gsub(/^\s*case (?:47|48|49|50|51)LL:.*?(?=^\s*case \d+LL:|^\s*default:)/m, '')
-      assert_not_match(/sp_PolyArray_(?:get|push|pop|new)/, ordinary,
-        "CALL/RETURN must not box the frame stack or call-site table")
-      assert_not_match(/sp_pd_[a-f0-9]+\(/, body)
+      call = dispatch_case(body, opcodes::CALL)
+      assert_match(/sp_Function_call_site\(/, call)
+      assert_match(/sp_CallSite_copy_arguments\(/, call)
+      assert_match(/sp_PtrArray_push\(/, call)
+      assert_match(/sp_PtrArray_pop\(lv_frames\)/, call)
+      assert_match(/sp_PtrArray_pop\(lv_frames\)/, dispatch_case(body, opcodes::RETURN))
+
+      hot_opcodes.each do |opcode|
+        name = opcodes::NAMES.fetch(opcode)
+        next unless name.match?(/\A(?:I32|I64|F32|F64)_/)
+        branch = dispatch_case(body, opcode)
+        assert_not_match(/sp_(?:PolyArray_\w+|poly_\w+|box_\w+|pd_[a-f0-9]+)\(/, branch, name)
+      end
+
+      assert_match(/sp_PtrArray \* iv_memory_accesses;/, code)
+      memory_access = code[/^static [^\n]+sp_(?:Wardite__Efflorescence__)?VM_memory_access\([^;\n]*\) \{.*?(?=^static |\z)/m]
+      assert_not_nil memory_access
+      assert_match(/sp_PtrArray_get\(/, memory_access)
+      memory_ops = [opcodes::INDEXED_LOAD, opcodes::INDEXED_STORE, opcodes::MEMORY_SIZE, opcodes::MEMORY_GROW,
+                    opcodes::MEMORY_INIT, opcodes::MEMORY_COPY, opcodes::MEMORY_FILL]
+      memory_ops.each do |opcode|
+        branch = dispatch_case(body, opcode)
+        assert_match(/sp_(?:Wardite__Efflorescence__)?VM_memory_access\(/, branch)
+        assert_not_match(/sp_PolyArray_get\(/, branch)
+      end
 
       assert_match(/\bsp_int lv_pc =/, body,
         "EH table access must not widen the hot-loop PC to a nullable integer")

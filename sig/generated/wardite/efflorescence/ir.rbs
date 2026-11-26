@@ -415,6 +415,38 @@ module Wardite
 
       I64_BYTE_LOOKUP_BR_EQ: ::Integer
 
+      RESULT_SET: ::Integer
+
+      RESULT_GET: ::Integer
+
+      REF_IS_NULL: ::Integer
+
+      TABLE_GET: ::Integer
+
+      TABLE_SET: ::Integer
+
+      TABLE_SIZE: ::Integer
+
+      TABLE_GROW: ::Integer
+
+      TABLE_FILL: ::Integer
+
+      TABLE_COPY: ::Integer
+
+      TABLE_INIT: ::Integer
+
+      ELEM_DROP: ::Integer
+
+      REF_AS_NON_NULL: ::Integer
+
+      INDEXED_LOAD: ::Integer
+
+      INDEXED_STORE: ::Integer
+
+      EXN_GLOBAL_GET: ::Integer
+
+      EXN_GLOBAL_SET: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 
@@ -506,17 +538,23 @@ module Wardite
       attr_reader parameter_types: Array[Symbol]
 
       # @rbs parameter_types: Array[Symbol]
-      def initialize: (Array[Symbol] parameter_types) -> untyped
+      # @rbs type_key: String?
+      def initialize: (Array[Symbol] parameter_types, ?String? type_key) -> untyped
+
+      attr_reader type_key: String
     end
 
     class ExceptionValue
       attr_reader tag: Wardite::Efflorescence::Tag
 
+      attr_reader references: Hash[Integer, Wardite::FunctionReference]
+
       attr_reader payload_bits: Array[Integer]
 
       # @rbs tag: Wardite::Efflorescence::Tag
       # @rbs payload_bits: Array[Integer]
-      def initialize: (Wardite::Efflorescence::Tag tag, Array[Integer] payload_bits) -> untyped
+      # @rbs references: Hash[Integer, Wardite::FunctionReference]
+      def initialize: (Wardite::Efflorescence::Tag tag, Array[Integer] payload_bits, ?Hash[Integer, Wardite::FunctionReference] references) -> untyped
     end
 
     class CatchTarget
@@ -572,6 +610,38 @@ module Wardite
     end
 
     # Bulk operands stay static in the Function. Values remain in Frame registers.
+    class TableSite
+      attr_reader table: Integer
+
+      attr_reader source: Integer
+
+      attr_reader table_operands: Array[Integer]
+
+      # @rbs table: Integer
+      # @rbs source: Integer
+      # @rbs table_operands: Array[Integer]
+      def initialize: (Integer table, Integer source, Array[Integer] table_operands) -> untyped
+    end
+
+    class IndexedAccess
+      attr_reader memory: Integer
+
+      attr_reader offset: Integer
+
+      attr_reader alignment: Integer
+
+      attr_reader signed: bool
+
+      attr_reader type: Symbol
+
+      # @rbs memory: Integer
+      # @rbs offset: Integer
+      # @rbs alignment: Integer
+      # @rbs signed: bool
+      # @rbs type: Symbol
+      def initialize: (Integer memory, Integer offset, Integer alignment, bool signed, Symbol type) -> untyped
+    end
+
     class MemorySite
       attr_reader sources: Array[Integer]
 
@@ -679,6 +749,12 @@ module Wardite
 
       # @rbs return: Array[Wardite::Efflorescence::ThrowSite]
       def throw_sites: () -> Array[Wardite::Efflorescence::ThrowSite]
+
+      # @rbs return: Array[Wardite::Efflorescence::IndexedAccess]
+      def indexed_accesses: () -> Array[Wardite::Efflorescence::IndexedAccess]
+
+      # @rbs return: Array[TableSite]
+      def table_sites: () -> Array[TableSite]
 
       # @rbs return: Array[Wardite::Efflorescence::MemorySite]
       def memory_sites: () -> Array[Wardite::Efflorescence::MemorySite]
@@ -816,6 +892,8 @@ module Wardite
     end
 
     class DynamicCallSite
+      attr_reader type_index: Integer
+
       attr_reader host_index: Integer
 
       attr_reader table_index: Integer
@@ -831,7 +909,8 @@ module Wardite
       # @rbs parameter_types: Array[Symbol]
       # @rbs result_types: Array[Symbol]
       # @rbs table_index: Integer
-      def initialize: (Integer host_index, Array[Integer] arguments, Array[Symbol] parameter_types, Array[Symbol] result_types, ?table_index: Integer) -> untyped
+      # @rbs type_index: Integer
+      def initialize: (Integer host_index, Array[Integer] arguments, Array[Symbol] parameter_types, Array[Symbol] result_types, ?table_index: Integer, ?type_index: Integer) -> untyped
 
       # @rbs return: Wardite::Efflorescence::DynamicCallSite
       def copy: () -> Wardite::Efflorescence::DynamicCallSite
@@ -888,6 +967,29 @@ module Wardite
 
       # @rbs type: Symbol
       # @rbs return: bool
+      def self.function_ref?: (Symbol type) -> bool
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.exception_ref?: (Symbol type) -> bool
+
+      NON_NULL: untyped
+
+      # @rbs type: Symbol
+      # @rbs return: bool
+      def self.reference?: (Symbol type) -> bool
+
+      # @rbs type: Symbol
+      # @rbs return: Symbol
+      def self.non_nullable: (Symbol type) -> Symbol
+
+      # @rbs actual: Symbol
+      # @rbs expected: Symbol
+      # @rbs return: bool
+      def self.assignable?: (Symbol actual, Symbol expected) -> bool
+
+      # @rbs type: Symbol
+      # @rbs return: bool
       def self.numeric_type?: (Symbol type) -> bool
 
       # @rbs return: Wardite::Efflorescence::FunctionEntry
@@ -923,6 +1025,8 @@ module Wardite
     end
 
     class Frame
+      attr_accessor caller_slots: Integer
+
       attr_reader instructions: Array[Integer]
 
       attr_reader function: Wardite::Efflorescence::Function

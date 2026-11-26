@@ -7,19 +7,27 @@ require "optparse"
 require_relative "wast_source"
 
 module CoreSpec
-  REV = "977f97014c962f7bd1291fcc6d28b41a924882bf" # wg-1.0
+  REVISIONS = {
+    "wg-1.0" => "977f97014c962f7bd1291fcc6d28b41a924882bf",
+    "wg-3.0" => "9d36019973201a19f9c9ebb0f10828b2fe2374aa",
+  }.freeze
+  VERSION = ENV.fetch("SPEC_VERSION", "wg-1.0")
+  REV = REVISIONS.fetch(VERSION)
+  EXCEPTIONS = %w[tag throw throw_ref try_table].map { |name| "exceptions/#{name}" }.freeze
+  NUMERIC_TYPES = %w[i32 i64 f32 f64].freeze
   BASIC = %w[i32 i64 f32 f64 f32_bitwise f64_bitwise f32_cmp f64_cmp conversions
              int_exprs float_misc float_memory local_get local_set local_tee globals load store address align endianness
              memory_size memory_grow memory_trap block loop if br br_if br_table
              return call call_indirect select nop unreachable traps].freeze
 
   def self.commands(name, dir)
-    filename = "#{name}.wast"
+    path = "#{name}.wast"
+    filename = File.basename(path)
     source = if ENV["SPEC_CORE_DIR"]
-      File.read(File.join(ENV.fetch("SPEC_CORE_DIR"), filename))
+      File.read(File.join(ENV.fetch("SPEC_CORE_DIR"), path))
     else
       data, status = Open3.capture2("curl", "-fsSL", "--retry", "2",
-        "https://raw.githubusercontent.com/WebAssembly/spec/#{REV}/test/core/#{filename}")
+        "https://raw.githubusercontent.com/WebAssembly/spec/#{REV}/test/core/#{path}")
       raise "failed to fetch #{filename}" unless status.success?
       data
     end
@@ -31,14 +39,29 @@ module CoreSpec
       "(assert_return #{action} (#{type}.const nan:#{kind}))"
     end
     File.write(File.join(dir, filename), normalized)
-    system("wast2json", filename, "-o", "#{name}.json", chdir: dir, exception: true)
-    [JSON.parse(File.read(File.join(dir, "#{name}.json"))).fetch("commands"), source]
+    args = [filename, "-o", "suite.json"]
+    if VERSION == "wg-3.0"
+      # Older wasm-tools releases reject full-width u64 memarg offsets.
+      unless system("wasm-tools", "json-from-wast", *args, chdir: dir)
+        warn "#{filename}: retrying conversion with WABT"
+        system("wast2json", "--enable-all", *args, chdir: dir, exception: true)
+      end
+    else
+      system("wast2json", *args, chdir: dir, exception: true)
+    end
+    [JSON.parse(File.read(File.join(dir, "suite.json"))).fetch("commands"), source]
   end
 
+  NULL_REF_TYPES = %w[refnull nullref nullfuncref nullexnref nullexternref].freeze
+
   def self.value(v)
+    return "refnull" if NULL_REF_TYPES.include?(v["type"]) || v["value"] == "null"
+    return "externref:#{v.fetch('value')}" if v["type"] == "externref"
+    return "funcref" if v == {"type" => "funcref"}
     type, bits = v.fetch_values("type", "value")
     unless bits.start_with?("nan:")
       bits = Integer(bits)
+      bits &= 0xffffffff if type.end_with?("32")
       bits -= 1 << 64 if type.end_with?("64") && bits >= 1 << 63
     end
     "#{type}:#{bits}"
@@ -46,6 +69,21 @@ module CoreSpec
 
   def self.matches?(expected, actual)
     return true if expected == actual
+    return true if expected == "malformed:illegal opcode" && actual.start_with?("malformed:illegal opcode ")
+    # A bounded decoder can encounter the end of a section before reading the
+    # invalid immediate or following section that the reference interpreter sees.
+    if actual == "malformed:unexpected end"
+      return true if ["malformed:unexpected end of section or function", "malformed:length out of bounds"].include?(expected)
+    end
+    if actual == "malformed:truncated integer representation"
+      return true if ["malformed:integer too large", "malformed:integer representation too long"].include?(expected)
+    end
+    if actual == "malformed:END opcode expected"
+      return true if ["malformed:unexpected end of section or function", "malformed:section size mismatch"].include?(expected)
+    end
+    return true if expected == "trap:uninitialized element" && actual.match?(/\Atrap:uninitialized element \d+\z/)
+    return true if expected == "malformed:malformed mutability" && actual == "malformed:invalid mutability"
+    return actual.start_with?("syntax:") if expected == "malformed text"
     return actual.start_with?("validation:") if expected == "invalid module"
     return false unless expected.include?(":nan:") && actual.match?(/\Af(32|64):-?\d+\z/)
     type, _, kind = expected.split(":")
@@ -59,20 +97,50 @@ module CoreSpec
   def self.command_row(cmd, current, dir)
     op = cmd.fetch("type")
     case op
-    when "module", "assert_invalid", "assert_malformed"
-      return if op == "assert_malformed" && cmd.fetch("module_type") != "binary"
+    when "assert_uninstantiable"
+      [["instantiate", current, File.join(dir, cmd.fetch("filename"))], "trap:#{cmd.fetch('text')}"]
+    when "module_definition"
+      [["define", cmd.fetch("name", current), File.join(dir, cmd.fetch("filename"))], "defined"]
+    when "module_instance"
+      [["instance", cmd.fetch("instance", current), cmd.fetch("module", "-")], "loaded"]
+    when "register"
+      [["register", cmd.fetch("name", current), cmd.fetch("as")], "registered"]
+    when "module", "assert_invalid", "assert_malformed", "assert_unlinkable"
+      if op == "assert_invalid" && cmd["module_type"] == "text" && cmd["binary_filename"]
+        return [["invalid", current, File.join(dir, cmd.fetch("binary_filename"))], "invalid module"]
+      end
+      if cmd["module_type"] == "text" && op != "module"
+        return unless VERSION == "wg-3.0" && op == "assert_malformed"
+        file = cmd.fetch("filename")
+        message, status = Open3.capture2e("wasm-tools", "parse", file, "-o", "quoted.wasm", chdir: dir)
+        diagnostic = message.scrub.lines.find { |line| line.match?(/error:/i) }.to_s
+        # WAST diagnostics illustrate the rejection. WABT uses different wording.
+        actual = if status.success?
+          "parsed"
+        elsif status.exitstatus == 1 && !diagnostic.empty?
+          "syntax:#{diagnostic.strip}"
+        else
+          "converter failed: #{message.lines.first.to_s.strip}"
+        end
+        return [nil, "malformed text", actual]
+      end
       operation, expected = case op
       when "module" then ["module", "loaded"]
+      when "assert_unlinkable" then ["unlinkable", "unlinkable:#{cmd.fetch('text')}"]
       when "assert_invalid" then ["invalid", "invalid module"]
       else ["malformed", "malformed:#{cmd.fetch('text')}"]
       end
-      [[operation, current, File.join(dir, cmd.fetch("filename"))], expected]
-    when "action", "assert_return", "assert_trap"
+      [[operation, current, File.join(dir, cmd.fetch("binary_filename") { cmd.fetch("filename") })], expected]
+    when "action", "assert_return", "assert_trap", "assert_exception", "assert_exhaustion"
       action = cmd.fetch("action", {})
       return unless %w[invoke get].include?(action["type"])
+      values = action.fetch("args", []) + cmd.fetch("expected", [])
+      return unless values.all? { |v| NUMERIC_TYPES.include?(v["type"]) || v == {"type" => "funcref"} || v["type"] == "externref" || NULL_REF_TYPES.include?(v["type"]) || v["value"] == "null" && v["type"].end_with?("ref") }
       args = action.fetch("args", []).map { |v| value(v) }
       expected = case op
       when "action" then "action completed"
+      when "assert_exhaustion" then "exhaustion:#{cmd.fetch('text')}"
+      when "assert_exception" then "uncaught exception"
       when "assert_trap" then "trap:#{cmd.fetch('text')}"
       else cmd.fetch("expected").map { |v| value(v) }.join(",")
       end
@@ -89,16 +157,38 @@ module CoreSpec
   end
 
   def self.single_case(cases, target)
-    cmd = cases.fetch(target)
-    action = cmd["action"]
-    return [target] unless action
-    setup = (0...target).reverse_each.find do |i|
-      cases[i]["type"] == "module" && (!action["module"] || cases[i]["name"] == action["module"])
+    indices = [target]
+    cases.take(target).each_with_index do |command, i|
+      indices << i if command["type"] == "register"
     end
-    [setup, target].compact
+    indices.dup.each do |i|
+      command = cases.fetch(i)
+      action = command["action"]
+      next unless action || command["type"] == "register"
+      name = action ? action["module"] : command["name"]
+      setup = (0...i).reverse_each.find do |j|
+        entry = cases.fetch(j)
+        case entry["type"]
+        when "module" then !name || entry["name"] == name
+        when "module_instance" then !name || entry["instance"] == name
+        end
+      end
+      indices << setup if setup
+    end
+    indices.dup.each do |i|
+      command = cases.fetch(i)
+      next unless command["type"] == "module_instance"
+      name = command["module"]
+      definition = (0...i).reverse_each.find do |j|
+        cases[j]["type"] == "module_definition" && (!name || cases[j]["name"] == name)
+      end
+      indices << definition if definition
+    end
+    indices.uniq.sort
   end
 
   def self.run(name, dir, worker, line: nil, detailed: 0)
+    name = "global" if VERSION == "wg-3.0" && name == "globals"
     cases, source = commands(name, dir)
     if detailed.positive? || line
       forms = source_forms(source)
@@ -114,26 +204,28 @@ module CoreSpec
     end
     current = "-"
     rows = cases.map.with_index do |cmd, index|
-      if cmd["type"] == "module"
+      if cmd["type"] == "module_instance"
+        current = cmd.fetch("instance", index.to_s)
+      elsif cmd["type"] == "module"
         current = cmd.fetch("name", index.to_s)
       end
       command_row(cmd, current, dir)
     end
     plan = File.join(dir, "plan")
-    output = File.join(dir, "#{name}.results")
-    File.write(plan, rows.compact.map { |fields, _| fields.join("\t") + "\n" }.join)
+    output = File.join(dir, "results")
+    File.write(plan, rows.compact.filter_map { |fields, _| fields.map { |field| field.unpack1("H*") }.join("\t") + "\n" if fields }.join)
     ok = system({"WARDITE_MIR_JIT" => "0"}, worker, plan, output)
-    results = File.exist?(output) ? File.readlines(output, chomp: true) : []
+    results = File.exist?(output) ? File.readlines(output, chomp: true).map { |line| [line].pack("H*").force_encoding("UTF-8").scrub } : []
     cursor = 0
     counts = Hash.new(0)
     cases.zip(rows).each_with_index do |(cmd, row), i|
       action = cmd.fetch("action", {})
       field = action.fetch("field", cmd["type"])
-      actual = row ? results[cursor] : "unsupported #{cmd['type']}"
-      cursor += 1 if row
+      actual = row ? (row[0] ? results[cursor] : row[2]) : "unsupported #{cmd['type']}"
+      cursor += 1 if row && row[0]
       # Execute all preceding commands even when focusing the report on an export.
       next if ENV["FILTER_FIELD"] && field != ENV["FILTER_FIELD"]
-      expected = row&.last || cmd["text"] || cmd["type"]
+      expected = row&.[](1) || cmd["text"] || cmd["type"]
       passed = if expected == "action completed"
         actual&.match?(/\A(void|[if](32|64):-?\d+)\z/)
       else
@@ -147,7 +239,7 @@ module CoreSpec
       if line || ENV["VERBOSE"] == "1" || show_source || (status == "FAIL" && counts["FAIL"] <= 5)
         label = field
         if action["type"] == "invoke"
-          args = action.fetch("args").map { |v| display(value(v)) }
+          args = action.fetch("args").map { |v| NUMERIC_TYPES.include?(v["type"]) ? display(value(v)) : v.inspect }
           label = "#{field}(#{args.join(', ')})"
         end
         expectation = expected == "invalid module" ? "#{expected} (#{cmd['text']})" : display(expected)
@@ -175,19 +267,25 @@ if $PROGRAM_NAME == __FILE__
     options.on("--line N", Integer, "Execute one command with a fresh module") { |n| line = n }
     options.on("--detailed", "Print original WAST for every failure") { detailed = [detailed, 1].max }
   end.parse!
-  abort "--line requires one suite and a positive line number" if line && (ARGV.size != 1 || line < 1)
   abort "choose --line or FILTER_FIELD" if line && ENV["FILTER_FIELD"]
   names = ARGV.empty? ? CoreSpec::BASIC : ARGV
-  abort "invalid suite name" unless names.all? { |n| n.match?(/\A[a-z0-9_-]+\z/) }
+  names = CoreSpec::EXCEPTIONS if names == ["exceptions"] && CoreSpec::VERSION == "wg-3.0"
+  abort "--line requires one suite and a positive line number" if line && (names.size != 1 || line < 1)
+  valid_names = names.all? do |name|
+    name.match?(/\A[a-z0-9_-]+\z/) || (CoreSpec::VERSION == "wg-3.0" && CoreSpec::EXCEPTIONS.include?(name))
+  end
+  abort "invalid suite name" unless valid_names
   Dir.mktmpdir("wardite-spec") do |dir|
     worker = File.join(dir, "worker")
     log, status = Open3.capture2e(ENV.fetch("SPINEL", "spinel"), "--strict-require", "-O2",
       "-I#{File.expand_path('../lib', __dir__)}", File.join(__dir__, "spinel_worker.rb"), "-o", worker)
     abort log unless status.success?
-    puts "WebAssembly wg-1.0  |  Spinel / Efflorescence  |  JIT off"
+    puts "WebAssembly #{CoreSpec::VERSION}  |  Spinel / Efflorescence  |  JIT off"
     totals = Hash.new(0)
     names.each do |name|
-      CoreSpec.run(name, dir, worker, line: line, detailed: detailed).each { |key, n| totals[key] += n }
+      Dir.mktmpdir("suite", dir) do |suite_dir|
+        CoreSpec.run(name, suite_dir, worker, line: line, detailed: detailed).each { |key, n| totals[key] += n }
+      end
     end
     puts "Total: #{totals['PASS']} pass, #{totals['FAIL']} fail, #{totals['SKIP']} skip"
     exit(totals["FAIL"].zero? && totals["PASS"].positive?)

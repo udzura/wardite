@@ -1,9 +1,9 @@
 opcode	wasm	decoder	phase	translator	mir	normal	boundary	trap	cruby	spinel	reference	restrictions
 00	unreachable	unreachable	pre-M1	control	TRAP	-	-	unreachable/trap	pass	pass	wasmtime	-
 01	nop	nop	pre-M1	control	source	nop/normal	nop/boundary	n/a	pass	pass	wasmtime	-
-02	block	block	pre-M1	control	source	block/normal	block/boundary	n/a	pass	pass	wasmtime	no block parameters
+02	block	block	pre-M1	control	source	block/normal	block/boundary	n/a	pass	pass	wasmtime	numeric and exnref parameters
 03	loop	loop	pre-M1	control	source	loop/normal	loop/boundary	n/a	pass	pass	wasmtime	no block parameters
-04	if	if	M1	control	BR_IF_ZERO	if/normal	if/boundary	n/a	pass	pass	wasmtime	no block parameters
+04	if	if	M1	control	BR_IF_ZERO	if/normal	if/boundary	n/a	pass	pass	wasmtime	numeric and exnref parameters
 05	else	else	M1	control	source	else/normal	else/boundary	n/a	pass	pass	wasmtime	-
 0b	end	end	pre-M1	control	source	end/normal	end/boundary	n/a	pass	pass	wasmtime	-
 0c	br	br	pre-M1	control	BR	br/normal	br/boundary	n/a	pass	pass	wasmtime	-
@@ -189,4 +189,4 @@ fc/06	i64.trunc_sat_f64_s	i64_trunc_sat_f64_s	M5	numeric	I64_TRUNC_SAT_F64_S	i64
 fc/07	i64.trunc_sat_f64_u	i64_trunc_sat_f64_u	M5	numeric	I64_TRUNC_SAT_F64_U	i64.trunc_sat_f64_u/normal	i64.trunc_sat_f64_u/boundary	n/a	pass	pass	wasmtime	-
 08	throw	throw	M1-EH	exception	THROW	throw/normal	throw/boundary	throw/trap	pass	pass	wasmtime	defined numeric tags, no host exception conversion
 0a	throw_ref	throw_ref	M1-EH	exception	THROW_REF	throw_ref/normal	throw_ref/boundary	throw_ref/trap	pass	pass	wasmtime	defined numeric tags, no host exception conversion
-1f	try_table	try_table	M1-EH	exception	EH_ENTER	try_table/normal	try_table/boundary	n/a	pass	pass	wasmtime	no block parameters
+1f	try_table	try_table	M1-EH	exception	EH_ENTER	try_table/normal	try_table/boundary	n/a	pass	pass	wasmtime	numeric and exnref parameters

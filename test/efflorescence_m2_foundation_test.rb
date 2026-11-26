@@ -63,7 +63,7 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
       '(module (func unreachable i32.load drop))' => 'requires memory',
       '(module (func unreachable global.get 0 drop))' => 'invalid global index',
       '(module (global i32 (i32.const 0)) (func unreachable i32.const 1 global.set 0))' => 'immutable',
-      '(module (memory 1) (func unreachable memory.size 1 drop))' => 'only memory 0',
+      '(module (memory 1) (func unreachable memory.size 1 drop))' => 'unknown memory 1',
       '(module (memory 1) (func unreachable i32.load align=8 drop))' => 'alignment',
       '(module (memory 1) (func unreachable memory.init 0))' => 'invalid data index',
       '(module (memory 1) (data "x") (func unreachable memory.init 1))' => 'invalid data index'
@@ -75,7 +75,7 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
     bytes = compile_efflorescence_wat('(module (memory 1) (data "x") (func unreachable memory.init 0))')
     missing_count = bytes.sub("\x0c\x01\x01".b, ''.b)
     assert_not_equal bytes, missing_count
-    error = assert_raise(E::TranslationError) do
+    error = assert_raise_kind_of(Wardite::LoadError) do
       Wardite::BinaryLoader.load_from_buffer(StringIO.new(missing_count), engine: :efflorescence, enable_wasi: false)
     end
     assert_include error.message, 'data count'
@@ -84,7 +84,7 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
   test 'shared limits reject unsupported flags and invalid page bounds before allocation' do
     [[1, 3, 0, 1], [1, 2, 0, 1], [1, 4, 0], [1, 8, 0], [1, 1, 1, 0], [1, 0, 0x81, 0x80, 4]].each do |payload|
       bytes = "\0asm\x01\0\0\0".b + [5, payload.size, *payload].pack('C*')
-      assert_raise(Wardite::LoadError) do
+      assert_raise_kind_of(Wardite::LoadError) do
         Wardite::BinaryLoader.load_from_buffer(StringIO.new(bytes), enable_wasi: false)
       end
     end
@@ -102,7 +102,7 @@ class EfflorescenceM2FoundationTest < Test::Unit::TestCase
     ['(module (data (i32.const 0) "x"))',
      '(module (memory 1) (data (i32.const -1) "x"))',
      '(module (memory 1) (data (i32.const 65536) "x"))'].each do |wat|
-      assert_raise(Wardite::LoadError) { load_efflorescence(wat) }
+      assert_raise_kind_of(Wardite::LoadError) { load_efflorescence(wat) }
     end
   end
 end

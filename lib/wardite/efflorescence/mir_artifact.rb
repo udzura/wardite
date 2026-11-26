@@ -77,7 +77,8 @@ module Wardite
         end
 
         # @rbs return: CodeSection::CodeBody
-        def body
+        # @rbs types: TypeSection
+        def body(types)
           size = Leb128Helper.fetch_uleb128(self)
           finish = @pos + size
           section_end = @limit
@@ -86,8 +87,9 @@ module Wardite
           body = CodeSection::CodeBody.new do |b|
             Leb128Helper.fetch_uleb128(self).times do
               b.locals_count << Leb128Helper.fetch_uleb128(self)
-              b.locals_type << Op.i2type(getbyte)
+              b.locals_type << BinaryLoader.read_signature_type(self, types)
             end
+            raise Wardite::LoadError, "too many locals" if b.locals_count.sum > 0xffffffff
             raise Wardite::LoadError, "empty WMIR function" if @pos == finish
             b.map_instructions(@map, @pos, finish - @pos)
           end
@@ -100,12 +102,13 @@ module Wardite
       # @rbs file: File
       # @rbs size: Integer
       # @rbs return: CodeSection
-      def code_section(file, size)
+      # @rbs types: TypeSection
+      def code_section(file, size, types = TypeSection.new)
         offset = file.pos
         reader = CodeReader.new(@map, offset, size)
         section = CodeSection.new
         section.size = size
-        Leb128Helper.fetch_uleb128(reader).times { section.func_codes << reader.body }
+        Leb128Helper.fetch_uleb128(reader).times { section.func_codes << reader.body(types) }
         raise Wardite::LoadError, "invalid WMIR code section length" unless reader.pos == offset + size
         file.pos = reader.pos
         section
