@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    wardite (1.4.0)
+    wardite (1.4.1)
 
 GEM
   remote: https://rubygems.org/
