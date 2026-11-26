@@ -142,17 +142,7 @@ module Wardite
       # @rbs offset: Integer
       # @rbs return: Integer
       def load8_u(address, offset)
-        start = address + offset
-        value = if RUBY_ENGINE == "spinel"
-          source = memory.buffer
-          StoreAccess.check_range(start, 1, source.size)
-          source.get_value(:U8, start)
-        else
-          data = memory.data
-          StoreAccess.check_range(start, 1, data.bytesize)
-          data.getbyte(start) || raise(Wardite::EvalError, "missing checked memory byte")
-        end
-        Integer(value)
+        memory.read_u8(address + offset)
       end
 
       # @rbs address: Integer

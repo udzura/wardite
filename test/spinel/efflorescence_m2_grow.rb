@@ -102,6 +102,12 @@ raise 'reallocation left old views live' unless before.null? && !before_view.val
 raise 'reallocation lost bytes' unless Integer(memory.buffer.get_value(:U8, 65536)) == 42
 raise 'reallocation exposed nonzero bytes' unless Integer(memory.buffer.get_value(:U8, 131072)) == 0
 
+# Resizing the public slice detaches it from the reserved allocation.
+view = memory.buffer
+view.resize(view.size)
+view.set_value(:U8, 0, 73)
+raise 'read stale backing after host resize' unless memory.read_u8(0) == 73
+
 memory = LimitedMemory.new
 memory.write_bytes(0, 'abc')
 raise 'failed to retry without spare capacity' unless memory.grow(1) == 1 && memory.attempted_pages == [3, 2]

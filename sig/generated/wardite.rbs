@@ -185,6 +185,10 @@ module Wardite
 
     # @rbs offset: Integer
     # @rbs return: Integer
+    def read_u8: (Integer offset) -> Integer
+
+    # @rbs offset: Integer
+    # @rbs return: Integer
     def read_u32: (Integer offset) -> Integer
 
     # @rbs offset: Integer
