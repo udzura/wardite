@@ -23,6 +23,8 @@ module Wardite
 
       @global_bits: Array[Integer]
 
+      @memory_accesses: Array[Wardite::Efflorescence::StoreAccess]
+
       @global_slots: Array[Integer]?
 
       @optimized_ir: Wardite::Efflorescence::IR?
@@ -262,8 +264,10 @@ module Wardite
       # @rbs site_id: Integer
       # @rbs destination: Integer
       # @rbs metrics: Wardite::Efflorescence::Metrics
-      # @rbs return: void
-      def execute_direct_host: (Wardite::Efflorescence::Frame frame, Integer site_id, Integer destination, Wardite::Efflorescence::Metrics metrics) -> void
+      # @rbs frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs return: Wardite::Efflorescence::Frame?
+      def execute_direct_host: (Wardite::Efflorescence::Frame frame, Integer site_id, Integer destination, Wardite::Efflorescence::Metrics metrics, Array[Wardite::Efflorescence::Frame] frames, Array[Wardite::Efflorescence::FramePool] pools) -> Wardite::Efflorescence::Frame?
 
       # Keep table resolution and the additional call locals off the hot path.
       # @rbs frame: Wardite::Efflorescence::Frame
@@ -288,6 +292,10 @@ module Wardite
       # @rbs bits: Integer
       # @rbs return: Wardite::tableValue
       def table_value: (Wardite::Table table, Integer bits) -> Wardite::tableValue
+
+      # @rbs index: Integer
+      # @rbs return: StoreAccess
+      def memory_access: (Integer index) -> StoreAccess
 
       # @rbs opcode: Integer
       # @rbs site: TableSite

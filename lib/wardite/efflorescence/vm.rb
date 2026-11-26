@@ -18,6 +18,7 @@ module Wardite
       # @rbs @semantic_ir: Wardite::Efflorescence::IR?
       # @rbs @optimized_ir: Wardite::Efflorescence::IR?
       # @rbs @global_slots: Array[Integer]?
+      # @rbs @memory_accesses: Array[Wardite::Efflorescence::StoreAccess]
       # @rbs @global_bits: Array[Integer]
       # @rbs @jit: SpinelJIT?
 
@@ -807,10 +808,15 @@ module Wardite
       # @rbs site_id: Integer
       # @rbs destination: Integer
       # @rbs metrics: Wardite::Efflorescence::Metrics
-      # @rbs return: void
-      def execute_direct_host(frame, site_id, destination, metrics)
+      # @rbs frames: Array[Wardite::Efflorescence::Frame]
+      # @rbs pools: Array[Wardite::Efflorescence::FramePool]
+      # @rbs return: Wardite::Efflorescence::Frame?
+      def execute_direct_host(frame, site_id, destination, metrics, frames, pools)
         site = frame.function.dynamic_site(site_id)
         execute_host_site(frame, site, site.host_index, destination, metrics)
+        nil
+      rescue Wardite::LinkedWasmException => error
+        propagate(error.exception_value, frames, pools)
       end
 
       # Keep table resolution and the additional call locals off the hot path.
@@ -859,6 +865,8 @@ module Wardite
           metrics.enter_indirect_defined(site.arguments.size) if @profiling
           next_frame
         end
+      rescue Wardite::LinkedWasmException => error
+        propagate(error.exception_value, frames, pools)
       end
 
       # @rbs ref: Wardite::FunctionReference
@@ -889,6 +897,12 @@ module Wardite
         return nil if bits.zero?
         return @external_references.fetch(bits - 1) if table.type == :externref || table.type == :non_null_extern
         function_reference(bits)
+      end
+
+      # @rbs index: Integer
+      # @rbs return: StoreAccess
+      def memory_access(index)
+        @memory_accesses[index] || raise(IndexError, "invalid memory index")
       end
 
       # @rbs opcode: Integer
@@ -1032,8 +1046,8 @@ module Wardite
             pc += 3 * Lowerer::WIDTH
           when 202 # Opcode::I64_BYTE_LOOKUP_BR_EQ
             address = (registers[instructions.fetch(pc + 2)] + instructions.fetch(pc + 3)) & 0xffffffff
-            table = registers.fetch(instructions.fetch(pc + 10))
-            pair = @store_access.byte_lookup(address, table)
+            table_base = registers.fetch(instructions.fetch(pc + 10))
+            pair = @store_access.byte_lookup(address, table_base)
             registers[instructions.fetch(pc + 5)] = pair >> 8
             decoded = pair & 255
             registers[instructions.fetch(pc + 13)] = decoded
@@ -1169,8 +1183,8 @@ module Wardite
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
             frame.pc = pc + Lowerer::WIDTH
-            site = frame.function.call_site(b)
-            pool = pools[site.pool_index]
+            call_site = frame.function.call_site(b)
+            pool = pools[call_site.pool_index]
             raise Wardite::EvalError, "missing MIR frame pool" unless pool
             tail = opcode == Lowerer::TAIL_DIRECT && frame.handlers.empty?
             raise Wardite::StackExhausted, "call stack exhausted" if !tail && (frames.size >= MAX_CALL_FRAMES || frame.caller_slots + registers.size >= MAX_CALLER_SLOTS)
@@ -1178,7 +1192,7 @@ module Wardite
             if c >= 0
               next_frame.registers[0] = registers[c]
             else
-              site.copy_arguments(next_frame.registers, registers)
+              call_site.copy_arguments(next_frame.registers, registers)
             end
             if tail
               frames.pop
@@ -1193,10 +1207,9 @@ module Wardite
             next
           when 67 # Opcode::CALL_HOST
             frame.pc = pc
-            begin
-              execute_direct_host(frame, instructions.fetch(pc + 2), a, metrics)
-            rescue Wardite::LinkedWasmException => error
-              frame = propagate(error.exception_value, frames, pools)
+            handler_frame = execute_direct_host(frame, instructions.fetch(pc + 2), a, metrics, frames, pools)
+            if handler_frame
+              frame = handler_frame
               registers = frame.registers
               instructions = frame.instructions
               pc = Integer(frame.pc)
@@ -1206,11 +1219,7 @@ module Wardite
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)
             frame.pc = pc
-            begin
-              frame = execute_indirect(frame, pools, frames, a, b, c, metrics, opcode == Lowerer::TAIL_INDIRECT && frame.handlers.empty?)
-            rescue Wardite::LinkedWasmException => error
-              frame = propagate(error.exception_value, frames, pools)
-            end
+            frame = execute_indirect(frame, pools, frames, a, b, c, metrics, opcode == Lowerer::TAIL_INDIRECT && frame.handlers.empty?)
             registers = frame.registers
             instructions = frame.instructions
             pc = Integer(frame.pc)
@@ -1439,25 +1448,25 @@ module Wardite
           when 215 # Opcode::INDEXED_LOAD
             access = frame.function.indexed_accesses.fetch(instructions.fetch(pc + 3))
             address = registers.fetch(instructions.fetch(pc + 2))
-            registers[a] = Integer(@memory_accesses.fetch(access.memory).indexed_load(access, address))
+            registers[a] = Integer(memory_access(access.memory).indexed_load(access, address))
           when 216 # Opcode::INDEXED_STORE
             access = frame.function.indexed_accesses.fetch(instructions.fetch(pc + 3))
             address = registers.fetch(instructions.fetch(pc + 2))
-            @memory_accesses.fetch(access.memory).store(address, access.offset, 1 << access.alignment, registers.fetch(a))
+            memory_access(access.memory).store(address, access.offset, 1 << access.alignment, registers.fetch(a))
           when 62 # Opcode::MEMORY_SIZE
-            registers[a] = @memory_accesses.fetch(instructions.fetch(pc + 3)).size
+            registers[a] = memory_access(instructions.fetch(pc + 3)).size
           when 63 # Opcode::MEMORY_GROW
             b = instructions.fetch(pc + 2)
-            registers[a] = @memory_accesses.fetch(instructions.fetch(pc + 3)).grow(registers[b])
+            registers[a] = memory_access(instructions.fetch(pc + 3)).grow(registers[b])
           when 64 # Opcode::MEMORY_INIT
             site = frame.function.memory_site(a)
-            @memory_accesses.fetch(site.memory_index).bulk(64, site, registers)
+            memory_access(site.memory_index).bulk(64, site, registers)
           when 65 # Opcode::MEMORY_COPY
             site = frame.function.memory_site(a)
-            @memory_accesses.fetch(site.memory_index).bulk(65, site, registers)
+            memory_access(site.memory_index).bulk(65, site, registers)
           when 66 # Opcode::MEMORY_FILL
             site = frame.function.memory_site(a)
-            @memory_accesses.fetch(site.memory_index).bulk(66, site, registers)
+            memory_access(site.memory_index).bulk(66, site, registers)
           when 69 # Opcode::I64_EQZ
             b = instructions.fetch(pc + 2)
             registers[a] = registers.fetch(b) == 0 ? 1 : 0
