@@ -81,6 +81,12 @@ module Wardite
         started = Time.now.to_f
         return trace("skipped (open descriptors changed)") unless @wasi.fd_table.keys.sort == @fds && @wasi.fd_count == @fd_count
         store = instance.store
+        # The snapshot restores memory pages, but passive segments come from the module.
+        instance.data_section&.segments&.each_with_index do |segment, index|
+          if segment.mode == :passive && segment.data.bytesize != store.data_segments.fetch(index).bytesize
+            return trace("skipped (data segment dropped)")
+          end
+        end
         return trace("skipped (table state changed)") if instance.runtime.table_state_changed || !instance.import_section.table_imports.empty?
         return trace("skipped (multiple memories)") if store.memories.size > 1
         writer = MIRCache::Writer.new

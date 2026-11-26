@@ -401,7 +401,9 @@ module Wardite
       def validate_extended_instruction(function, instruction, read_count, destination)
         opcode = instruction[0]
         types = Opcode.extended_alu_types(opcode)
-        if opcode.between?(Opcode::TABLE_SET, Opcode::ELEM_DROP)
+        if opcode == Opcode::DATA_DROP
+          raise TranslationError, "invalid data segment index" if instruction[1] < 0
+        elsif opcode.between?(Opcode::TABLE_SET, Opcode::ELEM_DROP)
           check_register(function, destination, :i32) if destination >= 0
         elsif opcode == Opcode::INDEXED_LOAD || opcode == Opcode::INDEXED_STORE
           access = function.indexed_accesses.fetch(instruction[3])

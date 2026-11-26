@@ -4,18 +4,20 @@
 
 Wardite at commit `9e1d31a` ran all 258 `.wast` files under `test/core`. All 21,228 cases in the 97 top-level suites passed. The four exception suites recorded 98 passes and two failures. At lines 49 and 60 of `exceptions/tag.wast`, Wardite rejected the import during linking as expected. Both assertions expected the diagnostic `incompatible import` and received `incompatible import type`. [Official tests at the pinned revision](https://github.com/WebAssembly/spec/tree/9d36019973201a19f9c9ebb0f10828b2fe2374aa/test/core)
 
+After adding `data.drop`, Wardite passed all 7,463 cases in a rerun of the eight `bulk-memory/` suites. The tables below include those results.
+
 | Group | Suites | All passed | Skips only, no failures | Has failures | Inconclusive |
 |---|---:|---:|---:|---:|---:|
 | Basic 37 suites | 37 | 37 | 0 | 0 | 0 |
 | Other top-level suites | 60 | 60 | 0 | 0 | 0 |
 | exceptions | 4 | 3 | 0 | 1 | 0 |
-| bulk-memory | 8 | 6 | 0 | 2 | 0 |
+| bulk-memory | 8 | 8 | 0 | 0 | 0 |
 | multi-memory | 41 | 40 | 0 | 1 | 0 |
 | memory64 | 25 | 0 | 0 | 25 | 0 |
 | gc | 17 | 0 | 0 | 16 | 1 |
 | simd | 59 | 0 | 0 | 59 | 0 |
 | relaxed-simd | 7 | 0 | 0 | 7 | 0 |
-| Total | 258 | 146 | 0 | 111 | 1 |
+| Total | 258 | 148 | 0 | 109 | 1 |
 
 Each file counts as one suite. Case counts include module loads, invocations, checks that invalid modules are rejected, and text syntax checks. A failed module load and each subsequent invocation that fails count separately.
 
@@ -143,10 +145,10 @@ The result for `gc/extern.wast` is inconclusive. The runner raised a `KeyError` 
 
 | Suite | Result | Passed | Failed | Skipped |
 |---|---|---:|---:|---:|
-| `bulk-memory/bulk.wast` | Has failures | 104 | 13 | 0 |
+| `bulk-memory/bulk.wast` | All passed | 117 | 0 | 0 |
 | `bulk-memory/memory_copy.wast` | All passed | 4450 | 0 | 0 |
 | `bulk-memory/memory_fill.wast` | All passed | 100 | 0 | 0 |
-| `bulk-memory/memory_init.wast` | Has failures | 202 | 38 | 0 |
+| `bulk-memory/memory_init.wast` | All passed | 240 | 0 | 0 |
 | `bulk-memory/table-sub.wast` | All passed | 3 | 0 | 0 |
 | `bulk-memory/table_copy.wast` | All passed | 1728 | 0 | 0 |
 | `bulk-memory/table_fill.wast` | All passed | 45 | 0 | 0 |

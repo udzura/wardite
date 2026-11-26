@@ -235,6 +235,7 @@ module Wardite
       INDEXED_STORE = 216
       EXN_GLOBAL_GET = 217
       EXN_GLOBAL_SET = 218
+      DATA_DROP = 219
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U, I32_ADD_IMM, I32_ADD_IMM].freeze #: Array[Integer]
 
@@ -268,7 +269,7 @@ module Wardite
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
                  F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
                  BR_IF_I64_EQ I32_EXTRACT_I64
-                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET TABLE_SET TABLE_SIZE TABLE_GROW TABLE_FILL TABLE_COPY TABLE_INIT ELEM_DROP REF_AS_NON_NULL INDEXED_LOAD INDEXED_STORE EXN_GLOBAL_GET EXN_GLOBAL_SET].freeze
+                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET TABLE_SET TABLE_SIZE TABLE_GROW TABLE_FILL TABLE_COPY TABLE_INIT ELEM_DROP REF_AS_NON_NULL INDEXED_LOAD INDEXED_STORE EXN_GLOBAL_GET EXN_GLOBAL_SET DATA_DROP].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -446,7 +447,7 @@ module Wardite
             [1, 2]
           when THROW_REF
             [1]
-          when TABLE_SET..ELEM_DROP, RESULT_GET, BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
+          when DATA_DROP, TABLE_SET..ELEM_DROP, RESULT_GET, BR, TRAP, PROFILE, EH_ENTER, EH_TRIM, THROW, GLOBAL_GET, MEMORY_SIZE, MEMORY_INIT, MEMORY_COPY, MEMORY_FILL, CALL_HOST
             [] #: Array[Integer]
           else
             types = extended_alu_types(opcode)
@@ -579,7 +580,7 @@ module Wardite
       # @rbs opcode: Integer
       # @rbs return: bool
       def self.writes_store?(opcode)
-        opcode == INDEXED_STORE || opcode == TABLE_SET || opcode.between?(TABLE_GROW, ELEM_DROP) ||
+        opcode == DATA_DROP || opcode == INDEXED_STORE || opcode == TABLE_SET || opcode.between?(TABLE_GROW, ELEM_DROP) ||
           opcode == GLOBAL_SET || (opcode >= I32_STORE && opcode <= I32_STORE16) ||
           opcode == MEMORY_GROW || memory_site?(opcode) ||
           (opcode > CALL_INDIRECT && (EXTENDED_GLOBAL_SET_TYPES.key?(opcode) || EXTENDED_STORE_TYPES.key?(opcode)))

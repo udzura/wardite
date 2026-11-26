@@ -14,7 +14,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 22
+      CODE_VERSION = 23
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -254,6 +254,7 @@ module Wardite
           when EH_ENTER then :handler
           when EH_TRIM then :depth
           when THROW then :throw
+          when DATA_DROP then :data_drop
           when MEMORY_INIT, MEMORY_COPY, MEMORY_FILL then :bulk
           when MEMORY_SIZE, MEMORY_GROW then :memory
           when GLOBAL_GET, I64_GLOBAL_GET, F32_GLOBAL_GET, F64_GLOBAL_GET, EXN_GLOBAL_GET then :global_get
@@ -595,6 +596,7 @@ module Wardite
             when :bulk
               site = at(function.memory_sites, a)
               raise Invalid unless opcode == MEMORY_INIT ? site.data_index >= 0 : site.data_index == -1
+            when :data_drop then raise Invalid unless a.between?(0, @data_count - 1)
             when :global_get then raise Invalid unless b.between?(0, @global_count - 1)
             when :global_set then raise Invalid unless a.between?(0, @global_count - 1)
             when :address then raise Invalid unless @has_memory && c.between?(0, 0xffffffff)

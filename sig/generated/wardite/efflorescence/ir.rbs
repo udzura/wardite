@@ -447,6 +447,8 @@ module Wardite
 
       EXN_GLOBAL_SET: ::Integer
 
+      DATA_DROP: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 

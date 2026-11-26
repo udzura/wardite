@@ -146,13 +146,13 @@ class EfflorescenceM2BulkTest < Test::Unit::TestCase
     assert_include vm.dump_mir, 'data=1'
   end
 
-  test 'bad bulk types indices and unsupported data.drop fail without an external validator' do
+  test 'bad bulk types indices and data.drop indices fail without an external validator' do
     ['(module (memory 1) (func (local exnref) local.get 0 i32.const 0 i32.const 0 memory.copy))',
      '(module (memory 1) (func unreachable memory.copy 1 0))',
      '(module (memory 1) (func unreachable memory.fill 1))'].each do |wat|
       assert_raise(E::TranslationError, E::UnsupportedFeature) { load_efflorescence(wat) }
     end
-    assert_raise(E::UnsupportedFeature) { load_efflorescence('(module (data "x") (func unreachable data.drop 0))') }
+    assert_raise(E::TranslationError) { load_efflorescence('(module (data "x") (func unreachable data.drop 1))') }
     fn = E::Function.new(0, [:i32, :i32], [], 0)
     fn.memory_sites << E::MemorySite.new([0,1])
     fn.instructions << E::Instruction.new([E::Opcode::MEMORY_COPY,0])

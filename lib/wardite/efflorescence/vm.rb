@@ -1458,6 +1458,8 @@ module Wardite
           when 63 # Opcode::MEMORY_GROW
             b = instructions.fetch(pc + 2)
             registers[a] = memory_access(instructions.fetch(pc + 3)).grow(registers[b])
+          when 219 # Opcode::DATA_DROP
+            @instance.store.data_segments[a] = "".b
           when 64 # Opcode::MEMORY_INIT
             site = frame.function.memory_site(a)
             memory_access(site.memory_index).bulk(64, site, registers)
