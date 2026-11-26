@@ -674,6 +674,23 @@ module Wardite
 
     # @rbs offset: Integer
     # @rbs return: Integer
+    def read_u8(offset)
+      if RUBY_ENGINE == "spinel"
+        view = buffer
+        raise EvalError, "out of bounds memory access" unless offset >= 0 && offset < view.size
+        # The grown view starts at zero. A host resize detaches a slice
+        # into its own internal buffer, which then holds the visible bytes.
+        source = view.internal? ? view : (@storage || view)
+        Integer(source.get_value(:U8, offset))
+      else
+        bytes = data
+        raise EvalError, "out of bounds memory access" unless offset >= 0 && offset < bytes.bytesize
+        bytes.getbyte(offset) || raise(EvalError, "missing checked memory byte")
+      end
+    end
+
+    # @rbs offset: Integer
+    # @rbs return: Integer
     def read_u32(offset)
       raise EvalError, "invalid memory range" unless range?(offset, 4)
       if RUBY_ENGINE == "spinel"
@@ -771,7 +788,7 @@ module Wardite
     # @rbs return: void
     def replace_storage(replacement, size)
       # Allocation zeroes the entire storage. The hidden suffix stays zero
-      # because all guest and host accesses go through the size-bounded view.
+      # because guest accesses are bounded by the size of the public view.
       view = replacement.size == size ? replacement : replacement.slice(0, size)
       storage = @storage
       old = buffer
