@@ -14,7 +14,7 @@ module Wardite
     class MIRCache
       MAGIC = "WARDMIR\0".b
       FORMAT_VERSION = 3
-      CODE_VERSION = 21
+      CODE_VERSION = 22
       DIGEST_SIZE = 32
       LENGTH_SIZE = 8
       INTEGRITY_SIZE = LENGTH_SIZE + 2 * DIGEST_SIZE
@@ -256,8 +256,8 @@ module Wardite
           when THROW then :throw
           when MEMORY_INIT, MEMORY_COPY, MEMORY_FILL then :bulk
           when MEMORY_SIZE, MEMORY_GROW then :memory
-          when GLOBAL_GET, I64_GLOBAL_GET, F32_GLOBAL_GET, F64_GLOBAL_GET then :global_get
-          when GLOBAL_SET, I64_GLOBAL_SET, F32_GLOBAL_SET, F64_GLOBAL_SET then :global_set
+          when GLOBAL_GET, I64_GLOBAL_GET, F32_GLOBAL_GET, F64_GLOBAL_GET, EXN_GLOBAL_GET then :global_get
+          when GLOBAL_SET, I64_GLOBAL_SET, F32_GLOBAL_SET, F64_GLOBAL_SET, EXN_GLOBAL_SET then :global_set
           when I32_LOAD..I32_STORE16, I64_LOAD..I64_STORE32, F32_LOAD..F64_STORE then :address
           when I32_EXTRACT_I64 then :extract
           when I32_ADD_IMM..I32_SHR_U_IMM then :immediate

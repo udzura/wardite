@@ -1393,16 +1393,17 @@ module Wardite
           when 52 # Opcode::GLOBAL_GET
             b = instructions.fetch(pc + 2)
             registers[a] = global_bits[slots ? slots.fetch(b) : b]
-            if !frame.exception_registers.empty? && FunctionEntry.exception_ref?(frame.function.register_types.fetch(a))
-              exn = @instance.store.globals.fetch(b).value
-              frame.exception_registers[a] = exn.is_a?(ExceptionValue) ? exn : nil
-            end
           when 53 # Opcode::GLOBAL_SET
             b = instructions.fetch(pc + 2)
             global_bits[slots ? slots.fetch(a) : a] = registers[b]
-            if !frame.exception_registers.empty? && FunctionEntry.exception_ref?(frame.function.register_types.fetch(b))
-              @instance.store.globals.fetch(a).value = frame.exception_registers[b]
-            end
+          when 217 # Opcode::EXN_GLOBAL_GET
+            b = instructions.fetch(pc + 2)
+            exn = @instance.store.globals.fetch(b).value
+            frame.exception_registers[a] = exn.is_a?(ExceptionValue) ? exn : nil
+            registers[a] = 0
+          when 218 # Opcode::EXN_GLOBAL_SET
+            b = instructions.fetch(pc + 2)
+            @instance.store.globals.fetch(a).value = frame.exception_registers[b]
           when 54 # Opcode::I32_LOAD
             b = instructions.fetch(pc + 2)
             c = instructions.fetch(pc + 3)

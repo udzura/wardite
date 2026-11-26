@@ -233,6 +233,8 @@ module Wardite
       REF_AS_NON_NULL = 214
       INDEXED_LOAD = 215
       INDEXED_STORE = 216
+      EXN_GLOBAL_GET = 217
+      EXN_GLOBAL_SET = 218
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS = [I32_ADD, I32_ADD_IMM, I32_ADD_IMM, I32_LOAD8_U, I32_ADD_IMM, I32_ADD_IMM].freeze #: Array[Integer]
 
@@ -266,7 +268,7 @@ module Wardite
                  F32_LOAD F64_LOAD F32_STORE F64_STORE
                  F32_GLOBAL_GET F64_GLOBAL_GET F32_GLOBAL_SET F64_GLOBAL_SET
                  BR_IF_I64_EQ I32_EXTRACT_I64
-                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET TABLE_SET TABLE_SIZE TABLE_GROW TABLE_FILL TABLE_COPY TABLE_INIT ELEM_DROP REF_AS_NON_NULL INDEXED_LOAD INDEXED_STORE].freeze
+                 I32_TABLE_STORE8 I64_BYTE_LOOKUP I32_BYTE_MUL_ADD I32_BYTE_ADD_STORE I32_DIV_U_STORE8 I64_BYTE_LOOKUP_BR_EQ RESULT_SET RESULT_GET REF_IS_NULL TABLE_GET TABLE_SET TABLE_SIZE TABLE_GROW TABLE_FILL TABLE_COPY TABLE_INIT ELEM_DROP REF_AS_NON_NULL INDEXED_LOAD INDEXED_STORE EXN_GLOBAL_GET EXN_GLOBAL_SET].freeze
 
       # Each signature lists the destination type followed by the source types.
       I64_ALU_TYPES = {
@@ -412,12 +414,14 @@ module Wardite
         I64_GLOBAL_GET => :i64,
         F32_GLOBAL_GET => :f32,
         F64_GLOBAL_GET => :f64,
+        EXN_GLOBAL_GET => :exnref,
       }.freeze #: Hash[Integer, Symbol]
 
       EXTENDED_GLOBAL_SET_TYPES = {
         I64_GLOBAL_SET => :i64,
         F32_GLOBAL_SET => :f32,
         F64_GLOBAL_SET => :f64,
+        EXN_GLOBAL_SET => :exnref,
       }.freeze #: Hash[Integer, Symbol]
 
       # Semantic register operand positions, excluding frame initialization.

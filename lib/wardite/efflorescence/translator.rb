@@ -527,7 +527,7 @@ module Wardite
                        when :i64 then Opcode::I64_GLOBAL_GET
                        when :f32 then Opcode::F32_GLOBAL_GET
                        when :f64 then Opcode::F64_GLOBAL_GET
-                       else Opcode::GLOBAL_GET
+                       else FunctionEntry.exception_ref?(type) ? Opcode::EXN_GLOBAL_GET : Opcode::GLOBAL_GET
                        end
               emit([opcode, dst, index]) if @reachable
               @stack << dst
@@ -537,7 +537,7 @@ module Wardite
                        when :i64 then Opcode::I64_GLOBAL_SET
                        when :f32 then Opcode::F32_GLOBAL_SET
                        when :f64 then Opcode::F64_GLOBAL_SET
-                       else Opcode::GLOBAL_SET
+                       else FunctionEntry.exception_ref?(type) ? Opcode::EXN_GLOBAL_SET : Opcode::GLOBAL_SET
                        end
               emit([opcode, index, source]) if @reachable
             end

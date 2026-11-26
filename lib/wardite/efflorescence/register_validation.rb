@@ -355,7 +355,7 @@ module Wardite
           when Opcode::GLOBAL_GET, Opcode::GLOBAL_SET
             slot = opcode == Opcode::GLOBAL_GET ? destination : instruction[2]
             type = function.register_types.fetch(slot)
-            raise TranslationError, "invalid global register" unless type == :i32 || FunctionEntry.reference?(type)
+            raise TranslationError, "invalid global register" unless type == :i32 || (FunctionEntry.reference?(type) && !FunctionEntry.exception_ref?(type))
           when Opcode::COPY
             type = function.register_types[destination] if destination >= 0
             unless type && (FunctionEntry.numeric_type?(type) || FunctionEntry.reference?(type))

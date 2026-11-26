@@ -443,6 +443,10 @@ module Wardite
 
       INDEXED_STORE: ::Integer
 
+      EXN_GLOBAL_GET: ::Integer
+
+      EXN_GLOBAL_SET: ::Integer
+
       # The remaining three instructions retain their ordinary four-word slots.
       SEQUENCE_HEADS: Array[Integer]
 
