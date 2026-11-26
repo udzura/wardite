@@ -1215,7 +1215,7 @@ module Wardite
             instructions = frame.instructions
             pc = Integer(frame.pc)
             next
-          when 207..213 # Opcode::TABLE_SET through ELEM_DROP
+          when 207, 208, 209, 210, 211, 212, 213 # Opcode::TABLE_SET through ELEM_DROP
             site = frame.function.table_sites.fetch(instructions.fetch(pc + 2))
             result = execute_table(opcode, site, registers)
             registers[a] = Integer(result) if a >= 0
