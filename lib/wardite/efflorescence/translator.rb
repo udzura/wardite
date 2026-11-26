@@ -490,6 +490,11 @@ module Wardite
               emit([opcode, dst, address, offset]) if @reachable
               @stack << dst
             end
+          when :data_drop
+            index = integer_operand(operands[0])
+            fail_translation("invalid data index #{index}") unless index.between?(0, @source.data_segments - 1)
+            @function.uses_store = true
+            emit([Opcode::DATA_DROP, index]) if @reachable
           when :memory_init, :memory_copy, :memory_fill
             length, source, destination = pop_typed(:i32), pop_typed(:i32), pop_typed(:i32)
             next unless @reachable

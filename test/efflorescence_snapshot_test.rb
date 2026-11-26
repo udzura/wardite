@@ -57,6 +57,21 @@ class EfflorescenceSnapshotTest < Test::Unit::TestCase
     assert_include err, "snapshot restored:"
   end
 
+  test "a checkpoint after data.drop keeps the passive segment empty" do
+    wasm = File.join(@directory, "drop.wasm")
+    File.binwrite(wasm, compile_efflorescence_wat(<<~WAT))
+      (module
+        (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))
+        (memory (export "memory") 1)
+        (data $segment "abc")
+        (func (export "_start") data.drop $segment i32.const 0 call $exit))
+    WAT
+    _out, err, status = run_snapshot(WARDITE, @directory, wasm)
+    assert_predicate status, :success?, err
+    assert_include err, "skipped (data segment dropped)"
+    assert_empty Dir.glob(File.join(@directory, "snapshot", "*.snap"))
+  end
+
   test "snapshot requires the MIR2 cache" do
     wasm = write_snapshot_fixture(@directory, :direct)
     _out, err, status = Open3.capture3(*WARDITE, "--snapshot", @directory, "--", wasm)

@@ -4,18 +4,20 @@
 
 Wardite `9e1d31a` で、公式の `test/core` 以下にある全258本の `.wast` を実行した。直下97本は21,228件すべて成功した。例外4本は98件成功、2件失敗。失敗した `exceptions/tag.wast` の49行目と60行目では、リンク時の拒否は期待どおりだが、期待する診断 `incompatible import` に対して Wardite は `incompatible import type` を返した。[公式テスト（固定リビジョン）](https://github.com/WebAssembly/spec/tree/9d36019973201a19f9c9ebb0f10828b2fe2374aa/test/core)
 
+その後、`data.drop` 対応時に `bulk-memory/` の8本を再実行し、7,463件すべて成功した。以下の集計にはこの再実行結果を反映した。
+
 | 分類 | 本数 | 全件成功 | 一部スキップ・失敗0 | 失敗あり | 判定保留 |
 |---|---:|---:|---:|---:|---:|
 | 基本37本 | 37 | 37 | 0 | 0 | 0 |
 | 直下のその他 | 60 | 60 | 0 | 0 | 0 |
 | exceptions | 4 | 3 | 0 | 1 | 0 |
-| bulk-memory | 8 | 6 | 0 | 2 | 0 |
+| bulk-memory | 8 | 8 | 0 | 0 | 0 |
 | multi-memory | 41 | 40 | 0 | 1 | 0 |
 | memory64 | 25 | 0 | 0 | 25 | 0 |
 | gc | 17 | 0 | 0 | 16 | 1 |
 | simd | 59 | 0 | 0 | 59 | 0 |
 | relaxed-simd | 7 | 0 | 0 | 7 | 0 |
-| 合計 | 258 | 146 | 0 | 111 | 1 |
+| 合計 | 258 | 148 | 0 | 109 | 1 |
 
 各ファイルを1スイートとして数えた。成功件数にはモジュールのロード、呼び出し、無効なモジュールの拒否、テキスト構文の検査を含む。ロードに失敗し、後続の呼び出しも失敗した場合は、それぞれを1件と数える。
 
@@ -143,10 +145,10 @@ Spinel 7289・Efflorescence（JIT 無効）、wasm-tools 1.236.0、WABT 1.0.42 �
 
 | スイート | 判定 | 成功 | 失敗 | スキップ |
 |---|---|---:|---:|---:|
-| `bulk-memory/bulk.wast` | 失敗あり | 104 | 13 | 0 |
+| `bulk-memory/bulk.wast` | 全件成功 | 117 | 0 | 0 |
 | `bulk-memory/memory_copy.wast` | 全件成功 | 4450 | 0 | 0 |
 | `bulk-memory/memory_fill.wast` | 全件成功 | 100 | 0 | 0 |
-| `bulk-memory/memory_init.wast` | 失敗あり | 202 | 38 | 0 |
+| `bulk-memory/memory_init.wast` | 全件成功 | 240 | 0 | 0 |
 | `bulk-memory/table-sub.wast` | 全件成功 | 3 | 0 | 0 |
 | `bulk-memory/table_copy.wast` | 全件成功 | 1728 | 0 | 0 |
 | `bulk-memory/table_fill.wast` | 全件成功 | 45 | 0 | 0 |

@@ -85,6 +85,19 @@ class EfflorescenceMIRCacheTest < Test::Unit::TestCase
     assert_equal 7, hit.call_unboxed(:run, [])
   end
 
+  test "data.drop without memory only empties the current instance's segment" do
+    wasm = compile_efflorescence_wat('(module (data "abc") (func (export "drop") data.drop 0))')
+    first = load_bytes(wasm)
+    [false, true].each do |eager|
+      hit = load_bytes(wasm, mir_cache_eager: eager)
+      assert_true hit.mir_cache_hit
+      assert_equal ["abc"], hit.instance.store.data_segments
+      2.times { hit.call_unboxed("drop", []) }
+      assert_equal [""], hit.instance.store.data_segments
+    end
+    assert_equal ["abc"], first.instance.store.data_segments
+  end
+
   test "exception globals preserve a caught exception across calls and cache hits" do
     wasm = compile_efflorescence_wat(<<~WAT)
       (module
